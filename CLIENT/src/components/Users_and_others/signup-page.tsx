@@ -419,12 +419,16 @@ export function SignupPage({
             placeholder="Enter your instructor ID"
             error={errors.instructor_id}
           />
-          <InputField
-            value={formData.department}
-            onChange={(e) => handleChange("department", e.target.value)}
+          <SelectField
             label="Department"
-            type="text"
-            placeholder="Enter your department"
+            value={formData.department}
+            onChange={(value) => handleChange("department", value)}
+            options={[
+              { value: "College Department", label: "College Department" },
+              { value: "Senior High Department", label: "Senior High Department" },
+              { value: "Both", label: "Both" },
+            ]}
+            placeholder="Select your department"
             error={errors.department}
           />
         </div>
