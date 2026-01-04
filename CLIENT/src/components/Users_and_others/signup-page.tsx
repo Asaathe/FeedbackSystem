@@ -317,12 +317,91 @@ export function SignupPage({
             placeholder="Enter your student ID"
             error={errors.student_id}
           />
-          <InputField
-            value={formData.course_year_section}
-            onChange={(e) => handleChange("course_year_section", e.target.value)}
+          <SelectField
             label="Course-Year and Section"
-            type="text"
-            placeholder="e.g., BSIT-4B"
+            value={formData.course_year_section}
+            onChange={(value) => handleChange("course_year_section", value)}
+            options={[
+              // Grade 11
+              { value: "ABM11-LOVE", label: "ABM11-LOVE" },
+              { value: "ABM11-HOPE", label: "ABM11-HOPE" },
+              { value: "ABM11-FAITH", label: "ABM11-FAITH" },
+              { value: "HUMSS11-LOVE", label: "HUMSS11-LOVE" },
+              { value: "HUMSS11-HOPE", label: "HUMSS11-HOPE" },
+              { value: "HUMSS11-FAITH", label: "HUMSS11-FAITH" },
+              { value: "HUMSS11-JOY", label: "HUMSS11-JOY" },
+              { value: "HUMSS11-GENEROSITY", label: "HUMSS11-GENEROSITY" },
+              { value: "HUMSS11-HUMILITY", label: "HUMSS11-HUMILITY" },
+              { value: "HUMSS11-INTEGRITY", label: "HUMSS11-INTEGRITY" },
+              { value: "HUMSS11-WISDOM", label: "HUMSS11-WISDOM" },
+              { value: "STEM11-HOPE", label: "STEM11-HOPE" },
+              { value: "STEM11-FAITH", label: "STEM11-FAITH" },
+              { value: "STEM11-JOY", label: "STEM11-JOY" },
+              { value: "STEM11-GENEROSITY", label: "STEM11-GENEROSITY" },
+              { value: "ICT11-LOVE", label: "ICT11-LOVE" },
+              { value: "ICT11-HOPE", label: "ICT11-HOPE" },
+              // Grade 12
+              { value: "ABM12-LOVE", label: "ABM12-LOVE" },
+              { value: "ABM12-HOPE", label: "ABM12-HOPE" },
+              { value: "ABM12-FAITH", label: "ABM12-FAITH" },
+              { value: "HUMSS12-LOVE", label: "HUMSS12-LOVE" },
+              { value: "HUMSS12-HOPE", label: "HUMSS12-HOPE" },
+              { value: "HUMSS12-FAITH", label: "HUMSS12-FAITH" },
+              { value: "HUMSS12-JOY", label: "HUMSS12-JOY" },
+              { value: "HUMSS12-GENEROSITY", label: "HUMSS12-GENEROSITY" },
+              { value: "HUMSS12-HUMILITY", label: "HUMSS12-HUMILITY" },
+              { value: "STEM12-LOVE", label: "STEM12-LOVE" },
+              { value: "STEM12-HOPE", label: "STEM12-HOPE" },
+              { value: "STEM12-FAITH", label: "STEM12-FAITH" },
+              { value: "STEM12-JOY", label: "STEM12-JOY" },
+              { value: "STEM12-GENEROSITY", label: "STEM12-GENEROSITY" },
+              { value: "ICT12-LOVE", label: "ICT12-LOVE" },
+              { value: "ICT12-HOPE", label: "ICT12-HOPE" },
+              // College - BSIT
+              { value: "BSIT-1A", label: "BSIT-1A" },
+              { value: "BSIT-1B", label: "BSIT-1B" },
+              { value: "BSIT-1C", label: "BSIT-1C" },
+              { value: "BSIT-2A", label: "BSIT-2A" },
+              { value: "BSIT-2B", label: "BSIT-2B" },
+              { value: "BSIT-2C", label: "BSIT-2C" },
+              { value: "BSIT-3A", label: "BSIT-3A" },
+              { value: "BSIT-3B", label: "BSIT-3B" },
+              { value: "BSIT-3C", label: "BSIT-3C" },
+              { value: "BSIT-4A", label: "BSIT-4A" },
+              { value: "BSIT-4B", label: "BSIT-4B" },
+              { value: "BSIT-4C", label: "BSIT-4C" },
+              // College - BSBA
+              { value: "BSBA-1A", label: "BSBA-1A" },
+              { value: "BSBA-2A", label: "BSBA-2A" },
+              { value: "BSBA-3A", label: "BSBA-3A" },
+              { value: "BSBA-4A", label: "BSBA-4A" },
+              // College - BSCS
+              { value: "BSCS-1A", label: "BSCS-1A" },
+              { value: "BSCS-2A", label: "BSCS-2A" },
+              { value: "BSCS-3A", label: "BSCS-3A" },
+              { value: "BSCS-4A", label: "BSCS-4A" },
+              // College - BSEN
+              { value: "BSEN-1A", label: "BSEN-1A" },
+              { value: "BSEN-2A", label: "BSEN-2A" },
+              { value: "BSEN-3A", label: "BSEN-3A" },
+              { value: "BSEN-4A", label: "BSEN-4A" },
+              // College - BSOA
+              { value: "BSOA-1A", label: "BSOA-1A" },
+              { value: "BSOA-2A", label: "BSOA-2A" },
+              { value: "BSOA-3A", label: "BSOA-3A" },
+              { value: "BSOA-4A", label: "BSOA-4A" },
+              // College - BSAIS
+              { value: "BSAIS-1A", label: "BSAIS-1A" },
+              { value: "BSAIS-2A", label: "BSAIS-2A" },
+              { value: "BSAIS-3A", label: "BSAIS-3A" },
+              { value: "BSAIS-4A", label: "BSAIS-4A" },
+              // College - BTVTEd
+              { value: "BTVTEd-1A", label: "BTVTEd-1A" },
+              { value: "BTVTEd-2A", label: "BTVTEd-2A" },
+              { value: "BTVTEd-3A", label: "BTVTEd-3A" },
+              { value: "BTVTEd-4A", label: "BTVTEd-4A" },
+            ]}
+            placeholder="Select your course-year and section"
             error={errors.course_year_section}
           />
         </div>

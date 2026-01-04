@@ -25,13 +25,13 @@ export function SelectField({
   error,
 }: SelectFieldProps) {
   return (
-    <div>
+    <div className="flex-1">
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
       </label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger
-          className={`w-full ${
+          className={`w-full p-2 rounded-lg ${
             error
               ? "border-red-500 focus:ring-red-400"
               : "border-gray-300 focus:ring-green-400"
