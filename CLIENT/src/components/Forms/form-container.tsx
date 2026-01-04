@@ -1,5 +1,4 @@
 import React from "react";
-import actslogo from "../Images/actslogo.png";
 
 interface FormContainerProps {
   title: string;
@@ -28,7 +27,7 @@ export function FormContainer({
     <div className="flex items-center justify-center min-h-screen bg-green-50">
       <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-2xl flex flex-col items-center">
         <div className="w-20 h-20 mb-4 bg-gradient-to-br from-green-500 to-lime-500 rounded-full flex items-center justify-center">
-          <img src={actslogo} alt="ACTS Logo" className="w-[4.75rem] h-[4.75rem]" />
+          <img src="/actslogo.png" alt="ACTS Logo" className="w-[4.75rem] h-[4.75rem]" />
         </div>
 
         <h2 className="text-3xl text-gray-800 mb-2">
