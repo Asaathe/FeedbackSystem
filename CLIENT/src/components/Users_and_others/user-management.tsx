@@ -237,6 +237,13 @@ export function UserManagement() {
     try {
       setLoading(true);
       const token = sessionStorage.getItem('authToken');
+
+      if (!token) {
+        console.warn('No auth token found, skipping user fetch');
+        setUsers([]);
+        return;
+      }
+
       const params = new URLSearchParams({
         ...(search && { search }),
         ...(role !== 'all' && { role }),
@@ -252,7 +259,17 @@ export function UserManagement() {
         }
       });
 
-      if (!response.ok) throw new Error('Failed to fetch users');
+      if (!response.ok) {
+        console.error('Fetch failed with status:', response.status, response.statusText);
+        if (response.status === 401) {
+          console.warn('Unauthorized access, clearing token');
+          sessionStorage.removeItem('authToken');
+          setUsers([]);
+          toast.error('Session expired. Please log in again.');
+          return;
+        }
+        throw new Error(`Failed to fetch users: ${response.status} ${response.statusText}`);
+      }
 
       const data = await response.json();
       setUsers(data.users || []);
@@ -940,7 +957,7 @@ export function UserManagement() {
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="student">Students</SelectItem>
                 <SelectItem value="instructor">Instructors</SelectItem>
-                <SelectItem value="staff">Staff</SelectItem>
+              
                 <SelectItem value="alumni">Alumni</SelectItem>
                 <SelectItem value="employer">Employers</SelectItem>
               </SelectContent>
@@ -1136,14 +1153,7 @@ export function UserManagement() {
                             <Edit className="w-4 h-4 mr-2" />
                             View/Edit Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Mail className="w-4 h-4 mr-2" />
-                            Send Email
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <Shield className="w-4 h-4 mr-2" />
-                            Change Role
-                          </DropdownMenuItem>
+                         
                           <DropdownMenuItem className="text-red-600">
                             <Trash2 className="w-4 h-4 mr-2" />
                             Remove User
