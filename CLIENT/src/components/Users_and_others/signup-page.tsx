@@ -129,6 +129,8 @@ export function SignupPage({
     if (formData.role === "student") {
       if (!formData.student_id.trim()) {
         newErrors.student_id = "Student ID is required.";
+      } else if (!/^\d{5}$/.test(formData.student_id.trim())) {
+        newErrors.student_id = "Student ID must be exactly 5 digits.";
       }
       if (!formData.course_year_section.trim()) {
         newErrors.course_year_section = "Course Year Section is required.";
