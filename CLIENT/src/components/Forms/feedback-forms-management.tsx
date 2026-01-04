@@ -1,0 +1,647 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
+import { Button } from "../Reusable_components/button";
+import { Input } from "../Reusable_components/input";
+import { Badge } from "../Reusable_components/badge";
+import { Plus, Search, Edit, Trash2, Copy, MoreVertical, FileText, Star, Send, X } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "../Reusable_components/dropdown-menu";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../Reusable_components/dialog";
+import { Label } from "../Reusable_components/label";
+import { Textarea } from "../Reusable_components/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Reusable_components/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../Reusable_components/tabs";
+import { toast } from "sonner";
+import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates } from "../../services/formManagementService";
+import { isAuthenticated, getUserRole } from "../../utils/auth";
+
+// ============================================================
+// Feedback Forms Management Component
+// Integrated with server APIs for full CRUD operations
+// ============================================================
+
+interface FeedbackFormsManagementProps {
+  onNavigateToBuilder?: (formId?: string) => void;
+}
+
+interface FormData {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  target_audience: string;
+  status: string;
+  image_url?: string;
+  submission_count: number;
+  created_at: string;
+  question_count: number;
+  creator_name?: string;
+  is_template?: boolean;
+}
+
+const categories = [
+  'Academic',
+  'Facilities', 
+  'Services',
+  'Alumni',
+  'Career Support',
+  'General Feedback'
+];
+
+const targetAudienceOptions = [
+  'Students',
+  'Alumni',
+  'Instructors', 
+  'Staff',
+  'All Users'
+];
+
+export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsManagementProps = {}) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [selectedTarget, setSelectedTarget] = useState('all');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [customForms, setCustomForms] = useState<FormData[]>([]);
+  const [templateForms, setTemplateForms] = useState<FormData[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Form state for creating new forms
+  const [newFormTitle, setNewFormTitle] = useState('');
+  const [newFormDescription, setNewFormDescription] = useState('');
+  const [newFormCategory, setNewFormCategory] = useState('Academic');
+  const [newFormTarget, setNewFormTarget] = useState('Students');
+
+  // Load forms on component mount
+  useEffect(() => {
+    loadForms();
+  }, []);
+
+  const loadForms = async () => {
+    setLoading(true);
+    setError(null);
+
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      setError('Please log in to manage feedback forms.');
+      setLoading(false);
+      return;
+    }
+
+    // Check if user has admin role
+    const userRole = getUserRole();
+    if (userRole !== 'admin') {
+      setError(`Only administrators can manage feedback forms. Your current role is: ${userRole || 'unknown'}.`);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Load custom forms
+      const customResult = await getForms('custom', 'all', '', 1, 100);
+      if (customResult.success) {
+        setCustomForms(customResult.forms);
+      } else {
+        setError('Unable to load feedback forms. Please check your connection and try again.');
+      }
+
+      // Load templates
+      const templates = await getFormTemplates();
+      setTemplateForms(templates);
+    } catch (err) {
+      console.error('Error loading forms:', err);
+      setError('Failed to connect to the server. Please check your internet connection.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Filter forms based on search and filters
+  const filteredCustomForms = customForms.filter(form => {
+    const matchesSearch = form.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         form.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || form.category === selectedCategory;
+    const matchesTarget = selectedTarget === 'all' || form.target_audience === selectedTarget;
+    return matchesSearch && matchesCategory && matchesTarget;
+  });
+
+  const filteredTemplateForms = templateForms.filter(form => {
+    const matchesSearch = form.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         form.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = selectedCategory === 'all' || form.category === selectedCategory;
+    const matchesTarget = selectedTarget === 'all' || form.target_audience === selectedTarget;
+    return matchesSearch && matchesCategory && matchesTarget;
+  });
+
+  // Action handlers
+  const handleCreateForm = async () => {
+    if (!newFormTitle.trim()) {
+      toast.error('Please enter a form title');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await createForm({
+        title: newFormTitle,
+        description: newFormDescription,
+        category: newFormCategory,
+        targetAudience: newFormTarget,
+      });
+
+      if (result.success) {
+        toast.success(result.message);
+        setCreateDialogOpen(false);
+        setNewFormTitle('');
+        setNewFormDescription('');
+        // Reload forms to show the new one
+        await loadForms();
+
+        // Navigate to form builder with the new form ID
+        if (onNavigateToBuilder && result.formId) {
+          onNavigateToBuilder(result.formId);
+        }
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error creating form:', error);
+      toast.error('An error occurred while creating the form');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePreviewForm = (form: FormData) => {
+    setSelectedForm(form);
+    setPreviewDialogOpen(true);
+  };
+
+  const handleDuplicateForm = async (formId: string) => {
+    try {
+      const result = await duplicateForm(formId);
+      if (result.success) {
+        toast.success(result.message);
+        // Reload forms to show the duplicated one
+        await loadForms();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error duplicating form:', error);
+      toast.error('An error occurred while duplicating the form');
+    }
+  };
+
+  const handleDeleteForm = async (formId: string) => {
+    try {
+      const result = await deleteForm(formId);
+      if (result.success) {
+        toast.success(result.message);
+        // Reload forms to remove the deleted one
+        await loadForms();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting form:', error);
+      toast.error('An error occurred while deleting the form');
+    }
+  };
+
+  const handleEditForm = (form: FormData) => {
+    setSelectedForm(form);
+    // Navigate to form builder with form ID for editing
+    if (onNavigateToBuilder) {
+      onNavigateToBuilder(form.id);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+        <div>
+          <h2 className="text-2xl">Feedback Forms</h2>
+          <p className="text-gray-600">Create and manage feedback forms</p>
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCreateDialogOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Quick Create
+          </Button>
+          <Button
+            className="bg-green-500 hover:bg-green-600"
+            onClick={() => onNavigateToBuilder?.()}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Form
+          </Button>
+        </div>
+      </div>
+
+      {/* Quick Create Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Quick Create Form</DialogTitle>
+            <DialogDescription>
+              Create a basic feedback form quickly
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Form Title</Label>
+              <Input
+                value={newFormTitle}
+                onChange={(e) => setNewFormTitle(e.target.value)}
+                placeholder="Enter form title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={newFormDescription}
+                onChange={(e) => setNewFormDescription(e.target.value)}
+                placeholder="Brief description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={newFormCategory} onValueChange={setNewFormCategory}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Target Audience</Label>
+                <Select value={newFormTarget} onValueChange={setNewFormTarget}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {targetAudienceOptions.map((option) => (
+                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-green-500 hover:bg-green-600"
+                onClick={handleCreateForm}
+                disabled={loading}
+              >
+                {loading ? 'Creating...' : 'Create Form'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Form Preview</DialogTitle>
+            <DialogDescription>
+              Preview of: {selectedForm?.title}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedForm && (
+            <div className="space-y-4 py-4">
+              <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-200">
+                <h3 className="text-lg font-semibold">{selectedForm.title}</h3>
+                <p className="text-gray-600 mt-1">{selectedForm.description}</p>
+                <div className="flex gap-2 mt-3">
+                  <Badge variant="secondary">{selectedForm.category}</Badge>
+                  <Badge variant="outline">Target: {selectedForm.target_audience}</Badge>
+                  <Badge variant="outline">{selectedForm.question_count} Questions</Badge>
+                </div>
+              </div>
+             
+              <div className="space-y-3">
+                <h4 className="font-medium">Sample Questions:</h4>
+                {Array.from({ length: Math.min(selectedForm.question_count, 5) }).map((_, idx) => (
+                  <div key={idx} className="p-3 border rounded-lg bg-gray-50">
+                    <p className="text-sm">{idx + 1}. Sample question text would appear here...</p>
+                    <Badge variant="outline" className="mt-2 text-xs">Question Type</Badge>
+                  </div>
+                ))}
+                {selectedForm.question_count > 5 && (
+                  <p className="text-sm text-gray-500 text-center py-2">
+                    ... and {selectedForm.question_count - 5} more questions
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+                  Close Preview
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <Input
+            placeholder="Search forms..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Categories" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {categories.map((cat) => (
+              <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={selectedTarget} onValueChange={setSelectedTarget}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All Targets" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Targets</SelectItem>
+            {targetAudienceOptions.map((option) => (
+              <SelectItem key={option} value={option}>{option}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Loading State */}
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          <p className="mt-2 text-gray-600">Loading forms...</p>
+        </div>
+      ) : error ? (
+        <div className="text-center py-12">
+          <p className="text-red-600 mb-4">{error}</p>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={loadForms} variant="outline">
+              Try Again
+            </Button>
+            <Button onClick={() => window.location.href = '/login'} variant="default">
+              Go to Login
+            </Button>
+          </div>
+        </div>
+      ) : (
+        /* Tabs for Custom and Template Forms */
+        <Tabs defaultValue="custom" className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2">
+            <TabsTrigger value="custom">
+              Custom Forms ({filteredCustomForms.length})
+            </TabsTrigger>
+            <TabsTrigger value="templates">
+              <Star className="w-4 h-4 mr-2" />
+              Templates ({filteredTemplateForms.length})
+            </TabsTrigger>
+          </TabsList>
+          
+          {/* Custom Forms Tab */}
+          <TabsContent value="custom" className="space-y-6 mt-6">
+            {filteredCustomForms.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No custom forms found</h3>
+                <p className="text-gray-500 mb-4">Create your first feedback form to get started</p>
+                <Button
+                  className="bg-green-500 hover:bg-green-600"
+                  onClick={() => onNavigateToBuilder?.()}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create New Form
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredCustomForms.map((form) => (
+                  <Card key={form.id} className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden">
+                    <CardHeader>
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <CardTitle className="text-lg">{form.title}</CardTitle>
+                          <p className="text-sm text-gray-500 mt-1">{form.description}</p>
+                        </div>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditForm(form)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handlePreviewForm(form)}>
+                              <FileText className="w-4 h-4 mr-2" />
+                              Preview
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicateForm(form.id)}>
+                              <Copy className="w-4 h-4 mr-2" />
+                              Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => handleDeleteForm(form.id)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex gap-2">
+                        <Badge
+                          variant="secondary"
+                          className={
+                            form.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : form.status === 'draft'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }
+                        >
+                          {form.status}
+                        </Badge>
+                        <Badge variant="outline" className="border-green-200">
+                          {form.category}
+                        </Badge>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <p className="text-gray-500">Responses</p>
+                          <p className="font-medium">{form.submission_count}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-500">Questions</p>
+                          <p className="font-medium">{form.question_count}</p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1 border-green-200 hover:bg-green-50"
+                          onClick={() => handlePreviewForm(form)}
+                        >
+                          Preview
+                        </Button>
+                        <Button
+                          className="flex-1 bg-green-500 hover:bg-green-600"
+                          onClick={() => handleEditForm(form)}
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
+          </TabsContent>
+          
+          {/* Template Forms Tab */}
+          <TabsContent value="templates" className="space-y-4 mt-6">
+          {/* Info Banner */}
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Star className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-medium">Template Forms</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  These are reusable template forms that can be deployed every semester or period.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {filteredTemplateForms.length === 0 ? (
+            <div className="text-center py-12">
+              <Star className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No templates found</h3>
+              <p className="text-gray-500">Template forms will appear here</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredTemplateForms.map((template) => (
+                <Card key={template.id} className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden">
+                  <CardHeader>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CardTitle className="text-lg">{template.title}</CardTitle>
+                          <Star className="w-4 h-4 text-purple-500 fill-purple-500" />
+                        </div>
+                        <p className="text-sm text-gray-500">{template.description}</p>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => handlePreviewForm(template)}>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicateForm(template.id)}>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => handleDeleteForm(template.id)}
+                          >
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex gap-2 flex-wrap">
+                      <Badge variant="secondary" className="bg-purple-100 text-purple-700">
+                        <Star className="w-3 h-3 mr-1" />
+                        Template
+                      </Badge>
+                      <Badge variant="outline" className="border-purple-200">
+                        {template.category}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-gray-500">Questions</p>
+                        <p className="font-medium">{template.question_count}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Target</p>
+                        <p className="font-medium">{template.target_audience}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        className="flex-1 border-purple-200 hover:bg-purple-50"
+                        onClick={() => handlePreviewForm(template)}
+                      >
+                        Preview
+                      </Button>
+                      <Button 
+                        className="flex-1 bg-purple-500 hover:bg-purple-600"
+                        onClick={() => handleEditForm(template)}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Use Template
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+      )}
+    </div>
+  );
+}
