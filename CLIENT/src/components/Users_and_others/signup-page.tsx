@@ -320,7 +320,7 @@ export function SignupPage({
           <InputField
             value={formData.course_year_section}
             onChange={(e) => handleChange("course_year_section", e.target.value)}
-            label="Course Year Section"
+            label="Course-Year and Section"
             type="text"
             placeholder="e.g., BSIT-4B"
             error={errors.course_year_section}
