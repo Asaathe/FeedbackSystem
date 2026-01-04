@@ -152,14 +152,15 @@ const isValidEmail = (email) => {
 const insertStudentData = (userId, data) => {
   return new Promise((resolve, reject) => {
     const query = `
-      INSERT INTO Students (user_id, student_id, course_yr_section, contact_number)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO students (user_id, studentID, course_yr_section, contact_number, subjects)
+      VALUES (?, ?, ?, ?, ?)
     `;
     db.query(query, [
       userId,
       data.studentId,
       data.courseYrSection,
       data.contactNumber,
+      data.subjects,
     ], (err) => {
       if (err) reject(err);
       else resolve();
@@ -170,14 +171,14 @@ const insertStudentData = (userId, data) => {
 const insertInstructorData = (userId, data) => {
   return new Promise((resolve, reject) => {
     const query = `
-      INSERT INTO Instructor (user_id, instructor_id, department, specialization)
+      INSERT INTO instructors (user_id, instructor_id, department, subject_taught)
       VALUES (?, ?, ?, ?)
     `;
     db.query(query, [
       userId,
       data.instructorId,
       data.department,
-      data.specialization,
+      data.subjectTaught,
     ], (err) => {
       if (err) reject(err);
       else resolve();
@@ -188,18 +189,16 @@ const insertInstructorData = (userId, data) => {
 const insertAlumniData = (userId, data) => {
   return new Promise((resolve, reject) => {
     const query = `
-      INSERT INTO Alumni (user_id, grad_year, degree, job_title, company, industry, location, graduation_date)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO alumni (user_id, grad_year, degree, jobtitle, contact, company)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     db.query(query, [
       userId,
       data.gradYear,
       data.degree,
       data.jobTitle,
+      data.contact,
       data.company,
-      data.industry,
-      data.location,
-      data.graduationDate,
     ], (err) => {
       if (err) reject(err);
       else resolve();
@@ -210,16 +209,13 @@ const insertAlumniData = (userId, data) => {
 const insertEmployerData = (userId, data) => {
   return new Promise((resolve, reject) => {
     const query = `
-      INSERT INTO Employer (user_id, company_name, industry, position, company_size, website, location, contact_number)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO employers (user_id, companyname, industry, location, contact)
+      VALUES (?, ?, ?, ?, ?)
     `;
     db.query(query, [
       userId,
       data.companyName,
       data.industry,
-      data.position,
-      data.companySize,
-      data.website,
       data.location,
       data.contactNumber,
     ], (err) => {
@@ -236,7 +232,7 @@ app.get("/api/test", (req, res) => {
 
 // Database status route
 app.get("/api/db-status", (req, res) => {
-  db.query("SELECT COUNT(*) as userCount FROM Users", (err, results) => {
+  db.query("SELECT COUNT(*) as userCount FROM users", (err, results) => {
     if (err) {
       res.json({
         status: "error",
@@ -360,9 +356,9 @@ app.post(
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Insert new user into Users table
+        // Insert new user into users table
         const insertUserQuery = `
-          INSERT INTO Users (email, password_hash, full_name, role, status, created_at)
+          INSERT INTO users (email, password_hash, full_name, role, status, registration_date)
           VALUES (?, ?, ?, ?, 'pending', NOW())
         `;
 
@@ -488,16 +484,16 @@ app.post(
       // Find user by email with role-specific data
       const findUserQuery = `
         SELECT
-          u.id, u.email, u.password_hash, u.full_name, u.role, u.status,
-          s.student_id, s.course_yr_section, s.contact_number,
-          i.instructor_id, i.department as instructor_department, i.specialization,
-          a.grad_year, a.degree, a.job_title, a.company as alumni_company, a.industry as alumni_industry, a.location as alumni_location, a.graduation_date,
-          e.company_name, e.position, e.contact_number as employer_contact
-        FROM Users u
-        LEFT JOIN Students s ON u.id = s.user_id
-        LEFT JOIN Instructor i ON u.id = i.user_id
-        LEFT JOIN Alumni a ON u.id = a.user_id
-        LEFT JOIN Employer e ON u.id = e.user_id
+            u.id, u.email, u.password_hash, u.full_name, u.role, u.status,
+            s.studentID, s.course_yr_section, s.contact_number, s.subjects,
+            i.instructor_id, i.department, i.subject_taught,
+            a.grad_year, a.degree, a.jobtitle, a.contact, a.company,
+            e.companyname, e.industry, e.location, e.contact
+        FROM users u
+        LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN instructors i ON u.id = i.user_id
+        LEFT JOIN alumni a ON u.id = a.user_id
+        LEFT JOIN employers e ON u.id = e.user_id
         WHERE u.email = ?
       `;
 
@@ -550,28 +546,28 @@ app.post(
         // Add role-specific fields
         switch (user.role) {
           case 'student':
-            userResponse.studentId = user.student_id;
+            userResponse.studentId = user.studentID;
             userResponse.courseYrSection = user.course_yr_section;
             userResponse.contactNumber = user.contact_number;
+            userResponse.subjects = user.subjects;
             break;
           case 'instructor':
             userResponse.instructorId = user.instructor_id;
-            userResponse.department = user.instructor_department;
-            userResponse.specialization = user.specialization;
+            userResponse.department = user.department;
+            userResponse.subjectTaught = user.subject_taught;
             break;
           case 'alumni':
             userResponse.gradYear = user.grad_year;
             userResponse.degree = user.degree;
-            userResponse.jobTitle = user.job_title;
-            userResponse.company = user.alumni_company;
-            userResponse.industry = user.alumni_industry;
-            userResponse.location = user.alumni_location;
-            userResponse.graduationDate = user.graduation_date;
+            userResponse.jobTitle = user.jobtitle;
+            userResponse.contact = user.contact;
+            userResponse.company = user.company;
             break;
           case 'employer':
-            userResponse.companyName = user.company_name;
-            userResponse.position = user.position;
-            userResponse.employerContactNumber = user.employer_contact;
+            userResponse.companyName = user.companyname;
+            userResponse.industry = user.industry;
+            userResponse.location = user.location;
+            userResponse.contact = user.contact;
             break;
         }
 
@@ -598,15 +594,15 @@ app.get("/api/auth/verify", verifyToken, (req, res) => {
   const findUserQuery = `
     SELECT
       u.id, u.email, u.full_name, u.role, u.status,
-      s.student_id, s.course_yr_section, s.contact_number,
-      i.instructor_id, i.department as instructor_department, i.specialization,
-      a.grad_year, a.degree, a.job_title, a.company as alumni_company, a.industry as alumni_industry, a.location as alumni_location, a.graduation_date,
-      e.company_name, e.position, e.contact_number as employer_contact
-    FROM Users u
-    LEFT JOIN Students s ON u.id = s.user_id
-    LEFT JOIN Instructor i ON u.id = i.user_id
-    LEFT JOIN Alumni a ON u.id = a.user_id
-    LEFT JOIN Employer e ON u.id = e.user_id
+      s.studentID, s.course_yr_section, s.contact_number, s.subjects,
+      i.instructor_id, i.department, i.subject_taught,
+      a.grad_year, a.degree, a.jobtitle, a.contact, a.company,
+      e.companyname, e.industry, e.location, e.contact
+    FROM users u
+    LEFT JOIN students s ON u.id = s.user_id
+    LEFT JOIN instructors i ON u.id = i.user_id
+    LEFT JOIN alumni a ON u.id = a.user_id
+    LEFT JOIN employers e ON u.id = e.user_id
     WHERE u.id = ?
   `;
 
@@ -640,28 +636,28 @@ app.get("/api/auth/verify", verifyToken, (req, res) => {
     // Add role-specific fields
     switch (user.role) {
       case 'student':
-        userResponse.studentId = user.student_id;
+        userResponse.studentId = user.studentID;
         userResponse.courseYrSection = user.course_yr_section;
         userResponse.contactNumber = user.contact_number;
+        userResponse.subjects = user.subjects;
         break;
       case 'instructor':
         userResponse.instructorId = user.instructor_id;
-        userResponse.department = user.instructor_department;
-        userResponse.specialization = user.specialization;
+        userResponse.department = user.department;
+        userResponse.subjectTaught = user.subject_taught;
         break;
       case 'alumni':
         userResponse.gradYear = user.grad_year;
         userResponse.degree = user.degree;
-        userResponse.jobTitle = user.job_title;
-        userResponse.company = user.alumni_company;
-        userResponse.industry = user.alumni_industry;
-        userResponse.location = user.alumni_location;
-        userResponse.graduationDate = user.graduation_date;
+        userResponse.jobTitle = user.jobtitle;
+        userResponse.contact = user.contact;
+        userResponse.company = user.company;
         break;
       case 'employer':
-        userResponse.companyName = user.company_name;
-        userResponse.position = user.position;
-        userResponse.employerContactNumber = user.employer_contact;
+        userResponse.companyName = user.companyname;
+        userResponse.industry = user.industry;
+        userResponse.location = user.location;
+        userResponse.contact = user.contact;
         break;
     }
 
@@ -690,16 +686,16 @@ app.get("/api/users", verifyToken, (req, res) => {
 
     let query = `
       SELECT
-        u.id, u.email, u.full_name, u.role, u.status, u.created_at,
-        s.student_id, s.course_yr_section,
-        i.instructor_id, i.department as instructor_department,
-        a.degree, a.company as alumni_company,
-        e.company_name, e.industry
-      FROM Users u
-      LEFT JOIN Students s ON u.id = s.user_id
-      LEFT JOIN Instructor i ON u.id = i.user_id
-      LEFT JOIN Alumni a ON u.id = a.user_id
-      LEFT JOIN Employer e ON u.id = e.user_id
+        u.id, u.email, u.full_name, u.role, u.status, u.registration_date as created_at,
+        s.studentID, s.course_yr_section,
+        i.instructor_id, i.department,
+        a.degree, a.company,
+        e.companyname, e.industry
+      FROM users u
+      LEFT JOIN students s ON u.id = s.user_id
+      LEFT JOIN instructors i ON u.id = i.user_id
+      LEFT JOIN alumni a ON u.id = a.user_id
+      LEFT JOIN employers e ON u.id = e.user_id
       WHERE 1=1
     `;
 
@@ -720,7 +716,7 @@ app.get("/api/users", verifyToken, (req, res) => {
       params.push(status);
     }
 
-    query += ` ORDER BY u.created_at DESC LIMIT ? OFFSET ?`;
+    query += ` ORDER BY u.registration_date DESC LIMIT ? OFFSET ?`;
     params.push(parseInt(limit), offset);
 
     db.query(query, params, (err, results) => {
@@ -733,7 +729,7 @@ app.get("/api/users", verifyToken, (req, res) => {
       }
 
       // Get total count for pagination
-      let countQuery = `SELECT COUNT(*) as total FROM Users u WHERE 1=1`;
+      let countQuery = `SELECT COUNT(*) as total FROM users u WHERE 1=1`;
       const countParams = [];
 
       if (search) {
@@ -769,14 +765,14 @@ app.get("/api/users", verifyToken, (req, res) => {
           name: user.full_name,
           email: user.email,
           role: user.role,
-          department: user.instructor_department || 'N/A', // Default department
+          department: user.department || 'N/A', // Default department
           status: user.status,
           createdAt: user.created_at,
           // Role-specific data
-          ...(user.student_id && { studentId: user.student_id, courseYrSection: user.course_yr_section }),
+          ...(user.studentID && { studentId: user.studentID, courseYrSection: user.course_yr_section }),
           ...(user.instructor_id && { instructorId: user.instructor_id }),
-          ...(user.degree && { degree: user.degree, alumniCompany: user.alumni_company }),
-          ...(user.company_name && { companyName: user.company_name, industry: user.industry }),
+          ...(user.degree && { degree: user.degree, alumniCompany: user.company }),
+          ...(user.companyname && { companyName: user.companyname, industry: user.industry }),
         }));
 
         res.json({
@@ -807,7 +803,7 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
     const updateData = req.body;
 
     // Get current user role
-    const userQuery = "SELECT role FROM Users WHERE id = ?";
+    const userQuery = "SELECT role FROM users WHERE id = ?";
     db.query(userQuery, [userId], (err, results) => {
       if (err) {
         console.error("Database error:", err);
@@ -823,21 +819,23 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
       // Update role-specific data
       switch (userRole) {
         case 'student':
-          if (updateData.studentId || updateData.courseYrSection || updateData.contactNumber) {
+          if (updateData.studentId || updateData.courseYrSection || updateData.contactNumber || updateData.subjects) {
             const studentData = {
               studentId: updateData.studentId,
               courseYrSection: updateData.courseYrSection,
               contactNumber: updateData.contactNumber,
+              subjects: updateData.subjects,
             };
 
             // Insert or update student data
             const studentQuery = `
-              INSERT INTO Students (user_id, student_id, course_yr_section, contact_number)
-              VALUES (?, ?, ?, ?)
+              INSERT INTO students (user_id, studentID, course_yr_section, contact_number, subjects)
+              VALUES (?, ?, ?, ?, ?)
               ON DUPLICATE KEY UPDATE
-                student_id = VALUES(student_id),
+                studentID = VALUES(studentID),
                 course_yr_section = VALUES(course_yr_section),
-                contact_number = VALUES(contact_number)
+                contact_number = VALUES(contact_number),
+                subjects = VALUES(subjects)
             `;
 
             db.query(studentQuery, [
@@ -845,6 +843,7 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
               studentData.studentId,
               studentData.courseYrSection,
               studentData.contactNumber,
+              studentData.subjects,
             ], (err) => {
               if (err) {
                 console.error("Student update error:", err);
@@ -859,27 +858,27 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
           break;
 
         case 'instructor':
-          if (updateData.instructorId || updateData.department || updateData.specialization) {
+          if (updateData.instructorId || updateData.department || updateData.subjectTaught) {
             const instructorData = {
               instructorId: updateData.instructorId,
               department: updateData.department,
-              specialization: updateData.specialization,
+              subjectTaught: updateData.subjectTaught,
             };
 
             const instructorQuery = `
-              INSERT INTO Instructor (user_id, instructor_id, department, specialization)
+              INSERT INTO instructors (user_id, instructor_id, department, subject_taught)
               VALUES (?, ?, ?, ?)
               ON DUPLICATE KEY UPDATE
                 instructor_id = VALUES(instructor_id),
                 department = VALUES(department),
-                specialization = VALUES(specialization)
+                subject_taught = VALUES(subject_taught)
             `;
 
             db.query(instructorQuery, [
               userId,
               instructorData.instructorId,
               instructorData.department,
-              instructorData.specialization,
+              instructorData.subjectTaught,
             ], (err) => {
               if (err) {
                 console.error("Instructor update error:", err);
@@ -895,28 +894,24 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
 
         case 'alumni':
           if (updateData.gradYear || updateData.degree || updateData.jobTitle ||
-              updateData.company || updateData.industry || updateData.location || updateData.graduationDate) {
+              updateData.company || updateData.contact) {
             const alumniData = {
               gradYear: updateData.gradYear,
               degree: updateData.degree,
               jobTitle: updateData.jobTitle,
+              contact: updateData.contact,
               company: updateData.company,
-              industry: updateData.industry,
-              location: updateData.location,
-              graduationDate: updateData.graduationDate,
             };
 
             const alumniQuery = `
-              INSERT INTO Alumni (user_id, grad_year, degree, job_title, company, industry, location, graduation_date)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              INSERT INTO alumni (user_id, grad_year, degree, jobtitle, contact, company)
+              VALUES (?, ?, ?, ?, ?, ?)
               ON DUPLICATE KEY UPDATE
                 grad_year = VALUES(grad_year),
                 degree = VALUES(degree),
-                job_title = VALUES(job_title),
-                company = VALUES(company),
-                industry = VALUES(industry),
-                location = VALUES(location),
-                graduation_date = VALUES(graduation_date)
+                jobtitle = VALUES(jobtitle),
+                contact = VALUES(contact),
+                company = VALUES(company)
             `;
 
             db.query(alumniQuery, [
@@ -924,10 +919,8 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
               alumniData.gradYear,
               alumniData.degree,
               alumniData.jobTitle,
+              alumniData.contact,
               alumniData.company,
-              alumniData.industry,
-              alumniData.location,
-              alumniData.graduationDate,
             ], (err) => {
               if (err) {
                 console.error("Alumni update error:", err);
@@ -942,26 +935,29 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
           break;
 
         case 'employer':
-          if (updateData.companyName || updateData.position || updateData.employerContactNumber) {
+          if (updateData.companyName || updateData.industry || updateData.location || updateData.contactNumber) {
             const employerData = {
               companyName: updateData.companyName,
-              position: updateData.position,
-              contactNumber: updateData.employerContactNumber,
+              industry: updateData.industry,
+              location: updateData.location,
+              contactNumber: updateData.contactNumber,
             };
 
             const employerQuery = `
-              INSERT INTO Employer (user_id, company_name, position, contact_number)
-              VALUES (?, ?, ?, ?)
+              INSERT INTO employers (user_id, companyname, industry, location, contact)
+              VALUES (?, ?, ?, ?, ?)
               ON DUPLICATE KEY UPDATE
-                company_name = VALUES(company_name),
-                position = VALUES(position),
-                contact_number = VALUES(contact_number)
+                companyname = VALUES(companyname),
+                industry = VALUES(industry),
+                location = VALUES(location),
+                contact = VALUES(contact)
             `;
 
             db.query(employerQuery, [
               userId,
               employerData.companyName,
-              employerData.position,
+              employerData.industry,
+              employerData.location,
               employerData.contactNumber,
             ], (err) => {
               if (err) {
@@ -1029,7 +1025,7 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
 
       // Insert new user
       const insertUserQuery = `
-        INSERT INTO Users (email, password_hash, full_name, role, status, created_at)
+        INSERT INTO users (email, password_hash, full_name, role, status, registration_date)
         VALUES (?, ?, ?, ?, 'pending', NOW())
       `;
 
@@ -1139,7 +1135,7 @@ app.patch("/api/users/:id/approve", verifyToken, (req, res) => {
   try {
     const userId = req.params.id;
 
-    const updateQuery = "UPDATE Users SET status = 'active' WHERE id = ?";
+    const updateQuery = "UPDATE users SET status = 'active' WHERE id = ?";
     db.query(updateQuery, [userId], (err, result) => {
       if (err) {
         console.error("Database error:", err);
@@ -1160,15 +1156,15 @@ app.patch("/api/users/:id/approve", verifyToken, (req, res) => {
       const userQuery = `
         SELECT
           u.id, u.email, u.full_name, u.role, u.status,
-          s.student_id, s.course_yr_section,
+          s.studentID, s.course_yr_section,
           i.instructor_id, i.department,
-          a.degree, a.company as alumni_company,
-          e.company_name, e.industry
-        FROM Users u
-        LEFT JOIN Students s ON u.id = s.user_id
-        LEFT JOIN Instructor i ON u.id = i.user_id
-        LEFT JOIN Alumni a ON u.id = a.user_id
-        LEFT JOIN Employer e ON u.id = e.user_id
+          a.degree, a.company,
+          e.companyname, e.industry
+        FROM users u
+        LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN instructors i ON u.id = i.user_id
+        LEFT JOIN alumni a ON u.id = a.user_id
+        LEFT JOIN employers e ON u.id = e.user_id
         WHERE u.id = ?
       `;
 
@@ -1189,10 +1185,10 @@ app.patch("/api/users/:id/approve", verifyToken, (req, res) => {
           role: user.role,
           department: user.department || 'N/A',
           status: user.status,
-          ...(user.student_id && { studentId: user.student_id, courseYrSection: user.course_yr_section }),
+          ...(user.studentID && { studentId: user.studentID, courseYrSection: user.course_yr_section }),
           ...(user.instructor_id && { instructorId: user.instructor_id }),
-          ...(user.degree && { degree: user.degree, alumniCompany: user.alumni_company }),
-          ...(user.company_name && { companyName: user.company_name, industry: user.industry }),
+          ...(user.degree && { degree: user.degree, alumniCompany: user.company }),
+          ...(user.companyname && { companyName: user.companyname, industry: user.industry }),
         };
 
         res.json({
@@ -1218,7 +1214,7 @@ app.patch("/api/users/:id/reject", verifyToken, (req, res) => {
     const { reason } = req.body;
 
     // Option 1: Delete the user
-    const deleteQuery = "DELETE FROM Users WHERE id = ?";
+    const deleteQuery = "DELETE FROM users WHERE id = ?";
     db.query(deleteQuery, [userId], (err, result) => {
       if (err) {
         console.error("Database error:", err);
@@ -1283,7 +1279,7 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
     }
 
     if (updateFields.length > 0) {
-      const updateQuery = `UPDATE Users SET ${updateFields.join(", ")} WHERE id = ?`;
+      const updateQuery = `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`;
       updateValues.push(userId);
 
       db.query(updateQuery, updateValues, (err) => {
@@ -1302,10 +1298,10 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
             case 'student':
               if (updateData.studentId || updateData.courseYrSection) {
                 const studentQuery = `
-                  INSERT INTO Students (user_id, student_id, course_yr_section)
+                  INSERT INTO students (user_id, studentID, course_yr_section)
                   VALUES (?, ?, ?)
                   ON DUPLICATE KEY UPDATE
-                    student_id = VALUES(student_id),
+                    studentID = VALUES(studentID),
                     course_yr_section = VALUES(course_yr_section)
                 `;
                 db.query(studentQuery, [
@@ -1321,7 +1317,7 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
             case 'staff':
               if (updateData.employeeId || updateData.department) {
                 const instructorQuery = `
-                  INSERT INTO Instructor (user_id, instructor_id, department)
+                  INSERT INTO instructors (user_id, instructor_id, department)
                   VALUES (?, ?, ?)
                   ON DUPLICATE KEY UPDATE
                     instructor_id = VALUES(instructor_id),
@@ -1339,10 +1335,10 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
             case 'employer':
               if (updateData.companyName || updateData.industry) {
                 const employerQuery = `
-                  INSERT INTO Employer (user_id, company_name, industry)
+                  INSERT INTO employers (user_id, companyname, industry)
                   VALUES (?, ?, ?)
                   ON DUPLICATE KEY UPDATE
-                    company_name = VALUES(company_name),
+                    companyname = VALUES(companyname),
                     industry = VALUES(industry)
                 `;
                 db.query(employerQuery, [
@@ -1357,7 +1353,7 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
             case 'alumni':
               if (updateData.degree || updateData.company) {
                 const alumniQuery = `
-                  INSERT INTO Alumni (user_id, degree, company)
+                  INSERT INTO alumni (user_id, degree, company)
                   VALUES (?, ?, ?)
                   ON DUPLICATE KEY UPDATE
                     degree = VALUES(degree),
