@@ -251,7 +251,7 @@ async function setupDatabase() {
     console.log('👤 Creating sample users...');
     const sampleUsers = [
       { email: 'student@acts.edu', password: 'student123', full_name: 'John Doe', role: 'student', profile: { table: 'students', data: { studentID: 'STU001', course_yr_section: '2023-A', contact_number: '123-456-7890', subjects: 'Computer Science', image: null } } },
-      { email: 'alumni@acts.edu', password: 'alumni123', full_name: 'Jane Smith', role: 'alumni', profile: { table: 'alumni', data: { grad_year: 2020, degree: 'BSc Computer Science', jobtitle: 'Software Engineer', contact: '987-654-3210', image: null } } },
+      { email: 'alumni@acts.edu', password: 'alumni123', full_name: 'Jane Smith', role: 'alumni', profile: { table: 'alumni', data: { grad_year: 2020, degree: 'BSc Computer Science', jobtitle: 'Software Engineer', contact: '987-654-3210', company: 'Tech Innovations', image: null } } },
       { email: 'employer@acts.edu', password: 'employer123', full_name: 'Bob Johnson', role: 'employer', profile: { table: 'employers', data: { companyname: 'Global Solutions Inc.', industry: 'Consulting', location: 'New York', contact: '555-123-4567', image: null } } },
       { email: 'instructor@acts.edu', password: 'instructor123', full_name: 'Dr. Alice Brown', role: 'instructor', profile: { table: 'instructors', data: { instructor_id: 'INS001', department: 'Computer Science', subject_taught: 'Introduction to Programming, Data Structures and Algorithms, Database Systems', image: null } } }
     ];
@@ -288,8 +288,15 @@ async function setupDatabase() {
            ON DUPLICATE KEY UPDATE user_id = VALUES(user_id)`,
           values,
           (err, results) => {
-            if (err) reject(err);
-            else resolve(results);
+            if (err && !err.message.includes('Duplicate entry')) {
+              console.error(`Error inserting profile for ${user.email}:`, err.message);
+              reject(err);
+            } else {
+              if (err) {
+                console.log('Ignored duplicate profile error for', user.email);
+              }
+              resolve(results);
+            }
           }
         );
       });

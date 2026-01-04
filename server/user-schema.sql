@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS alumni (
     degree VARCHAR(100),
     jobtitle VARCHAR(255),
     contact VARCHAR(20),
+    company VARCHAR(255),
     image VARCHAR(500),
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
