@@ -326,6 +326,21 @@ export function UserManagement() {
     }
   };
 
+  const getDisplayDepartment = (user: any) => {
+    if (user.role?.toLowerCase() === 'student') {
+      // Check if courseYrSection indicates senior high or college
+      if (user.courseYrSection?.toLowerCase().includes('grade')) {
+        return 'Senior High';
+      } else {
+        return 'College';
+      }
+    } else if (user.role?.toLowerCase() === 'instructor') {
+      return user.department || 'Not Assigned';
+    } else {
+      return user.department || 'N/A';
+    }
+  };
+
   const handleAddUser = async () => {
     // Validation
     if (!newUser.fullName || !newUser.email || !newUser.password || !newUser.role || !newUser.department) {
@@ -1026,7 +1041,7 @@ export function UserManagement() {
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">{user.email}</p>
-                        <p className="text-sm text-gray-500">{user.department}</p>
+                        <p className="text-sm text-gray-500">{getDisplayDepartment(user)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1102,7 +1117,7 @@ export function UserManagement() {
                         {user.role}
                       </Badge>
                     </TableCell>
-                    <TableCell>{user.department}</TableCell>
+                    <TableCell>{getDisplayDepartment(user)}</TableCell>
                     <TableCell>
                       <Badge 
                         variant="secondary"
@@ -1226,7 +1241,7 @@ export function UserManagement() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Department</p>
-                    <p>{selectedUser.department}</p>
+                    <p>{getDisplayDepartment(selectedUser)}</p>
                   </div>
                   {selectedUser.phoneNumber && (
                     <div>
