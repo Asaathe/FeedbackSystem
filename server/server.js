@@ -11,10 +11,15 @@ const crypto = require("crypto");
 const db = require("./db");
 
 const app = express();
-const port = 5000;
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
-const JWT_EXPIRES_IN = "24h";
+const port = process.env.PORT || 5000;
+const JWT_SECRET = process.env.JWT_SECRET || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+  console.warn('⚠️  Using default JWT secret - set JWT_SECRET environment variable for production');
+  return "your-super-secret-jwt-key-change-in-production";
+})();
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
 
 // Security middleware
 app.use(
@@ -25,6 +30,11 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https://localhost:5000", "https://yourdomain.com"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        mediaSrc: ["'self'"],
+        frameSrc: ["'none'"],
       },
     },
     hsts: {
@@ -32,29 +42,97 @@ app.use(
       includeSubDomains: true,
       preload: true,
     },
+    crossOriginEmbedderPolicy: false, // Allow embedding for development
   })
 );
 
+// HTTPS enforcement middleware (for production)
+app.use((req, res, next) => {
+  // Skip HTTPS redirect in development
+  if (process.env.NODE_ENV === 'development') {
+    return next();
+  }
+  
+  // Check if request is already HTTPS
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    return next();
+  }
+  
+  // Redirect to HTTPS
+  const host = req.get('Host');
+  const httpsUrl = `https://${host}${req.originalUrl}`;
+  return res.redirect(301, httpsUrl);
+});
+
+// Add security headers
+app.use((req, res, next) => {
+  // Prevent MIME type sniffing
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  
+  // Prevent clickjacking
+  res.setHeader('X-Frame-Options', 'DENY');
+  
+  // XSS protection
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  
+  // Referrer policy
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  
+  next();
+});
+
 // Enhanced CORS configuration
-app.use(
-  cors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? ["https://yourdomain.com"] // Replace with your production domain
-        : [
-            "http://localhost:3000",
-            "http://127.0.0.1:3000",
-            "http://localhost:3001",
-            "http://127.0.0.1:3001",
-            "http://localhost:5173",
-            "http://127.0.0.1:5173",
-          ],
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
-    exposedHeaders: ["Authorization"],
-  })
-);
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Development environment - allow localhost origins
+    if (process.env.NODE_ENV === 'development') {
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+        'http://localhost:3001',
+        'http://127.0.0.1:3001',
+        'http://localhost:5173',
+        'http://127.0.0.1:5173',
+        'http://localhost:5174',
+        'http://127.0.0.1:5174'
+      ];
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    } else {
+      // Production environment - only allow specified domains
+      const allowedOrigins = process.env.CORS_ORIGIN ?
+        process.env.CORS_ORIGIN.split(',') :
+        ['https://yourdomain.com']; // Replace with your actual production domain
+      
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'X-CSRF-Token',
+    'X-Auth-Token'
+  ],
+  exposedHeaders: ['Authorization'],
+  maxAge: 86400, // 24 hours preflight cache
+  optionsSuccessStatus: 200 // Support legacy browsers
+};
+
+app.use(cors(corsOptions));
 
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
@@ -66,6 +144,19 @@ const authLimiter = rateLimit({
   },
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful requests
+});
+
+// Rate limiting for form submissions
+const formSubmissionLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 5, // limit each IP to 5 form submissions per hour
+  message: {
+    success: false,
+    message: "Too many form submissions, please try again later.",
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Rate limiting for general API
@@ -74,6 +165,7 @@ const generalLimiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   standardHeaders: true,
   legacyHeaders: false,
+  skipSuccessfulRequests: true, // Don't count successful requests
 });
 
 app.use(generalLimiter);
@@ -688,6 +780,93 @@ app.post("/api/auth/logout", verifyToken, (req, res) => {
   res.json({
     success: true,
     message: "Logged out successfully",
+  });
+});
+
+// Token refresh route
+app.post("/api/auth/refresh", verifyToken, (req, res) => {
+  const userId = req.userId;
+  
+  // Generate new token
+  const newToken = generateToken(userId);
+  
+  // Get user data
+  const findUserQuery = `
+    SELECT
+      u.id, u.email, u.full_name, u.role, u.status,
+      s.studentID, s.course_yr_section, s.contact_number, s.subjects,
+      i.instructor_id, i.department, i.subject_taught,
+      a.grad_year, a.degree, a.jobtitle, a.contact, a.company,
+      e.companyname, e.industry, e.location, e.contact
+    FROM users u
+    LEFT JOIN students s ON u.id = s.user_id
+    LEFT JOIN instructors i ON u.id = i.user_id
+    LEFT JOIN alumni a ON u.id = a.user_id
+    LEFT JOIN employers e ON u.id = e.user_id
+    WHERE u.id = ?
+  `;
+  
+  db.query(findUserQuery, [userId], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+    
+    if (results.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    
+    const user = results[0];
+    
+    // Build user response with role-specific data
+    const userResponse = {
+      id: user.id,
+      email: user.email,
+      fullName: user.full_name,
+      role: user.role,
+      status: user.status,
+    };
+    
+    // Add role-specific fields
+    switch (user.role) {
+      case 'student':
+        userResponse.studentId = user.studentID;
+        userResponse.courseYrSection = user.course_yr_section;
+        userResponse.contactNumber = user.contact_number;
+        userResponse.subjects = user.subjects;
+        break;
+      case 'instructor':
+        userResponse.instructorId = user.instructor_id;
+        userResponse.department = user.department;
+        userResponse.subjectTaught = user.subject_taught;
+        break;
+      case 'alumni':
+        userResponse.gradYear = user.grad_year;
+        userResponse.degree = user.degree;
+        userResponse.jobTitle = user.jobtitle;
+        userResponse.contact = user.contact;
+        userResponse.company = user.company;
+        break;
+      case 'employer':
+        userResponse.companyName = user.companyname;
+        userResponse.industry = user.industry;
+        userResponse.location = user.location;
+        userResponse.contact = user.contact;
+        break;
+    }
+    
+    res.json({
+      success: true,
+      message: "Token refreshed successfully",
+      token: newToken,
+      user: userResponse,
+    });
   });
 });
 
@@ -2073,7 +2252,7 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // ============================================================
 
 // Submit form response
-app.post("/api/forms/:formId/submit", verifyToken, (req, res) => {
+app.post("/api/forms/:formId/submit", verifyToken, formSubmissionLimiter, (req, res) => {
   const formId = req.params.formId;
   const userId = req.userId;
   const { responses } = req.body;
@@ -2599,19 +2778,60 @@ app.get("/api/health", (req, res) => {
 app.use((error, req, res, next) => {
   console.error("Express error:", error);
 
+  // Log error details for debugging (but don't expose to client)
+  const errorId = Math.random().toString(36).substr(2, 9);
+  console.error(`Error ID: ${errorId}`, {
+    message: error.message,
+    stack: error.stack,
+    url: req.url,
+    method: req.method,
+    ip: req.ip,
+    userAgent: req.get('User-Agent'),
+    timestamp: new Date().toISOString()
+  });
+
   // Don't leak error details in production
   if (process.env.NODE_ENV === "production") {
     res.status(500).json({
       success: false,
-      message: "Something went wrong!",
+      message: "Something went wrong! Please try again later.",
+      errorId: errorId // Provide error ID for support
     });
   } else {
     res.status(500).json({
       success: false,
       message: "Server error",
       error: error.message,
+      errorId: errorId
     });
   }
+});
+
+// Specific error handlers for common issues
+app.use((err, req, res, next) => {
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: err.errors || [err.message]
+    });
+  }
+  
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required"
+    });
+  }
+  
+  if (err.name === 'ForbiddenError') {
+    return res.status(403).json({
+      success: false,
+      message: "Access denied"
+    });
+  }
+  
+  next(err);
 });
 
 // 404 handler - Express 4.x compatible

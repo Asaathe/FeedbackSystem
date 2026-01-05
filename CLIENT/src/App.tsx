@@ -1,4 +1,5 @@
 import { useState, useEffect, lazy, Suspense } from "react";
+import { autoRefreshToken } from "./utils/auth";
 import { LoginPage } from "./components/Users_and_others/login-page";
 import { SignupPage } from "./components/Users_and_others/signup-page";
 import { DashboardLayout } from "./components/Users_and_others/dashboard-layout";
@@ -8,83 +9,79 @@ import { Toaster } from "./components/Reusable_components/sonner";
 const AdminDashboard = lazy(() =>
   import("./components/Dashboards/admin-dashboard").then((m) => ({
     default: m.AdminDashboard,
-  })),
+  }))
 );
 const FeedbackFormsManagement = lazy(() =>
-  import("./components/Forms/feedback-forms-management").then(
-    (m) => ({ default: m.FeedbackFormsManagement }),
-  ),
+  import("./components/Forms/feedback-forms-management").then((m) => ({
+    default: m.FeedbackFormsManagement,
+  }))
 );
 const FormBuilder = lazy(() =>
   import("./components/Forms/form-builder").then((m) => ({
     default: m.FormBuilder,
-  })),
+  }))
 );
 const UserManagement = lazy(() =>
   import("./components/Users_and_others/user-management").then((m) => ({
     default: m.UserManagement,
-  })),
+  }))
 );
 const AnalyticsPage = lazy(() =>
   import("./components/Users_and_others/analytics-page").then((m) => ({
     default: m.AnalyticsPage,
-  })),
+  }))
 );
 const StudentDashboard = lazy(() =>
   import("./components/Dashboards/student-dashboard").then((m) => ({
     default: m.StudentDashboard,
-  })),
+  }))
 );
 const AlumniDashboard = lazy(() =>
   import("./components/Dashboards/alumni-dashboard").then((m) => ({
     default: m.AlumniDashboard,
-  })),
+  }))
 );
 const AlumniFeedback = lazy(() =>
   import("./components/Feedbacks/alumni-feedback").then((m) => ({
     default: m.AlumniFeedback,
-  })),
+  }))
 );
 const InstructorDashboard = lazy(() =>
   import("./components/Dashboards/instructor-dashboard").then((m) => ({
     default: m.InstructorDashboard,
-  })),
+  }))
 );
 const InstructorFeedback = lazy(() =>
   import("./components/Feedbacks/instructor-feedback").then((m) => ({
     default: m.InstructorFeedback,
-  })),
+  }))
 );
-
-
-
 
 const EmployerDashboard = lazy(() =>
   import("./components/Dashboards/employer-dashboard").then((m) => ({
     default: m.EmployerDashboard,
-  })),
+  }))
 );
 const EmployeeDirectory = lazy(() =>
   import("./components/Users_and_others/employee-directory").then((m) => ({
     default: m.EmployeeDirectory,
-  })),
+  }))
 );
 const EmployeePerformance = lazy(() =>
   import("./components/Users_and_others/employee-performance").then((m) => ({
     default: m.EmployeePerformance,
-  })),
+  }))
 );
 const FeedbackSubmission = lazy(() =>
   import("./components/Feedbacks/feedback-submission").then((m) => ({
     default: m.FeedbackSubmission,
-  })),
+  }))
 );
-
 
 const UserProfile = lazy(() =>
   import("./components/Users_and_others/user-profile").then((m) => ({
     default: m.UserProfile,
-  })),
+  }))
 );
 
 export default function App() {
@@ -92,45 +89,83 @@ export default function App() {
   const [userRole, setUserRole] = useState<string>("");
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [showSignup, setShowSignup] = useState(false);
-  const [editingFormId, setEditingFormId] = useState<string | undefined>(undefined);
-  
+  const [editingFormId, setEditingFormId] = useState<string | undefined>(
+    undefined
+  );
+
   useEffect(() => {
-    // Check sessionStorage first (more secure)
-    const token = sessionStorage.getItem('authToken') || localStorage.getItem('token');
-    console.log('Token from storage:', token);
+    // Check sessionStorage for token (standardized storage)
+    const token = sessionStorage.getItem("authToken");
+    console.log("Token from storage:", token ? `${token.substring(0, 20)}...` : 'null');
+    
     if (token) {
-      fetch('http://localhost:5000/api/auth/verify', {
+      // Verify token with server using proper headers
+      fetch("http://localhost:5000/api/auth/verify", {
+        method: "GET",
         headers: {
-          'Authorization': `Bearer ${token}`,
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
         },
       })
         .then((res) => {
-          console.log('Verify response status:', res.status);
+          console.log("Verify response status:", res.status);
+          if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+          }
           return res.json();
         })
         .then((data) => {
-          console.log('Verify response data:', data);
-          if (data.success) {
+          console.log("Verify response data:", data);
+          if (data.success && data.user) {
             setUserRole(data.user.role);
             setIsLoggedIn(true);
+            // Store user data if not already stored
+            if (!sessionStorage.getItem("userData")) {
+              sessionStorage.setItem("userData", JSON.stringify(data.user));
+            }
           } else {
-            sessionStorage.removeItem('authToken');
-            sessionStorage.removeItem('userData');
-            sessionStorage.removeItem('tokenExpiration');
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            // Token verification failed, clear storage
+            clearAuthData();
           }
         })
         .catch((error) => {
-          console.error('Verify error:', error);
-          sessionStorage.removeItem('authToken');
-          sessionStorage.removeItem('userData');
-          sessionStorage.removeItem('tokenExpiration');
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          console.error("Verify error:", error);
+          // Network error or server error, clear storage
+          clearAuthData();
         });
     }
   }, []);
+
+  // Auto-refresh token periodically
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const refreshInterval = setInterval(async () => {
+      try {
+        const refreshed = await autoRefreshToken();
+        if (!refreshed) {
+          // Token refresh failed, log out user
+          setIsLoggedIn(false);
+          setUserRole("");
+          setCurrentPage("dashboard");
+          setShowSignup(false);
+        }
+      } catch (error) {
+        console.error("Auto-refresh error:", error);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(refreshInterval);
+  }, [isLoggedIn]);
+
+  // Helper function to clear auth data consistently
+  const clearAuthData = () => {
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("userData");
+    sessionStorage.removeItem("tokenExpiration");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  };
 
   const handleLogin = (role: string) => {
     setUserRole(role);
@@ -140,35 +175,13 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    // ============================================================
-    // TODO: BACKEND - Add logout API call
-    // ============================================================
-    // Endpoint: POST /api/auth/logout
-    // Headers: Authorization: Bearer {token}
-    // 
-    // Example implementation:
-    /*
-    try {
-      const token = localStorage.getItem('token');
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      // Clear local storage
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-    */
-    // ============================================================
+    // Clear all auth data consistently
+    sessionStorage.removeItem("authToken");
+    sessionStorage.removeItem("userData");
+    sessionStorage.removeItem("tokenExpiration");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
     setIsLoggedIn(false);
     setUserRole("");
     setCurrentPage("dashboard");
@@ -196,49 +209,44 @@ export default function App() {
     );
   }
 
-  const renderPage = () => {
-    // Admin pages
-    if (userRole === "admin") {
-      switch (currentPage) {
-        case "dashboard":
-          return <AdminDashboard onNavigate={setCurrentPage} />;
-        case "forms":
-          return (
-            <FeedbackFormsManagement
-              onNavigateToBuilder={(formId) => {
-                setEditingFormId(formId);
-                setCurrentPage("form-builder");
-              }}
-            />
-          );
-        case "form-builder":
-          return (
-            <FormBuilder
-              onBack={() => {
-                setEditingFormId(undefined);
-                setCurrentPage("forms");
-              }}
-              formId={editingFormId}
-            />
-          );
-        case "users":
-          return <UserManagement />;
-       
-        
-        
-          
-        default:
-          return <AdminDashboard />;
+    const renderPage = () => {
+      // Admin pages
+      if (userRole === "admin") {
+        switch (currentPage) {
+          case "dashboard":
+            return <AdminDashboard onNavigate={setCurrentPage} />;
+          case "forms":
+            return (
+              <FeedbackFormsManagement
+                onNavigateToBuilder={(formId) => {
+                  setEditingFormId(formId);
+                  setCurrentPage("form-builder");
+                }}
+              />
+            );
+          case "form-builder":
+            return (
+              <FormBuilder
+                onBack={() => {
+                  setEditingFormId(undefined);
+                  setCurrentPage("forms");
+                }}
+                formId={editingFormId}
+              />
+            );
+          case "users":
+            return <UserManagement />;
+
+          default:
+            return <AdminDashboard />;
+        }
       }
-    }
 
     // Employer pages (HR/Management - Employee Performance)
     if (userRole === "employer") {
       switch (currentPage) {
         case "dashboard":
-          return (
-            <EmployerDashboard onNavigate={setCurrentPage} />
-          );
+          return <EmployerDashboard onNavigate={setCurrentPage} />;
         case "employee-directory":
           return (
             <EmployeeDirectory
@@ -250,9 +258,7 @@ export default function App() {
         case "employee-performance":
           return (
             <EmployeePerformance
-              onBack={() =>
-                setCurrentPage("employee-directory")
-              }
+              onBack={() => setCurrentPage("employee-directory")}
             />
           );
         case "submit-feedback":
@@ -262,18 +268,14 @@ export default function App() {
         case "settings":
           return (
             <div className="text-center py-12">
-              <h2 className="text-2xl text-gray-400">
-                Settings Page
-              </h2>
+              <h2 className="text-2xl text-gray-400">Settings Page</h2>
               <p className="text-gray-500 mt-2">
                 Configuration options will appear here
               </p>
             </div>
           );
         default:
-          return (
-            <EmployerDashboard onNavigate={setCurrentPage} />
-          );
+          return <EmployerDashboard onNavigate={setCurrentPage} />;
       }
     }
 
@@ -281,57 +283,40 @@ export default function App() {
     if (userRole === "instructor") {
       switch (currentPage) {
         case "dashboard":
-          return (
-            <InstructorDashboard onNavigate={setCurrentPage} />
-          );
+          return <InstructorDashboard onNavigate={setCurrentPage} />;
         case "my-feedback":
           return <InstructorFeedback />;
         case "submit-feedback":
           return <FeedbackSubmission userRole={userRole} />;
-        
-        
+
         case "profile":
           return <UserProfile role={userRole} />;
         default:
-          return (
-            <InstructorDashboard onNavigate={setCurrentPage} />
-          );
+          return <InstructorDashboard onNavigate={setCurrentPage} />;
       }
     }
-
-    
 
     // Alumni pages
     if (userRole === "alumni") {
       switch (currentPage) {
         case "dashboard":
-          return (
-            <AlumniDashboard onNavigate={setCurrentPage} />
-          );
+          return <AlumniDashboard onNavigate={setCurrentPage} />;
         case "submit-feedback":
-          return (
-            <AlumniFeedback
-              onBack={() => setCurrentPage("dashboard")}
-            />
-          );
+          return <AlumniFeedback onBack={() => setCurrentPage("dashboard")} />;
         case "my-submissions":
           return (
             <div className="text-center py-12">
-              <h2 className="text-2xl text-gray-400">
-                My Submissions
-              </h2>
+              <h2 className="text-2xl text-gray-400">My Submissions</h2>
               <p className="text-gray-500 mt-2">
                 Your feedback history will appear here
               </p>
             </div>
           );
-       
+
         case "profile":
           return <UserProfile role={userRole} />;
         default:
-          return (
-            <AlumniDashboard onNavigate={setCurrentPage} />
-          );
+          return <AlumniDashboard onNavigate={setCurrentPage} />;
       }
     }
 
@@ -344,15 +329,13 @@ export default function App() {
       case "my-submissions":
         return (
           <div className="text-center py-12">
-            <h2 className="text-2xl text-gray-400">
-              My Submissions
-            </h2>
+            <h2 className="text-2xl text-gray-400">My Submissions</h2>
             <p className="text-gray-500 mt-2">
               Your feedback history will appear here
             </p>
           </div>
         );
-      
+
       case "profile":
         return <UserProfile role={userRole} />;
       default:

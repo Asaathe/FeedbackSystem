@@ -40,7 +40,7 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Admin Authorization Middleware
+// Admin Authorization Middleware - Legacy function for backward compatibility
 const requireAdmin = (req, res, next) => {
   // For now, we'll assume the first user (ID=1) is admin
   // In production, you'd have a proper admin role system
@@ -97,8 +97,12 @@ const requireFormOwnership = (req, res, next) => {
 // Role-based Authorization Middleware
 const requireRole = (allowedRoles) => {
   return (req, res, next) => {
-    // Get user role from database
-    const query = "SELECT role FROM Users WHERE id = ?";
+    // Get user role from database with additional security checks
+    const query = `
+      SELECT u.role, u.status, u.email_verified, u.last_login
+      FROM Users u
+      WHERE u.id = ? AND u.status = 'active'
+    `;
     
     db.query(query, [req.userId], (err, results) => {
       if (err) {
@@ -110,24 +114,54 @@ const requireRole = (allowedRoles) => {
       }
 
       if (results.length === 0) {
-        return res.status(404).json({
+        return res.status(401).json({
           success: false,
-          message: "User not found",
+          message: "User not found or inactive",
         });
       }
 
-      const userRole = results[0].role;
+      const user = results[0];
+      const userRole = user.role;
       
+      // Additional security checks
+      if (user.status !== 'active') {
+        return res.status(403).json({
+          success: false,
+          message: "Account is not active",
+        });
+      }
+
       if (!allowedRoles.includes(userRole)) {
+        // Log unauthorized access attempt
+        console.warn(`Unauthorized access attempt: User ${req.userId} (${userRole}) tried to access restricted resource`);
         return res.status(403).json({
           success: false,
           message: "Insufficient permissions",
+          code: "INSUFFICIENT_ROLE_PERMISSIONS"
         });
       }
+
+      // Add user info to request for downstream use
+      req.user = {
+        id: req.userId,
+        role: userRole,
+        email: user.email,
+        lastLogin: user.last_login
+      };
 
       next();
     });
   };
+};
+
+// User management permissions
+const requireUserManagementAccess = (req, res, next) => {
+  return requireRole(['admin', 'staff'])(req, res, next);
+};
+
+// Form management permissions
+const requireFormManagementAccess = (req, res, next) => {
+  return requireRole(['admin', 'instructor', 'staff'])(req, res, next);
 };
 
 // Form Access Middleware
@@ -190,5 +224,7 @@ module.exports = {
   requireAdmin,
   requireFormOwnership,
   requireRole,
-  requireFormAccess
+  requireFormAccess,
+  requireUserManagementAccess,
+  requireFormManagementAccess
 };
