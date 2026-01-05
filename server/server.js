@@ -111,6 +111,16 @@ const verifyToken = (req, res, next) => {
     });
   }
 };
+
+// Name formatting function to enforce proper capitalization
+const formatName = (name) => {
+  return name
+    .toLowerCase()
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
 const sanitizeInput = (input) => {
   if (typeof input !== "string") return input;
   return input.trim().replace(/[<>]/g, "");
@@ -331,6 +341,9 @@ app.post(
       // Sanitize inputs
       const sanitizedEmail = sanitizeInput(email);
       const sanitizedFullName = sanitizeInput(fullName);
+      
+      // Format name to enforce proper capitalization
+      const formattedFullName = formatName(sanitizedFullName);
 
       // Role-specific data will be collected later in profile update
 
@@ -367,7 +380,7 @@ app.post(
           [
             sanitizedEmail,
             hashedPassword,
-            sanitizedFullName,
+            formattedFullName,
             role,
           ],
           async (err, result) => {
@@ -436,7 +449,7 @@ app.post(
               user: {
                 id: userId,
                 email: sanitizedEmail,
-                fullName: sanitizedFullName,
+                fullName: formattedFullName,
                 role: role,
                 status: 'active', // New users are active after signup
               },
@@ -1384,6 +1397,95 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
     }
   } catch (error) {
     console.error("Update user error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
+// Delete user
+app.delete("/api/users/:id", verifyToken, (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    // First check if user exists
+    const checkUserQuery = "SELECT id, role FROM users WHERE id = ?";
+    db.query(checkUserQuery, [userId], (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      if (results.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      const userRole = results[0].role;
+
+      // Delete from role-specific tables first (due to foreign key constraints)
+      const deleteRoleSpecificData = (callback) => {
+        switch (userRole) {
+          case 'student':
+            db.query("DELETE FROM students WHERE user_id = ?", [userId], callback);
+            break;
+          case 'instructor':
+          case 'staff':
+            db.query("DELETE FROM instructors WHERE user_id = ?", [userId], callback);
+            break;
+          case 'employer':
+            db.query("DELETE FROM employers WHERE user_id = ?", [userId], callback);
+            break;
+          case 'alumni':
+            db.query("DELETE FROM alumni WHERE user_id = ?", [userId], callback);
+            break;
+          default:
+            callback(null);
+        }
+      };
+
+      deleteRoleSpecificData((roleErr) => {
+        if (roleErr) {
+          console.error("Role-specific data deletion error:", roleErr);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to delete user data",
+          });
+        }
+
+        // Delete from users table
+        const deleteUserQuery = "DELETE FROM users WHERE id = ?";
+        db.query(deleteUserQuery, [userId], (deleteErr, result) => {
+          if (deleteErr) {
+            console.error("User deletion error:", deleteErr);
+            return res.status(500).json({
+              success: false,
+              message: "Failed to delete user",
+            });
+          }
+
+          if (result.affectedRows === 0) {
+            return res.status(404).json({
+              success: false,
+              message: "User not found",
+            });
+          }
+
+          res.json({
+            success: true,
+            message: "User deleted successfully",
+          });
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Delete user error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",

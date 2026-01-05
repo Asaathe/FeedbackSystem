@@ -46,8 +46,23 @@ export function SignupPage({
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // Name formatting function to enforce proper capitalization
+  const formatName = (name: string) => {
+    return name
+      .toLowerCase()
+      .split(' ')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ');
+  };
+
   const handleChange = (field: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    // Apply name formatting for full name field
+    if (field === "name") {
+      const formattedName = formatName(value);
+      setFormData((prev) => ({ ...prev, [field]: formattedName }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
 
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));

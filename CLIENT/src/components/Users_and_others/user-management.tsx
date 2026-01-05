@@ -35,6 +35,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "../Reusable_components/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../Reusable_components/alert-dialog";
 import { Label } from "../Reusable_components/label";
 import { Textarea } from "../Reusable_components/textarea";
 import { toast } from "sonner";
@@ -231,6 +241,10 @@ export function UserManagement() {
   
   // Add a state for showing pending users section
   const [showPendingSection, setShowPendingSection] = useState(true);
+
+  // State for remove user confirmation dialog
+  const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<number | null>(null);
 
   // Fetch users from API
   const fetchUsers = async (search = '', role = 'all', status = 'all', page = 1, limit = 1000) => {
@@ -627,6 +641,46 @@ export function UserManagement() {
       });
     }
     setIsEditMode(false);
+  };
+
+  const handleRemoveUser = (userId: number) => {
+    setUserToRemove(userId);
+    setIsRemoveDialogOpen(true);
+  };
+
+  const confirmRemoveUser = async () => {
+    if (!userToRemove) return;
+
+    try {
+      const token = sessionStorage.getItem('authToken');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+      
+      const response = await fetch(`http://localhost:5000/api/users/${userToRemove}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+        console.error('Server response:', response.status, response.statusText, errorData);
+        throw new Error(errorData.message || 'Failed to remove user');
+      }
+
+      await fetchUsers(searchQuery, roleFilter, statusFilter);
+      toast.success('User removed successfully');
+    } catch (error) {
+      console.error('Error removing user:', error);
+      toast.error((error as Error).message || 'Failed to remove user');
+    } finally {
+      setIsRemoveDialogOpen(false);
+      setUserToRemove(null);
+    }
   };
 
   const renderRoleSpecificFields = () => {
@@ -1168,8 +1222,8 @@ export function UserManagement() {
                             <Edit className="w-4 h-4 mr-2" />
                             View/Edit Details
                           </DropdownMenuItem>
-                         
-                          <DropdownMenuItem className="text-red-600">
+
+                          <DropdownMenuItem className="text-red-600" onClick={() => handleRemoveUser(user.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />
                             Remove User
                           </DropdownMenuItem>
@@ -1405,6 +1459,24 @@ export function UserManagement() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Remove User Confirmation Dialog */}
+      <AlertDialog open={isRemoveDialogOpen} onOpenChange={setIsRemoveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove User</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to remove this user? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRemoveUser} className="bg-red-500 hover:bg-red-600">
+              Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
