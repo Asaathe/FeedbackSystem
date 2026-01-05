@@ -108,11 +108,13 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="h-16 flex items-center gap-3 px-6 border-b border-gray-200">
-            <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-lime-500 rounded-xl flex items-center justify-center">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
+            <img
+              src="/actslogo.png"
+              alt="ACTS Logo"
+              className="w-10 h-10 object-contain"
+            />
             <div>
-              <h1 className="text-sm">Feedback System</h1>
+              <h1 className="text-lg font-semibold">Feedback System</h1>
             </div>
           </div>
 
