@@ -62,6 +62,10 @@ export const getForms = async (
       limit: limit.toString(),
     });
 
+    console.log('🔍 Fetching forms with params:', params.toString());
+    console.log('📡 Making request to:', `/api/forms?${params}`);
+    console.log('🔑 Token preview:', token.substring(0, 20) + '...');
+
     const response = await fetch(`/api/forms?${params}`, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -69,14 +73,16 @@ export const getForms = async (
       },
     });
 
+    console.log('📊 Response status:', response.status, response.statusText);
+
     if (!response.ok) {
-      console.error('Failed to fetch forms:', response.status, response.statusText);
+      console.error(' Failed to fetch forms:', response.status, response.statusText);
       // Try to get error details from response
       try {
         const errorData = await response.json();
-        console.error('Error details:', errorData);
+        console.error(' Error details:', errorData);
       } catch (e) {
-        console.error('Could not parse error response');
+        console.error(' Could not parse error response');
       }
       return { success: false, forms: [] };
     }

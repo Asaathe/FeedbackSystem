@@ -288,8 +288,7 @@ export default function App() {
           return <InstructorFeedback />;
         case "submit-feedback":
           return <FeedbackSubmission userRole={userRole} />;
-        case "analytics":
-          return <AnalyticsPage role={userRole} />;
+        
         
         case "profile":
           return <UserProfile role={userRole} />;

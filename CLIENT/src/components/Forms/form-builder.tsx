@@ -29,7 +29,9 @@ import {
   List,
   CheckCircle2,
   Sliders,
-  SendHorizontal
+  SendHorizontal,
+  Calendar,
+  Clock
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../Reusable_components/dialog";
 import { toast } from "sonner";
@@ -69,32 +71,51 @@ const questionTypes = [
   { value: 'linear-scale', label: 'Linear Scale', icon: Sliders },
 ];
 
-const categories = [
-  'Academic',
-  'Facilities', 
-  'Services',
-  'Alumni',
-  'Career Support',
-  'General Feedback'
-];
-
-const targetAudienceOptions = [
-  'Students',
-  'Alumni',
-  'Instructors', 
-  'Staff',
-  'All Users'
-];
 
 export function FormBuilder({ onBack, formId }: FormBuilderProps) {
   // Form Settings State
   const [formTitle, setFormTitle] = useState('Untitled Feedback Form');
   const [formDescription, setFormDescription] = useState('');
   const [formCategory, setFormCategory] = useState('Academic');
-  const [formTarget, setFormTarget] = useState('Students');
+  const [formTarget, setFormTarget] = useState('All Users');
   const [formImage, setFormImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(true);
+
+  // Dynamic Categories and Audiences State
+  const [customCategories, setCustomCategories] = useState<string[]>(['Academic', 'Facilities', 'Services', 'Alumni', 'Career Support', 'General Feedback']);
+  const [customAudiences, setCustomAudiences] = useState<string[]>([
+    'All Users',
+    'Students',
+    'Students - Grade 11',
+    'Students - Grade 12',
+    'Students - Grade 10',
+    'Students - Grade 9',
+    'Alumni',
+    'Instructors',
+    'Staff'
+  ]);
+
+  // Dynamic audience options based on user type
+  const [studentCourses, setStudentCourses] = useState<string[]>([
+    'BSIT', 'BSIS', 'BSBA', 'BSED', 'BEED', 'BSHM', 'BSOA'
+  ]);
+  
+  const [instructorDepartments, setInstructorDepartments] = useState<string[]>([
+    'IT Department', 'Business Department', 'Education Department', 'Hospitality Department'
+  ]);
+
+  // Current selected audience type and sub-selection
+  const [selectedAudienceType, setSelectedAudienceType] = useState<string>('All Users');
+  const [selectedSubAudience, setSelectedSubAudience] = useState<string>('');
+
+  // Submission Schedule State
+  const [submissionSchedule, setSubmissionSchedule] = useState({
+    startDate: '',
+    endDate: '',
+    startTime: '',
+    endTime: ''
+  });
 
   // Questions State
   const [questions, setQuestions] = useState<FormQuestion[]>([
@@ -119,6 +140,14 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
           setFormCategory(formData.category || 'Academic');
           setFormTarget(formData.target || 'Students');
           setFormImage(formData.image || null);
+          setCustomCategories(formData.customCategories || ['Academic', 'Facilities', 'Services', 'Alumni', 'Career Support', 'General Feedback']);
+          setCustomAudiences(formData.customAudiences || ['Students', 'Alumni', 'Instructors', 'Staff', 'All Users']);
+          setSubmissionSchedule(formData.submissionSchedule || {
+            startDate: '',
+            endDate: '',
+            startTime: '',
+            endTime: ''
+          });
           setQuestions(formData.questions || [
             {
               id: '1',
@@ -175,6 +204,45 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
     setFormImage(null);
     setImageFile(null);
     toast.success("Image removed");
+  };
+
+  // Category and Audience Management
+  const addCategory = (category: string) => {
+    if (category.trim() && !customCategories.includes(category.trim())) {
+      setCustomCategories([...customCategories, category.trim()]);
+      toast.success(`Category "${category.trim()}" added`);
+    }
+  };
+
+  const removeCategory = (category: string) => {
+    if (customCategories.length > 1) {
+      setCustomCategories(customCategories.filter(c => c !== category));
+      if (formCategory === category) {
+        setFormCategory(customCategories[0] !== category ? customCategories[0] : customCategories[1]);
+      }
+      toast.success(`Category "${category}" removed`);
+    } else {
+      toast.error("Cannot remove the last category");
+    }
+  };
+
+  const addAudience = (audience: string) => {
+    if (audience.trim() && !customAudiences.includes(audience.trim())) {
+      setCustomAudiences([...customAudiences, audience.trim()]);
+      toast.success(`Audience "${audience.trim()}" added`);
+    }
+  };
+
+  const removeAudience = (audience: string) => {
+    if (customAudiences.length > 1) {
+      setCustomAudiences(customAudiences.filter(a => a !== audience));
+      if (formTarget === audience) {
+        setFormTarget(customAudiences[0] !== audience ? customAudiences[0] : customAudiences[1]);
+      }
+      toast.success(`Audience "${audience}" removed`);
+    } else {
+      toast.error("Cannot remove the last audience");
+    }
   };
 
   // Question Management
@@ -278,6 +346,9 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
         target: formTarget,
         questions: questions,
         image: formImage,
+        customCategories: customCategories,
+        customAudiences: customAudiences,
+        submissionSchedule: submissionSchedule,
         status: 'draft',
         createdAt: new Date().toISOString()
       };
@@ -294,9 +365,15 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
   };
 
   const publishForm = async () => {
+    // Validate required fields
+    if (!formTarget || formTarget === '') {
+      toast.error('Please select a target audience before publishing');
+      return;
+    }
+
     try {
       setLoading(true);
-      
+
       // Simulate API call delay
       await new Promise(resolve => setTimeout(resolve, 1500));
       
@@ -308,6 +385,9 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
         target: formTarget,
         questions: questions,
         image: formImage,
+        customCategories: customCategories,
+        customAudiences: customAudiences,
+        submissionSchedule: submissionSchedule,
         status: 'published',
         publishedAt: new Date().toISOString()
       };
@@ -464,7 +544,6 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
                           )}
                           <div className="flex flex-wrap gap-2 pt-2">
                             <Badge variant="secondary">{formCategory}</Badge>
-                            <Badge variant="outline">For {formTarget}</Badge>
                           </div>
                         </div>
 
@@ -579,84 +658,288 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
               
               <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
                 <DialogTrigger asChild>
-                  <Button 
-                    className="bg-green-500 hover:bg-green-600 h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4" 
+                  <Button
+                    className="bg-green-500 hover:bg-green-600 h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                     size="sm"
                   >
                     <SendHorizontal className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">Publish</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Publish Feedback Form</DialogTitle>
                     <DialogDescription>
                       Review your form before publishing
                     </DialogDescription>
                   </DialogHeader>
-                  <div className="space-y-4 py-4">
+                  <div className="space-y-6 py-4">
+                    {/* Configuration Grid */}
+                    <div className="grid grid-cols-1 gap-4">
+                      {/* Target Audience Card */}
+                      <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 text-blue-700">
+                              <Target className="w-4 h-4" />
+                              <span className="text-sm font-medium">Target Audience</span>
+                            </div>
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                                  <Settings className="w-3 h-3 mr-1" />
+                                  Manage
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent className="max-w-md">
+                                <DialogHeader>
+                                  <DialogTitle className="text-lg">Manage Audiences</DialogTitle>
+                                  <DialogDescription>
+                                    Add or remove target audiences
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                  <div className="flex gap-2">
+                                    <Input
+                                      placeholder="New audience name"
+                                      id="publish-new-audience-input"
+                                      className="flex-1"
+                                    />
+                                    <Button
+                                      onClick={() => {
+                                        const input = document.getElementById('publish-new-audience-input') as HTMLInputElement;
+                                        if (input?.value.trim()) {
+                                          addAudience(input.value.trim());
+                                          input.value = '';
+                                        }
+                                      }}
+                                      size="sm"
+                                    >
+                                      <Plus className="w-4 h-4" />
+                                    </Button>
+                                  </div>
+                                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                                    {customAudiences.map((audience) => (
+                                      <div key={audience} className="flex items-center justify-between p-2 rounded border">
+                                        <span className="text-sm">{audience}</span>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                          onClick={() => removeAudience(audience)}
+                                          disabled={customAudiences.length <= 1}
+                                        >
+                                          <X className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </DialogContent>
+                            </Dialog>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0 space-y-4">
+                          {/* Main Audience Type Selection */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-medium">Select Audience Type</Label>
+                            <Select value={selectedAudienceType} onValueChange={(value) => {
+                              setSelectedAudienceType(value);
+                              setSelectedSubAudience('');
+                              setFormTarget(value);
+                            }}>
+                              <SelectTrigger className="h-10">
+                                <SelectValue placeholder="Select audience type" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="All Users">All Users</SelectItem>
+                                <SelectItem value="Students">Students</SelectItem>
+                                <SelectItem value="Instructors">Instructors</SelectItem>
+                                <SelectItem value="Alumni">Alumni</SelectItem>
+                                <SelectItem value="Staff">Staff</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Dynamic Sub-Audience Selection */}
+                          {selectedAudienceType === 'Students' && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Select Course</Label>
+                              <Select value={selectedSubAudience} onValueChange={(value) => {
+                                setSelectedSubAudience(value);
+                                setFormTarget(`Students - ${value}`);
+                              }}>
+                                <SelectTrigger className="h-10">
+                                  <SelectValue placeholder="Select course" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {studentCourses.map((course) => (
+                                    <SelectItem key={course} value={course}>{course}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {selectedAudienceType === 'Instructors' && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-medium">Select Department</Label>
+                              <Select value={selectedSubAudience} onValueChange={(value) => {
+                                setSelectedSubAudience(value);
+                                setFormTarget(`Instructors - ${value}`);
+                              }}>
+                                <SelectTrigger className="h-10">
+                                  <SelectValue placeholder="Select department" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {instructorDepartments.map((dept) => (
+                                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {/* Final Target Display */}
+                          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+                            <span className="text-sm text-blue-700 font-medium">Final Target:</span>
+                            <span className="text-sm font-semibold text-blue-900">{formTarget}</span>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Submission Schedule Card */}
+                      <Card className="border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
+                        <CardHeader className="pb-3">
+                          <div className="flex items-center gap-2 text-purple-700">
+                            <Calendar className="w-4 h-4" />
+                            <span className="text-sm font-medium">Schedule</span>
+                            <span className="text-xs text-purple-600">(Optional)</span>
+                          </div>
+                        </CardHeader>
+                        <CardContent className="pt-0 space-y-3">
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-gray-600">Start Date</Label>
+                              <Input
+                                type="date"
+                                value={submissionSchedule.startDate}
+                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, startDate: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-gray-600">Start Time</Label>
+                              <Input
+                                type="time"
+                                value={submissionSchedule.startTime}
+                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, startTime: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div className="space-y-1">
+                              <Label className="text-xs text-gray-600">End Date</Label>
+                              <Input
+                                type="date"
+                                value={submissionSchedule.endDate}
+                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, endDate: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs text-gray-600">End Time</Label>
+                              <Input
+                                type="time"
+                                value={submissionSchedule.endTime}
+                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, endTime: e.target.value }))}
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Schedule Preview */}
+                    {(submissionSchedule.startDate || submissionSchedule.endDate) && (
+                      <Card className="border-purple-200 bg-purple-50/50">
+                        <CardContent className="py-3">
+                          <div className="flex items-center gap-3">
+                            <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                            <div>
+                              <p className="text-sm font-medium text-purple-900">Schedule Active</p>
+                              <p className="text-sm text-purple-700">
+                                {submissionSchedule.startDate && submissionSchedule.endDate
+                                  ? `From ${new Date(submissionSchedule.startDate + 'T' + (submissionSchedule.startTime || '00:00')).toLocaleString()} to ${new Date(submissionSchedule.endDate + 'T' + (submissionSchedule.endTime || '23:59')).toLocaleString()}`
+                                  : submissionSchedule.startDate
+                                    ? `Opens ${new Date(submissionSchedule.startDate + 'T' + (submissionSchedule.startTime || '00:00')).toLocaleString()}`
+                                    : `Closes ${new Date(submissionSchedule.endDate + 'T' + (submissionSchedule.endTime || '23:59')).toLocaleString()}`
+                                }
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Form Summary */}
                     <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
                       <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2 text-green-700 mb-2">
+                        <div className="flex items-center gap-2 text-green-700">
                           <FileText className="w-4 h-4" />
-                          <span className="text-xs uppercase tracking-wide">Form Summary</span>
+                          <span className="text-sm font-medium">Form Summary</span>
                         </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div>
-                          <h3 className="text-lg mb-1">{formTitle}</h3>
+                          <h3 className="text-base font-semibold">{formTitle}</h3>
                           {formDescription && (
                             <p className="text-sm text-gray-600">{formDescription}</p>
                           )}
                         </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="flex items-center gap-2 text-sm">
-                            <Target className="w-4 h-4 text-gray-500" />
-                            <div>
-                              <span className="text-gray-500">Category:</span>
-                              <span className="ml-1">{formCategory}</span>
-                            </div>
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-4">
+                            <span><span className="text-gray-500">Category:</span> <span className="font-medium">{formCategory}</span></span>
+                            <span><span className="text-gray-500">Questions:</span> <span className="font-medium">{questions.length}</span></span>
+                            <span><span className="text-gray-500">Target:</span> <span className="font-medium">{formTarget}</span></span>
                           </div>
-                          <div className="flex items-center gap-2 text-sm">
-                            <div>
-                              <span className="text-gray-500">Questions:</span>
-                              <span className="ml-1">{questions.length}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Badge variant="outline" className="bg-white">{formCategory}</Badge>
-                          <Badge variant="outline" className="bg-white">Target: {formTarget}</Badge>
-                          <Badge variant="outline" className="bg-white">{questions.length} Questions</Badge>
                         </div>
                       </CardContent>
                     </Card>
 
-                    <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
-                      <p className="text-sm text-blue-900">
-                        <strong>Ready to publish!</strong> This form will be available to {formTarget.toLowerCase()} once published.
-                      </p>
-                    </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1"
-                        onClick={() => {
-                          toast.success('Form saved as draft');
-                          setPublishDialogOpen(false);
-                        }}
-                      >
-                        Save as Draft
-                      </Button>
-                      <Button
-                        className="flex-1 bg-green-600 hover:bg-green-700"
-                        onClick={publishForm}
-                        disabled={loading}
-                      >
-                        {loading ? "Publishing..." : "Publish Now"}
-                      </Button>
+                    <div className="flex items-center justify-between pt-4 border-t">
+                      <div className="flex-1">
+                        {!formTarget && (
+                          <p className="text-sm text-red-600">
+                            Please select a target audience above.
+                          </p>
+                        )}
+                        {formTarget && (
+                          <p className="text-sm text-blue-900">
+                            <strong>Ready to publish!</strong> This form will be available to {formTarget.toLowerCase()}.
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex gap-3 ml-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            toast.success('Form saved as draft');
+                            setPublishDialogOpen(false);
+                          }}
+                        >
+                          Save as Draft
+                        </Button>
+                        <Button
+                          className="bg-green-600 hover:bg-green-700"
+                          onClick={publishForm}
+                          disabled={loading || !formTarget}
+                        >
+                          {loading ? "Publishing..." : "Publish Now"}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 </DialogContent>
@@ -755,36 +1038,76 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
                     )}
                   </div>
 
-                  {/* Category and Target */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label>Category *</Label>
-                      <Select value={formCategory} onValueChange={setFormCategory}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {categories.map((cat) => (
-                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                  {/* Category */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Category</Label>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                            <Settings className="w-3 h-3 mr-1" />
+                            Manage
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-lg">Manage Categories</DialogTitle>
+                            <DialogDescription>
+                              Add or remove form categories
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="flex gap-2">
+                              <Input
+                                placeholder="New category name"
+                                id="new-category-input"
+                                className="flex-1"
+                              />
+                              <Button
+                                onClick={() => {
+                                  const input = document.getElementById('new-category-input') as HTMLInputElement;
+                                  if (input?.value.trim()) {
+                                    addCategory(input.value.trim());
+                                    input.value = '';
+                                  }
+                                }}
+                                size="sm"
+                              >
+                                <Plus className="w-4 h-4" />
+                              </Button>
+                            </div>
+                            <div className="space-y-2 max-h-48 overflow-y-auto">
+                              {customCategories.map((cat) => (
+                                <div key={cat} className="flex items-center justify-between p-2 rounded border">
+                                  <span className="text-sm">{cat}</span>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    onClick={() => removeCategory(cat)}
+                                    disabled={customCategories.length <= 1}
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
-
-                    <div className="space-y-2">
-                      <Label>Target Audience *</Label>
-                      <Select value={formTarget} onValueChange={setFormTarget}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {targetAudienceOptions.map((option) => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Select value={formCategory} onValueChange={setFormCategory}>
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customCategories.map((cat) => (
+                          <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
                 </CardContent>
               </CollapsibleContent>
             </Card>
@@ -803,9 +1126,8 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
                 {formDescription && (
                   <p className="text-gray-600">{formDescription}</p>
                 )}
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2 pt-2 flex-wrap">
                   <Badge variant="secondary">{formCategory}</Badge>
-                  <Badge variant="outline">For {formTarget}</Badge>
                 </div>
               </div>
             </CardContent>
