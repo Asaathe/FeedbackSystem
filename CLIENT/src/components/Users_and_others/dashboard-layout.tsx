@@ -19,7 +19,7 @@ import {
   Shield
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../Reusable_components/avatar";
-import { Badge } from "../Reusable_components/badge";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -39,6 +39,12 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, currentPage, onNavigate, onLogout, role }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    onLogout(); // Call the parent's logout handler to update state
+  };
 
   const roleDisplay = role.charAt(0).toUpperCase() + role.slice(1);
   const roleInitials = roleDisplay.substring(0, 2).toUpperCase();
@@ -197,7 +203,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
                   Help
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={onLogout} className="text-red-600 focus:text-red-600">
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
                   <LogOut className="w-4 h-4 mr-2" />
                   Logout
                 </DropdownMenuItem>

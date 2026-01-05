@@ -19,10 +19,7 @@ import { toast } from "sonner";
 import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 
-// ============================================================
-// Feedback Forms Management Component
-// Integrated with server APIs for full CRUD operations
-// ============================================================
+
 
 interface FeedbackFormsManagementProps {
   onNavigateToBuilder?: (formId?: string) => void;

@@ -40,10 +40,6 @@ import { ScrollArea } from "../Reusable_components/scroll-area";
 import { Separator } from "../Reusable_components/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../Reusable_components/collapsible";
 
-// ============================================================
-// Simplified Form Builder Component
-// This version works without external API dependencies
-// ============================================================
 
 interface FormQuestion {
   id: string;
