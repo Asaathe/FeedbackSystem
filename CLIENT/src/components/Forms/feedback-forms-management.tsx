@@ -63,6 +63,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
   const [selectedTarget, setSelectedTarget] = useState('all');
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
   const [customForms, setCustomForms] = useState<FormData[]>([]);
@@ -74,6 +75,12 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
   const [newFormDescription, setNewFormDescription] = useState('');
   const [newFormCategory, setNewFormCategory] = useState('Academic');
   const [newFormTarget, setNewFormTarget] = useState('Students');
+
+  // Form state for editing forms
+  const [editFormTitle, setEditFormTitle] = useState('');
+  const [editFormDescription, setEditFormDescription] = useState('');
+  const [editFormCategory, setEditFormCategory] = useState('Academic');
+  const [editFormTarget, setEditFormTarget] = useState('Students');
 
   // Load forms on component mount
   useEffect(() => {
@@ -215,9 +222,44 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
 
   const handleEditForm = (form: FormData) => {
     setSelectedForm(form);
-    // Navigate to form builder with form ID for editing
-    if (onNavigateToBuilder) {
-      onNavigateToBuilder(form.id);
+    setEditFormTitle(form.title);
+    setEditFormDescription(form.description);
+    setEditFormCategory(form.category);
+    setEditFormTarget(form.target_audience);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedForm) return;
+
+    if (!editFormTitle.trim()) {
+      toast.error('Please enter a form title');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const result = await updateForm(selectedForm.id, {
+        title: editFormTitle,
+        description: editFormDescription,
+        category: editFormCategory,
+        targetAudience: editFormTarget,
+      });
+
+      if (result.success) {
+        toast.success(result.message);
+        setEditDialogOpen(false);
+        // Reload forms to show the updated one
+        await loadForms();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error updating form:', error);
+      toast.error('An error occurred while updating the form');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -361,6 +403,77 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Form</DialogTitle>
+            <DialogDescription>
+              Update form details
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Form Title</Label>
+              <Input
+                value={editFormTitle}
+                onChange={(e) => setEditFormTitle(e.target.value)}
+                placeholder="Enter form title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Textarea
+                value={editFormDescription}
+                onChange={(e) => setEditFormDescription(e.target.value)}
+                placeholder="Brief description"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={editFormCategory} onValueChange={setEditFormCategory}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Target Audience</Label>
+                <Select value={editFormTarget} onValueChange={setEditFormTarget}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {targetAudienceOptions.map((option) => (
+                      <SelectItem key={option} value={option}>{option}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                className="bg-blue-500 hover:bg-blue-600"
+                onClick={handleSaveEdit}
+                disabled={loading}
+              >
+                {loading ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
 
