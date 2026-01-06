@@ -18,10 +18,14 @@ interface SignupPageProps {
   onBackToLogin: () => void;
 }
 
+// API URL configuration - uses Vite proxy in dev, direct URL in production
 export function SignupPage({
   onSignupSuccess,
   onBackToLogin,
 }: SignupPageProps) {
+  // Use Vite's import.meta.env.DEV to detect development mode
+  const API_BASE_URL = import.meta.env.DEV ? "http://localhost:5000/api" : "/api";
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -199,7 +203,7 @@ export function SignupPage({
     setErrors({});
 
     try {
-      const response = await fetch("http://localhost:5000/api/auth/signup", {
+      const response = await fetch(`${API_BASE_URL}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

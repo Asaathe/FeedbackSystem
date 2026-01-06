@@ -12,11 +12,24 @@ const db = require("./db");
 
 const app = express();
 const port = process.env.PORT || 5000;
+
+// CRITICAL: Handle CORS preflight FIRST - before any other middleware
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-CSRF-Token, X-Auth-Token');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Max-Age', '86400');
+    return res.sendStatus(200);
+  }
+  next();
+});
 const JWT_SECRET = process.env.JWT_SECRET || (() => {
   if (process.env.NODE_ENV === 'production') {
     throw new Error('JWT_SECRET environment variable is required in production');
   }
-  console.warn('⚠️  Using default JWT secret - set JWT_SECRET environment variable for production');
+  console.warn('Using default JWT secret - set JWT_SECRET environment variable for production');
   return "your-super-secret-jwt-key-change-in-production";
 })();
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
@@ -46,10 +59,13 @@ app.use(
   })
 );
 
+// Force development mode for local testing
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
 // HTTPS enforcement middleware (for production)
 app.use((req, res, next) => {
   // Skip HTTPS redirect in development
-  if (process.env.NODE_ENV === 'development') {
+  if (isDevelopment) {
     return next();
   }
   
@@ -81,37 +97,20 @@ app.use((req, res, next) => {
   next();
 });
 
-// Enhanced CORS configuration
+// Enhanced CORS configuration - simplified for development
 const corsOptions = {
-  origin: (origin, callback) => {
+  origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    // Development environment - allow localhost origins
-    if (process.env.NODE_ENV === 'development') {
-      const allowedOrigins = [
-        'http://localhost:3000',
-        'http://127.0.0.1:3000',
-        'http://localhost:3001',
-        'http://127.0.0.1:3001',
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:5174',
-        'http://127.0.0.1:5174'
-      ];
-      
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
+    // Also allow any localhost origin for development
+    if (!origin || origin.match(/^http:\/\/localhost(:\d+)?$/) || origin.match(/^http:\/\/127\.0\.0\.1(:\d+)?$/)) {
+      callback(null, true);
     } else {
-      // Production environment - only allow specified domains
+      // In production, only allow specified domains
       const allowedOrigins = process.env.CORS_ORIGIN ?
         process.env.CORS_ORIGIN.split(',') :
-        ['https://yourdomain.com']; // Replace with your actual production domain
+        [];
       
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.length > 0 && allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
         callback(new Error('Not allowed by CORS'));
@@ -128,8 +127,8 @@ const corsOptions = {
     'X-Auth-Token'
   ],
   exposedHeaders: ['Authorization'],
-  maxAge: 86400, // 24 hours preflight cache
-  optionsSuccessStatus: 200 // Support legacy browsers
+  maxAge: 86400,
+  optionsSuccessStatus: 200
 };
 
 app.use(cors(corsOptions));
@@ -624,7 +623,7 @@ app.post(
         if (user.status !== 'active') {
           return res.status(401).json({
             success: false,
-            message: "Account is not active",
+            message: "Wait for the aadmin to activate the aaccount kumag",
           });
         }
 

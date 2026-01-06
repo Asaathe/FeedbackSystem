@@ -17,7 +17,7 @@ db.connect((err) => {
       "Make sure XAMPP MySQL is running and database 'feedback_system' exists!"
     );
   } else {
-    console.log("✅ Connected to MySQL database 'feedback_system'");
+    console.log(" Connected to MySQL database 'feedback_system'");
   }
 });
 
