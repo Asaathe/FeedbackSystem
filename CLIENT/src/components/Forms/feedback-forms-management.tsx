@@ -16,7 +16,7 @@ import { Textarea } from "../Reusable_components/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Reusable_components/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../Reusable_components/tabs";
 import { toast } from "sonner";
-import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates } from "../../services/formManagementService";
+import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, saveAsTemplate } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 
 
@@ -217,6 +217,22 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     } catch (error) {
       console.error('Error deleting form:', error);
       toast.error('An error occurred while deleting the form');
+    }
+  };
+
+  const handleSaveAsTemplate = async (formId: string) => {
+    try {
+      const result = await saveAsTemplate(formId);
+      if (result.success) {
+        toast.success(result.message);
+        // Reload forms to show the template in the templates tab
+        await loadForms();
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error saving as template:', error);
+      toast.error('An error occurred while saving as template');
     }
   };
 
@@ -586,6 +602,10 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                             <DropdownMenuItem onClick={() => handleDuplicateForm(form.id)}>
                               <Copy className="w-4 h-4 mr-2" />
                               Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSaveAsTemplate(form.id)}>
+                              <Star className="w-4 h-4 mr-2" />
+                              Save as Template
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"

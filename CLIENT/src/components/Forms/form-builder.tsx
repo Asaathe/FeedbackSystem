@@ -35,6 +35,8 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../Reusable_components/dialog";
 import { toast } from "sonner";
+import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, saveAsTemplate } from "../../services/formManagementService";
+import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../Reusable_components/checkbox";
 import { ScrollArea } from "../Reusable_components/scroll-area";
 import { Separator } from "../Reusable_components/separator";
@@ -55,7 +57,8 @@ interface FormQuestion {
 interface FormBuilderProps {
   onBack: () => void;
   formId?: string;
-}
+  isCustomFormTab?: boolean;
+  }
 
 const questionTypes = [
   { value: 'text', label: 'Short Text', icon: Type },
@@ -67,8 +70,7 @@ const questionTypes = [
   { value: 'linear-scale', label: 'Linear Scale', icon: Sliders },
 ];
 
-
-export function FormBuilder({ onBack, formId }: FormBuilderProps) {
+export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProps) {
   // Form Settings State
   const [formTitle, setFormTitle] = useState('Untitled Feedback Form');
   const [formDescription, setFormDescription] = useState('');
@@ -162,8 +164,9 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
   }, [formId]);
 
   // Dialog States
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
 
   // Loading State
   const [loading, setLoading] = useState(false);
@@ -330,31 +333,60 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
     try {
       setLoading(true);
       
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just save to localStorage as a demo
       const formData = {
-        id: formId || Date.now().toString(),
         title: formTitle,
         description: formDescription,
         category: formCategory,
-        target: formTarget,
+        targetAudience: formTarget,
         questions: questions,
-        image: formImage,
-        customCategories: customCategories,
-        customAudiences: customAudiences,
-        submissionSchedule: submissionSchedule,
-        status: 'draft',
-        createdAt: new Date().toISOString()
+        imageUrl: formImage || undefined,
+        isTemplate: false,
       };
       
-      localStorage.setItem(`form_${formData.id}`, JSON.stringify(formData));
+      console.log('Saving draft with data:', formData);
+      const result = await createForm(formData);
+      console.log('API response:', result);
       
-      toast.success(formId ? 'Form updated successfully' : 'Form saved as draft');
+      if (result.success) {
+        toast.success(formId ? 'Form updated successfully' : 'Form saved as draft');
+      } else {
+        toast.error(result.message || 'Failed to save form');
+      }
     } catch (err) {
       console.error('Error saving form:', err);
       toast.error('Failed to save form');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveAsTemplate = async () => {
+    try {
+      setLoading(true);
+      
+      const formData = {
+        title: formTitle,
+        description: formDescription,
+        category: formCategory,
+        targetAudience: formTarget,
+        questions: questions,
+        imageUrl: formImage || undefined,
+        isTemplate: true,
+      };
+      
+      console.log('Saving form as template with data:', formData);
+      const result = await createForm(formData);
+      console.log('API response:', result);
+      
+      if (result.success) {
+        toast.success('Form saved as template successfully!');
+        setTemplateDialogOpen(false);
+      } else {
+        toast.error(result.message || 'Failed to save form as template');
+      }
+    } catch (err) {
+      console.error('Error saving form as template:', err);
+      toast.error('Failed to save form as template');
     } finally {
       setLoading(false);
     }
@@ -370,28 +402,26 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
     try {
       setLoading(true);
 
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
       const formData = {
-        id: formId || Date.now().toString(),
         title: formTitle,
         description: formDescription,
         category: formCategory,
-        target: formTarget,
+        targetAudience: formTarget,
         questions: questions,
-        image: formImage,
-        customCategories: customCategories,
-        customAudiences: customAudiences,
-        submissionSchedule: submissionSchedule,
-        status: 'published',
-        publishedAt: new Date().toISOString()
+        imageUrl: formImage || undefined,
+        isTemplate: false,
       };
       
-      localStorage.setItem(`form_${formData.id}`, JSON.stringify(formData));
+      console.log('Publishing form with data:', formData);
+      const result = await createForm(formData);
+      console.log('API response:', result);
       
-      toast.success('Form published successfully!');
-      onBack();
+      if (result.success) {
+        toast.success('Form published successfully!');
+        onBack();
+      } else {
+        toast.error(result.message || 'Failed to publish form');
+      }
     } catch (err) {
       console.error('Error publishing form:', err);
       toast.error('Failed to publish form');
@@ -492,454 +522,518 @@ export function FormBuilder({ onBack, formId }: FormBuilderProps) {
             
             {/* Right Section - Action Buttons */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <Button
-                variant="outline"
-                onClick={saveDraft}
-                disabled={loading}
-                size="sm"
-                className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
-              >
-                <Save className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">{loading ? "Saving..." : "Save Draft"}</span>
-              </Button>
-              
-              <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button 
+              {/* Only show Save as Template when in custom form tab */}
+              {isCustomFormTab ? (
+                <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                    >
+                      <Copy className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Save as Template</span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Save as Template</DialogTitle>
+                      <DialogDescription>
+                        Save this form as a template for future use.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                      <Button
+                        className="bg-green-500 hover:bg-green-600"
+                        onClick={saveAsTemplate}
+                        disabled={loading}
+                      >
+                        {loading ? "Saving..." : "Save as Template"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              ) : (
+                <>
+                  <Button
                     variant="outline"
+                    onClick={saveDraft}
+                    disabled={loading}
                     size="sm"
                     className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                   >
-                    <Eye className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Preview</span>
+                    <Save className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{loading ? "Saving..." : "Save Draft"}</span>
                   </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Form Preview</DialogTitle>
-                    <DialogDescription>
-                      This is how respondents will see your feedback form
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="py-4">
-                    {/* Preview Form */}
-                    <div className="bg-white rounded-lg border shadow-sm">
-                      {/* Form Header */}
-                      {formImage && (
-                        <div className="w-full">
-                          <img src={formImage} alt="Form header" className="w-full h-48 object-cover rounded-t-lg" />
-                        </div>
-                      )}
-                      
-                      <div className="p-6 space-y-6">
-                        {/* Title and Description */}
-                        <div className="space-y-3">
-                          <h1 className="text-3xl">{formTitle}</h1>
-                          {formDescription && (
-                            <p className="text-gray-600">{formDescription}</p>
+                  <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                      >
+                        <Copy className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Save as Template</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Save as Template</DialogTitle>
+                        <DialogDescription>
+                          Save this form as a template for future use.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                        <Button
+                          className="bg-green-500 hover:bg-green-600"
+                          onClick={saveAsTemplate}
+                          disabled={loading}
+                        >
+                          {loading ? "Saving..." : "Save as Template"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                      >
+                        <Eye className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Preview</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Form Preview</DialogTitle>
+                        <DialogDescription>
+                          This is how respondents will see your feedback form
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4">
+                        {/* Preview Form */}
+                        <div className="bg-white rounded-lg border shadow-sm">
+                          {/* Form Header */}
+                          {formImage && (
+                            <div className="w-full">
+                              <img src={formImage} alt="Form header" className="w-full h-48 object-cover rounded-t-lg" />
+                            </div>
                           )}
-                          <div className="flex flex-wrap gap-2 pt-2">
-                            <Badge variant="secondary">{formCategory}</Badge>
-                          </div>
-                        </div>
-
-                        <Separator />
-
-                        {/* Questions */}
-                        <div className="space-y-6">
-                          {questions.map((question, index) => (
-                            <div key={question.id} className="space-y-3">
-                              <div className="flex items-start gap-2">
-                                <span className="text-gray-500 shrink-0">{index + 1}.</span>
-                                <div className="flex-1 space-y-2">
-                                  <div className="flex items-start gap-2">
-                                    <Label className="text-base">
-                                      {question.question}
-                                      {question.required && (
-                                        <span className="text-red-500 ml-1">*</span>
-                                      )}
-                                    </Label>
-                                  </div>
-                                  {question.description && (
-                                    <p className="text-sm text-gray-500">{question.description}</p>
-                                  )}
-                                  
-                                  {/* Question Input Based on Type */}
-                                  <div className="pt-2">
-                                    {question.type === 'rating' && (
-                                      <div className="flex gap-1">
-                                        {[1, 2, 3, 4, 5].map((star) => (
-                                          <Star 
-                                            key={star} 
-                                            className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors" 
-                                          />
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {question.type === 'multiple-choice' && (
-                                      <div className="space-y-2">
-                                        {question.options?.map((option, i) => (
-                                          <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
-                                            <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
-                                            <span>{option}</span>
-                                          </label>
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {question.type === 'checkbox' && (
-                                      <div className="space-y-2">
-                                        {question.options?.map((option, i) => (
-                                          <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
-                                            <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
-                                            <span>{option}</span>
-                                          </label>
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {question.type === 'dropdown' && (
-                                      <Select disabled>
-                                        <SelectTrigger className="w-full max-w-md">
-                                          <SelectValue placeholder="Select an option" />
-                                        </SelectTrigger>
-                                      </Select>
-                                    )}
-                                    
-                                    {question.type === 'linear-scale' && (
-                                      <div className="flex flex-col gap-3">
-                                        <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                                          <span className="text-sm text-gray-500 shrink-0">1</span>
-                                          <div className="flex gap-2">
-                                            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
-                                              <button
-                                                key={num}
-                                                className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
-                                              >
-                                                {num}
-                                              </button>
-                                            ))}
-                                          </div>
-                                          <span className="text-sm text-gray-500 shrink-0">10</span>
-                                        </div>
-                                      </div>
-                                    )}
-                                    
-                                    {question.type === 'text' && (
-                                      <Input placeholder="Your answer" className="max-w-md" />
-                                    )}
-                                    
-                                    {question.type === 'textarea' && (
-                                      <Textarea placeholder="Your answer" rows={4} className="resize-none" />
-                                    )}
-                                  </div>
-                                </div>
+                          
+                          <div className="p-6 space-y-6">
+                            {/* Title and Description */}
+                            <div className="space-y-3">
+                              <h1 className="text-3xl">{formTitle}</h1>
+                              {formDescription && (
+                                <p className="text-gray-600">{formDescription}</p>
+                              )}
+                              <div className="flex flex-wrap gap-2 pt-2">
+                                <Badge variant="secondary">{formCategory}</Badge>
                               </div>
                             </div>
-                          ))}
-                        </div>
 
-                        {/* Submit Button Preview */}
-                        <div className="flex justify-end pt-4 border-t">
-                          <Button className="bg-green-500 hover:bg-green-600" disabled>
-                            Submit Feedback
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-              
-              <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    className="bg-green-500 hover:bg-green-600 h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
-                    size="sm"
-                  >
-                    <SendHorizontal className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">Publish</span>
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Publish Feedback Form</DialogTitle>
-                    <DialogDescription>
-                      Review your form before publishing
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-6 py-4">
-                    {/* Configuration Grid */}
-                    <div className="grid grid-cols-1 gap-4">
-                      {/* Target Audience Card */}
-                      <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-blue-700">
-                              <Target className="w-4 h-4" />
-                              <span className="text-sm font-medium">Target Audience</span>
-                            </div>
-                            <Dialog>
-                              <DialogTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                                  <Settings className="w-3 h-3 mr-1" />
-                                  Manage
-                                </Button>
-                              </DialogTrigger>
-                              <DialogContent className="max-w-md">
-                                <DialogHeader>
-                                  <DialogTitle className="text-lg">Manage Audiences</DialogTitle>
-                                  <DialogDescription>
-                                    Add or remove target audiences
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="space-y-4 py-4">
-                                  <div className="flex gap-2">
-                                    <Input
-                                      placeholder="New audience name"
-                                      id="publish-new-audience-input"
-                                      className="flex-1"
-                                    />
-                                    <Button
-                                      onClick={() => {
-                                        const input = document.getElementById('publish-new-audience-input') as HTMLInputElement;
-                                        if (input?.value.trim()) {
-                                          addAudience(input.value.trim());
-                                          input.value = '';
-                                        }
-                                      }}
-                                      size="sm"
-                                    >
-                                      <Plus className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                                    {customAudiences.map((audience) => (
-                                      <div key={audience} className="flex items-center justify-between p-2 rounded border">
-                                        <span className="text-sm">{audience}</span>
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                          onClick={() => removeAudience(audience)}
-                                          disabled={customAudiences.length <= 1}
-                                        >
-                                          <X className="w-3 h-3" />
-                                        </Button>
+                            <Separator />
+
+                            {/* Questions */}
+                            <div className="space-y-6">
+                              {questions.map((question, index) => (
+                                <div key={question.id} className="space-y-3">
+                                  <div className="flex items-start gap-2">
+                                    <span className="text-gray-500 shrink-0">{index + 1}.</span>
+                                    <div className="flex-1 space-y-2">
+                                      <div className="flex items-start gap-2">
+                                        <Label className="text-base">
+                                          {question.question}
+                                          {question.required && (
+                                            <span className="text-red-500 ml-1">*</span>
+                                          )}
+                                        </Label>
                                       </div>
-                                    ))}
+                                      {question.description && (
+                                        <p className="text-sm text-gray-500">{question.description}</p>
+                                      )}
+                                      
+                                      {/* Question Input Based on Type */}
+                                      <div className="pt-2">
+                                        {question.type === 'rating' && (
+                                          <div className="flex gap-1">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                              <Star 
+                                                key={star} 
+                                                className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors" 
+                                              />
+                                            ))}
+                                          </div>
+                                        )}
+                                        
+                                        {question.type === 'multiple-choice' && (
+                                          <div className="space-y-2">
+                                            {question.options?.map((option, i) => (
+                                              <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
+                                                <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                                                <span>{option}</span>
+                                              </label>
+                                            ))}
+                                          </div>
+                                        )}
+                                        
+                                        {question.type === 'checkbox' && (
+                                          <div className="space-y-2">
+                                            {question.options?.map((option, i) => (
+                                              <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
+                                                <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
+                                                <span>{option}</span>
+                                              </label>
+                                            ))}
+                                          </div>
+                                        )}
+                                        
+                                        {question.type === 'dropdown' && (
+                                          <Select disabled>
+                                            <SelectTrigger className="w-full max-w-md">
+                                              <SelectValue placeholder="Select an option" />
+                                            </SelectTrigger>
+                                          </Select>
+                                        )}
+                                        
+                                        {question.type === 'linear-scale' && (
+                                          <div className="flex flex-col gap-3">
+                                            <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                                              <span className="text-sm text-gray-500 shrink-0">1</span>
+                                              <div className="flex gap-2">
+                                                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+                                                  <button
+                                                    key={num}
+                                                    className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
+                                                  >
+                                                    {num}
+                                                  </button>
+                                                ))}
+                                              </div>
+                                              <span className="text-sm text-gray-500 shrink-0">10</span>
+                                            </div>
+                                          </div>
+                                        )}
+                                        
+                                        {question.type === 'text' && (
+                                          <Input placeholder="Your answer" className="max-w-md" />
+                                        )}
+                                        
+                                        {question.type === 'textarea' && (
+                                          <Textarea placeholder="Your answer" rows={4} className="resize-none" />
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
                                 </div>
-                              </DialogContent>
-                            </Dialog>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0 space-y-4">
-                          {/* Main Audience Type Selection */}
-                          <div className="space-y-2">
-                            <Label className="text-sm font-medium">Select Audience Type</Label>
-                            <Select value={selectedAudienceType} onValueChange={(value) => {
-                              setSelectedAudienceType(value);
-                              setSelectedSubAudience('');
-                              setFormTarget(value);
-                            }}>
-                              <SelectTrigger className="h-10">
-                                <SelectValue placeholder="Select audience type" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="All Users">All Users</SelectItem>
-                                <SelectItem value="Students">Students</SelectItem>
-                                <SelectItem value="Instructors">Instructors</SelectItem>
-                                <SelectItem value="Alumni">Alumni</SelectItem>
-                                <SelectItem value="Staff">Staff</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
+                              ))}
+                            </div>
 
-                          {/* Dynamic Sub-Audience Selection */}
-                          {selectedAudienceType === 'Students' && (
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Select Course</Label>
-                              <Select value={selectedSubAudience} onValueChange={(value) => {
-                                setSelectedSubAudience(value);
-                                setFormTarget(`Students - ${value}`);
-                              }}>
-                                <SelectTrigger className="h-10">
-                                  <SelectValue placeholder="Select course" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {studentCourses.map((course) => (
-                                    <SelectItem key={course} value={course}>{course}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-
-                          {selectedAudienceType === 'Instructors' && (
-                            <div className="space-y-2">
-                              <Label className="text-sm font-medium">Select Department</Label>
-                              <Select value={selectedSubAudience} onValueChange={(value) => {
-                                setSelectedSubAudience(value);
-                                setFormTarget(`Instructors - ${value}`);
-                              }}>
-                                <SelectTrigger className="h-10">
-                                  <SelectValue placeholder="Select department" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {instructorDepartments.map((dept) => (
-                                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          )}
-
-                          {/* Final Target Display */}
-                          <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
-                            <span className="text-sm text-blue-700 font-medium">Final Target:</span>
-                            <span className="text-sm font-semibold text-blue-900">{formTarget}</span>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      {/* Submission Schedule Card */}
-                      <Card className="border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center gap-2 text-purple-700">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-sm font-medium">Schedule</span>
-                            <span className="text-xs text-purple-600">(Optional)</span>
-                          </div>
-                        </CardHeader>
-                        <CardContent className="pt-0 space-y-3">
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-gray-600">Start Date</Label>
-                              <Input
-                                type="date"
-                                value={submissionSchedule.startDate}
-                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, startDate: e.target.value }))}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-gray-600">Start Time</Label>
-                              <Input
-                                type="time"
-                                value={submissionSchedule.startTime}
-                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, startTime: e.target.value }))}
-                                className="h-8 text-sm"
-                              />
+                            {/* Submit Button Preview */}
+                            <div className="flex justify-end pt-4 border-t">
+                              <Button className="bg-green-500 hover:bg-green-600" disabled>
+                                Submit Feedback
+                              </Button>
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="space-y-1">
-                              <Label className="text-xs text-gray-600">End Date</Label>
-                              <Input
-                                type="date"
-                                value={submissionSchedule.endDate}
-                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, endDate: e.target.value }))}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs text-gray-600">End Time</Label>
-                              <Input
-                                type="time"
-                                value={submissionSchedule.endTime}
-                                onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, endTime: e.target.value }))}
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                        </div>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                  
+                  <Dialog open={publishDialogOpen} onOpenChange={setPublishDialogOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        className="bg-green-500 hover:bg-green-600 h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                        size="sm"
+                      >
+                        <SendHorizontal className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Publish</span>
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle>Publish Feedback Form</DialogTitle>
+                        <DialogDescription>
+                          Review your form before publishing
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-6 py-4">
+                        {/* Configuration Grid */}
+                        <div className="grid grid-cols-1 gap-4">
+                          {/* Target Audience Card */}
+                          <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2 text-blue-700">
+                                  <Target className="w-4 h-4" />
+                                  <span className="text-sm font-medium">Target Audience</span>
+                                </div>
+                                <Dialog>
+                                  <DialogTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                                      <Settings className="w-3 h-3 mr-1" />
+                                      Manage
+                                    </Button>
+                                  </DialogTrigger>
+                                  <DialogContent className="max-w-md">
+                                    <DialogHeader>
+                                      <DialogTitle className="text-lg">Manage Audiences</DialogTitle>
+                                      <DialogDescription>
+                                        Add or remove target audiences
+                                      </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                      <div className="flex gap-2">
+                                        <Input
+                                          placeholder="New audience name"
+                                          id="publish-new-audience-input"
+                                          className="flex-1"
+                                        />
+                                        <Button
+                                          onClick={() => {
+                                            const input = document.getElementById('publish-new-audience-input') as HTMLInputElement;
+                                            if (input?.value.trim()) {
+                                              addAudience(input.value.trim());
+                                              input.value = '';
+                                            }
+                                          }}
+                                          size="sm"
+                                        >
+                                          <Plus className="w-4 h-4" />
+                                        </Button>
+                                      </div>
+                                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                                        {customAudiences.map((audience) => (
+                                          <div key={audience} className="flex items-center justify-between p-2 rounded border">
+                                            <span className="text-sm">{audience}</span>
+                                            <Button
+                                              variant="ghost"
+                                              size="sm"
+                                              className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                              onClick={() => removeAudience(audience)}
+                                              disabled={customAudiences.length <= 1}
+                                            >
+                                              <X className="w-3 h-3" />
+                                            </Button>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </DialogContent>
+                                </Dialog>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0 space-y-4">
+                              {/* Main Audience Type Selection */}
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">Select Audience Type</Label>
+                                <Select value={selectedAudienceType} onValueChange={(value) => {
+                                  setSelectedAudienceType(value);
+                                  setSelectedSubAudience('');
+                                  setFormTarget(value);
+                                }}>
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Select audience type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="All Users">All Users</SelectItem>
+                                    <SelectItem value="Students">Students</SelectItem>
+                                    <SelectItem value="Instructors">Instructors</SelectItem>
+                                    <SelectItem value="Alumni">Alumni</SelectItem>
+                                    <SelectItem value="Staff">Staff</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
 
-                    {/* Schedule Preview */}
-                    {(submissionSchedule.startDate || submissionSchedule.endDate) && (
-                      <Card className="border-purple-200 bg-purple-50/50">
-                        <CardContent className="py-3">
-                          <div className="flex items-center gap-3">
-                            <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                              {/* Dynamic Sub-Audience Selection */}
+                              {selectedAudienceType === 'Students' && (
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Select Course</Label>
+                                  <Select value={selectedSubAudience} onValueChange={(value) => {
+                                    setSelectedSubAudience(value);
+                                    setFormTarget(`Students - ${value}`);
+                                  }}>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select course" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {studentCourses.map((course) => (
+                                        <SelectItem key={course} value={course}>{course}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+
+                              {selectedAudienceType === 'Instructors' && (
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Select Department</Label>
+                                  <Select value={selectedSubAudience} onValueChange={(value) => {
+                                    setSelectedSubAudience(value);
+                                    setFormTarget(`Instructors - ${value}`);
+                                  }}>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select department" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {instructorDepartments.map((dept) => (
+                                        <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+
+                              {/* Final Target Display */}
+                              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
+                                <span className="text-sm text-blue-700 font-medium">Final Target:</span>
+                                <span className="text-sm font-semibold text-blue-900">{formTarget}</span>
+                              </div>
+                            </CardContent>
+                          </Card>
+
+                          {/* Submission Schedule Card */}
+                          <Card className="border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
+                            <CardHeader className="pb-3">
+                              <div className="flex items-center gap-2 text-purple-700">
+                                <Calendar className="w-4 h-4" />
+                                <span className="text-sm font-medium">Schedule</span>
+                                <span className="text-xs text-purple-600">(Optional)</span>
+                              </div>
+                            </CardHeader>
+                            <CardContent className="pt-0 space-y-3">
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-gray-600">Start Date</Label>
+                                  <Input
+                                    type="date"
+                                    value={submissionSchedule.startDate}
+                                    onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, startDate: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-gray-600">Start Time</Label>
+                                  <Input
+                                    type="time"
+                                    value={submissionSchedule.startTime}
+                                    onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, startTime: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                              </div>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-gray-600">End Date</Label>
+                                  <Input
+                                    type="date"
+                                    value={submissionSchedule.endDate}
+                                    onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, endDate: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                                <div className="space-y-1">
+                                  <Label className="text-xs text-gray-600">End Time</Label>
+                                  <Input
+                                    type="time"
+                                    value={submissionSchedule.endTime}
+                                    onChange={(e) => setSubmissionSchedule(prev => ({ ...prev, endTime: e.target.value }))}
+                                    className="h-8 text-sm"
+                                  />
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        </div>
+
+                        {/* Schedule Preview */}
+                        {(submissionSchedule.startDate || submissionSchedule.endDate) && (
+                          <Card className="border-purple-200 bg-purple-50/50">
+                            <CardContent className="py-3">
+                              <div className="flex items-center gap-3">
+                                <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                                <div>
+                                  <p className="text-sm font-medium text-purple-900">Schedule Active</p>
+                                  <p className="text-sm text-purple-700">
+                                    {submissionSchedule.startDate && submissionSchedule.endDate
+                                      ? `From ${new Date(submissionSchedule.startDate + 'T' + (submissionSchedule.startTime || '00:00')).toLocaleString()} to ${new Date(submissionSchedule.endDate + 'T' + (submissionSchedule.endTime || '23:59')).toLocaleString()}`
+                                      : submissionSchedule.startDate
+                                        ? `Opens ${new Date(submissionSchedule.startDate + 'T' + (submissionSchedule.startTime || '00:00')).toLocaleString()}`
+                                        : `Closes ${new Date(submissionSchedule.endDate + 'T' + (submissionSchedule.endTime || '23:59')).toLocaleString()}`
+                                    }
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* Form Summary */}
+                        <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 text-green-700">
+                              <FileText className="w-4 h-4" />
+                              <span className="text-sm font-medium">Form Summary</span>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="space-y-3">
                             <div>
-                              <p className="text-sm font-medium text-purple-900">Schedule Active</p>
-                              <p className="text-sm text-purple-700">
-                                {submissionSchedule.startDate && submissionSchedule.endDate
-                                  ? `From ${new Date(submissionSchedule.startDate + 'T' + (submissionSchedule.startTime || '00:00')).toLocaleString()} to ${new Date(submissionSchedule.endDate + 'T' + (submissionSchedule.endTime || '23:59')).toLocaleString()}`
-                                  : submissionSchedule.startDate
-                                    ? `Opens ${new Date(submissionSchedule.startDate + 'T' + (submissionSchedule.startTime || '00:00')).toLocaleString()}`
-                                    : `Closes ${new Date(submissionSchedule.endDate + 'T' + (submissionSchedule.endTime || '23:59')).toLocaleString()}`
-                                }
-                              </p>
+                              <h3 className="text-base font-semibold">{formTitle}</h3>
+                              {formDescription && (
+                                <p className="text-sm text-gray-600">{formDescription}</p>
+                              )}
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-4">
+                                <span><span className="text-gray-500">Category:</span> <span className="font-medium">{formCategory}</span></span>
+                                <span><span className="text-gray-500">Questions:</span> <span className="font-medium">{questions.length}</span></span>
+                                <span><span className="text-gray-500">Target:</span> <span className="font-medium">{formTarget}</span></span>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
 
-                    {/* Form Summary */}
-                    <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center gap-2 text-green-700">
-                          <FileText className="w-4 h-4" />
-                          <span className="text-sm font-medium">Form Summary</span>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div>
-                          <h3 className="text-base font-semibold">{formTitle}</h3>
-                          {formDescription && (
-                            <p className="text-sm text-gray-600">{formDescription}</p>
-                          )}
-                        </div>
-                        <div className="flex items-center justify-between text-sm">
-                          <div className="flex items-center gap-4">
-                            <span><span className="text-gray-500">Category:</span> <span className="font-medium">{formCategory}</span></span>
-                            <span><span className="text-gray-500">Questions:</span> <span className="font-medium">{questions.length}</span></span>
-                            <span><span className="text-gray-500">Target:</span> <span className="font-medium">{formTarget}</span></span>
+                        <div className="flex items-center justify-between pt-4 border-t">
+                          <div className="flex-1">
+                            {!formTarget && (
+                              <p className="text-sm text-red-600">
+                                Please select a target audience above.
+                              </p>
+                            )}
+                            {formTarget && (
+                              <p className="text-sm text-blue-900">
+                                <strong>Ready to publish!</strong> This form will be available to {formTarget.toLowerCase()}.
+                              </p>
+                            )}
+                          </div>
+                          <div className="flex gap-3 ml-4">
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                toast.success('Form saved as draft');
+                                setPublishDialogOpen(false);
+                              }}
+                            >
+                              Save as Draft
+                            </Button>
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={publishForm}
+                              disabled={loading || !formTarget}
+                            >
+                              {loading ? "Saving..." : "Publish Now"}
+                            </Button>
                           </div>
                         </div>
-                      </CardContent>
-                    </Card>
-
-                    <div className="flex items-center justify-between pt-4 border-t">
-                      <div className="flex-1">
-                        {!formTarget && (
-                          <p className="text-sm text-red-600">
-                            Please select a target audience above.
-                          </p>
-                        )}
-                        {formTarget && (
-                          <p className="text-sm text-blue-900">
-                            <strong>Ready to publish!</strong> This form will be available to {formTarget.toLowerCase()}.
-                          </p>
-                        )}
                       </div>
-                      <div className="flex gap-3 ml-4">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            toast.success('Form saved as draft');
-                            setPublishDialogOpen(false);
-                          }}
-                        >
-                          Save as Draft
-                        </Button>
-                        <Button
-                          className="bg-green-600 hover:bg-green-700"
-                          onClick={publishForm}
-                          disabled={loading || !formTarget}
-                        >
-                          {loading ? "Publishing..." : "Publish Now"}
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                </>
+              )}
             </div>
           </div>
         </div>

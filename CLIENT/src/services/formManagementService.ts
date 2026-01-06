@@ -277,7 +277,7 @@ export const deleteForm = async (formId: string): Promise<{ success: boolean; me
 // Duplicate form
 export const duplicateForm = async (formId: string): Promise<{ success: boolean; formId?: string; message: string }> => {
   logDebug('duplicateForm called with formId:', formId);
-  
+
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {
@@ -310,6 +310,45 @@ export const duplicateForm = async (formId: string): Promise<{ success: boolean;
   } catch (error) {
     logError('Exception in duplicateForm:', error);
     return { success: false, message: 'An error occurred while duplicating the form' };
+  }
+};
+
+// Save form as template
+export const saveAsTemplate = async (formId: string): Promise<{ success: boolean; templateId?: string; message: string }> => {
+  logDebug('saveAsTemplate called with formId:', formId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    logDebug(`Making POST request to: /api/forms/${formId}/save-as-template`);
+
+    const response = await fetch(`/api/forms/${formId}/save-as-template`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (response.ok && result.success) {
+      logDebug('Form saved as template successfully with ID:', result.templateId);
+      return { success: true, templateId: result.templateId, message: result.message || 'Form saved as template successfully' };
+    } else {
+      logError('Failed to save form as template:', result.message);
+      return { success: false, message: result.message || 'Failed to save form as template' };
+    }
+  } catch (error) {
+    logError('Exception in saveAsTemplate:', error);
+    return { success: false, message: 'An error occurred while saving form as template' };
   }
 };
 
