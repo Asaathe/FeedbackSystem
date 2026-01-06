@@ -343,10 +343,27 @@ export function UserManagement() {
   const getDisplayDepartment = (user: any) => {
     if (user.role?.toLowerCase() === 'student') {
       // Check if courseYrSection indicates senior high or college
-      if (user.courseYrSection?.toLowerCase().includes('grade')) {
+      const courseYrSection = user.courseYrSection || user.year || '';
+      
+      // Check for Senior High strands (ABM, HUMSS, STEM, ICT) with grade levels
+      const seniorHighStrands = ['ABM', 'HUMSS', 'STEM', 'ICT'];
+      const isSeniorHigh = seniorHighStrands.some(strand =>
+        courseYrSection.includes(strand) &&
+        (courseYrSection.includes('11') || courseYrSection.includes('12'))
+      );
+      
+      // Check for College courses (BSIT, BSBA, BSCS, BSEN, BSOA, BSAIS, BTVTEd)
+      const collegeCourses = ['BSIT', 'BSBA', 'BSCS', 'BSEN', 'BSOA', 'BSAIS', 'BTVTEd'];
+      const isCollege = collegeCourses.some(course =>
+        courseYrSection.includes(course)
+      );
+      
+      if (isSeniorHigh) {
         return 'Senior High';
-      } else {
+      } else if (isCollege) {
         return 'College';
+      } else {
+        return user.department || 'N/A';
       }
     } else if (user.role?.toLowerCase() === 'instructor') {
       return user.department || 'Not Assigned';
@@ -357,8 +374,44 @@ export function UserManagement() {
 
   const handleAddUser = async () => {
     // Validation
-    if (!newUser.fullName || !newUser.email || !newUser.password || !newUser.role || !newUser.department) {
+    if (!newUser.fullName || !newUser.email || !newUser.password || !newUser.role) {
       toast.error('Please fill in all required fields');
+      return;
+    }
+
+    // Validate department based on role and year
+    if (newUser.role.toLowerCase() === 'student') {
+      if (!newUser.year) {
+        toast.error('Please select a year level');
+        return;
+      }
+      
+      // Auto-set department based on year
+      const year = newUser.year;
+      
+      // Check for Senior High strands (ABM, HUMSS, STEM, ICT) with grade levels
+      const seniorHighStrands = ['ABM', 'HUMSS', 'STEM', 'ICT'];
+      const isSeniorHigh = seniorHighStrands.some(strand =>
+        year.includes(strand) &&
+        (year.includes('11') || year.includes('12'))
+      );
+      
+      // Check for College courses (BSIT, BSBA, BSCS, BSEN, BSOA, BSAIS, BTVTEd)
+      const collegeCourses = ['BSIT', 'BSBA', 'BSCS', 'BSEN', 'BSOA', 'BSAIS', 'BTVTEd'];
+      const isCollege = collegeCourses.some(course =>
+        year.includes(course)
+      );
+      
+      if (isSeniorHigh) {
+        newUser.department = 'Senior High';
+      } else if (isCollege) {
+        newUser.department = 'College';
+      } else {
+        // Default to College if no specific pattern is matched
+        newUser.department = 'College';
+      }
+    } else if (!newUser.department) {
+      toast.error('Please fill in the department field');
       return;
     }
 
@@ -582,7 +635,7 @@ export function UserManagement() {
         // Role-specific fields
         ...(editUser.role.toLowerCase() === 'student' && {
           studentId: editUser.studentId,
-          courseYrSection: editUser.year
+          year: editUser.year
         }),
         ...(editUser.role.toLowerCase() === 'instructor' && {
           instructorId: editUser.employeeId
