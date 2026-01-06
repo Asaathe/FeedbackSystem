@@ -1193,7 +1193,7 @@ export function UserManagement() {
           <CardTitle>All Users ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scrollbar-modern">
             <Table>
               <TableHeader>
                 <TableRow>
