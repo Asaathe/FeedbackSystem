@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../Reusable_components/dialog";
 import { toast } from "sonner";
-import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, saveAsTemplate } from "../../services/formManagementService";
+import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../Reusable_components/checkbox";
 import { ScrollArea } from "../Reusable_components/scroll-area";
@@ -330,9 +330,23 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
 
   // Save and Publish Functions (simplified for now)
   const saveDraft = async () => {
+    // Validate required fields
+    if (!formTitle.trim()) {
+      toast.error('Please enter a form title');
+      return;
+    }
+    if (!formCategory) {
+      toast.error('Please select a category');
+      return;
+    }
+    if (!formTarget || formTarget === '') {
+      toast.error('Please select a target audience');
+      return;
+    }
+
     try {
       setLoading(true);
-      
+
       const formData = {
         title: formTitle,
         description: formDescription,
@@ -341,12 +355,13 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
         questions: questions,
         imageUrl: formImage || undefined,
         isTemplate: false,
+        status: 'active',
       };
-      
+
       console.log('Saving draft with data:', formData);
       const result = await createForm(formData);
       console.log('API response:', result);
-      
+
       if (result.success) {
         toast.success(formId ? 'Form updated successfully' : 'Form saved as draft');
       } else {
@@ -360,37 +375,6 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
     }
   };
 
-  const saveAsTemplate = async () => {
-    try {
-      setLoading(true);
-      
-      const formData = {
-        title: formTitle,
-        description: formDescription,
-        category: formCategory,
-        targetAudience: formTarget,
-        questions: questions,
-        imageUrl: formImage || undefined,
-        isTemplate: true,
-      };
-      
-      console.log('Saving form as template with data:', formData);
-      const result = await createForm(formData);
-      console.log('API response:', result);
-      
-      if (result.success) {
-        toast.success('Form saved as template successfully!');
-        setTemplateDialogOpen(false);
-      } else {
-        toast.error(result.message || 'Failed to save form as template');
-      }
-    } catch (err) {
-      console.error('Error saving form as template:', err);
-      toast.error('Failed to save form as template');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const publishForm = async () => {
     // Validate required fields
@@ -410,6 +394,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
         questions: questions,
         imageUrl: formImage || undefined,
         isTemplate: false,
+        status: 'draft',
       };
       
       console.log('Publishing form with data:', formData);
@@ -522,38 +507,6 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
             
             {/* Right Section - Action Buttons */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              {/* Only show Save as Template when in custom form tab */}
-              {isCustomFormTab ? (
-                <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
-                    >
-                      <Copy className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Save as Template</span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Save as Template</DialogTitle>
-                      <DialogDescription>
-                        Save this form as a template for future use.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                      <Button
-                        className="bg-green-500 hover:bg-green-600"
-                        onClick={saveAsTemplate}
-                        disabled={loading}
-                      >
-                        {loading ? "Saving..." : "Save as Template"}
-                      </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              ) : (
                 <>
                   <Button
                     variant="outline"
@@ -565,35 +518,6 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                     <Save className="w-4 h-4 sm:mr-2" />
                     <span className="hidden sm:inline">{loading ? "Saving..." : "Save Draft"}</span>
                   </Button>
-                  <Dialog open={templateDialogOpen} onOpenChange={setTemplateDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
-                      >
-                        <Copy className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Save as Template</span>
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-md">
-                      <DialogHeader>
-                        <DialogTitle>Save as Template</DialogTitle>
-                        <DialogDescription>
-                          Save this form as a template for future use.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="py-4">
-                        <Button
-                          className="bg-green-500 hover:bg-green-600"
-                          onClick={saveAsTemplate}
-                          disabled={loading}
-                        >
-                          {loading ? "Saving..." : "Save as Template"}
-                        </Button>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
                   
                   <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
                     <DialogTrigger asChild>
@@ -1033,7 +957,6 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                     </DialogContent>
                   </Dialog>
                 </>
-              )}
             </div>
           </div>
         </div>

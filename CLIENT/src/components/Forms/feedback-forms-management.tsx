@@ -16,28 +16,13 @@ import { Textarea } from "../Reusable_components/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Reusable_components/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../Reusable_components/tabs";
 import { toast } from "sonner";
-import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, saveAsTemplate } from "../../services/formManagementService";
+import { getForms, getForm, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, saveAsTemplate, FormData } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 
 
 
 interface FeedbackFormsManagementProps {
   onNavigateToBuilder?: (formId?: string) => void;
-}
-
-interface FormData {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  target_audience: string;
-  status: string;
-  image_url?: string;
-  submission_count: number;
-  created_at: string;
-  question_count: number;
-  creator_name?: string;
-  is_template?: boolean;
 }
 
 const categories = [
@@ -69,6 +54,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
   const [customForms, setCustomForms] = useState<FormData[]>([]);
   const [templateForms, setTemplateForms] = useState<FormData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState('custom');
 
   // Form state for creating new forms
   const [newFormTitle, setNewFormTitle] = useState('');
@@ -183,9 +169,19 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     }
   };
 
-  const handlePreviewForm = (form: FormData) => {
-    setSelectedForm(form);
-    setPreviewDialogOpen(true);
+  const handlePreviewForm = async (form: FormData) => {
+    try {
+      const result = await getForm(form.id);
+      if (result.success && result.form) {
+        setSelectedForm(result.form);
+        setPreviewDialogOpen(true);
+      } else {
+        toast.error('Failed to load form for preview');
+      }
+    } catch (error) {
+      console.error('Error loading form for preview:', error);
+      toast.error('Failed to load form for preview');
+    }
   };
 
   const handleDuplicateForm = async (formId: string) => {
@@ -227,6 +223,8 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
         toast.success(result.message);
         // Reload forms to show the template in the templates tab
         await loadForms();
+        // Switch to templates tab
+        setActiveTab('templates');
       } else {
         toast.error(result.message);
       }
@@ -393,21 +391,26 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                 <div className="flex gap-2 mt-3">
                   <Badge variant="secondary">{selectedForm.category}</Badge>
                   <Badge variant="outline">Target: {selectedForm.target_audience}</Badge>
-                  <Badge variant="outline">{selectedForm.question_count} Questions</Badge>
+                  <Badge variant="outline">{selectedForm.questions?.length || selectedForm.question_count || 0} Questions</Badge>
                 </div>
               </div>
              
               <div className="space-y-3">
-                <h4 className="font-medium">Sample Questions:</h4>
-                {Array.from({ length: Math.min(selectedForm.question_count, 5) }).map((_, idx) => (
+                <h4 className="font-medium">Questions:</h4>
+                {selectedForm.questions?.slice(0, 5).map((question, idx) => (
+                  <div key={idx} className="p-3 border rounded-lg bg-gray-50">
+                    <p className="text-sm">{idx + 1}. {question.question}</p>
+                    <Badge variant="outline" className="mt-2 text-xs">{question.type}</Badge>
+                  </div>
+                )) || Array.from({ length: Math.min(selectedForm.question_count || 0, 5) }).map((_, idx) => (
                   <div key={idx} className="p-3 border rounded-lg bg-gray-50">
                     <p className="text-sm">{idx + 1}. Sample question text would appear here...</p>
                     <Badge variant="outline" className="mt-2 text-xs">Question Type</Badge>
                   </div>
                 ))}
-                {selectedForm.question_count > 5 && (
+                {((selectedForm.questions?.length || selectedForm.question_count || 0) > 5) && (
                   <p className="text-sm text-gray-500 text-center py-2">
-                    ... and {selectedForm.question_count - 5} more questions
+                    ... and {(selectedForm.questions?.length || selectedForm.question_count || 0) - 5} more questions
                   </p>
                 )}
               </div>
@@ -548,7 +551,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
         </div>
       ) : (
         /* Tabs for Custom and Template Forms */
-        <Tabs defaultValue="custom" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="custom">
               Custom Forms ({filteredCustomForms.length})

@@ -27,6 +27,7 @@ export interface FormData {
   question_count: number;
   creator_name?: string;
   is_template?: boolean;
+  questions?: any[];
 }
 
 export interface CreateFormData {
@@ -39,6 +40,7 @@ export interface CreateFormData {
   questions?: any[];
   imageUrl?: string;
   isTemplate?: boolean;
+  status?: string;
 }
 
 export interface FormsResponse {
@@ -51,6 +53,58 @@ export interface FormsResponse {
     totalPages: number;
   };
 }
+
+// Get single form by ID
+export const getForm = async (formId: string): Promise<{ success: boolean; form?: any; message: string }> => {
+  logDebug('getForm called with formId:', formId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const apiUrl = `/api/forms/${formId}`;
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      try {
+        const errorData = await response.json();
+        logError('Error details:', errorData);
+      } catch (e) {
+        logError('Could not parse error response');
+      }
+      return { success: false, message: 'Failed to fetch form' };
+    }
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (result.success && result.form) {
+      logDebug('Form fetched successfully');
+      return { success: true, form: result.form, message: 'Form fetched successfully' };
+    } else {
+      logError('Unexpected response format:', result);
+      return { success: false, message: result.message || 'Failed to fetch form' };
+    }
+  } catch (error) {
+    logError('Exception in getForm:', error);
+    return { success: false, message: 'An error occurred while fetching the form' };
+  }
+};
 
 // Get all forms with filtering
 export const getForms = async (
@@ -317,103 +371,51 @@ export const duplicateForm = async (formId: string): Promise<{ success: boolean;
 export const saveAsTemplate = async (formId: string): Promise<{ success: boolean; templateId?: string; message: string }> => {
   logDebug('saveAsTemplate called with formId:', formId);
 
-  try {
-    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
-    if (!token) {
-      logError('No authentication token found');
-      return { success: false, message: 'No authentication token found' };
-    }
+  // First, fetch the existing form data
+  const formResult = await getForm(formId);
+  if (!formResult.success || !formResult.form) {
+    logError('Failed to fetch form data for template creation');
+    return { success: false, message: formResult.message || 'Failed to fetch form data' };
+  }
 
-    logDebug(`Making POST request to: /api/forms/${formId}/save-as-template`);
+  const form = formResult.form;
 
-    const response = await fetch(`/api/forms/${formId}/save-as-template`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+  // Prepare template data from existing form (without questions for templates)
+  const templateData: CreateFormData = {
+    title: form.title,
+    description: form.description,
+    category: form.category,
+    targetAudience: form.target_audience,
+    startDate: form.startDate,
+    endDate: form.endDate,
+    imageUrl: form.imageUrl,
+    isTemplate: true,
+  };
 
-    logDebug('Response status:', response.status, response.statusText);
+  const result = await createForm(templateData);
 
-    const result = await response.json();
-    logDebug('Response data:', result);
-
-    if (response.ok && result.success) {
-      logDebug('Form saved as template successfully with ID:', result.templateId);
-      return { success: true, templateId: result.templateId, message: result.message || 'Form saved as template successfully' };
-    } else {
-      logError('Failed to save form as template:', result.message);
-      return { success: false, message: result.message || 'Failed to save form as template' };
-    }
-  } catch (error) {
-    logError('Exception in saveAsTemplate:', error);
-    return { success: false, message: 'An error occurred while saving form as template' };
+  if (result.success) {
+    return {
+      success: true,
+      templateId: result.formId,
+      message: result.message || 'Form saved as template successfully'
+    };
+  } else {
+    return {
+      success: false,
+      message: result.message || 'Failed to save form as template'
+    };
   }
 };
 
 // Get form templates
 export const getFormTemplates = async (): Promise<FormData[]> => {
   logDebug('getFormTemplates called');
-  
-  try {
-    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
-    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
-    
-    if (!token) {
-      logError('No authentication token found');
-      return [];
-    }
 
-    const apiUrl = '/api/forms/templates';
-    logDebug(`Making GET request to: ${apiUrl}`);
-
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    logDebug('Response status:', response.status, response.statusText);
-
-    if (!response.ok) {
-      logError(`HTTP error! status: ${response.status}`);
-      try {
-        const errorData = await response.json();
-        logError('Error details:', errorData);
-      } catch (e) {
-        logError('Could not parse error response');
-      }
-      return [];
-    }
-
-    const result = await response.json();
-    logDebug('Response data:', result);
-    
-    if (result.success && result.templates) {
-      const templates = result.templates.map((template: any) => ({
-        id: template.id.toString(),
-        title: template.title,
-        description: template.description,
-        category: template.category,
-        target_audience: template.target_audience,
-        status: 'template',
-        image_url: template.image_url,
-        submission_count: 0,
-        created_at: template.created_at,
-        question_count: template.question_count || 0,
-        creator_name: template.creator_name,
-        is_template: true,
-      }));
-      logDebug(`Successfully loaded ${templates.length} templates`);
-      return templates;
-    }
-
-    logError('Unexpected response format:', result);
-    return [];
-  } catch (error) {
-    logError('Exception in getFormTemplates:', error);
-    return [];
+  const result = await getForms('templates', 'all', '', 1, 100);
+  if (result.success) {
+    // Ensure templates have is_template: true and status: 'template'
+    return result.forms.map(form => ({ ...form, is_template: true, status: 'template' }));
   }
+  return [];
 };
