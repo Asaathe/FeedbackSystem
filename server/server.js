@@ -623,7 +623,7 @@ app.post(
         if (user.status !== 'active') {
           return res.status(401).json({
             success: false,
-            message: "Wait for the aadmin to activate the aaccount kumag",
+            message: "Unauthorized Access",
           });
         }
 
@@ -867,6 +867,94 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
       user: userResponse,
     });
   });
+});
+
+// Get users filtered by role and specific criteria for form targeting
+app.get("/api/users/filter", verifyToken, (req, res) => {
+  try {
+    const { role, course, year, section, grade } = req.query;
+
+    if (!role) {
+      return res.status(400).json({
+        success: false,
+        message: "Role parameter is required"
+      });
+    }
+
+    let query = `
+      SELECT
+        u.id, u.email, u.full_name, u.role, u.status,
+        s.studentID, s.course_yr_section,
+        i.instructor_id, i.department,
+        a.degree, a.company,
+        e.companyname, e.industry
+      FROM users u
+      LEFT JOIN students s ON u.id = s.user_id
+      LEFT JOIN instructors i ON u.id = i.user_id
+      LEFT JOIN alumni a ON u.id = a.user_id
+      LEFT JOIN employers e ON u.id = e.user_id
+      WHERE u.role = ? AND u.status = 'active'
+    `;
+
+    const params = [role];
+
+    // Add role-specific filters
+    if (role === 'student') {
+      if (course && year && section) {
+        // College students: course_yr_section like "BSIT 4-B"
+        query += " AND s.course_yr_section = ?";
+        params.push(`${course} ${year}-${section}`);
+      } else if (grade && section) {
+        // High school students: course_yr_section like "Grade 11-A"
+        query += " AND s.course_yr_section = ?";
+        params.push(`${grade}-${section}`);
+      }
+    } else if (role === 'instructor') {
+      if (course) {
+        query += " AND i.department = ?";
+        params.push(course); // Using course param for department
+      }
+    }
+    // Add more role-specific filters as needed
+
+    query += " ORDER BY u.full_name";
+
+    db.query(query, params, (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      // Format users data
+      const users = results.map(user => ({
+        id: user.id,
+        name: user.full_name,
+        email: user.email,
+        role: user.role,
+        status: user.status,
+        // Role-specific data
+        ...(user.studentID && { studentId: user.studentID, courseYrSection: user.course_yr_section }),
+        ...(user.instructor_id && { instructorId: user.instructor_id, department: user.department }),
+        ...(user.degree && { degree: user.degree, alumniCompany: user.company }),
+        ...(user.companyname && { companyName: user.companyname, industry: user.industry }),
+      }));
+
+      res.json({
+        success: true,
+        users,
+        count: users.length
+      });
+    });
+  } catch (error) {
+    console.error("Get filtered users error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
 });
 
 // Get users with filtering and pagination

@@ -673,18 +673,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
           
           {/* Template Forms Tab */}
           <TabsContent value="templates" className="space-y-4 mt-6">
-          {/* Info Banner */}
-          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <Star className="w-5 h-5 text-purple-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-medium">Template Forms</h3>
-                <p className="text-sm text-gray-600 mt-1">
-                  These are reusable template forms that can be deployed every semester or period.
-                </p>
-              </div>
-            </div>
-          </div>
+          
 
           {filteredTemplateForms.length === 0 ? (
             <div className="text-center py-12">
