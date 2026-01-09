@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../Reusable_components/dialog";
 import { toast } from "sonner";
-import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates } from "../../services/formManagementService";
+import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, getFilteredUsers, getFormCategories, addFormCategory, updateFormCategory, deleteFormCategory } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../Reusable_components/checkbox";
 import { ScrollArea } from "../Reusable_components/scroll-area";
@@ -74,14 +74,17 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
   // Form Settings State
   const [formTitle, setFormTitle] = useState('Untitled Feedback Form');
   const [formDescription, setFormDescription] = useState('');
-  const [formCategory, setFormCategory] = useState('Academic');
+  const [formCategory, setFormCategory] = useState('');
   const [formTarget, setFormTarget] = useState('All Users');
   const [formImage, setFormImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(true);
 
   // Dynamic Categories and Audiences State
-  const [customCategories, setCustomCategories] = useState<string[]>(['Academic', 'Facilities', 'Services', 'Alumni', 'Career Support', 'General Feedback']);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [databaseCategories, setDatabaseCategories] = useState<{id: number, name: string, description?: string}[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState<boolean>(true);
+  const [loadingCategoryOperation, setLoadingCategoryOperation] = useState<boolean>(false);
   const [customAudiences, setCustomAudiences] = useState<string[]>([
     'All Users',
     'Students',
@@ -103,9 +106,33 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
     'IT Department', 'Business Department', 'Education Department', 'Hospitality Department'
   ]);
 
+  const [studentYears, setStudentYears] = useState<string[]>([
+    '1', '2', '3', '4', '5'
+  ]);
+
+  const [studentSections, setStudentSections] = useState<string[]>([
+    'A', 'B', 'C', 'D', 'E'
+  ]);
+
+  const [studentLevels, setStudentLevels] = useState<string[]>([
+    'College', 'High School'
+  ]);
+
+  const [highSchoolGrades, setHighSchoolGrades] = useState<string[]>([
+    'Grade 11', 'Grade 12'
+  ]);
+
   // Current selected audience type and sub-selection
   const [selectedAudienceType, setSelectedAudienceType] = useState<string>('All Users');
   const [selectedSubAudience, setSelectedSubAudience] = useState<string>('');
+  const [selectedYear, setSelectedYear] = useState<string>('');
+  const [selectedSection, setSelectedSection] = useState<string>('');
+  const [selectedLevel, setSelectedLevel] = useState<string>('');
+
+  // Recipients management
+  const [recipients, setRecipients] = useState<Array<{id: number, name: string, details: string}>>([]);
+  const [selectedRecipients, setSelectedRecipients] = useState<Set<number>>(new Set());
+  const [selectAllRecipients, setSelectAllRecipients] = useState<boolean>(true);
 
   // Submission Schedule State
   const [submissionSchedule, setSubmissionSchedule] = useState({
@@ -138,7 +165,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
           setFormCategory(formData.category || 'Academic');
           setFormTarget(formData.target || 'Students');
           setFormImage(formData.image || null);
-          setCustomCategories(formData.customCategories || ['Academic', 'Facilities', 'Services', 'Alumni', 'Career Support', 'General Feedback']);
+          setCustomCategories(formData.customCategories || []);
           setCustomAudiences(formData.customAudiences || ['Students', 'Alumni', 'Instructors', 'Staff', 'All Users']);
           setSubmissionSchedule(formData.submissionSchedule || {
             startDate: '',
@@ -162,6 +189,41 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
       }
     }
   }, [formId]);
+
+  // Load categories from database
+   useEffect(() => {
+     const loadCategories = async () => {
+       try {
+         setLoadingCategories(true);
+         const result = await getFormCategories();
+
+         if (result.success && result.categories.length > 0) {
+           setDatabaseCategories(result.categories);
+           setCustomCategories(result.categories.map(cat => cat.name));
+
+           // Set default category if not already set
+           if (!formCategory && result.categories.length > 0) {
+             setFormCategory(result.categories[0].name);
+           }
+         } else {
+           // No categories in database
+           setCustomCategories([]);
+           setDatabaseCategories([]);
+         }
+       } catch (error) {
+         console.error('Error loading categories:', error);
+         toast.error('Failed to load categories');
+
+         // No fallback categories on error
+         setCustomCategories([]);
+         setDatabaseCategories([]);
+       } finally {
+         setLoadingCategories(false);
+       }
+     };
+
+     loadCategories();
+   }, []);
 
   // Dialog States
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
@@ -206,22 +268,52 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
   };
 
   // Category and Audience Management
-  const addCategory = (category: string) => {
+  const addCategory = async (category: string) => {
     if (category.trim() && !customCategories.includes(category.trim())) {
-      setCustomCategories([...customCategories, category.trim()]);
-      toast.success(`Category "${category.trim()}" added`);
+      try {
+        setLoadingCategoryOperation(true);
+        const result = await addFormCategory(category.trim(), '');
+        if (result.success && result.category) {
+          setDatabaseCategories([...databaseCategories, result.category]);
+          setCustomCategories([...customCategories, result.category.name]);
+          toast.success(`Category "${category.trim()}" added`);
+        } else {
+          toast.error(result.message || 'Failed to add category');
+        }
+      } catch (error) {
+        console.error('Error adding category:', error);
+        toast.error('Failed to add category');
+      } finally {
+        setLoadingCategoryOperation(false);
+      }
     }
   };
 
-  const removeCategory = (category: string) => {
-    if (customCategories.length > 1) {
-      setCustomCategories(customCategories.filter(c => c !== category));
-      if (formCategory === category) {
-        setFormCategory(customCategories[0] !== category ? customCategories[0] : customCategories[1]);
+  const removeCategory = async (category: string) => {
+    const categoryToDelete = databaseCategories.find(cat => cat.name === category);
+    if (categoryToDelete) {
+      try {
+        setLoadingCategoryOperation(true);
+        const result = await deleteFormCategory(categoryToDelete.id);
+        if (result.success) {
+          setDatabaseCategories(databaseCategories.filter(cat => cat.id !== categoryToDelete.id));
+          setCustomCategories(customCategories.filter(c => c !== category));
+          if (formCategory === category) {
+            const remaining = customCategories.filter(c => c !== category);
+            setFormCategory(remaining.length > 0 ? remaining[0] : '');
+          }
+          toast.success(`Category "${category}" removed`);
+        } else {
+          toast.error(result.message || 'Failed to remove category');
+        }
+      } catch (error) {
+        console.error('Error removing category:', error);
+        toast.error('Failed to remove category');
+      } finally {
+        setLoadingCategoryOperation(false);
       }
-      toast.success(`Category "${category}" removed`);
     } else {
-      toast.error("Cannot remove the last category");
+      toast.error("Category not found");
     }
   };
 
@@ -414,6 +506,67 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
       setLoading(false);
     }
   };
+
+  // Function to fetch recipients based on selection
+  const fetchRecipients = async (audienceType: string, level: string, sub: string, year: string, section: string) => {
+    try {
+      let filters: any = { role: audienceType.toLowerCase() };
+
+      if (audienceType === 'Students') {
+        if (level === 'College' && sub && year && section) {
+          filters.course = sub;
+          filters.year = year;
+          filters.section = section;
+        } else if (level === 'High School' && sub && section) {
+          filters.grade = sub;
+          filters.section = section;
+        }
+      } else if (audienceType === 'Instructors') {
+        if (sub) {
+          filters.course = sub; // department
+        }
+      }
+
+      const result = await getFilteredUsers(filters);
+      if (result.success && result.users) {
+        const formattedUsers = result.users.map(user => ({
+          id: user.id,
+          name: user.name,
+          details: user.role === 'student' ? (user.courseYrSection || 'No section') :
+                   user.role === 'instructor' ? (user.department || 'No department') :
+                   user.role === 'alumni' ? (user.degree || 'No degree') :
+                   user.role === 'employer' ? (user.companyName || 'No company') : 'N/A'
+        }));
+
+        setRecipients(formattedUsers);
+        setSelectedRecipients(new Set(formattedUsers.map(u => u.id)));
+        setSelectAllRecipients(true);
+      } else {
+        setRecipients([]);
+        setSelectedRecipients(new Set());
+        setSelectAllRecipients(true);
+      }
+    } catch (error) {
+      console.error('Error fetching recipients:', error);
+      setRecipients([]);
+      setSelectedRecipients(new Set());
+      setSelectAllRecipients(true);
+    }
+  };
+
+  // Effect to fetch recipients when selection changes
+  useEffect(() => {
+    if (selectedAudienceType === 'Students' && selectedLevel) {
+      if (selectedLevel === 'College' && selectedSubAudience && selectedYear && selectedSection) {
+        fetchRecipients(selectedAudienceType, selectedLevel, selectedSubAudience, selectedYear, selectedSection);
+      } else if (selectedLevel === 'High School' && selectedSubAudience && selectedSection) {
+        fetchRecipients(selectedAudienceType, selectedLevel, selectedSubAudience, '', selectedSection);
+      }
+    } else if (selectedAudienceType !== 'Students' && selectedAudienceType !== 'All Users') {
+      // For other roles, fetch based on their criteria
+      fetchRecipients(selectedAudienceType, '', selectedSubAudience, '', '');
+    }
+  }, [selectedAudienceType, selectedLevel, selectedSubAudience, selectedYear, selectedSection]);
 
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
@@ -757,7 +910,10 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                                 <Label className="text-sm font-medium">Select Audience Type</Label>
                                 <Select value={selectedAudienceType} onValueChange={(value) => {
                                   setSelectedAudienceType(value);
+                                  setSelectedLevel('');
                                   setSelectedSubAudience('');
+                                  setSelectedYear('');
+                                  setSelectedSection('');
                                   setFormTarget(value);
                                 }}>
                                   <SelectTrigger className="h-10">
@@ -775,18 +931,136 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
 
                               {/* Dynamic Sub-Audience Selection */}
                               {selectedAudienceType === 'Students' && (
+                                <>
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Select Level</Label>
+                                    <Select value={selectedLevel} onValueChange={(value) => {
+                                      setSelectedLevel(value);
+                                      setSelectedSubAudience('');
+                                      setSelectedYear('');
+                                      setSelectedSection('');
+                                      setRecipients([]);
+                                      setSelectedRecipients(new Set());
+                                      setSelectAllRecipients(true);
+                                      setFormTarget(`Students - ${value}`);
+                                    }}>
+                                      <SelectTrigger className="h-10">
+                                        <SelectValue placeholder="Select level" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {studentLevels.map((level) => (
+                                          <SelectItem key={level} value={level}>{level}</SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {selectedLevel === 'College' && (
+                                    <>
+                                      <div className="space-y-2">
+                                        <Label className="text-sm font-medium">Select Course</Label>
+                                        <Select value={selectedSubAudience} onValueChange={(value) => {
+                                          setSelectedSubAudience(value);
+                                          setSelectedYear('');
+                                          setSelectedSection('');
+                                          setRecipients([]);
+                                          setSelectedRecipients(new Set());
+                                          setSelectAllRecipients(true);
+                                          setFormTarget(`Students - College ${value}`);
+                                        }}>
+                                          <SelectTrigger className="h-10">
+                                            <SelectValue placeholder="Select course" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {studentCourses.map((course) => (
+                                              <SelectItem key={course} value={course}>{course}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                      </div>
+                                    </>
+                                  )}
+
+                                  {selectedLevel === 'High School' && (
+                                    <div className="space-y-2">
+                                      <Label className="text-sm font-medium">Select Grade</Label>
+                                      <Select value={selectedSubAudience} onValueChange={(value) => {
+                                        setSelectedSubAudience(value);
+                                        setSelectedSection('');
+                                        setRecipients([]);
+                                        setSelectedRecipients(new Set());
+                                        setSelectAllRecipients(true);
+                                        setFormTarget(`Students - ${value}`);
+                                      }}>
+                                        <SelectTrigger className="h-10">
+                                          <SelectValue placeholder="Select grade" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {highSchoolGrades.map((grade) => (
+                                            <SelectItem key={grade} value={grade}>{grade}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
+                                </>
+                              )}
+
+                              {selectedAudienceType === 'Students' && selectedLevel === 'College' && selectedSubAudience && (
                                 <div className="space-y-2">
-                                  <Label className="text-sm font-medium">Select Course</Label>
-                                  <Select value={selectedSubAudience} onValueChange={(value) => {
-                                    setSelectedSubAudience(value);
-                                    setFormTarget(`Students - ${value}`);
+                                  <Label className="text-sm font-medium">Select Year</Label>
+                                  <Select value={selectedYear} onValueChange={(value) => {
+                                    setSelectedYear(value);
+                                    setSelectedSection('');
+                                    setRecipients([]);
+                                    setSelectedRecipients(new Set());
+                                    setSelectAllRecipients(true);
+                                    setFormTarget(`Students - ${selectedSubAudience} ${value}`);
                                   }}>
                                     <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select course" />
+                                      <SelectValue placeholder="Select year" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      {studentCourses.map((course) => (
-                                        <SelectItem key={course} value={course}>{course}</SelectItem>
+                                      {studentYears.map((year) => (
+                                        <SelectItem key={year} value={year}>{year}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+
+                              {selectedAudienceType === 'Students' && selectedLevel === 'College' && selectedYear && (
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Select Section</Label>
+                                  <Select value={selectedSection} onValueChange={(value) => {
+                                    setSelectedSection(value);
+                                    setFormTarget(`Students - ${selectedSubAudience} ${selectedYear}-${value}`);
+                                  }}>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select section" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {studentSections.map((section) => (
+                                        <SelectItem key={section} value={section}>{section}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </div>
+                              )}
+
+                              {selectedAudienceType === 'Students' && selectedLevel === 'High School' && selectedSubAudience && (
+                                <div className="space-y-2">
+                                  <Label className="text-sm font-medium">Select Section</Label>
+                                  <Select value={selectedSection} onValueChange={(value) => {
+                                    setSelectedSection(value);
+                                    setFormTarget(`Students - ${selectedSubAudience}-${value}`);
+                                  }}>
+                                    <SelectTrigger className="h-10">
+                                      <SelectValue placeholder="Select section" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {studentSections.map((section) => (
+                                        <SelectItem key={section} value={section}>{section}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -817,6 +1091,72 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                                 <span className="text-sm text-blue-700 font-medium">Final Target:</span>
                                 <span className="text-sm font-semibold text-blue-900">{formTarget}</span>
                               </div>
+
+                              {/* Recipients Preview */}
+                              {selectedAudienceType !== 'All Users' && (
+                                (selectedAudienceType === 'Students' && ((selectedLevel === 'College' && selectedSection) || (selectedLevel === 'High School' && selectedSection))) ||
+                                (selectedAudienceType !== 'Students' && selectedAudienceType)
+                              ) && (
+                                <Collapsible>
+                                  <CollapsibleTrigger asChild>
+                                    <Button variant="ghost" size="sm" className="w-full justify-between p-3 h-auto border rounded-lg hover:bg-gray-50">
+                                      <span className="text-sm">Preview Recipients ({recipients.length})</span>
+                                      <ChevronDown className="w-4 h-4" />
+                                    </Button>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="space-y-3 pt-3">
+                                    <div className="text-sm text-gray-600">
+                                      <p>Recipients for <strong>{formTarget}</strong>.</p>
+                                      <p className="mt-2">Select specific users or send to all.</p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox
+                                        id="select-all-students"
+                                        checked={selectAllRecipients}
+                                        onCheckedChange={(checked) => {
+                                          setSelectAllRecipients(!!checked);
+                                          if (checked) {
+                                            setSelectedRecipients(new Set(recipients.map(r => r.id)));
+                                          } else {
+                                            setSelectedRecipients(new Set());
+                                          }
+                                        }}
+                                      />
+                                      <Label htmlFor="select-all-students" className="text-sm">Send to all students in this group</Label>
+                                    </div>
+                                    {/* Student list */}
+                                    <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-48">
+                                      {recipients.length > 0 ? (
+                                        <div className="space-y-2">
+                                          {recipients.map((student) => (
+                                            <div key={student.id} className="flex items-center gap-2">
+                                              <Checkbox
+                                                id={`student-${student.id}`}
+                                                checked={selectedRecipients.has(student.id)}
+                                                onCheckedChange={(checked) => {
+                                                  const newSelected = new Set(selectedRecipients);
+                                                  if (checked) {
+                                                    newSelected.add(student.id);
+                                                  } else {
+                                                    newSelected.delete(student.id);
+                                                  }
+                                                  setSelectedRecipients(newSelected);
+                                                  setSelectAllRecipients(newSelected.size === recipients.length);
+                                                }}
+                                              />
+                                              <Label htmlFor={`student-${student.id}`} className="text-sm flex-1">
+                                                {student.name} <span className="text-gray-500">({student.details})</span>
+                                              </Label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-gray-500">No students found in this group.</p>
+                                      )}
+                                    </ScrollArea>
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              )}
                             </CardContent>
                           </Card>
 
@@ -1085,6 +1425,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                                   }
                                 }}
                                 size="sm"
+                                disabled={loadingCategoryOperation}
                               >
                                 <Plus className="w-4 h-4" />
                               </Button>
@@ -1098,7 +1439,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                                     size="sm"
                                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                                     onClick={() => removeCategory(cat)}
-                                    disabled={customCategories.length <= 1}
+                                    disabled={customCategories.length <= 1 || loadingCategoryOperation}
                                   >
                                     <X className="w-3 h-3" />
                                   </Button>

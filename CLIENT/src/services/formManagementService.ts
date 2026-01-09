@@ -408,6 +408,74 @@ export const saveAsTemplate = async (formId: string): Promise<{ success: boolean
   }
 };
 
+// Get filtered users for form targeting
+export const getFilteredUsers = async (filters: {
+  role: string;
+  course?: string;
+  year?: string;
+  section?: string;
+  grade?: string;
+}): Promise<{ success: boolean; users?: any[]; count?: number; message: string }> => {
+  logDebug('getFilteredUsers called with filters:', filters);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const params = new URLSearchParams();
+    params.append('role', filters.role);
+    if (filters.course) params.append('course', filters.course);
+    if (filters.year) params.append('year', filters.year);
+    if (filters.section) params.append('section', filters.section);
+    if (filters.grade) params.append('grade', filters.grade);
+
+    const apiUrl = `/api/users/filter?${params}`;
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      try {
+        const errorData = await response.json();
+        logError('Error details:', errorData);
+      } catch (e) {
+        logError('Could not parse error response');
+      }
+      return { success: false, message: 'Failed to fetch users' };
+    }
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (result.success && result.users) {
+      logDebug(`Successfully loaded ${result.users.length} users`);
+      return {
+        success: true,
+        users: result.users,
+        count: result.count,
+        message: 'Users fetched successfully'
+      };
+    } else {
+      logError('Unexpected response format:', result);
+      return { success: false, message: result.message || 'Failed to fetch users' };
+    }
+  } catch (error) {
+    logError('Exception in getFilteredUsers:', error);
+    return { success: false, message: 'An error occurred while fetching users' };
+  }
+};
+
 // Get form templates
 export const getFormTemplates = async (): Promise<FormData[]> => {
   logDebug('getFormTemplates called');
@@ -418,4 +486,207 @@ export const getFormTemplates = async (): Promise<FormData[]> => {
     return result.forms.map(form => ({ ...form, is_template: true, status: 'template' }));
   }
   return [];
+};
+
+// Category interface
+export interface FormCategory {
+  id: number;
+  name: string;
+  description?: string;
+}
+
+// Get all form categories
+export const getFormCategories = async (): Promise<{ success: boolean; categories: FormCategory[]; message?: string }> => {
+  logDebug('getFormCategories called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, categories: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/form-categories';
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      try {
+        const errorData = await response.json();
+        logError('Error details:', errorData);
+      } catch (e) {
+        logError('Could not parse error response');
+      }
+      return { success: false, categories: [], message: 'Failed to fetch categories' };
+    }
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (result.success && result.categories) {
+      logDebug(`Successfully loaded ${result.categories.length} categories`);
+      return {
+        success: true,
+        categories: result.categories.map((cat: any) => ({
+          id: cat.id,
+          name: cat.name,
+          description: cat.description || ''
+        })),
+        message: 'Categories fetched successfully'
+      };
+    } else {
+      logError('Unexpected response format:', result);
+      return { success: false, categories: [], message: result.message || 'Failed to fetch categories' };
+    }
+  } catch (error) {
+    logError('Exception in getFormCategories:', error);
+    return { success: false, categories: [], message: 'An error occurred while fetching categories' };
+  }
+};
+
+// Add new form category
+export const addFormCategory = async (name: string, description?: string): Promise<{ success: boolean; category?: FormCategory; message: string }> => {
+  logDebug('addFormCategory called with:', { name, description });
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/form-categories';
+    logDebug(`Making POST request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, description }),
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (response.ok && result.success) {
+      logDebug('Category added successfully');
+      return {
+        success: true,
+        category: result.category,
+        message: result.message || 'Category added successfully'
+      };
+    } else {
+      logError('Failed to add category:', result.message);
+      return { success: false, message: result.message || 'Failed to add category' };
+    }
+  } catch (error) {
+    logError('Exception in addFormCategory:', error);
+    return { success: false, message: 'An error occurred while adding the category' };
+  }
+};
+
+// Update form category
+export const updateFormCategory = async (categoryId: number, name: string, description?: string): Promise<{ success: boolean; category?: FormCategory; message: string }> => {
+  logDebug('updateFormCategory called with:', { categoryId, name, description });
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const apiUrl = `/api/form-categories/${categoryId}`;
+    logDebug(`Making PATCH request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name, description }),
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (response.ok && result.success) {
+      logDebug('Category updated successfully');
+      return {
+        success: true,
+        category: result.category,
+        message: result.message || 'Category updated successfully'
+      };
+    } else {
+      logError('Failed to update category:', result.message);
+      return { success: false, message: result.message || 'Failed to update category' };
+    }
+  } catch (error) {
+    logError('Exception in updateFormCategory:', error);
+    return { success: false, message: 'An error occurred while updating the category' };
+  }
+};
+
+// Delete form category
+export const deleteFormCategory = async (categoryId: number): Promise<{ success: boolean; message: string }> => {
+  logDebug('deleteFormCategory called with categoryId:', categoryId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const apiUrl = `/api/form-categories/${categoryId}`;
+    logDebug(`Making DELETE request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (response.ok && result.success) {
+      logDebug('Category deleted successfully');
+      return { success: true, message: result.message || 'Category deleted successfully' };
+    } else {
+      logError('Failed to delete category:', result.message);
+      return { success: false, message: result.message || 'Failed to delete category' };
+    }
+  } catch (error) {
+    logError('Exception in deleteFormCategory:', error);
+    return { success: false, message: 'An error occurred while deleting the category' };
+  }
 };

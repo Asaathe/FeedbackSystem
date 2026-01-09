@@ -1,3 +1,4 @@
+console.log("🔧 Loading dependencies...");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -8,7 +9,10 @@ const rateLimit = require("express-rate-limit");
 const helmet = require("helmet");
 const { body, validationResult } = require("express-validator");
 const crypto = require("crypto");
+const multer = require("multer");
+const fs = require("fs");
 const db = require("./db");
+console.log("✅ Dependencies loaded successfully");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -25,13 +29,11 @@ app.use((req, res, next) => {
   }
   next();
 });
-const JWT_SECRET = process.env.JWT_SECRET || (() => {
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error('JWT_SECRET environment variable is required in production');
-  }
+const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
+
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
   console.warn('Using default JWT secret - set JWT_SECRET environment variable for production');
-  return "your-super-secret-jwt-key-change-in-production";
-})();
+}
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
 
 // Security middleware
@@ -43,7 +45,7 @@ app.use(
         styleSrc: ["'self'", "'unsafe-inline'"],
         scriptSrc: ["'self'"],
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: ["'self'", "https://localhost:5000", "https://yourdomain.com"],
+        connectSrc: ["'self'", "http://localhost:5000", "https://yourdomain.com"],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
@@ -102,7 +104,7 @@ const corsOptions = {
   origin: function(origin, callback) {
     // Allow requests with no origin (like mobile apps or curl requests)
     // Also allow any localhost origin for development
-    if (!origin || origin.match(/^http:\/\/localhost(:\d+)?$/) || origin.match(/^http:\/\/127\.0\.0\.1(:\d+)?$/)) {
+    if (!origin || origin.match(/^http:\/\/localhost(:\d+)?$/) || origin.match(/^https:\/\/localhost(:\d+)?$/) || origin.match(/^http:\/\/127\.0\.0\.1(:\d+)?$/) || origin.match(/^https:\/\/127\.0\.0\.1(:\d+)?$/)) {
       callback(null, true);
     } else {
       // In production, only allow specified domains
@@ -542,7 +544,7 @@ app.post(
                 email: sanitizedEmail,
                 fullName: formattedFullName,
                 role: role,
-                status: 'active', // New users are active after signup
+                status: 'pending', // New users are pending after signup
               },
             });
           }
@@ -2173,10 +2175,7 @@ app.get("/api/forms/templates", verifyToken, (req, res) => {
     res.json({ success: true, templates: results });
   });
 });
-
 // Image upload endpoint
-const multer = require("multer");
-const fs = require("fs");
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -2216,6 +2215,165 @@ app.post("/api/upload/image", verifyToken, upload.single('image'), (req, res) =>
 
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// ============================================================
+// FORM CATEGORY MANAGEMENT ENDPOINTS
+// ============================================================
+
+// Get all form categories
+app.get("/api/form-categories", verifyToken, (req, res) => {
+  const query = "SELECT id, name, description FROM Form_Categories ORDER BY name";
+  
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+    
+    res.json({ success: true, categories: results });
+  });
+});
+
+// Add new form category (admin only)
+app.post("/api/form-categories", verifyToken, (req, res) => {
+  const { name, description } = req.body;
+  
+  // Validate input
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, message: "Category name is required" });
+  }
+  
+  // Check if category already exists
+  const checkQuery = "SELECT id FROM Form_Categories WHERE name = ?";
+  db.query(checkQuery, [name.trim()], (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Database error:", checkErr);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+    
+    if (checkResults.length > 0) {
+      return res.status(400).json({ success: false, message: "Category already exists" });
+    }
+    
+    // Insert new category
+    const insertQuery = "INSERT INTO Form_Categories (name, description) VALUES (?, ?)";
+    db.query(insertQuery, [name.trim(), description || null], (insertErr, insertResult) => {
+      if (insertErr) {
+        console.error("Database error:", insertErr);
+        return res.status(500).json({ success: false, message: "Failed to add category" });
+      }
+      
+      res.status(201).json({
+        success: true,
+        message: "Category added successfully",
+        category: {
+          id: insertResult.insertId,
+          name: name.trim(),
+          description: description || null
+        }
+      });
+    }); // Close insertQuery callback
+  }); // Close checkQuery callback
+}); // Close app.post
+
+// Update form category (admin only)
+app.patch("/api/form-categories/:id", verifyToken, (req, res) => {
+  const categoryId = req.params.id;
+  const { name, description } = req.body;
+  
+  // Validate input
+  if (!name || !name.trim()) {
+    return res.status(400).json({ success: false, message: "Category name is required" });
+  }
+  
+  // Check if category exists
+  const checkQuery = "SELECT id FROM Form_Categories WHERE id = ?";
+  db.query(checkQuery, [categoryId], (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Database error:", checkErr);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+    
+    if (checkResults.length === 0) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+    
+    // Update category
+    const updateQuery = "UPDATE Form_Categories SET name = ?, description = ? WHERE id = ?";
+    db.query(updateQuery, [name.trim(), description || null, categoryId], (updateErr, updateResult) => {
+      if (updateErr) {
+        console.error("Database error:", updateErr);
+        return res.status(500).json({ success: false, message: "Failed to update category" });
+      }
+      
+      if (updateResult.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "Category not found" });
+      }
+      
+      res.json({
+        success: true,
+        message: "Category updated successfully",
+        category: {
+          id: categoryId,
+          name: name.trim(),
+          description: description || null
+        }
+      });
+    }); // Close updateQuery callback
+  }); // Close checkQuery callback
+}); // Close app.patch
+// Delete form category (admin only)
+app.delete("/api/form-categories/:id", verifyToken, (req, res) => {
+  const categoryId = req.params.id;
+  
+  // Check if category exists
+  const checkQuery = "SELECT id FROM Form_Categories WHERE id = ?";
+  db.query(checkQuery, [categoryId], (checkErr, checkResults) => {
+    if (checkErr) {
+      console.error("Database error:", checkErr);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+    
+    if (checkResults.length === 0) {
+      return res.status(404).json({ success: false, message: "Category not found" });
+    }
+    
+    // Check if category is used by any forms
+    const usageQuery = "SELECT COUNT(*) as count FROM Forms WHERE category = (SELECT name FROM Form_Categories WHERE id = ?)";
+    db.query(usageQuery, [categoryId], (usageErr, usageResults) => {
+      if (usageErr) {
+        console.error("Database error:", usageErr);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+      
+      const usageCount = usageResults[0].count;
+      if (usageCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete category as it's used by ${usageCount} form(s)`
+        });
+      }
+      
+      // Delete category
+      const deleteQuery = "DELETE FROM Form_Categories WHERE id = ?";
+      db.query(deleteQuery, [categoryId], (deleteErr, deleteResult) => {
+        if (deleteErr) {
+          console.error("Database error:", deleteErr);
+          return res.status(500).json({ success: false, message: "Failed to delete category" });
+        }
+        
+        if (deleteResult.affectedRows === 0) {
+          return res.status(404).json({ success: false, message: "Category not found" });
+        }
+        
+        res.json({
+          success: true,
+          message: "Category deleted successfully"
+        });
+      });
+    });
+  });
+});
 
 // ============================================================
 // FORM RESPONSE SUBMISSION ENDPOINTS
@@ -2815,8 +2973,10 @@ app.use((req, res) => {
 // Routes are handled directly in this file
 
 app.listen(port, () => {
-  console.log(`🔒 Secure server is running on port ${port}`);
+  console.log(`🔧 Starting server...`);
+  console.log(` Secure server is running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`✅ Server startup complete`);
 });
 
 module.exports = app;
