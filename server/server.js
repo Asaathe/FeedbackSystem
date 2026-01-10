@@ -1772,10 +1772,12 @@ app.get("/api/forms", verifyToken, (req, res) => {
 
   let query = `
     SELECT f.*, u.full_name as creator_name,
-           COUNT(DISTINCT fr.id) as submission_count
+           COUNT(DISTINCT fr.id) as submission_count,
+           COUNT(DISTINCT q.id) as question_count
     FROM Forms f
     LEFT JOIN Users u ON f.created_by = u.id
     LEFT JOIN Form_Responses fr ON f.id = fr.form_id
+    LEFT JOIN Questions q ON f.id = q.form_id
     WHERE 1=1
   `;
   const params = [];
@@ -1838,6 +1840,24 @@ app.get("/api/forms", verifyToken, (req, res) => {
       const total = countResults[0].total;
       const totalPages = Math.ceil(total / parseInt(limit));
 
+      // ADD THIS LOGGING
+      console.log('Forms API response:', {
+        success: true,
+        formCount: results.length,
+        forms: results.map(f => ({
+          id: f.id,
+          title: f.title,
+          status: f.status,
+          submission_count: f.submission_count,
+          question_count: f.question_count,
+          has_image_url: !!f.image_url,
+          image_url_type: typeof f.image_url,
+          image_url_length: f.image_url?.length,
+          image_url_preview: f.image_url ? (f.image_url.substring(0, 50) + '...') : 'none'
+        })),
+        pagination: { total, page: parseInt(page), limit: parseInt(limit), totalPages }
+      });
+      
       res.json({
         success: true,
         forms: results,
@@ -1920,8 +1940,8 @@ app.post("/api/forms", verifyToken, (req, res) => {
 
   // Insert form
   const formQuery = `
-    INSERT INTO Forms (title, description, category, target_audience, start_date, end_date, image_url, is_template, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO Forms (title, description, category, target_audience, start_date, end_date, image_url, is_template, status, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
   `;
 
   db.query(formQuery, [title, description, category, targetAudience, startDate, endDate, imageUrl, isTemplate, createdBy], (err, result) => {
@@ -2000,6 +2020,12 @@ app.post("/api/forms", verifyToken, (req, res) => {
       Promise.all(questionPromises)
         .then(() => {
           console.log(`✅ Form ${formId} created with ${questions.length} questions`);
+          console.log('Form creation response:', {
+            success: true,
+            message: "Form created successfully",
+            formId,
+            questionCount: questions.length
+          });
           res.status(201).json({
             success: true,
             message: "Form created successfully",

@@ -171,11 +171,17 @@ export const getForms = async (
         image_url: form.image_url,
         submission_count: form.submission_count || 0,
         created_at: form.created_at,
-        question_count: form.question_count || 0,
+        // Try different possible field names for question count
+        question_count: form.question_count || form.questions_count || form.total_questions || 0,
         creator_name: form.creator_name,
         is_template: form.is_template,
+        // Store the questions array if available
+        questions: form.questions || undefined,
+        // Debug: log the raw form data to see what's actually being returned
+        _rawData: form,
       }));
       logDebug(`Successfully loaded ${forms.length} forms`);
+      console.log('Forms data from API:', forms);
       return {
         success: true,
         forms,
@@ -232,6 +238,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
 
     const result = await response.json();
     logDebug('Response data:', result);
+    console.log('Create form API response:', result);
 
     if (response.ok && result.success) {
       logDebug('Form created successfully with ID:', result.formId);

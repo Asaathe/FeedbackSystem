@@ -38,6 +38,7 @@ import { toast } from "sonner";
 import { getForms, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, getFilteredUsers, getFormCategories, addFormCategory, updateFormCategory, deleteFormCategory } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../Reusable_components/checkbox";
+import { EnhancedImage, validateImageFile } from "../../utils/imageUtils";
 import { ScrollArea } from "../Reusable_components/scroll-area";
 import { Separator } from "../Reusable_components/separator";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../Reusable_components/collapsible";
@@ -237,16 +238,10 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("Image too large", {
-          description: "Please upload an image smaller than 5MB",
-        });
-        return;
-      }
-      
-      if (!file.type.startsWith('image/')) {
-        toast.error("Invalid file type", {
-          description: "Please upload an image file",
+      const { isValid, error } = validateImageFile(file);
+      if (!isValid) {
+        toast.error("Image upload failed", {
+          description: error,
         });
         return;
       }
@@ -421,7 +416,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
   };
 
   // Save and Publish Functions (simplified for now)
-  const saveDraft = async () => {
+  const saveForm = async () => {
     // Validate required fields
     if (!formTitle.trim()) {
       toast.error('Please enter a form title');
@@ -445,17 +440,27 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
         category: formCategory,
         targetAudience: formTarget,
         questions: questions,
+        question_count: questions.length,
+        total_questions: questions.length,  // Try alternative field name
+        questions_count: questions.length,  // Try another alternative field name
         imageUrl: formImage || undefined,
         isTemplate: false,
         status: 'active',
       };
 
-      console.log('Saving draft with data:', formData);
+      console.log('Saving form with data:', formData);
+      console.log('Image URL being saved:', formData.imageUrl);
       const result = await createForm(formData);
-      console.log('API response:', result);
 
       if (result.success) {
-        toast.success(formId ? 'Form updated successfully' : 'Form saved as draft');
+        toast.success(formId ? 'Form updated successfully' : 'Form saved successfully');
+        // Navigate back to forms list after successful save
+        if (!formId) {
+          // Add a small delay to ensure the form is saved before navigating back
+          setTimeout(() => {
+            onBack();
+          }, 1000);
+        }
       } else {
         toast.error(result.message || 'Failed to save form');
       }
@@ -484,12 +489,16 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
         category: formCategory,
         targetAudience: formTarget,
         questions: questions,
+        question_count: questions.length,
+        total_questions: questions.length,  // Try alternative field name
+        questions_count: questions.length,  // Try another alternative field name
         imageUrl: formImage || undefined,
         isTemplate: false,
-        status: 'draft',
+        status: 'active',
       };
       
       console.log('Publishing form with data:', formData);
+      console.log('Image URL being sent:', formData.imageUrl);
       const result = await createForm(formData);
       console.log('API response:', result);
       
@@ -663,24 +672,24 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                 <>
                   <Button
                     variant="outline"
-                    onClick={saveDraft}
+                    onClick={saveForm}
                     disabled={loading}
                     size="sm"
                     className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                   >
                     <Save className="w-4 h-4 sm:mr-2" />
-                    <span className="hidden sm:inline">{loading ? "Saving..." : "Save Draft"}</span>
+                    <span className="hidden sm:inline">{loading ? "Saving..." : "Save"}</span>
                   </Button>
                   
                   <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
                     <DialogTrigger asChild>
-                      <Button 
+                      <Button
                         variant="outline"
                         size="sm"
                         className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                       >
                         <Eye className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Preview</span>
+                        <span className="hidden sm:inline">View</span>
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
@@ -696,7 +705,11 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                           {/* Form Header */}
                           {formImage && (
                             <div className="w-full">
-                              <img src={formImage} alt="Form header" className="w-full h-48 object-cover rounded-t-lg" />
+                              <EnhancedImage
+                                src={formImage}
+                                alt={formTitle || "Form header"}
+                                className="w-full h-48 object-cover rounded-t-lg"
+                              />
                             </div>
                           )}
                           
@@ -1278,11 +1291,11 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                             <Button
                               variant="outline"
                               onClick={() => {
-                                toast.success('Form saved as draft');
+                                toast.success('Form saved successfully');
                                 setPublishDialogOpen(false);
                               }}
                             >
-                              Save as Draft
+                              Save
                             </Button>
                             <Button
                               className="bg-green-600 hover:bg-green-700"
@@ -1351,6 +1364,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                   <div className="space-y-2">
                     <Label>Form Image (Optional)</Label>
                     <p className="text-xs text-gray-500">Add a header image to personalize your feedback form</p>
+                    <p className="text-xs text-gray-400">Accepted formats: JPEG, PNG, GIF, WebP (max 5MB)</p>
                     
                     {!formImage ? (
                       <div className="border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 transition-colors">
@@ -1360,7 +1374,7 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                             <p className="text-sm">
                               <span className="text-green-600">Click to upload</span> or drag and drop
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">PNG, JPG up to 5MB</p>
+                            <p className="text-xs text-gray-500 mt-1">JPEG, PNG, GIF, WebP • Max 5MB</p>
                           </div>
                           <input
                             id="form-image-upload"
@@ -1373,9 +1387,9 @@ export function FormBuilder({ onBack, formId, isCustomFormTab }: FormBuilderProp
                       </div>
                     ) : (
                       <div className="relative rounded-lg overflow-hidden border-2 border-green-200">
-                        <img 
-                          src={formImage} 
-                          alt="Form header" 
+                        <EnhancedImage
+                          src={formImage}
+                          alt="Form header"
                           className="w-full h-48 object-cover"
                         />
                         <Button

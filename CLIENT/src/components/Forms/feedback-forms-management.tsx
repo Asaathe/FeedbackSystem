@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../Reusable_components
 import { toast } from "sonner";
 import { getForms, getForm, createForm, updateForm, deleteForm, duplicateForm, getFormTemplates, saveAsTemplate, FormData } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
+import { formatImageUrl, EnhancedImage } from "../../utils/imageUtils";
 
 
 
@@ -46,21 +47,35 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedTarget, setSelectedTarget] = useState('all');
-  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
+  
+  // Load question count cache from localStorage on component mount
+  const [formQuestionCache, setFormQuestionCache] = useState<Record<string, number>>(() => {
+    try {
+      const saved = localStorage.getItem('form_question_cache');
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error('Error loading form question cache:', error);
+      return {};
+    }
+  });
+  
+  // Save question count cache to localStorage when it changes
+  useEffect(() => {
+    try {
+      localStorage.setItem('form_question_cache', JSON.stringify(formQuestionCache));
+    } catch (error) {
+      console.error('Error saving form question cache:', error);
+    }
+  }, [formQuestionCache]);
   const [loading, setLoading] = useState(true);
   const [customForms, setCustomForms] = useState<FormData[]>([]);
   const [templateForms, setTemplateForms] = useState<FormData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('custom');
 
-  // Form state for creating new forms
-  const [newFormTitle, setNewFormTitle] = useState('');
-  const [newFormDescription, setNewFormDescription] = useState('');
-  const [newFormCategory, setNewFormCategory] = useState('Academic');
-  const [newFormTarget, setNewFormTarget] = useState('Students');
 
   // Form state for editing forms
   const [editFormTitle, setEditFormTitle] = useState('');
@@ -95,7 +110,24 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     try {
       // Load custom forms
       const customResult = await getForms('custom', 'all', '', 1, 100);
+      console.log('Forms list load result:', customResult);
+      console.log('Loaded forms data:', customResult.forms);
+      if (customResult.forms && customResult.forms.length > 0) {
+        console.log('Form data details:', customResult.forms.map(f => ({
+          id: f.id,
+          title: f.title,
+          question_count: f.question_count,
+          submission_count: f.submission_count,
+          hasQuestions: !!f.questions,
+          questionsLength: f.questions?.length,
+          image_url: f.image_url,
+          image_url_type: typeof f.image_url
+        })));
+      } else {
+        console.log('No custom forms loaded');
+      }
       if (customResult.success) {
+        console.log('Loaded forms:', customResult.forms);
         setCustomForms(customResult.forms);
       } else {
         setError('Unable to load feedback forms. Please check your connection and try again.');
@@ -129,45 +161,6 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     return matchesSearch && matchesCategory && matchesTarget;
   });
 
-  // Action handlers
-  const handleCreateForm = async () => {
-    if (!newFormTitle.trim()) {
-      toast.error('Please enter a form title');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const result = await createForm({
-        title: newFormTitle,
-        description: newFormDescription,
-        category: newFormCategory,
-        targetAudience: newFormTarget,
-      });
-
-      if (result.success) {
-        toast.success(result.message);
-        setCreateDialogOpen(false);
-        setNewFormTitle('');
-        setNewFormDescription('');
-        // Reload forms to show the new one
-        await loadForms();
-
-        // Navigate to form builder with the new form ID
-        if (onNavigateToBuilder && result.formId) {
-          onNavigateToBuilder(result.formId);
-        }
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      console.error('Error creating form:', error);
-      toast.error('An error occurred while creating the form');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handlePreviewForm = async (form: FormData) => {
     try {
@@ -277,6 +270,46 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     }
   };
 
+  // Update question cache when forms are loaded
+  useEffect(() => {
+    // Update cache with question counts from loaded forms
+    const newCache: Record<string, number> = {};
+    [...customForms, ...templateForms].forEach(form => {
+      const questionCount = getQuestionCount(form);
+      if (questionCount > 0) {
+        newCache[form.id] = questionCount;
+      }
+    });
+    setFormQuestionCache(prev => ({ ...prev, ...newCache }));
+  }, [customForms, templateForms]);
+
+  // Function to get question count with cache fallback
+  const getQuestionCount = (form: FormData): number => {
+    // First check if we have cached data for this form
+    if (formQuestionCache[form.id] !== undefined) {
+      return formQuestionCache[form.id];
+    }
+    
+    // Then check the form data
+    if (form.questions && form.questions.length > 0) {
+      return form.questions.length;
+    }
+    
+    if (form.question_count > 0) {
+      return form.question_count;
+    }
+    
+    return 0;
+  };
+
+  // Function to update question cache
+  const updateQuestionCache = (formId: string, questionCount: number) => {
+    setFormQuestionCache(prev => ({
+      ...prev,
+      [formId]: questionCount
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -287,13 +320,6 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
         </div>
         <div className="flex gap-2">
           <Button
-            variant="outline"
-            onClick={() => setCreateDialogOpen(true)}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Quick Create
-          </Button>
-          <Button
             className="bg-green-500 hover:bg-green-600"
             onClick={() => onNavigateToBuilder?.()}
           >
@@ -303,76 +329,6 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
         </div>
       </div>
 
-      {/* Quick Create Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Quick Create Form</DialogTitle>
-            <DialogDescription>
-              Create a basic feedback form quickly
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label>Form Title</Label>
-              <Input
-                value={newFormTitle}
-                onChange={(e) => setNewFormTitle(e.target.value)}
-                placeholder="Enter form title"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Description</Label>
-              <Textarea
-                value={newFormDescription}
-                onChange={(e) => setNewFormDescription(e.target.value)}
-                placeholder="Brief description"
-                rows={3}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Category</Label>
-                <Select value={newFormCategory} onValueChange={setNewFormCategory}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Target Audience</Label>
-                <Select value={newFormTarget} onValueChange={setNewFormTarget}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {targetAudienceOptions.map((option) => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                className="bg-green-500 hover:bg-green-600"
-                onClick={handleCreateForm}
-                disabled={loading}
-              >
-                {loading ? 'Creating...' : 'Create Form'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
@@ -392,6 +348,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                   <Badge variant="secondary">{selectedForm.category}</Badge>
                   <Badge variant="outline">Target: {selectedForm.target_audience}</Badge>
                   <Badge variant="outline">{selectedForm.questions?.length || selectedForm.question_count || 0} Questions</Badge>
+                  <Badge variant="outline">Status: {selectedForm.status}</Badge>
                 </div>
               </div>
              
@@ -581,6 +538,15 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCustomForms.map((form) => (
                   <Card key={form.id} className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden">
+                    {/* Image or Placeholder */}
+                    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100">
+                      <EnhancedImage
+                        src={form.image_url}
+                        alt={form.title || 'Form image'}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
                     <CardHeader>
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -600,7 +566,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handlePreviewForm(form)}>
                               <FileText className="w-4 h-4 mr-2" />
-                              Preview
+                              View
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleDuplicateForm(form.id)}>
                               <Copy className="w-4 h-4 mr-2" />
@@ -646,7 +612,9 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                         </div>
                         <div>
                           <p className="text-gray-500">Questions</p>
-                          <p className="font-medium">{form.question_count}</p>
+                          <p className="font-medium">
+                            {getQuestionCount(form) > 0 ? getQuestionCount(form) : 'N/A'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex gap-2">
@@ -685,6 +653,15 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTemplateForms.map((template) => (
                 <Card key={template.id} className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden">
+                  {/* Add image display here */}
+                  <div className="w-full h-40 overflow-hidden">
+                    <EnhancedImage
+                      src={template.image_url}
+                      alt={template.title || 'Template image'}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
                   <CardHeader>
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
@@ -703,7 +680,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                         <DropdownMenuContent align="end">
                           <DropdownMenuItem onClick={() => handlePreviewForm(template)}>
                             <FileText className="w-4 h-4 mr-2" />
-                            Preview
+                            View
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => handleDuplicateForm(template.id)}>
                             <Copy className="w-4 h-4 mr-2" />
@@ -733,7 +710,9 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <div>
                         <p className="text-gray-500">Questions</p>
-                        <p className="font-medium">{template.question_count}</p>
+                        <p className="font-medium">
+                          {getQuestionCount(template) > 0 ? getQuestionCount(template) : 'N/A'}
+                        </p>
                       </div>
                       <div>
                         <p className="text-gray-500">Target</p>
