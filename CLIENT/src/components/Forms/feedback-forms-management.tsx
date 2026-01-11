@@ -36,12 +36,17 @@ const categories = [
 ];
 
 const targetAudienceOptions = [
-  'Students',
-  'Alumni',
-  'Instructors', 
-  'Staff',
-  'All Users'
+'Students',
+'Alumni',
+'Instructors',
+'Staff',
+'All Users'
 ];
+
+interface FeedbackFormsManagementProps {
+onNavigateToBuilder?: (formId?: string) => void;
+onNavigateToEdit?: (formId: string) => void;
+}
 
 export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsManagementProps = {}) {
   const [searchQuery, setSearchQuery] = useState('');
@@ -71,6 +76,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     }
   }, [formQuestionCache]);
   const [loading, setLoading] = useState(true);
+  const [savingAsTemplate, setSavingAsTemplate] = useState<string | null>(null);
   const [customForms, setCustomForms] = useState<FormData[]>([]);
   const [templateForms, setTemplateForms] = useState<FormData[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -108,7 +114,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     }
 
     try {
-      // Load custom forms
+      // Load custom forms (non-template forms)
       const customResult = await getForms('custom', 'all', '', 1, 100);
       console.log('Forms list load result:', customResult);
       console.log('Loaded forms data:', customResult.forms);
@@ -121,20 +127,25 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
           hasQuestions: !!f.questions,
           questionsLength: f.questions?.length,
           image_url: f.image_url,
-          image_url_type: typeof f.image_url
+          image_url_type: typeof f.image_url,
+          is_template: f.is_template,
+          status: f.status
         })));
       } else {
         console.log('No custom forms loaded');
       }
       if (customResult.success) {
         console.log('Loaded forms:', customResult.forms);
-        setCustomForms(customResult.forms);
+        // Filter out templates from custom forms
+        const customFormsOnly = customResult.forms.filter(f => !f.is_template);
+        setCustomForms(customFormsOnly);
       } else {
         setError('Unable to load feedback forms. Please check your connection and try again.');
       }
 
       // Load templates
       const templates = await getFormTemplates();
+      console.log('Loaded templates:', templates);
       setTemplateForms(templates);
     } catch (err) {
       console.error('Error loading forms:', err);
@@ -211,10 +222,11 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
 
   const handleSaveAsTemplate = async (formId: string) => {
     try {
+      setSavingAsTemplate(formId);
       const result = await saveAsTemplate(formId);
       if (result.success) {
         toast.success(result.message);
-        // Reload forms to show the template in the templates tab
+        // Reload forms to show the template in the templates tab and remove from custom forms
         await loadForms();
         // Switch to templates tab
         setActiveTab('templates');
@@ -224,6 +236,8 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
     } catch (error) {
       console.error('Error saving as template:', error);
       toast.error('An error occurred while saving as template');
+    } finally {
+      setSavingAsTemplate(null);
     }
   };
 
@@ -334,9 +348,9 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Form Preview</DialogTitle>
+            <DialogTitle>Form View</DialogTitle>
             <DialogDescription>
-              Preview of: {selectedForm?.title}
+              View of: {selectedForm?.title}
             </DialogDescription>
           </DialogHeader>
           {selectedForm && (
@@ -374,7 +388,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
 
               <div className="flex justify-end pt-4">
                 <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
-                  Close Preview
+                  Close View
                 </Button>
               </div>
             </div>
@@ -572,9 +586,12 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                               <Copy className="w-4 h-4 mr-2" />
                               Duplicate
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSaveAsTemplate(form.id)}>
+                            <DropdownMenuItem
+                              onClick={() => handleSaveAsTemplate(form.id)}
+                              disabled={savingAsTemplate === form.id}
+                            >
                               <Star className="w-4 h-4 mr-2" />
-                              Save as Template
+                              {savingAsTemplate === form.id ? 'Saving...' : 'Save as Template'}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"
@@ -623,11 +640,11 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                           className="flex-1 border-green-200 hover:bg-green-50"
                           onClick={() => handlePreviewForm(form)}
                         >
-                          Preview
+                          View
                         </Button>
                         <Button
                           className="flex-1 bg-green-500 hover:bg-green-600"
-                          onClick={() => handleEditForm(form)}
+                          onClick={() => onNavigateToBuilder?.(form.id)}
                         >
                           Edit
                         </Button>
@@ -654,7 +671,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
               {filteredTemplateForms.map((template) => (
                 <Card key={template.id} className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden">
                   {/* Add image display here */}
-                  <div className="w-full h-40 overflow-hidden">
+                  <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
                     <EnhancedImage
                       src={template.image_url}
                       alt={template.title || 'Template image'}
@@ -720,12 +737,12 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                       </div>
                     </div>
                     <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="flex-1 border-purple-200 hover:bg-purple-50"
                         onClick={() => handlePreviewForm(template)}
                       >
-                        Preview
+                        View
                       </Button>
                       <Button 
                         className="flex-1 bg-purple-500 hover:bg-purple-600"

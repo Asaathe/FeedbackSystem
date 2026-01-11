@@ -378,40 +378,46 @@ export const duplicateForm = async (formId: string): Promise<{ success: boolean;
 export const saveAsTemplate = async (formId: string): Promise<{ success: boolean; templateId?: string; message: string }> => {
   logDebug('saveAsTemplate called with formId:', formId);
 
-  // First, fetch the existing form data
-  const formResult = await getForm(formId);
-  if (!formResult.success || !formResult.form) {
-    logError('Failed to fetch form data for template creation');
-    return { success: false, message: formResult.message || 'Failed to fetch form data' };
-  }
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
 
-  const form = formResult.form;
+    // Call the new API endpoint that handles both template creation and form status update
+    const response = await fetch(`/api/forms/${formId}/save-as-template`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
 
-  // Prepare template data from existing form (without questions for templates)
-  const templateData: CreateFormData = {
-    title: form.title,
-    description: form.description,
-    category: form.category,
-    targetAudience: form.target_audience,
-    startDate: form.startDate,
-    endDate: form.endDate,
-    imageUrl: form.imageUrl,
-    isTemplate: true,
-  };
+    logDebug('Response status:', response.status, response.statusText);
 
-  const result = await createForm(templateData);
+    const result = await response.json();
+    logDebug('Response data:', result);
 
-  if (result.success) {
-    return {
-      success: true,
-      templateId: result.formId,
-      message: result.message || 'Form saved as template successfully'
-    };
-  } else {
-    return {
-      success: false,
-      message: result.message || 'Failed to save form as template'
-    };
+    if (response.ok && result.success) {
+      logDebug('Form saved as template successfully');
+      return {
+        success: true,
+        templateId: result.templateId,
+        message: result.message || 'Form saved as template successfully'
+      };
+    } else {
+      logError('Failed to save form as template:', result.message);
+      return {
+        success: false,
+        message: result.message || 'Failed to save form as template'
+      };
+    }
+  } catch (error) {
+    logError('Exception in saveAsTemplate:', error);
+    return { success: false, message: 'An error occurred while saving as template' };
   }
 };
 
@@ -489,8 +495,8 @@ export const getFormTemplates = async (): Promise<FormData[]> => {
 
   const result = await getForms('templates', 'all', '', 1, 100);
   if (result.success) {
-    // Ensure templates have is_template: true and status: 'template'
-    return result.forms.map(form => ({ ...form, is_template: true, status: 'template' }));
+    // Filter to ensure only templates are returned and maintain their original data
+    return result.forms.filter(form => form.is_template || form.status === 'template');
   }
   return [];
 };

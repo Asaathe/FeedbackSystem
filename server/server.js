@@ -1,4 +1,5 @@
-console.log("🔧 Loading dependencies...");
+console.log("Loading dependencies...");
+console.log("Loading dependencies...");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -12,7 +13,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const fs = require("fs");
 const db = require("./db");
-console.log("✅ Dependencies loaded successfully");
+console.log("Dependencies loaded successfully");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -1941,7 +1942,7 @@ app.post("/api/forms", verifyToken, (req, res) => {
   // Insert form
   const formQuery = `
     INSERT INTO Forms (title, description, category, target_audience, start_date, end_date, image_url, is_template, status, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)
   `;
 
   db.query(formQuery, [title, description, category, targetAudience, startDate, endDate, imageUrl, isTemplate, createdBy], (err, result) => {
@@ -2151,6 +2152,99 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
 
       // Copy questions (simplified - in production you'd copy all questions and options)
       res.status(201).json({ success: true, message: "Form duplicated successfully", formId: newFormId });
+    });
+  });
+});
+
+// Save form as template (moves form to templates and updates status)
+app.post("/api/forms/:id/save-as-template", verifyToken, (req, res) => {
+  const formId = req.params.id;
+  const userId = req.userId;
+
+  console.log(`🔄 Save as template request for form ${formId} by user ${userId}`);
+
+  // First, get the original form
+  db.query("SELECT * FROM Forms WHERE id = ?", [formId], (err, formResults) => {
+    if (err) {
+      console.error("Database error fetching form:", err);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+
+    if (formResults.length === 0) {
+      console.log(`❌ Form ${formId} not found`);
+      return res.status(404).json({ success: false, message: "Original form not found" });
+    }
+
+    const originalForm = formResults[0];
+    console.log(`📋 Original form data:`, {
+      id: originalForm.id,
+      title: originalForm.title,
+      is_template: originalForm.is_template,
+      status: originalForm.status,
+      image_url: originalForm.image_url ? 'present' : 'none'
+    });
+
+    // Create template from the original form
+    const templateQuery = `
+      INSERT INTO Forms (title, description, category, target_audience, status, image_url, start_date, end_date, is_template, created_by)
+      VALUES (?, ?, ?, ?, 'template', ?, ?, ?, TRUE, ?)
+    `;
+
+    db.query(templateQuery, [
+      originalForm.title + ' (Template)',
+      originalForm.description,
+      originalForm.category,
+      originalForm.target_audience,
+      originalForm.image_url,
+      originalForm.start_date,
+      originalForm.end_date,
+      userId
+    ], (templateErr, templateResult) => {
+      if (templateErr) {
+        console.error("Template creation error:", templateErr);
+        return res.status(500).json({ success: false, message: "Failed to create template" });
+      }
+
+      const templateId = templateResult.insertId;
+      console.log(`✅ Template created with ID: ${templateId}`);
+
+      // Copy questions from original form to template
+      const copyQuestionsQuery = `
+        INSERT INTO Questions (form_id, question_text, question_type, description, required, min_value, max_value, order_index)
+        SELECT ?, question_text, question_type, description, required, min_value, max_value, order_index
+        FROM Questions WHERE form_id = ?
+      `;
+
+      db.query(copyQuestionsQuery, [templateId, formId], (copyErr, copyResult) => {
+        if (copyErr) {
+          console.error("Questions copy error:", copyErr);
+          // Rollback template creation if questions fail
+          db.query("DELETE FROM Forms WHERE id = ?", [templateId]);
+          return res.status(500).json({ success: false, message: "Failed to copy questions to template" });
+        }
+
+        console.log(`📋 Copied ${copyResult.affectedRows} questions to template`);
+
+        // Mark original form as template (move it to templates tab)
+        const updateOriginalQuery = "UPDATE Forms SET is_template = TRUE, status = 'template' WHERE id = ?";
+        db.query(updateOriginalQuery, [formId], (updateErr, updateResult) => {
+          if (updateErr) {
+            console.error("Original form update error:", updateErr);
+            // Rollback template creation if original form update fails
+            db.query("DELETE FROM Forms WHERE id = ?", [templateId]);
+            return res.status(500).json({ success: false, message: "Failed to update original form" });
+          }
+
+          console.log(`✅ Form ${formId} saved as template successfully`);
+          console.log(`✅ Original form ${formId} marked as template`);
+
+          res.json({
+            success: true,
+            message: "Form saved as template successfully",
+            templateId: templateId
+          });
+        });
+      });
     });
   });
 });
