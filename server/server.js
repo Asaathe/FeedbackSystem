@@ -336,7 +336,7 @@ app.get("/api/test", (req, res) => {
 
 // Database status route
 app.get("/api/db-status", (req, res) => {
-  db.query("SELECT COUNT(*) as userCount FROM users", (err, results) => {
+  db.query("SELECT COUNT(*) as userCount FROM Users", (err, results) => {
     if (err) {
       res.json({
         status: "error",
@@ -442,7 +442,7 @@ app.post(
       // Role-specific data will be collected later in profile update
 
       // Check if user already exists
-      const checkUserQuery = "SELECT * FROM users WHERE email = ?";
+      const checkUserQuery = "SELECT * FROM Users WHERE email = ?";
       db.query(checkUserQuery, [sanitizedEmail], async (err, results) => {
         if (err) {
           console.error("Database error:", err);
@@ -596,11 +596,11 @@ app.post(
             i.instructor_id, i.department, i.subject_taught,
             a.grad_year, a.degree, a.jobtitle, a.contact, a.company,
             e.companyname, e.industry, e.location, e.contact
-        FROM users u
-        LEFT JOIN students s ON u.id = s.user_id
-        LEFT JOIN instructors i ON u.id = i.user_id
-        LEFT JOIN alumni a ON u.id = a.user_id
-        LEFT JOIN employers e ON u.id = e.user_id
+        FROM Users u
+        LEFT JOIN Students s ON u.id = s.user_id
+        LEFT JOIN Instructors i ON u.id = i.user_id
+        LEFT JOIN Alumni a ON u.id = a.user_id
+        LEFT JOIN Employers e ON u.id = e.user_id
         WHERE u.email = ?
       `;
 
@@ -705,11 +705,11 @@ app.get("/api/auth/verify", verifyToken, (req, res) => {
       i.instructor_id, i.department, i.subject_taught,
       a.grad_year, a.degree, a.jobtitle, a.contact, a.company,
       e.companyname, e.industry, e.location, e.contact
-    FROM users u
-    LEFT JOIN students s ON u.id = s.user_id
-    LEFT JOIN instructors i ON u.id = i.user_id
-    LEFT JOIN alumni a ON u.id = a.user_id
-    LEFT JOIN employers e ON u.id = e.user_id
+    FROM Users u
+    LEFT JOIN Students s ON u.id = s.user_id
+    LEFT JOIN Instructors i ON u.id = i.user_id
+    LEFT JOIN Alumni a ON u.id = a.user_id
+    LEFT JOIN Employers e ON u.id = e.user_id
     WHERE u.id = ?
   `;
 
@@ -800,11 +800,11 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
       i.instructor_id, i.department, i.subject_taught,
       a.grad_year, a.degree, a.jobtitle, a.contact, a.company,
       e.companyname, e.industry, e.location, e.contact
-    FROM users u
-    LEFT JOIN students s ON u.id = s.user_id
-    LEFT JOIN instructors i ON u.id = i.user_id
-    LEFT JOIN alumni a ON u.id = a.user_id
-    LEFT JOIN employers e ON u.id = e.user_id
+    FROM Users u
+    LEFT JOIN Students s ON u.id = s.user_id
+    LEFT JOIN Instructors i ON u.id = i.user_id
+    LEFT JOIN Alumni a ON u.id = a.user_id
+    LEFT JOIN Employers e ON u.id = e.user_id
     WHERE u.id = ?
   `;
   
@@ -873,9 +873,12 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
 });
 
 // Get users filtered by role and specific criteria for form targeting
+-
 app.get("/api/users/filter", verifyToken, (req, res) => {
   try {
-    const { role, course, year, section, grade } = req.query;
+    const { role, course, year, section, grade, level, department } = req.query;
+
+    console.log('🔍 Filtering users with params:', { role, course, year, section, grade, level, department });
 
     if (!role) {
       return res.status(400).json({
@@ -884,66 +887,168 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       });
     }
 
-    let query = `
-      SELECT
-        u.id, u.email, u.full_name, u.role, u.status,
-        s.studentID, s.course_yr_section,
-        i.instructor_id, i.department,
-        a.degree, a.company,
-        e.companyname, e.industry
-      FROM users u
-      LEFT JOIN students s ON u.id = s.user_id
-      LEFT JOIN instructors i ON u.id = i.user_id
-      LEFT JOIN alumni a ON u.id = a.user_id
-      LEFT JOIN employers e ON u.id = e.user_id
-      WHERE u.role = ? AND u.status = 'active'
-    `;
+    let query;
+    let params = [];
 
-    const params = [role];
-
-    // Add role-specific filters
     if (role === 'student') {
-      if (course && year && section) {
-        // College students: course_yr_section like "BSIT 4-B"
+      query = `
+        SELECT
+          u.id,
+          u.email,
+          u.full_name,
+          u.role,
+          u.status,
+          s.studentID,
+          s.course_yr_section
+        FROM Users u
+        JOIN Students s ON u.id = s.user_id
+        WHERE u.role = 'student' AND u.status = 'active'
+      `;
+
+      // Handle different filtering scenarios
+      if (level === 'College' && course && year && section) {
+        // College student: "BSIT 4-A"
+        const courseYrSection = `${course} ${year}-${section}`;
         query += " AND s.course_yr_section = ?";
-        params.push(`${course} ${year}-${section}`);
-      } else if (grade && section) {
-        // High school students: course_yr_section like "Grade 11-A"
+        params.push(courseYrSection);
+        console.log('🎓 Filtering college students:', courseYrSection);
+        
+      } else if (level === 'High School' && grade && section) {
+        // High school student: "Grade 11-A"
+        const gradeSection = `${grade}-${section}`;
         query += " AND s.course_yr_section = ?";
-        params.push(`${grade}-${section}`);
+        params.push(gradeSection);
+        console.log('📚 Filtering high school students:', gradeSection);
+        
+      } else if (course) {
+        // Just course filter (e.g., all BSIT students)
+        query += " AND s.course_yr_section LIKE ?";
+        params.push(`${course}%`);
+        console.log('🏫 Filtering by course:', course);
+      } else if (grade) {
+        // Just grade filter (e.g., all Grade 11 students)
+        query += " AND s.course_yr_section LIKE ?";
+        params.push(`${grade}%`);
+        console.log('📚 Filtering by grade:', grade);
       }
+      
     } else if (role === 'instructor') {
-      if (course) {
+      query = `
+        SELECT
+          u.id,
+          u.email,
+          u.full_name,
+          u.role,
+          u.status,
+          i.instructor_id,
+          i.department,
+          i.subject_taught
+        FROM Users u
+        JOIN Instructors i ON u.id = i.user_id
+        WHERE u.role = 'instructor' AND u.status = 'active'
+      `;
+
+      if (department) {
         query += " AND i.department = ?";
-        params.push(course); // Using course param for department
+        params.push(department);
+        console.log('👨‍🏫 Filtering by department:', department);
       }
+      
+    } else if (role === 'alumni') {
+      query = `
+        SELECT
+          u.id,
+          u.email,
+          u.full_name,
+          u.role,
+          u.status,
+          a.grad_year,
+          a.degree,
+          a.company
+        FROM Users u
+        JOIN Alumni a ON u.id = a.user_id
+        WHERE u.role = 'alumni' AND u.status = 'active'
+      `;
+      
+    } else if (role === 'employer') {
+      query = `
+        SELECT
+          u.id,
+          u.email,
+          u.full_name,
+          u.role,
+          u.status,
+          e.companyname,
+          e.industry
+        FROM Users u
+        JOIN Employers e ON u.id = e.user_id
+        WHERE u.role = 'employer' AND u.status = 'active'
+      `;
+      
+    } else {
+      // Generic query for staff or other roles
+      query = `
+        SELECT
+          u.id,
+          u.email,
+          u.full_name,
+          u.role,
+          u.status
+        FROM Users u
+        WHERE u.role = ? AND u.status = 'active'
+      `;
+      params.push(role);
     }
-    // Add more role-specific filters as needed
 
     query += " ORDER BY u.full_name";
 
+    console.log('📋 Executing query:', query);
+    console.log('📋 With params:', params);
+
     db.query(query, params, (err, results) => {
       if (err) {
-        console.error("Database error:", err);
+        console.error("❌ Database error:", err);
         return res.status(500).json({
           success: false,
           message: "Database error",
         });
       }
 
+      console.log(`✅ Found ${results.length} users`);
+
       // Format users data
-      const users = results.map(user => ({
-        id: user.id,
-        name: user.full_name,
-        email: user.email,
-        role: user.role,
-        status: user.status,
-        // Role-specific data
-        ...(user.studentID && { studentId: user.studentID, courseYrSection: user.course_yr_section }),
-        ...(user.instructor_id && { instructorId: user.instructor_id, department: user.department }),
-        ...(user.degree && { degree: user.degree, alumniCompany: user.company }),
-        ...(user.companyname && { companyName: user.companyname, industry: user.industry }),
-      }));
+      const users = results.map(user => {
+        const formattedUser = {
+          id: user.id,
+          name: user.full_name,
+          email: user.email,
+          role: user.role,
+          status: user.status,
+        };
+
+        // Add role-specific data
+        if (user.studentID) {
+          formattedUser.details = user.course_yr_section || 'No section';
+          formattedUser.studentId = user.studentID;
+          formattedUser.courseYrSection = user.course_yr_section;
+        } else if (user.instructor_id) {
+          formattedUser.details = user.department || 'No department';
+          formattedUser.instructorId = user.instructor_id;
+          formattedUser.department = user.department;
+        } else if (user.degree) {
+          formattedUser.details = user.degree || 'No degree';
+          formattedUser.degree = user.degree;
+          formattedUser.alumniCompany = user.company;
+        } else if (user.companyname) {
+          formattedUser.details = user.companyname || 'No company';
+          formattedUser.companyName = user.companyname;
+          formattedUser.industry = user.industry;
+        } else {
+          formattedUser.details = 'N/A';
+        }
+
+        return formattedUser;
+      });
 
       res.json({
         success: true,
@@ -952,13 +1057,15 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       });
     });
   } catch (error) {
-    console.error("Get filtered users error:", error);
+    console.error("❌ Get filtered users error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
     });
   }
 });
+  
+
 
 // Get users with filtering and pagination
 app.get("/api/users", verifyToken, (req, res) => {
@@ -973,11 +1080,11 @@ app.get("/api/users", verifyToken, (req, res) => {
         i.instructor_id, i.department,
         a.degree, a.company,
         e.companyname, e.industry
-      FROM users u
-      LEFT JOIN students s ON u.id = s.user_id
-      LEFT JOIN instructors i ON u.id = i.user_id
-      LEFT JOIN alumni a ON u.id = a.user_id
-      LEFT JOIN employers e ON u.id = e.user_id
+      FROM Users u
+      LEFT JOIN Students s ON u.id = s.user_id
+      LEFT JOIN Instructors i ON u.id = i.user_id
+      LEFT JOIN Alumni a ON u.id = a.user_id
+      LEFT JOIN Employers e ON u.id = e.user_id
       WHERE 1=1
     `;
 
@@ -1011,7 +1118,7 @@ app.get("/api/users", verifyToken, (req, res) => {
       }
 
       // Get total count for pagination
-      let countQuery = `SELECT COUNT(*) as total FROM users u WHERE 1=1`;
+      let countQuery = `SELECT COUNT(*) as total FROM Users u WHERE 1=1`;
       const countParams = [];
 
       if (search) {
@@ -1085,7 +1192,7 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
     const updateData = req.body;
 
     // Get current user role
-    const userQuery = "SELECT role FROM users WHERE id = ?";
+    const userQuery = "SELECT role FROM Users WHERE id = ?";
     db.query(userQuery, [userId], (err, results) => {
       if (err) {
         console.error("Database error:", err);
@@ -1284,7 +1391,7 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
     } = req.body;
 
     // Check if user already exists
-    const checkUserQuery = "SELECT * FROM users WHERE email = ?";
+    const checkUserQuery = "SELECT * FROM Users WHERE email = ?";
     db.query(checkUserQuery, [email], async (err, results) => {
       if (err) {
         console.error("Database error:", err);
@@ -1442,11 +1549,11 @@ app.patch("/api/users/:id/approve", verifyToken, (req, res) => {
           i.instructor_id, i.department,
           a.degree, a.company,
           e.companyname, e.industry
-        FROM users u
-        LEFT JOIN students s ON u.id = s.user_id
-        LEFT JOIN instructors i ON u.id = i.user_id
-        LEFT JOIN alumni a ON u.id = a.user_id
-        LEFT JOIN employers e ON u.id = e.user_id
+        FROM Users u
+        LEFT JOIN Students s ON u.id = s.user_id
+        LEFT JOIN Instructors i ON u.id = i.user_id
+        LEFT JOIN Alumni a ON u.id = a.user_id
+        LEFT JOIN Employers e ON u.id = e.user_id
         WHERE u.id = ?
       `;
 
@@ -1496,7 +1603,7 @@ app.patch("/api/users/:id/reject", verifyToken, (req, res) => {
     const { reason } = req.body;
 
     // Option 1: Delete the user
-    const deleteQuery = "DELETE FROM users WHERE id = ?";
+    const deleteQuery = "DELETE FROM Users WHERE id = ?";
     db.query(deleteQuery, [userId], (err, result) => {
       if (err) {
         console.error("Database error:", err);
@@ -1679,7 +1786,7 @@ app.delete("/api/users/:id", verifyToken, (req, res) => {
     const userId = req.params.id;
 
     // First check if user exists
-    const checkUserQuery = "SELECT id, role FROM users WHERE id = ?";
+    const checkUserQuery = "SELECT id, role FROM Users WHERE id = ?";
     db.query(checkUserQuery, [userId], (err, results) => {
       if (err) {
         console.error("Database error:", err);
@@ -1702,17 +1809,17 @@ app.delete("/api/users/:id", verifyToken, (req, res) => {
       const deleteRoleSpecificData = (callback) => {
         switch (userRole) {
           case 'student':
-            db.query("DELETE FROM students WHERE user_id = ?", [userId], callback);
+            db.query("DELETE FROM Students WHERE user_id = ?", [userId], callback);
             break;
           case 'instructor':
           case 'staff':
-            db.query("DELETE FROM instructors WHERE user_id = ?", [userId], callback);
+            db.query("DELETE FROM Instructors WHERE user_id = ?", [userId], callback);
             break;
           case 'employer':
-            db.query("DELETE FROM employers WHERE user_id = ?", [userId], callback);
+            db.query("DELETE FROM Employers WHERE user_id = ?", [userId], callback);
             break;
           case 'alumni':
-            db.query("DELETE FROM alumni WHERE user_id = ?", [userId], callback);
+            db.query("DELETE FROM Alumni WHERE user_id = ?", [userId], callback);
             break;
           default:
             callback(null);
@@ -1729,7 +1836,7 @@ app.delete("/api/users/:id", verifyToken, (req, res) => {
         }
 
         // Delete from users table
-        const deleteUserQuery = "DELETE FROM users WHERE id = ?";
+        const deleteUserQuery = "DELETE FROM Users WHERE id = ?";
         db.query(deleteUserQuery, [userId], (deleteErr, result) => {
           if (deleteErr) {
             console.error("User deletion error:", deleteErr);
@@ -2293,6 +2400,337 @@ app.get("/api/forms/templates", verifyToken, (req, res) => {
     }
 
     res.json({ success: true, templates: results });
+  });
+});
+
+// ============================================================
+// FORM ASSIGNMENT ENDPOINTS - ADD THESE AFTER FORM TEMPLATES
+// ============================================================
+
+// Create form assignments when publishing a form
+app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
+  const formId = req.params.formId;
+  const { userIds, targetAudience, filters } = req.body;
+  const assignedBy = req.userId;
+
+  console.log(`📋 Creating assignments for form ${formId}`);
+  console.log('Target audience:', targetAudience);
+  console.log('User IDs:', userIds);
+
+  try {
+    // Verify form exists
+    const formCheckQuery = "SELECT id, title, status FROM Forms WHERE id = ?";
+    db.query(formCheckQuery, [formId], (err, formResults) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+
+      if (formResults.length === 0) {
+        return res.status(404).json({ success: false, message: "Form not found" });
+      }
+
+      // If no specific userIds provided, fetch users based on filters
+      if (!userIds || userIds.length === 0) {
+        // Build query to get users based on target audience
+        let userQuery = `SELECT DISTINCT u.id FROM Users u WHERE u.status = 'active'`;
+        const queryParams = [];
+
+        // Parse target audience
+        if (targetAudience && targetAudience !== 'All Users') {
+          console.log('📊 Parsing target audience:', targetAudience);
+          
+          if (targetAudience.startsWith('Students - ')) {
+            // Extract the part after "Students - "
+            const targetPart = targetAudience.replace('Students - ', '').trim();
+            console.log('🎓 Student target part:', targetPart);
+            
+            if (targetPart.startsWith('College ')) {
+              // Format: "Students - College BSIT"
+              const courseName = targetPart.replace('College ', '').trim();
+              console.log('🏫 College course:', courseName);
+              
+              userQuery = `
+                SELECT DISTINCT u.id
+                FROM Users u
+                JOIN Students s ON u.id = s.user_id
+                WHERE u.status = 'active'
+                  AND u.role = 'student'
+                  AND s.course_yr_section LIKE ?
+              `;
+              queryParams.push(`${courseName}%`);
+              
+            } else if (targetPart.includes('-')) {
+              // Format: "Students - BSIT 4-A" or "Students - Grade 11-A"
+              console.log('🎯 Specific section:', targetPart);
+              
+              userQuery = `
+                SELECT DISTINCT u.id
+                FROM Users u
+                JOIN Students s ON u.id = s.user_id
+                WHERE u.status = 'active'
+                  AND u.role = 'student'
+                  AND s.course_yr_section = ?
+              `;
+              queryParams.push(targetPart);
+              
+            } else if (targetPart.startsWith('Grade ')) {
+              // Format: "Students - Grade 11"
+              console.log('📚 High school grade:', targetPart);
+              
+              userQuery = `
+                SELECT DISTINCT u.id
+                FROM Users u
+                JOIN Students s ON u.id = s.user_id
+                WHERE u.status = 'active'
+                  AND u.role = 'student'
+                  AND s.course_yr_section LIKE ?
+              `;
+              queryParams.push(`${targetPart}%`);
+              
+            } else {
+              // Just "Students" or unknown format
+              userQuery = `
+                SELECT DISTINCT u.id
+                FROM Users u
+                WHERE u.status = 'active'
+                  AND u.role = 'student'
+              `;
+            }
+            
+          } else if (targetAudience.startsWith('Instructors - ')) {
+            const dept = targetAudience.replace('Instructors - ', '').trim();
+            console.log('👨‍🏫 Instructor department:', dept);
+            
+            userQuery = `
+              SELECT DISTINCT u.id
+              FROM Users u
+              JOIN Instructors i ON u.id = i.user_id
+              WHERE u.status = 'active'
+                AND u.role = 'instructor'
+                AND i.department = ?
+            `;
+            queryParams.push(dept);
+            
+          } else if (targetAudience === 'Students') {
+            userQuery += " AND u.role = 'student'";
+          } else if (targetAudience === 'Instructors') {
+            userQuery += " AND u.role = 'instructor'";
+          } else if (targetAudience === 'Alumni') {
+            userQuery += " AND u.role = 'alumni'";
+          } else if (targetAudience === 'Staff') {
+            userQuery += " AND u.role = 'staff'";
+          }
+        }
+
+        console.log('🔍 Final user query:', userQuery);
+        console.log('📋 Query params:', queryParams);
+
+        db.query(userQuery, queryParams, (userErr, userResults) => {
+          if (userErr) {
+            console.error("❌ User query error:", userErr);
+            return res.status(500).json({ success: false, message: "Failed to fetch users" });
+          }
+
+          console.log(`✅ Found ${userResults.length} users for assignment`);
+
+          if (userResults.length === 0) {
+            console.warn('⚠️ No users found for target audience:', targetAudience);
+            return res.status(200).json({
+              success: true,
+              message: "No users found matching the criteria",
+              assignedCount: 0
+            });
+          }
+
+          const userIdsToAssign = userResults.map(u => u.id);
+          console.log('👥 User IDs to assign:', userIdsToAssign);
+          createAssignments(formId, userIdsToAssign, assignedBy, res);
+        });
+      } else {
+        // Use provided user IDs
+        console.log('👥 Using provided user IDs:', userIds);
+        createAssignments(formId, userIds, assignedBy, res);
+      }
+    });
+  } catch (error) {
+    console.error("Assignment error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+// Helper function to create assignments
+function createAssignments(formId, userIds, assignedBy, res) {
+  if (!userIds || userIds.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "No users to assign"
+    });
+  }
+
+  // Check for existing assignments to avoid duplicates
+  const checkQuery = `
+    SELECT user_id FROM Form_Assignments 
+    WHERE form_id = ? AND user_id IN (?)
+  `;
+
+  db.query(checkQuery, [formId, userIds], (checkErr, existingAssignments) => {
+    if (checkErr) {
+      console.error("Check assignments error:", checkErr);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+
+    // Filter out users who already have assignments
+    const existingUserIds = existingAssignments.map(a => a.user_id);
+    const newUserIds = userIds.filter(id => !existingUserIds.includes(id));
+
+    if (newUserIds.length === 0) {
+      return res.json({
+        success: true,
+        message: "All users already assigned to this form",
+        assignedCount: 0,
+        existingCount: existingUserIds.length
+      });
+    }
+
+    // Create assignments for new users
+    const assignmentValues = newUserIds.map(userId => [formId, userId, 'pending']);
+    const insertQuery = `
+      INSERT INTO Form_Assignments (form_id, user_id, status)
+      VALUES ?
+    `;
+
+    db.query(insertQuery, [assignmentValues], (insertErr, insertResult) => {
+      if (insertErr) {
+        console.error("Insert assignments error:", insertErr);
+        return res.status(500).json({ success: false, message: "Failed to create assignments" });
+      }
+
+      console.log(`✅ Created ${insertResult.affectedRows} form assignments`);
+
+      res.json({
+        success: true,
+        message: `Form assigned to ${insertResult.affectedRows} users`,
+        assignedCount: insertResult.affectedRows,
+        existingCount: existingUserIds.length
+      });
+    });
+  });
+}
+
+// Get assigned forms for a user
+app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
+  const userId = req.userId;
+  const { status = 'all' } = req.query;
+
+  console.log(`📋 Fetching assigned forms for user ${userId}`);
+
+  let query = `
+    SELECT 
+      f.id,
+      f.title,
+      f.description,
+      f.category,
+      f.target_audience,
+      f.status as form_status,
+      f.image_url,
+      f.start_date,
+      f.end_date,
+      f.created_at,
+      fa.assigned_at,
+      fa.status as assignment_status,
+      u.full_name as creator_name,
+      CASE 
+        WHEN fr.id IS NOT NULL THEN TRUE 
+        ELSE FALSE 
+      END as has_responded
+    FROM Form_Assignments fa
+    JOIN Forms f ON fa.form_id = f.id
+    LEFT JOIN Users u ON f.created_by = u.id
+    LEFT JOIN Form_Responses fr ON f.id = fr.form_id AND fr.user_id = fa.user_id
+    WHERE fa.user_id = ?
+  `;
+
+  const params = [userId];
+
+  if (status !== 'all') {
+    query += " AND fa.status = ?";
+    params.push(status);
+  }
+
+  // Only show active forms
+  query += " AND f.status = 'active'";
+
+  query += " ORDER BY fa.assigned_at DESC";
+
+  db.query(query, params, (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+
+    console.log(`✅ Found ${results.length} assigned forms for user ${userId}`);
+
+    res.json({
+      success: true,
+      forms: results
+    });
+  });
+});
+
+// Update assignment status (when user completes form)
+app.patch("/api/forms/:formId/assignment-status", verifyToken, (req, res) => {
+  const formId = req.params.formId;
+  const userId = req.userId;
+  const { status } = req.body;
+
+  const updateQuery = `
+    UPDATE Form_Assignments 
+    SET status = ? 
+    WHERE form_id = ? AND user_id = ?
+  `;
+
+  db.query(updateQuery, [status, formId, userId], (err, result) => {
+    if (err) {
+      console.error("Update assignment error:", err);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: "Assignment not found" });
+    }
+
+    res.json({
+      success: true,
+      message: "Assignment status updated"
+    });
+  });
+});
+
+// Get assignment statistics for a form
+app.get("/api/forms/:formId/assignment-stats", verifyToken, (req, res) => {
+  const formId = req.params.formId;
+
+  const statsQuery = `
+    SELECT 
+      COUNT(*) as total_assigned,
+      SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
+      SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+      SUM(CASE WHEN status = 'in_progress' THEN 1 ELSE 0 END) as in_progress
+    FROM Form_Assignments
+    WHERE form_id = ?
+  `;
+
+  db.query(statsQuery, [formId], (err, results) => {
+    if (err) {
+      console.error("Stats error:", err);
+      return res.status(500).json({ success: false, message: "Database error" });
+    }
+
+    res.json({
+      success: true,
+      stats: results[0]
+    });
   });
 });
 // Image upload endpoint

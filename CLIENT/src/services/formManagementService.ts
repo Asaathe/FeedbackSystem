@@ -703,3 +703,203 @@ export const deleteFormCategory = async (categoryId: number): Promise<{ success:
     return { success: false, message: 'An error occurred while deleting the category' };
   }
 };
+
+// ADD THESE FUNCTIONS AT THE END OF formManagementService.ts
+
+// Assign form to users
+// REPLACE THE ASSIGNMENT FUNCTIONS AT THE END OF YOUR FILE WITH THESE:
+// (Delete the old ones that have errors and use these instead)
+
+// Assign form to users
+export async function assignFormToUsers(
+  formId: string,
+  userIds: number[],
+  targetAudience: string
+) {
+  logDebug('assignFormToUsers called with:', { formId, userIds, targetAudience });
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      throw new Error('No authentication token found');
+    }
+
+    console.log('🚀 Assigning form:', formId);
+    console.log('👥 User IDs:', userIds);
+    console.log('🎯 Target audience:', targetAudience);
+
+    const apiUrl = `/api/forms/${formId}/assign`;
+    logDebug(`Making POST request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        userIds,
+        targetAudience,
+      }),
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const data = await response.json();
+    logDebug('Response data:', data);
+    console.log('📨 Assignment response:', data);
+
+    if (!response.ok) {
+      logError('Failed to assign form:', data.message);
+      throw new Error(data.message || 'Failed to assign form');
+    }
+
+    return data;
+  } catch (error) {
+    logError('Exception in assignFormToUsers:', error);
+    console.error('❌ Error assigning form:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to assign form',
+    };
+  }
+}
+
+// Get assigned forms for current user
+export async function getAssignedForms(status: string = 'all') {
+  logDebug('getAssignedForms called with status:', status);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      throw new Error('No authentication token found');
+    }
+
+    const apiUrl = `/api/users/assigned-forms?status=${status}`;
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const data = await response.json();
+    logDebug('Response data:', data);
+
+    if (!response.ok) {
+      logError('Failed to fetch assigned forms:', data.message);
+      throw new Error(data.message || 'Failed to fetch assigned forms');
+    }
+
+    return data;
+  } catch (error) {
+    logError('Exception in getAssignedForms:', error);
+    console.error('Error fetching assigned forms:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch assigned forms',
+      forms: [],
+    };
+  }
+}
+
+// Update assignment status
+export async function updateAssignmentStatus(formId: string, status: string) {
+  logDebug('updateAssignmentStatus called with:', { formId, status });
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      throw new Error('No authentication token found');
+    }
+
+    const apiUrl = `/api/forms/${formId}/assignment-status`;
+    logDebug(`Making PATCH request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const data = await response.json();
+    logDebug('Response data:', data);
+
+    if (!response.ok) {
+      logError('Failed to update assignment status:', data.message);
+      throw new Error(data.message || 'Failed to update assignment status');
+    }
+
+    return data;
+  } catch (error) {
+    logError('Exception in updateAssignmentStatus:', error);
+    console.error('Error updating assignment status:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to update assignment status',
+    };
+  }
+}
+
+// Get assignment statistics for a form
+export async function getAssignmentStats(formId: string) {
+  logDebug('getAssignmentStats called with formId:', formId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
+    
+    if (!token) {
+      logError('No authentication token found');
+      throw new Error('No authentication token found');
+    }
+
+    const apiUrl = `/api/forms/${formId}/assignment-stats`;
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    const data = await response.json();
+    logDebug('Response data:', data);
+
+    if (!response.ok) {
+      logError('Failed to fetch assignment stats:', data.message);
+      throw new Error(data.message || 'Failed to fetch assignment stats');
+    }
+
+    return data;
+  } catch (error) {
+    logError('Exception in getAssignmentStats:', error);
+    console.error('Error fetching assignment stats:', error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : 'Failed to fetch assignment stats',
+      stats: null,
+    };
+  }
+}

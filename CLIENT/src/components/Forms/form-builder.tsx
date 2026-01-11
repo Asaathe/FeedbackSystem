@@ -66,6 +66,7 @@ import {
   addFormCategory,
   updateFormCategory,
   deleteFormCategory,
+  assignFormToUsers,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../Reusable_components/checkbox";
@@ -286,7 +287,6 @@ export function FormBuilder({
               setFormCategory(form.category || "Academic");
               setFormTarget(form.target_audience || "Students");
               setFormImage(form.image_url || null);
-              
 
               // Convert API questions to FormQuestion format
               console.log("❓ Questions data:", form.questions);
@@ -379,7 +379,6 @@ export function FormBuilder({
 
   // Loading State
   const [loading, setLoading] = useState(false);
- 
 
   // Image Upload Handler
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -460,29 +459,6 @@ export function FormBuilder({
       }
     } else {
       toast.error("Category not found");
-    }
-  };
-
-  const addAudience = (audience: string) => {
-    if (audience.trim() && !customAudiences.includes(audience.trim())) {
-      setCustomAudiences([...customAudiences, audience.trim()]);
-      toast.success(`Audience "${audience.trim()}" added`);
-    }
-  };
-
-  const removeAudience = (audience: string) => {
-    if (customAudiences.length > 1) {
-      setCustomAudiences(customAudiences.filter((a) => a !== audience));
-      if (formTarget === audience) {
-        setFormTarget(
-          customAudiences[0] !== audience
-            ? customAudiences[0]
-            : customAudiences[1]
-        );
-      }
-      toast.success(`Audience "${audience}" removed`);
-    } else {
-      toast.error("Cannot remove the last audience");
     }
   };
 
@@ -590,56 +566,60 @@ export function FormBuilder({
   };
 
   const saveForm = async () => {
-  // Validate required fields
-  if (!formTitle.trim()) {
-    toast.error('Please enter a form title');
-    return;
-  }
-  if (!formCategory) {
-    toast.error('Please select a category');
-    return;
-  }
-  if (!formTarget || formTarget === '') {
-    toast.error('Please select a target audience');
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const formData = {
-      title: formTitle,
-      description: formDescription,
-      category: formCategory,
-      targetAudience: formTarget,
-      questions: questions,
-      question_count: questions.length,
-      total_questions: questions.length,
-      questions_count: questions.length,
-      imageUrl: formImage || undefined,
-      isTemplate: false,
-      status: 'draft', // ⬅️ MAKE SURE THIS LINE IS HERE
-    };
-
-    console.log('Saving form with data:', formData);
-    console.log('Image URL being saved:', formData.imageUrl);
-    const result = formId ? await updateForm(formId, formData) : await createForm(formData);
-
-    if (result.success) {
-      toast.success(formId ? 'Form saved as draft' : 'Form saved as draft');
-      setTimeout(() => {
-        onBack();
-      }, 1000);
-    } else {
-      toast.error(result.message || 'Failed to save form');
+    // Validate required fields
+    if (!formTitle.trim()) {
+      toast.error("Please enter a form title");
+      return;
     }
-  } catch (err) {
-    console.error('Error saving form:', err);
-    toast.error('Failed to save form');
-  } finally {
-    setLoading(false);
-  }
-};
+    if (!formCategory) {
+      toast.error("Please select a category");
+      return;
+    }
+    if (!formTarget || formTarget === "") {
+      toast.error("Please select a target audience");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const formData = {
+        title: formTitle,
+        description: formDescription,
+        category: formCategory,
+        targetAudience: formTarget,
+        questions: questions,
+        question_count: questions.length,
+        total_questions: questions.length,
+        questions_count: questions.length,
+        imageUrl: formImage || undefined,
+        isTemplate: false,
+        status: "draft",
+      };
+
+      console.log("Saving form with data:", formData);
+      console.log("Image URL being saved:", formData.imageUrl);
+      const result = formId
+        ? await updateForm(formId, formData)
+        : await createForm(formData);
+
+      if (result.success) {
+        toast.success(formId ? "Form saved as draft" : "Form saved as draft");
+        setTimeout(() => {
+          onBack();
+        }, 1000);
+      } else {
+        toast.error(result.message || "Failed to save form");
+      }
+    } catch (err) {
+      console.error("Error saving form:", err);
+      toast.error("Failed to save form");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // REPLACE THE ENTIRE publishForm FUNCTION WITH THIS:
 
   const publishForm = async () => {
     // Validate required fields
@@ -658,24 +638,52 @@ export function FormBuilder({
         targetAudience: formTarget,
         questions: questions,
         question_count: questions.length,
-        total_questions: questions.length, // Try alternative field name
-        questions_count: questions.length, // Try another alternative field name
+        total_questions: questions.length,
+        questions_count: questions.length,
         imageUrl: formImage || undefined,
         isTemplate: false,
         status: "active",
       };
 
-      console.log("Publishing form with data:", formData);
-      console.log("Image URL being sent:", formData.imageUrl);
+      console.log("📝 Publishing form with data:", formData);
+      console.log("🖼️ Image URL being sent:", formData.imageUrl);
+
       const result = formId
         ? await updateForm(formId, { ...formData, status: "active" })
         : await createForm(formData);
-      console.log("API response:", result);
+
+      console.log("📨 API response:", result);
 
       if (result.success) {
-        toast.success("Form published successfully!");
-        setPublishDialogOpen(false); // ADD THIS LINE
-        // ADD THESE LINES:
+        // When updating an existing form, use the existing formId
+        // When creating a new form, use the returned formId
+        const publishedFormId = formId || (result as any).formId;
+
+        // Create form assignments
+        console.log("👥 Creating form assignments for:", formTarget);
+        console.log("📋 Selected recipients:", Array.from(selectedRecipients));
+        console.log("✅ Select all?:", selectAllRecipients);
+
+        const assignmentResult = await assignFormToUsers(
+          publishedFormId,
+          Array.from(selectedRecipients),
+          formTarget
+        );
+
+        console.log("📨 Assignment result:", assignmentResult);
+
+        if (assignmentResult.success) {
+          toast.success(
+            `Form published and assigned to ${assignmentResult.assignedCount} user(s)!`
+          );
+        } else {
+          toast.warning(
+            "Form published but failed to create some assignments: " +
+              assignmentResult.message
+          );
+        }
+
+        setPublishDialogOpen(false);
         setTimeout(() => {
           onBack();
         }, 1500);
@@ -683,7 +691,7 @@ export function FormBuilder({
         toast.error(result.message || "Failed to publish form");
       }
     } catch (err) {
-      console.error("Error publishing form:", err);
+      console.error("❌ Error publishing form:", err);
       toast.error("Failed to publish form");
     } finally {
       setLoading(false);
@@ -703,27 +711,37 @@ export function FormBuilder({
 
       if (audienceType === "Students") {
         if (level === "College" && sub && year && section) {
+          // Backend expects: course, year, section, level
           filters.course = sub;
           filters.year = year;
           filters.section = section;
+          filters.level = level;
         } else if (level === "High School" && sub && section) {
+          // Backend expects: grade, section, level
           filters.grade = sub;
           filters.section = section;
+          filters.level = level;
         }
       } else if (audienceType === "Instructors") {
         if (sub) {
-          filters.course = sub; // department
+          filters.department = sub;
         }
+      } else if (audienceType === "Alumni") {
+        filters.degree = sub;
+      } else if (audienceType === "Employers") {
+        filters.companyName = sub;
       }
 
+      console.log("Fetching recipients with filters:", filters);
       const result = await getFilteredUsers(filters);
-      if (result.success && result.users) {
+      console.log("API response:", result);
+      if (result.success && result.users && result.users.length > 0) {
         const formattedUsers = result.users.map((user) => ({
           id: user.id,
           name: user.name,
           details:
             user.role === "student"
-              ? user.courseYrSection || "No section"
+              ? user.course_yr_section || "No section"
               : user.role === "instructor"
               ? user.department || "No department"
               : user.role === "alumni"
@@ -733,13 +751,84 @@ export function FormBuilder({
               : "N/A",
         }));
 
+        console.log("Formatted users:", formattedUsers);
         setRecipients(formattedUsers);
         setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));
         setSelectAllRecipients(true);
       } else {
-        setRecipients([]);
-        setSelectedRecipients(new Set());
-        setSelectAllRecipients(true);
+        console.warn(
+          "No users found matching the criteria:",
+          filters,
+          "Response:",
+          result
+        );
+        console.warn(
+          "Note: Ensure the backend API is querying the correct table based on the user role."
+        );
+        console.warn(
+          "For students, it should query the 'students' table and join with the 'users' table."
+        );
+
+        // Fallback: Try fetching all users of the specified role
+        console.log(
+          "Attempting fallback: Fetching all users with role:",
+          audienceType.toLowerCase()
+        );
+        const fallbackFilters = { role: audienceType.toLowerCase() };
+        const fallbackResult = await getFilteredUsers(fallbackFilters);
+        console.log("Fallback API response:", fallbackResult);
+
+        if (
+          fallbackResult.success &&
+          fallbackResult.users &&
+          fallbackResult.users.length > 0
+        ) {
+          const formattedUsers = fallbackResult.users.map((user) => ({
+            id: user.id,
+            name: user.name,
+            details:
+              user.role === "student"
+                ? user.course_yr_section || "No section"
+                : user.role === "instructor"
+                ? user.department || "No department"
+                : user.role === "alumni"
+                ? user.degree || "No degree"
+                : user.role === "employer"
+                ? user.companyName || "No company"
+                : "N/A",
+          }));
+
+          console.log("Fallback formatted users:", formattedUsers);
+          setRecipients(formattedUsers);
+          setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));
+          setSelectAllRecipients(true);
+        } else {
+          console.warn(
+            "Fallback also returned no users. The backend API may not be correctly implemented."
+          );
+          console.warn("Backend API Implementation Guide:");
+          console.warn(
+            "1. For Students: Query the 'students' table and join with the 'users' table."
+          );
+          console.warn(
+            "2. For Instructors: Query the 'instructors' table and join with the 'users' table."
+          );
+          console.warn(
+            "3. For Alumni: Query the 'alumni' table and join with the 'users' table."
+          );
+          console.warn(
+            "4. For Employers: Query the 'employers' table and join with the 'users' table."
+          );
+          console.warn(
+            "Example SQL for Students: SELECT u.*, s.course_yr_section FROM users u JOIN students s ON u.id = s.user_id WHERE u.role = 'student' AND s.course_yr_section = 'BSIT-4A'"
+          );
+          console.warn(
+            "Please update the backend API to implement the correct database queries."
+          );
+          setRecipients([]);
+          setSelectedRecipients(new Set());
+          setSelectAllRecipients(true);
+        }
       }
     } catch (error) {
       console.error("Error fetching recipients:", error);
@@ -892,8 +981,6 @@ export function FormBuilder({
                 <h1 className="text-sm sm:text-lg truncate text-gray-700">
                   {loading ? "Saving..." : formTitle || "Untitled Form"}
                 </h1>
-
-                
               </div>
             </div>
 
@@ -1134,76 +1221,11 @@ export function FormBuilder({
                                   Target Audience
                                 </span>
                               </div>
-                              <Dialog>
-                                <DialogTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 px-2 text-xs"
-                                  >
-                                    <Settings className="w-3 h-3 mr-1" />
-                                    Manage
-                                  </Button>
-                                </DialogTrigger>
-                                <DialogContent className="max-w-md">
-                                  <DialogHeader>
-                                    <DialogTitle className="text-lg">
-                                      Manage Audiences
-                                    </DialogTitle>
-                                    <DialogDescription>
-                                      Add or remove target audiences
-                                    </DialogDescription>
-                                  </DialogHeader>
-                                  <div className="space-y-4 py-4">
-                                    <div className="flex gap-2">
-                                      <Input
-                                        placeholder="New audience name"
-                                        id="publish-new-audience-input"
-                                        className="flex-1"
-                                      />
-                                      <Button
-                                        onClick={() => {
-                                          const input = document.getElementById(
-                                            "publish-new-audience-input"
-                                          ) as HTMLInputElement;
-                                          if (input?.value.trim()) {
-                                            addAudience(input.value.trim());
-                                            input.value = "";
-                                          }
-                                        }}
-                                        size="sm"
-                                      >
-                                        <Plus className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto">
-                                      {customAudiences.map((audience) => (
-                                        <div
-                                          key={audience}
-                                          className="flex items-center justify-between p-2 rounded border"
-                                        >
-                                          <span className="text-sm">
-                                            {audience}
-                                          </span>
-                                          <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                            onClick={() =>
-                                              removeAudience(audience)
-                                            }
-                                            disabled={
-                                              customAudiences.length <= 1
-                                            }
-                                          >
-                                            <X className="w-3 h-3" />
-                                          </Button>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </DialogContent>
-                              </Dialog>
+                              <div>
+                                <span className="text-sm font-medium">
+                                  Target Audience
+                                </span>
+                              </div>
                             </div>
                           </CardHeader>
                           <CardContent className="pt-0 space-y-4">

@@ -574,7 +574,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditForm(form)}>
+                          <DropdownMenuItem onClick={() => onNavigateToBuilder?.(form.id)}>
                               <Edit className="w-4 h-4 mr-2" />
                               Edit
                             </DropdownMenuItem>
@@ -746,7 +746,7 @@ export function FeedbackFormsManagement({ onNavigateToBuilder }: FeedbackFormsMa
                       </Button>
                       <Button 
                         className="flex-1 bg-purple-500 hover:bg-purple-600"
-                        onClick={() => handleEditForm(template)}
+                       onClick={() => onNavigateToBuilder?.(template.id)}
                       >
                         <Send className="w-4 h-4 mr-2" />
                         Use Template
