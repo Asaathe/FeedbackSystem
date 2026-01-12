@@ -122,7 +122,7 @@ export function FormBuilder({
   const [formTitle, setFormTitle] = useState("Untitled Feedback Form");
   const [formDescription, setFormDescription] = useState("");
   const [formCategory, setFormCategory] = useState("");
-  const [formTarget, setFormTarget] = useState("All Users");
+  const [formTarget, setFormTarget] = useState<string>("All Users");
   const [formImage, setFormImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(true);
@@ -138,26 +138,44 @@ export function FormBuilder({
   const [customAudiences, setCustomAudiences] = useState<string[]>([
     "All Users",
     "Students",
-    "Students - Grade 11",
-    "Students - Grade 12",
-    "Students - Grade 10",
-    "Students - Grade 9",
     "Alumni",
     "Instructors",
-    "Staff",
   ]);
+
+  // Course Year Section options from signup page (Students)
+  const [courseYearSections, setCourseYearSections] = useState<string[]>([
+    // Grade 11
+    "ABM11-LOVE", "ABM11-HOPE", "ABM11-FAITH",
+    "HUMSS11-LOVE", "HUMSS11-HOPE", "HUMSS11-FAITH", "HUMSS11-JOY", "HUMSS11-GENEROSITY", "HUMSS11-HUMILITY", "HUMSS11-INTEGRITY", "HUMSS11-WISDOM",
+    "STEM11-HOPE", "STEM11-FAITH", "STEM11-JOY", "STEM11-GENEROSITY",
+    "ICT11-LOVE", "ICT11-HOPE",
+    // Grade 12
+    "ABM12-LOVE", "ABM12-HOPE", "ABM12-FAITH",
+    "HUMSS12-LOVE", "HUMSS12-HOPE", "HUMSS12-FAITH", "HUMSS12-JOY", "HUMSS12-GENEROSITY", "HUMSS12-HUMILITY",
+    "STEM12-LOVE", "STEM12-HOPE", "STEM12-FAITH", "STEM12-JOY", "STEM12-GENEROSITY",
+    "ICT12-LOVE", "ICT12-HOPE",
+    // College - BSIT
+    "BSIT-1A", "BSIT-1B", "BSIT-1C", "BSIT-2A", "BSIT-2B", "BSIT-2C", "BSIT-3A", "BSIT-3B", "BSIT-3C", "BSIT-4A", "BSIT-4B", "BSIT-4C",
+    // College - BSBA
+    "BSBA-1A", "BSBA-2A", "BSBA-3A", "BSBA-4A",
+    // College - BSCS
+    "BSCS-1A", "BSCS-2A", "BSCS-3A", "BSCS-4A",
+    // College - BSEN
+    "BSEN-1A", "BSEN-2A", "BSEN-3A", "BSEN-4A",
+    // College - BSOA
+    "BSOA-1A", "BSOA-2A", "BSOA-3A", "BSOA-4A",
+    // College - BSAIS
+    "BSAIS-1A", "BSAIS-2A", "BSAIS-3A", "BSAIS-4A",
+    // College - BTVTEd
+    "BTVTEd-1A", "BTVTEd-2A", "BTVTEd-3A", "BTVTEd-4A",
+  ]);
+
+  // Current selected audience type and course year section
+  const [selectedAudienceType, setSelectedAudienceType] =
+    useState<string>("All Users");
+  const [selectedCourseYearSection, setSelectedCourseYearSection] = useState<string>("");
 
   // Dynamic audience options based on user type
-  const [studentCourses, setStudentCourses] = useState<string[]>([
-    "BSIT",
-    "BSIS",
-    "BSBA",
-    "BSED",
-    "BEED",
-    "BSHM",
-    "BSOA",
-  ]);
-
   const [instructorDepartments, setInstructorDepartments] = useState<string[]>([
     "IT Department",
     "Business Department",
@@ -165,48 +183,18 @@ export function FormBuilder({
     "Hospitality Department",
   ]);
 
-  const [studentYears, setStudentYears] = useState<string[]>([
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-  ]);
-
-  const [studentSections, setStudentSections] = useState<string[]>([
-    "A",
-    "B",
-    "C",
-    "D",
-    "E",
-  ]);
-
-  const [studentLevels, setStudentLevels] = useState<string[]>([
-    "College",
-    "High School",
-  ]);
-
-  const [highSchoolGrades, setHighSchoolGrades] = useState<string[]>([
-    "Grade 11",
-    "Grade 12",
-  ]);
-
-  // Current selected audience type and sub-selection
-  const [selectedAudienceType, setSelectedAudienceType] =
-    useState<string>("All Users");
-  const [selectedSubAudience, setSelectedSubAudience] = useState<string>("");
-  const [selectedYear, setSelectedYear] = useState<string>("");
-  const [selectedSection, setSelectedSection] = useState<string>("");
-  const [selectedLevel, setSelectedLevel] = useState<string>("");
-
   // Recipients management
   const [recipients, setRecipients] = useState<
+    Array<{ id: number; name: string; details: string }>
+  >([]);
+  const [filteredRecipients, setFilteredRecipients] = useState<
     Array<{ id: number; name: string; details: string }>
   >([]);
   const [selectedRecipients, setSelectedRecipients] = useState<Set<number>>(
     new Set()
   );
   const [selectAllRecipients, setSelectAllRecipients] = useState<boolean>(true);
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Submission Schedule State
   const [submissionSchedule, setSubmissionSchedule] = useState({
@@ -242,16 +230,15 @@ export function FormBuilder({
             setFormTitle(formData.title || "Untitled Feedback Form");
             setFormDescription(formData.description || "");
             setFormCategory(formData.category || "Academic");
-            setFormTarget(formData.target || "Students");
+            setFormTarget(formData.target || "All Users");
             setFormImage(formData.image || null);
             setCustomCategories(formData.customCategories || []);
             setCustomAudiences(
               formData.customAudiences || [
+                "All Users",
                 "Students",
                 "Alumni",
                 "Instructors",
-                "Staff",
-                "All Users",
               ]
             );
             setSubmissionSchedule(
@@ -285,7 +272,7 @@ export function FormBuilder({
               setFormTitle(form.title || "Untitled Feedback Form");
               setFormDescription(form.description || "");
               setFormCategory(form.category || "Academic");
-              setFormTarget(form.target_audience || "Students");
+              setFormTarget(form.target_audience || "All Users");
               setFormImage(form.image_url || null);
 
               // Convert API questions to FormQuestion format
@@ -619,12 +606,17 @@ export function FormBuilder({
     }
   };
 
-  // REPLACE THE ENTIRE publishForm FUNCTION WITH THIS:
-
+  // Publish Form Function
   const publishForm = async () => {
     // Validate required fields
     if (!formTarget || formTarget === "") {
       toast.error("Please select a target audience before publishing");
+      return;
+    }
+
+    // Validate that at least one recipient is selected
+    if (selectedRecipients.size === 0 && selectedAudienceType !== "All Users") {
+      toast.error("Please select at least one recipient");
       return;
     }
 
@@ -664,23 +656,30 @@ export function FormBuilder({
         console.log("📋 Selected recipients:", Array.from(selectedRecipients));
         console.log("✅ Select all?:", selectAllRecipients);
 
-        const assignmentResult = await assignFormToUsers(
-          publishedFormId,
-          Array.from(selectedRecipients),
-          formTarget
-        );
-
-        console.log("📨 Assignment result:", assignmentResult);
-
-        if (assignmentResult.success) {
-          toast.success(
-            `Form published and assigned to ${assignmentResult.assignedCount} user(s)!`
-          );
+        // For "All Users", we don't need to assign to specific users
+        if (selectedAudienceType === "All Users") {
+          console.log("🌍 Assigning to all users - no specific assignments needed");
+          toast.success("Form published and available to all users!");
         } else {
-          toast.warning(
-            "Form published but failed to create some assignments: " +
-              assignmentResult.message
+          // For specific audiences, create assignments
+          const assignmentResult = await assignFormToUsers(
+            publishedFormId,
+            Array.from(selectedRecipients),
+            formTarget
           );
+
+          console.log("📨 Assignment result:", assignmentResult);
+
+          if (assignmentResult.success) {
+            toast.success(
+              `Form published and assigned to ${assignmentResult.assignedCount} user(s)!`
+            );
+          } else {
+            toast.warning(
+              "Form published but failed to create some assignments: " +
+                assignmentResult.message
+            );
+          }
         }
 
         setPublishDialogOpen(false);
@@ -701,35 +700,40 @@ export function FormBuilder({
   // Function to fetch recipients based on selection
   const fetchRecipients = async (
     audienceType: string,
-    level: string,
-    sub: string,
-    year: string,
-    section: string
+    courseYearSection: string
   ) => {
     try {
-      let filters: any = { role: audienceType.toLowerCase() };
+      // Map audience type to the correct role format for the backend
+      const roleMap: Record<string, string> = {
+        "Students": "student",
+        "Instructors": "instructor",
+        "Alumni": "alumni",
+        "All Users": "all"
+      };
+
+      let filters: any = { role: roleMap[audienceType] || audienceType.toLowerCase() };
 
       if (audienceType === "Students") {
-        if (level === "College" && sub && year && section) {
-          // Backend expects: course, year, section, level
-          filters.course = sub;
-          filters.year = year;
-          filters.section = section;
-          filters.level = level;
-        } else if (level === "High School" && sub && section) {
-          // Backend expects: grade, section, level
-          filters.grade = sub;
-          filters.section = section;
-          filters.level = level;
+        if (courseYearSection) {
+          filters.course_year_section = courseYearSection;
         }
       } else if (audienceType === "Instructors") {
-        if (sub) {
-          filters.department = sub;
+        if (courseYearSection) {
+          filters.department = courseYearSection;
         }
       } else if (audienceType === "Alumni") {
-        filters.degree = sub;
-      } else if (audienceType === "Employers") {
-        filters.companyName = sub;
+        if (courseYearSection) {
+          filters.company = courseYearSection;
+        }
+      }
+
+      // Update formTarget based on the selection
+      if (audienceType === "All Users") {
+        setFormTarget("All Users");
+      } else if (courseYearSection) {
+        setFormTarget(`${audienceType} - ${courseYearSection}`);
+      } else {
+        setFormTarget(audienceType);
       }
 
       console.log("Fetching recipients with filters:", filters);
@@ -745,14 +749,13 @@ export function FormBuilder({
               : user.role === "instructor"
               ? user.department || "No department"
               : user.role === "alumni"
-              ? user.degree || "No degree"
-              : user.role === "employer"
-              ? user.companyName || "No company"
+              ? user.company || "No company"
               : "N/A",
         }));
 
         console.log("Formatted users:", formattedUsers);
         setRecipients(formattedUsers);
+        setFilteredRecipients(formattedUsers);
         setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));
         setSelectAllRecipients(true);
       } else {
@@ -769,70 +772,16 @@ export function FormBuilder({
           "For students, it should query the 'students' table and join with the 'users' table."
         );
 
-        // Fallback: Try fetching all users of the specified role
-        console.log(
-          "Attempting fallback: Fetching all users with role:",
-          audienceType.toLowerCase()
-        );
-        const fallbackFilters = { role: audienceType.toLowerCase() };
-        const fallbackResult = await getFilteredUsers(fallbackFilters);
-        console.log("Fallback API response:", fallbackResult);
-
-        if (
-          fallbackResult.success &&
-          fallbackResult.users &&
-          fallbackResult.users.length > 0
-        ) {
-          const formattedUsers = fallbackResult.users.map((user) => ({
-            id: user.id,
-            name: user.name,
-            details:
-              user.role === "student"
-                ? user.course_yr_section || "No section"
-                : user.role === "instructor"
-                ? user.department || "No department"
-                : user.role === "alumni"
-                ? user.degree || "No degree"
-                : user.role === "employer"
-                ? user.companyName || "No company"
-                : "N/A",
-          }));
-
-          console.log("Fallback formatted users:", formattedUsers);
-          setRecipients(formattedUsers);
-          setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));
-          setSelectAllRecipients(true);
-        } else {
-          console.warn(
-            "Fallback also returned no users. The backend API may not be correctly implemented."
-          );
-          console.warn("Backend API Implementation Guide:");
-          console.warn(
-            "1. For Students: Query the 'students' table and join with the 'users' table."
-          );
-          console.warn(
-            "2. For Instructors: Query the 'instructors' table and join with the 'users' table."
-          );
-          console.warn(
-            "3. For Alumni: Query the 'alumni' table and join with the 'users' table."
-          );
-          console.warn(
-            "4. For Employers: Query the 'employers' table and join with the 'users' table."
-          );
-          console.warn(
-            "Example SQL for Students: SELECT u.*, s.course_yr_section FROM users u JOIN students s ON u.id = s.user_id WHERE u.role = 'student' AND s.course_yr_section = 'BSIT-4A'"
-          );
-          console.warn(
-            "Please update the backend API to implement the correct database queries."
-          );
-          setRecipients([]);
-          setSelectedRecipients(new Set());
-          setSelectAllRecipients(true);
-        }
+        // Clear recipients when no users are found
+        setRecipients([]);
+        setFilteredRecipients([]);
+        setSelectedRecipients(new Set());
+        setSelectAllRecipients(true);
       }
     } catch (error) {
       console.error("Error fetching recipients:", error);
       setRecipients([]);
+      setFilteredRecipients([]);
       setSelectedRecipients(new Set());
       setSelectAllRecipients(true);
     }
@@ -840,47 +789,30 @@ export function FormBuilder({
 
   // Effect to fetch recipients when selection changes
   useEffect(() => {
-    if (selectedAudienceType === "Students" && selectedLevel) {
-      if (
-        selectedLevel === "College" &&
-        selectedSubAudience &&
-        selectedYear &&
-        selectedSection
-      ) {
-        fetchRecipients(
-          selectedAudienceType,
-          selectedLevel,
-          selectedSubAudience,
-          selectedYear,
-          selectedSection
-        );
-      } else if (
-        selectedLevel === "High School" &&
-        selectedSubAudience &&
-        selectedSection
-      ) {
-        fetchRecipients(
-          selectedAudienceType,
-          selectedLevel,
-          selectedSubAudience,
-          "",
-          selectedSection
-        );
-      }
-    } else if (
-      selectedAudienceType !== "Students" &&
-      selectedAudienceType !== "All Users"
-    ) {
-      // For other roles, fetch based on their criteria
-      fetchRecipients(selectedAudienceType, "", selectedSubAudience, "", "");
+    if (selectedAudienceType !== "All Users" && selectedCourseYearSection) {
+      fetchRecipients(selectedAudienceType, selectedCourseYearSection);
+    } else if (selectedAudienceType !== "All Users" && !selectedCourseYearSection) {
+      // Clear recipients when course/year/section is not selected
+      setRecipients([]);
+      setFilteredRecipients([]);
+      setSelectedRecipients(new Set());
+      setSelectAllRecipients(true);
+    } else if (selectedAudienceType === "All Users") {
+      setFormTarget("All Users");
     }
-  }, [
-    selectedAudienceType,
-    selectedLevel,
-    selectedSubAudience,
-    selectedYear,
-    selectedSection,
-  ]);
+  }, [selectedAudienceType, selectedCourseYearSection]);
+
+  // Effect to filter recipients based on search term
+  useEffect(() => {
+    if (searchTerm.trim() === "") {
+      setFilteredRecipients(recipients);
+    } else {
+      const filtered = recipients.filter((recipient) =>
+        recipient.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+      setFilteredRecipients(filtered);
+    }
+  }, [searchTerm, recipients]);
 
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
@@ -1232,21 +1164,18 @@ export function FormBuilder({
                             {/* Main Audience Type Selection */}
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">
-                                Select Audience Type
+                                Select Audience
                               </Label>
                               <Select
                                 value={selectedAudienceType}
                                 onValueChange={(value) => {
                                   setSelectedAudienceType(value);
-                                  setSelectedLevel("");
-                                  setSelectedSubAudience("");
-                                  setSelectedYear("");
-                                  setSelectedSection("");
+                                  setSelectedCourseYearSection("");
                                   setFormTarget(value);
                                 }}
                               >
                                 <SelectTrigger className="h-10">
-                                  <SelectValue placeholder="Select audience type" />
+                                  <SelectValue placeholder="Select audience" />
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="All Users">
@@ -1259,235 +1188,52 @@ export function FormBuilder({
                                     Instructors
                                   </SelectItem>
                                   <SelectItem value="Alumni">Alumni</SelectItem>
-                                  <SelectItem value="Staff">Staff</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
 
-                            {/* Dynamic Sub-Audience Selection */}
-                            {selectedAudienceType === "Students" && (
-                              <>
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">
-                                    Select Level
-                                  </Label>
-                                  <Select
-                                    value={selectedLevel}
-                                    onValueChange={(value) => {
-                                      setSelectedLevel(value);
-                                      setSelectedSubAudience("");
-                                      setSelectedYear("");
-                                      setSelectedSection("");
-                                      setRecipients([]);
-                                      setSelectedRecipients(new Set());
-                                      setSelectAllRecipients(true);
-                                      setFormTarget(`Students - ${value}`);
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select level" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {studentLevels.map((level) => (
-                                        <SelectItem key={level} value={level}>
-                                          {level}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-
-                                {selectedLevel === "College" && (
-                                  <>
-                                    <div className="space-y-2">
-                                      <Label className="text-sm font-medium">
-                                        Select Course
-                                      </Label>
-                                      <Select
-                                        value={selectedSubAudience}
-                                        onValueChange={(value) => {
-                                          setSelectedSubAudience(value);
-                                          setSelectedYear("");
-                                          setSelectedSection("");
-                                          setRecipients([]);
-                                          setSelectedRecipients(new Set());
-                                          setSelectAllRecipients(true);
-                                          setFormTarget(
-                                            `Students - College ${value}`
-                                          );
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-10">
-                                          <SelectValue placeholder="Select course" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {studentCourses.map((course) => (
-                                            <SelectItem
-                                              key={course}
-                                              value={course}
-                                            >
-                                              {course}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                    </div>
-                                  </>
-                                )}
-
-                                {selectedLevel === "High School" && (
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium">
-                                      Select Grade
-                                    </Label>
-                                    <Select
-                                      value={selectedSubAudience}
-                                      onValueChange={(value) => {
-                                        setSelectedSubAudience(value);
-                                        setSelectedSection("");
-                                        setRecipients([]);
-                                        setSelectedRecipients(new Set());
-                                        setSelectAllRecipients(true);
-                                        setFormTarget(`Students - ${value}`);
-                                      }}
-                                    >
-                                      <SelectTrigger className="h-10">
-                                        <SelectValue placeholder="Select grade" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {highSchoolGrades.map((grade) => (
-                                          <SelectItem key={grade} value={grade}>
-                                            {grade}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  </div>
-                                )}
-                              </>
-                            )}
-
-                            {selectedAudienceType === "Students" &&
-                              selectedLevel === "College" &&
-                              selectedSubAudience && (
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">
-                                    Select Year
-                                  </Label>
-                                  <Select
-                                    value={selectedYear}
-                                    onValueChange={(value) => {
-                                      setSelectedYear(value);
-                                      setSelectedSection("");
-                                      setRecipients([]);
-                                      setSelectedRecipients(new Set());
-                                      setSelectAllRecipients(true);
-                                      setFormTarget(
-                                        `Students - ${selectedSubAudience} ${value}`
-                                      );
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select year" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {studentYears.map((year) => (
-                                        <SelectItem key={year} value={year}>
-                                          {year}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              )}
-
-                            {selectedAudienceType === "Students" &&
-                              selectedLevel === "College" &&
-                              selectedYear && (
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">
-                                    Select Section
-                                  </Label>
-                                  <Select
-                                    value={selectedSection}
-                                    onValueChange={(value) => {
-                                      setSelectedSection(value);
-                                      setFormTarget(
-                                        `Students - ${selectedSubAudience} ${selectedYear}-${value}`
-                                      );
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select section" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {studentSections.map((section) => (
-                                        <SelectItem
-                                          key={section}
-                                          value={section}
-                                        >
-                                          {section}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              )}
-
-                            {selectedAudienceType === "Students" &&
-                              selectedLevel === "High School" &&
-                              selectedSubAudience && (
-                                <div className="space-y-2">
-                                  <Label className="text-sm font-medium">
-                                    Select Section
-                                  </Label>
-                                  <Select
-                                    value={selectedSection}
-                                    onValueChange={(value) => {
-                                      setSelectedSection(value);
-                                      setFormTarget(
-                                        `Students - ${selectedSubAudience}-${value}`
-                                      );
-                                    }}
-                                  >
-                                    <SelectTrigger className="h-10">
-                                      <SelectValue placeholder="Select section" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      {studentSections.map((section) => (
-                                        <SelectItem
-                                          key={section}
-                                          value={section}
-                                        >
-                                          {section}
-                                        </SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                              )}
-
-                            {selectedAudienceType === "Instructors" && (
+                            {/* Course Year Section Selection */}
+                            {selectedAudienceType !== "All Users" && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium">
-                                  Select Department
+                                  {selectedAudienceType === "Students" && "Course Year Section"}
+                                  {selectedAudienceType === "Instructors" && "Department"}
+                                  {selectedAudienceType === "Alumni" && "Company"}
                                 </Label>
                                 <Select
-                                  value={selectedSubAudience}
+                                  value={selectedCourseYearSection}
                                   onValueChange={(value) => {
-                                    setSelectedSubAudience(value);
-                                    setFormTarget(`Instructors - ${value}`);
+                                    setSelectedCourseYearSection(value);
+                                    setFormTarget(`${selectedAudienceType} - ${value}`);
                                   }}
                                 >
                                   <SelectTrigger className="h-10">
-                                    <SelectValue placeholder="Select department" />
+                                    <SelectValue placeholder={
+                                      selectedAudienceType === "Students" 
+                                        ? "Select course year section"
+                                        : selectedAudienceType === "Instructors"
+                                        ? "Select department"
+                                        : "Select company"
+                                    } />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {instructorDepartments.map((dept) => (
-                                      <SelectItem key={dept} value={dept}>
-                                        {dept}
-                                      </SelectItem>
-                                    ))}
+                                    {selectedAudienceType === "Students" && (
+                                      courseYearSections.map((section) => (
+                                        <SelectItem key={section} value={section}>
+                                          {section}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                    {selectedAudienceType === "Instructors" && (
+                                      instructorDepartments.map((dept) => (
+                                        <SelectItem key={dept} value={dept}>
+                                          {dept}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                    {selectedAudienceType === "Alumni" && (
+                                      <SelectItem value="Company A">Company A</SelectItem>
+                                    )}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -1503,117 +1249,116 @@ export function FormBuilder({
                               </span>
                             </div>
 
-                            {/* Recipients Preview */}
-                            {selectedAudienceType !== "All Users" &&
-                              ((selectedAudienceType === "Students" &&
-                                ((selectedLevel === "College" &&
-                                  selectedSection) ||
-                                  (selectedLevel === "High School" &&
-                                    selectedSection))) ||
-                                (selectedAudienceType !== "Students" &&
-                                  selectedAudienceType)) && (
-                                <Collapsible>
-                                  <CollapsibleTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="w-full justify-between p-3 h-auto border rounded-lg hover:bg-gray-50"
+                            {/* Recipients Preview with Search */}
+                            {selectedAudienceType !== "All Users" && selectedCourseYearSection && (
+                              <Collapsible>
+                                <CollapsibleTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-between p-3 h-auto border rounded-lg hover:bg-gray-50"
+                                  >
+                                    <span className="text-sm">
+                                      Preview Recipients ({filteredRecipients.length} of {recipients.length})
+                                    </span>
+                                    <ChevronDown className="w-4 h-4" />
+                                  </Button>
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="space-y-3 pt-3">
+                                  <div className="text-sm text-gray-600">
+                                    <p>
+                                      Recipients for{" "}
+                                      <strong>{formTarget}</strong>.
+                                    </p>
+                                    <p className="mt-2">
+                                      Use the search bar below to exclude specific users.
+                                    </p>
+                                  </div>
+
+                                  {/* Search Bar */}
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium">
+                                      Search and Exclude Users
+                                    </Label>
+                                    <Input
+                                      placeholder="Search users by name..."
+                                      className="h-9"
+                                      value={searchTerm}
+                                      onChange={(e) => setSearchTerm(e.target.value)}
+                                    />
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      id="select-all-recipients"
+                                      checked={selectAllRecipients}
+                                      onCheckedChange={(checked) => {
+                                        setSelectAllRecipients(!!checked);
+                                        if (checked) {
+                                          setSelectedRecipients(
+                                            new Set(
+                                              recipients.map((r) => r.id)
+                                            )
+                                          );
+                                        } else {
+                                          setSelectedRecipients(new Set());
+                                        }
+                                      }}
+                                    />
+                                    <Label
+                                      htmlFor="select-all-recipients"
+                                      className="text-sm"
                                     >
-                                      <span className="text-sm">
-                                        Preview Recipients ({recipients.length})
-                                      </span>
-                                      <ChevronDown className="w-4 h-4" />
-                                    </Button>
-                                  </CollapsibleTrigger>
-                                  <CollapsibleContent className="space-y-3 pt-3">
-                                    <div className="text-sm text-gray-600">
-                                      <p>
-                                        Recipients for{" "}
-                                        <strong>{formTarget}</strong>.
-                                      </p>
-                                      <p className="mt-2">
-                                        Select specific users or send to all.
-                                      </p>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Checkbox
-                                        id="select-all-students"
-                                        checked={selectAllRecipients}
-                                        onCheckedChange={(checked) => {
-                                          setSelectAllRecipients(!!checked);
-                                          if (checked) {
-                                            setSelectedRecipients(
-                                              new Set(
-                                                recipients.map((r) => r.id)
-                                              )
-                                            );
-                                          } else {
-                                            setSelectedRecipients(new Set());
-                                          }
-                                        }}
-                                      />
-                                      <Label
-                                        htmlFor="select-all-students"
-                                        className="text-sm"
-                                      >
-                                        Send to all students in this group
-                                      </Label>
-                                    </div>
-                                    {/* Student list */}
-                                    <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-48">
-                                      {recipients.length > 0 ? (
-                                        <div className="space-y-2">
-                                          {recipients.map((student) => (
-                                            <div
-                                              key={student.id}
-                                              className="flex items-center gap-2"
+                                      Send to all users in this group
+                                    </Label>
+                                  </div>
+
+                                  {/* Recipients list with checkboxes */}
+                                  <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-64">
+                                    {recipients.length > 0 ? (
+                                      <div className="space-y-2">
+                                        {filteredRecipients.map((recipient) => (
+                                          <div
+                                            key={recipient.id}
+                                            className="flex items-center gap-2"
+                                          >
+                                            <Checkbox
+                                              id={`recipient-${recipient.id}`}
+                                              checked={selectedRecipients.has(recipient.id)}
+                                              onCheckedChange={(checked) => {
+                                                const newSelected = new Set(selectedRecipients);
+                                                if (checked) {
+                                                  newSelected.add(recipient.id);
+                                                } else {
+                                                  newSelected.delete(recipient.id);
+                                                }
+                                                setSelectedRecipients(newSelected);
+                                                setSelectAllRecipients(
+                                                  newSelected.size === recipients.length
+                                                );
+                                              }}
+                                            />
+                                            <Label
+                                              htmlFor={`recipient-${recipient.id}`}
+                                              className="text-sm flex-1"
                                             >
-                                              <Checkbox
-                                                id={`student-${student.id}`}
-                                                checked={selectedRecipients.has(
-                                                  student.id
-                                                )}
-                                                onCheckedChange={(checked) => {
-                                                  const newSelected = new Set(
-                                                    selectedRecipients
-                                                  );
-                                                  if (checked) {
-                                                    newSelected.add(student.id);
-                                                  } else {
-                                                    newSelected.delete(
-                                                      student.id
-                                                    );
-                                                  }
-                                                  setSelectedRecipients(
-                                                    newSelected
-                                                  );
-                                                  setSelectAllRecipients(
-                                                    newSelected.size ===
-                                                      recipients.length
-                                                  );
-                                                }}
-                                              />
-                                              <Label
-                                                htmlFor={`student-${student.id}`}
-                                                className="text-sm flex-1"
-                                              >
-                                                {student.name}{" "}
-                                                <span className="text-gray-500">
-                                                  ({student.details})
-                                                </span>
-                                              </Label>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-gray-500">
-                                          No students found in this group.
-                                        </p>
-                                      )}
-                                    </ScrollArea>
-                                  </CollapsibleContent>
-                                </Collapsible>
-                              )}
+                                              {recipient.name}{" "}
+                                              <span className="text-gray-500">
+                                                ({recipient.details})
+                                              </span>
+                                            </Label>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="text-xs text-gray-500">
+                                        {searchTerm ? `No users found matching "${searchTerm}"` : "No users found in this group."}
+                                      </p>
+                                    )}
+                                  </ScrollArea>
+                                </CollapsibleContent>
+                              </Collapsible>
+                            )}
                           </CardContent>
                         </Card>
 

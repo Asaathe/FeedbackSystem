@@ -84,6 +84,44 @@ const UserProfile = lazy(() =>
   }))
 );
 
+// Add loading state for dynamic data
+const DynamicDataLoader = ({ children }: { children: React.ReactNode }) => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // This is a placeholder - in reality, FormBuilder fetches its own data
+    setLoading(false);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading form builder...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
@@ -92,6 +130,7 @@ export default function App() {
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
     undefined
   );
+  const [isEditingTemplate, setIsEditingTemplate] = useState(false);
 
   useEffect(() => {
     // Check sessionStorage for token (standardized storage)
@@ -192,6 +231,21 @@ export default function App() {
     handleLogin(role);
   };
 
+  // Navigate to form builder with form ID
+  const handleNavigateToFormBuilder = (formId?: string, isTemplate: boolean = false) => {
+    console.log('🔄 Navigating to form builder with:', { formId, isTemplate });
+    setEditingFormId(formId);
+    setIsEditingTemplate(isTemplate);
+    setCurrentPage("form-builder");
+  };
+
+  // Navigate back from form builder
+  const handleBackFromFormBuilder = () => {
+    setEditingFormId(undefined);
+    setIsEditingTemplate(false);
+    setCurrentPage("forms");
+  };
+
   if (!isLoggedIn) {
     if (showSignup) {
       return (
@@ -209,38 +263,38 @@ export default function App() {
     );
   }
 
-    const renderPage = () => {
-      // Admin pages
-      if (userRole === "admin") {
-        switch (currentPage) {
-          case "dashboard":
-            return <AdminDashboard onNavigate={setCurrentPage} />;
-          case "forms":
-            return (
-              <FeedbackFormsManagement
-                onNavigateToBuilder={(formId) => {
-                  setEditingFormId(formId);
-                  setCurrentPage("form-builder");
-                }}
-              />
-            );
-          case "form-builder":
-            return (
+  const renderPage = () => {
+    // Admin pages
+    if (userRole === "admin") {
+      switch (currentPage) {
+        case "dashboard":
+          return <AdminDashboard onNavigate={setCurrentPage} />;
+        case "forms":
+          return (
+            <FeedbackFormsManagement
+              onNavigateToBuilder={(formId) => {
+                handleNavigateToFormBuilder(formId, false);
+              }}
+            />
+          );
+        case "form-builder":
+          return (
+            <DynamicDataLoader>
               <FormBuilder
-                onBack={() => {
-                  setEditingFormId(undefined);
-                  setCurrentPage("forms");
-                }}
+                onBack={handleBackFromFormBuilder}
                 formId={editingFormId}
+                isCustomFormTab={!isEditingTemplate}
               />
-            );
-          case "users":
-            return <UserManagement />;
-
-          default:
-            return <AdminDashboard />;
-        }
+            </DynamicDataLoader>
+          );
+        case "users":
+          return <UserManagement />;
+        case "analytics":
+          return <AnalyticsPage />;
+        default:
+          return <AdminDashboard onNavigate={setCurrentPage} />;
       }
+    }
 
     // Employer pages (HR/Management - Employee Performance)
     if (userRole === "employer") {
@@ -288,7 +342,6 @@ export default function App() {
           return <InstructorFeedback />;
         case "submit-feedback":
           return <FeedbackSubmission userRole={userRole} />;
-
         case "profile":
           return <UserProfile role={userRole} />;
         default:
@@ -312,7 +365,6 @@ export default function App() {
               </p>
             </div>
           );
-
         case "profile":
           return <UserProfile role={userRole} />;
         default:
@@ -335,7 +387,6 @@ export default function App() {
             </p>
           </div>
         );
-
       case "profile":
         return <UserProfile role={userRole} />;
       default:

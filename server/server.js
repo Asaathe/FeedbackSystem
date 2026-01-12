@@ -874,11 +874,16 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
 
 // Get users filtered by role and specific criteria for form targeting
 -
+// REPLACE the /api/users/filter endpoint (around line 715) with this:
+
+// Get users filtered by role and specific criteria for form targeting
 app.get("/api/users/filter", verifyToken, (req, res) => {
   try {
-    const { role, course, year, section, grade, level, department } = req.query;
+    const { role, course_year_section, department, company } = req.query;
 
-    console.log('🔍 Filtering users with params:', { role, course, year, section, grade, level, department });
+    console.log('🔍 Filtering users with params:', { 
+      role, course_year_section, department, company 
+    });
 
     if (!role) {
       return res.status(400).json({
@@ -890,12 +895,13 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
     let query;
     let params = [];
 
-    if (role === 'student') {
+    // STUDENTS FILTERING
+    if (role === 'student' || role === 'students') {
       query = `
         SELECT
           u.id,
           u.email,
-          u.full_name,
+          u.full_name as name,
           u.role,
           u.status,
           s.studentID,
@@ -905,39 +911,21 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         WHERE u.role = 'student' AND u.status = 'active'
       `;
 
-      // Handle different filtering scenarios
-      if (level === 'College' && course && year && section) {
-        // College student: "BSIT 4-A"
-        const courseYrSection = `${course} ${year}-${section}`;
+      // If a specific course_year_section is provided
+      if (course_year_section) {
         query += " AND s.course_yr_section = ?";
-        params.push(courseYrSection);
-        console.log('🎓 Filtering college students:', courseYrSection);
-        
-      } else if (level === 'High School' && grade && section) {
-        // High school student: "Grade 11-A"
-        const gradeSection = `${grade}-${section}`;
-        query += " AND s.course_yr_section = ?";
-        params.push(gradeSection);
-        console.log('📚 Filtering high school students:', gradeSection);
-        
-      } else if (course) {
-        // Just course filter (e.g., all BSIT students)
-        query += " AND s.course_yr_section LIKE ?";
-        params.push(`${course}%`);
-        console.log('🏫 Filtering by course:', course);
-      } else if (grade) {
-        // Just grade filter (e.g., all Grade 11 students)
-        query += " AND s.course_yr_section LIKE ?";
-        params.push(`${grade}%`);
-        console.log('📚 Filtering by grade:', grade);
-      }
-      
-    } else if (role === 'instructor') {
+        params.push(course_year_section);
+        console.log('🎓 Filtering students by course_year_section:', course_year_section);
+       }
+       
+    } 
+    // INSTRUCTORS FILTERING
+    else if (role === 'instructor' || role === 'instructors') {
       query = `
         SELECT
           u.id,
           u.email,
-          u.full_name,
+          u.full_name as name,
           u.role,
           u.status,
           i.instructor_id,
@@ -952,46 +940,56 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         query += " AND i.department = ?";
         params.push(department);
         console.log('👨‍🏫 Filtering by department:', department);
-      }
-      
-    } else if (role === 'alumni') {
+       }
+       
+    } 
+    // ALUMNI FILTERING
+    else if (role === 'alumni' || role === 'alumni') {
       query = `
         SELECT
           u.id,
           u.email,
-          u.full_name,
+          u.full_name as name,
           u.role,
           u.status,
           a.grad_year,
           a.degree,
-          a.company
+          a.jobtitle,
+          a.company,
+          a.contact
         FROM Users u
         JOIN Alumni a ON u.id = a.user_id
         WHERE u.role = 'alumni' AND u.status = 'active'
       `;
-      
-    } else if (role === 'employer') {
+
+      if (company) {
+        query += " AND a.company = ?";
+        params.push(company);
+        console.log('🎓 Filtering alumni by company:', company);
+       }
+       
+    } 
+    // ALL USERS
+    else if (role === 'all') {
       query = `
         SELECT
           u.id,
           u.email,
-          u.full_name,
+          u.full_name as name,
           u.role,
-          u.status,
-          e.companyname,
-          e.industry
+          u.status
         FROM Users u
-        JOIN Employers e ON u.id = e.user_id
-        WHERE u.role = 'employer' AND u.status = 'active'
+        WHERE u.status = 'active'
       `;
+      console.log('👥 Fetching all active users');
       
     } else {
-      // Generic query for staff or other roles
+      // Generic query for other roles
       query = `
         SELECT
           u.id,
           u.email,
-          u.full_name,
+          u.full_name as name,
           u.role,
           u.status
         FROM Users u
@@ -1011,6 +1009,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         return res.status(500).json({
           success: false,
           message: "Database error",
+          error: err.message
         });
       }
 
@@ -1020,7 +1019,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       const users = results.map(user => {
         const formattedUser = {
           id: user.id,
-          name: user.full_name,
+          name: user.full_name || user.name, // Use whichever field exists
           email: user.email,
           role: user.role,
           status: user.status,
@@ -1030,19 +1029,17 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         if (user.studentID) {
           formattedUser.details = user.course_yr_section || 'No section';
           formattedUser.studentId = user.studentID;
-          formattedUser.courseYrSection = user.course_yr_section;
+          formattedUser.course_yr_section = user.course_yr_section;
         } else if (user.instructor_id) {
           formattedUser.details = user.department || 'No department';
           formattedUser.instructorId = user.instructor_id;
           formattedUser.department = user.department;
-        } else if (user.degree) {
-          formattedUser.details = user.degree || 'No degree';
+          formattedUser.subjectTaught = user.subject_taught;
+        } else if (user.company) {
+          formattedUser.details = user.company || 'No company';
+          formattedUser.company = user.company;
           formattedUser.degree = user.degree;
-          formattedUser.alumniCompany = user.company;
-        } else if (user.companyname) {
-          formattedUser.details = user.companyname || 'No company';
-          formattedUser.companyName = user.companyname;
-          formattedUser.industry = user.industry;
+          formattedUser.jobTitle = user.jobtitle;
         } else {
           formattedUser.details = 'N/A';
         }
@@ -1061,6 +1058,118 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error",
+    });
+  }
+});
+
+
+// ADD this function to dynamically fetch companies for alumni filtering
+// Add this around line 800, before the /api/users/filter endpoint
+
+// Get unique companies for alumni filtering
+app.get("/api/alumni/companies", verifyToken, (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT a.company
+      FROM Alumni a
+      JOIN Users u ON a.user_id = u.id
+      WHERE u.status = 'active' AND a.company IS NOT NULL AND a.company != ''
+      ORDER BY a.company
+    `;
+
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error"
+        });
+      }
+
+      const companies = results.map(row => row.company).filter(company => company);
+      
+      res.json({
+        success: true,
+        companies
+      });
+    });
+  } catch (error) {
+    console.error("Get alumni companies error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+});
+
+// ADD this function to dynamically fetch departments for instructor filtering
+app.get("/api/instructors/departments", verifyToken, (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT i.department
+      FROM Instructors i
+      JOIN Users u ON i.user_id = u.id
+      WHERE u.status = 'active' AND i.department IS NOT NULL AND i.department != ''
+      ORDER BY i.department
+    `;
+
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error"
+        });
+      }
+
+      const departments = results.map(row => row.department).filter(dept => dept);
+      
+      res.json({
+        success: true,
+        departments
+      });
+    });
+  } catch (error) {
+    console.error("Get instructor departments error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+});
+
+// ADD this function to dynamically fetch course_year_sections for student filtering
+app.get("/api/students/sections", verifyToken, (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT s.course_yr_section
+      FROM Students s
+      JOIN Users u ON s.user_id = u.id
+      WHERE u.status = 'active' AND s.course_yr_section IS NOT NULL AND s.course_yr_section != ''
+      ORDER BY s.course_yr_section
+    `;
+
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error"
+        });
+      }
+
+      const sections = results.map(row => row.course_yr_section).filter(section => section);
+      
+      res.json({
+        success: true,
+        sections
+      });
+    });
+  } catch (error) {
+    console.error("Get student sections error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error"
     });
   }
 });
@@ -2408,9 +2517,10 @@ app.get("/api/forms/templates", verifyToken, (req, res) => {
 // ============================================================
 
 // Create form assignments when publishing a form
+// Find this POST route for form assignments and fix it:
 app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
   const formId = req.params.formId;
-  const { userIds, targetAudience, filters } = req.body;
+  const { userIds, targetAudience = 'All Users', filters } = req.body; // Provide default value for targetAudience
   const assignedBy = req.userId;
 
   console.log(`📋 Creating assignments for form ${formId}`);
@@ -2436,7 +2546,7 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
         let userQuery = `SELECT DISTINCT u.id FROM Users u WHERE u.status = 'active'`;
         const queryParams = [];
 
-        // Parse target audience
+        // Parse target audience - ADD NULL CHECK
         if (targetAudience && targetAudience !== 'All Users') {
           console.log('📊 Parsing target audience:', targetAudience);
           

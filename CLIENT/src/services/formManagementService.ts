@@ -421,13 +421,16 @@ export const saveAsTemplate = async (formId: string): Promise<{ success: boolean
   }
 };
 
-// Get filtered users for form targeting
+// Get filtered users for form targeting - UPDATED
 export const getFilteredUsers = async (filters: {
   role: string;
   course?: string;
   year?: string;
   section?: string;
   grade?: string;
+  course_year_section?: string;
+  department?: string;
+  company?: string;
 }): Promise<{ success: boolean; users?: any[]; count?: number; message: string }> => {
   logDebug('getFilteredUsers called with filters:', filters);
 
@@ -444,6 +447,9 @@ export const getFilteredUsers = async (filters: {
     if (filters.year) params.append('year', filters.year);
     if (filters.section) params.append('section', filters.section);
     if (filters.grade) params.append('grade', filters.grade);
+    if (filters.course_year_section) params.append('course_year_section', filters.course_year_section);
+    if (filters.department) params.append('department', filters.department);
+    if (filters.company) params.append('company', filters.company);
 
     const apiUrl = `/api/users/filter?${params}`;
     logDebug(`Making GET request to: ${apiUrl}`);
@@ -704,12 +710,6 @@ export const deleteFormCategory = async (categoryId: number): Promise<{ success:
   }
 };
 
-// ADD THESE FUNCTIONS AT THE END OF formManagementService.ts
-
-// Assign form to users
-// REPLACE THE ASSIGNMENT FUNCTIONS AT THE END OF YOUR FILE WITH THESE:
-// (Delete the old ones that have errors and use these instead)
-
 // Assign form to users
 export async function assignFormToUsers(
   formId: string,
@@ -903,3 +903,116 @@ export async function getAssignmentStats(formId: string) {
     };
   }
 }
+
+// Add these new functions to formManagementService.ts
+
+// Get alumni companies for filtering
+export const getAlumniCompanies = async (): Promise<{ success: boolean; companies: string[]; message?: string }> => {
+  logDebug('getAlumniCompanies called');
+  
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, companies: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/alumni/companies';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, companies: [], message: 'Failed to fetch alumni companies' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.companies) {
+      logDebug(`Successfully loaded ${result.companies.length} companies`);
+      return { success: true, companies: result.companies, message: 'Companies fetched successfully' };
+    }
+    
+    return { success: false, companies: [], message: result.message || 'Failed to fetch companies' };
+  } catch (error) {
+    logError('Exception in getAlumniCompanies:', error);
+    return { success: false, companies: [], message: 'An error occurred while fetching companies' };
+  }
+};
+
+// Get instructor departments for filtering
+export const getInstructorDepartments = async (): Promise<{ success: boolean; departments: string[]; message?: string }> => {
+  logDebug('getInstructorDepartments called');
+  
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, departments: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/instructors/departments';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, departments: [], message: 'Failed to fetch departments' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.departments) {
+      logDebug(`Successfully loaded ${result.departments.length} departments`);
+      return { success: true, departments: result.departments, message: 'Departments fetched successfully' };
+    }
+    
+    return { success: false, departments: [], message: result.message || 'Failed to fetch departments' };
+  } catch (error) {
+    logError('Exception in getInstructorDepartments:', error);
+    return { success: false, departments: [], message: 'An error occurred while fetching departments' };
+  }
+};
+
+// Get student sections for filtering
+export const getStudentSections = async (): Promise<{ success: boolean; sections: string[]; message?: string }> => {
+  logDebug('getStudentSections called');
+  
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, sections: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/students/sections';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, sections: [], message: 'Failed to fetch student sections' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.sections) {
+      logDebug(`Successfully loaded ${result.sections.length} sections`);
+      return { success: true, sections: result.sections, message: 'Sections fetched successfully' };
+    }
+    
+    return { success: false, sections: [], message: result.message || 'Failed to fetch sections' };
+  } catch (error) {
+    logError('Exception in getStudentSections:', error);
+    return { success: false, sections: [], message: 'An error occurred while fetching sections' };
+  }
+};
