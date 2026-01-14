@@ -100,7 +100,6 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'submit-feedback', label: 'Submit Feedback', icon: FileText },
         { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
-        { id: 'suggestions', label: 'Suggestions', icon: Lightbulb },
       ];
 
   return (

@@ -1016,3 +1016,51 @@ export const getStudentSections = async (): Promise<{ success: boolean; sections
     return { success: false, sections: [], message: 'An error occurred while fetching sections' };
   }
 };
+
+// Deploy form
+export const deployForm = async (formId: string, deploymentData: {
+  startDate: string;
+  endDate: string;
+  targetFilters: {
+    roles: string[];
+    target_audience: string;
+  };
+}): Promise<{ success: boolean; message: string }> => {
+  logDebug('deployForm called with formId:', formId, 'deploymentData:', deploymentData);
+  
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+ 
+    const apiUrl = `/api/forms/${formId}/deploy`;
+    logDebug(`Making POST request to: ${apiUrl}`);
+    
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(deploymentData),
+    });
+ 
+    logDebug('Response status:', response.status, response.statusText);
+    
+    const result = await response.json();
+    logDebug('Response data:', result);
+    
+    if (response.ok && result.success) {
+      logDebug('Form deployed successfully');
+      return { success: true, message: result.message || 'Form deployed successfully' };
+    } else {
+      logError('Failed to deploy form:', result.message);
+      return { success: false, message: result.message || 'Failed to deploy form' };
+    }
+  } catch (error) {
+    logError('Exception in deployForm:', error);
+    return { success: false, message: 'An error occurred while deploying the form' };
+  }
+};

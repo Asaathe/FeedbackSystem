@@ -233,7 +233,7 @@ export default function App() {
 
   // Navigate to form builder with form ID
   const handleNavigateToFormBuilder = (formId?: string, isTemplate: boolean = false) => {
-    console.log('🔄 Navigating to form builder with:', { formId, isTemplate });
+    console.log('Navigating to form builder with:', { formId, isTemplate });
     setEditingFormId(formId);
     setIsEditingTemplate(isTemplate);
     setCurrentPage("form-builder");
@@ -377,7 +377,7 @@ export default function App() {
       case "dashboard":
         return <StudentDashboard onNavigate={setCurrentPage} />;
       case "submit-feedback":
-        return <FeedbackSubmission />;
+        return <FeedbackSubmission userRole={userRole} />;
       case "my-submissions":
         return (
           <div className="text-center py-12">

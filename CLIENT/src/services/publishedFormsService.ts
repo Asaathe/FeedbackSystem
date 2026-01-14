@@ -23,6 +23,7 @@ export interface PublishedForm {
   status: 'published';
   publishedAt: string;
   dueDate?: string;
+  assignment_status?: string; // pending, completed, expired
 }
 
 // Get all published forms from API
@@ -72,13 +73,14 @@ export const getPublishedForms = async (): Promise<PublishedForm[]> => {
 // Get assigned forms for a specific user role from API
 export const getFormsForUserRole = async (userRole: string): Promise<PublishedForm[]> => {
   try {
-    const token = localStorage.getItem('token');
+    // Check both storage locations for token
+    const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
     if (!token) {
-      console.warn('No authentication token found');
+      console.warn('No authentication token found - user may not be logged in');
       return [];
     }
 
-    const response = await fetch('/api/forms/assigned-forms', {
+    const response = await fetch('http://localhost:5000/api/users/assigned-forms', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -95,32 +97,39 @@ export const getFormsForUserRole = async (userRole: string): Promise<PublishedFo
       // Filter forms based on user role
       const roleMapping: Record<string, string> = {
         'student': 'Students',
-        'instructor': 'Instructors', 
+        'instructor': 'Instructors',
         'alumni': 'Alumni',
         'employer': 'Staff',
         'admin': 'Staff'
       };
 
       const mappedRole = roleMapping[userRole.toLowerCase()];
-      
-      return result.forms
+
+      const filteredForms = result.forms
         .filter((form: any) => {
           // Match forms based on target audience
-          if (form.target_audience === 'All Users') return true;
-          if (form.target_audience === mappedRole) return true;
-          return false;
-        })
+          const targetAudience = form.target_audience || '';
+          const matchesAllUsers = targetAudience === 'All Users';
+          const matchesRole = targetAudience === mappedRole;
+          const matchesRolePrefix = targetAudience.startsWith(mappedRole + ' - ');
+          const shouldInclude = matchesAllUsers || matchesRole || matchesRolePrefix;
+
+          return shouldInclude;
+        });
+
+      return filteredForms
         .map((form: any) => ({
           id: form.id.toString(),
           title: form.title,
           description: form.description,
           category: form.category,
           target: form.target_audience,
-          questions: [], // Questions will be loaded separately when needed
+          questions: form.questions || [], // Include questions from the form data
           image: form.image_url,
           status: 'published',
           publishedAt: form.created_at,
-          dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString() : undefined
+          dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString() : undefined,
+          assignment_status: form.assignment_status || 'pending'
         }));
     }
     
@@ -142,12 +151,12 @@ export const getPendingFormsForUser = async (userRole: string, userId?: string):
     }
 
     // Get user's submitted responses
-    const response = await fetch('/api/forms/my-responses', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+     headers: {
+       'Authorization': `Bearer ${token}`,
+       'Content-Type': 'application/json',
+     },
+   });
 
     if (response.ok) {
       const result = await response.json();
@@ -164,19 +173,21 @@ export const getPendingFormsForUser = async (userRole: string, userId?: string):
 };
 
 // Get completed forms for user
-export const getCompletedFormsForUser = async (userRole: string, userId?: string): Promise<Array<{title: string, date: string, rating?: number}>> => {
-  try {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      return [];
-    }
+  export const getCompletedFormsForUser = async (userRole: string, userId?: string): Promise<Array<{title: string, date: string, rating?: number}>> => {
+    try {
+      // Check both storage locations for token
+      const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+      if (!token) {
+        console.warn('No authentication token found for completed forms');
+        return [];
+      }
 
-    const response = await fetch('/api/forms/my-responses', {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+      const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
     if (response.ok) {
       const result = await response.json();

@@ -11,6 +11,7 @@ import { Progress } from "../Reusable_components/progress";
 import { ArrowLeft, Send, ClipboardList, Clock } from "lucide-react";
 import { Badge } from "../Reusable_components/badge";
 import { getFormsForUserRole, FormQuestion as ServiceFormQuestion, PublishedForm } from "../../services/publishedFormsService";
+import { getForm } from "../../services/formManagementService";
 
 type FormQuestion = ServiceFormQuestion;
 
@@ -484,13 +485,20 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     const loadForms = async () => {
       setLoading(true);
       try {
-        const role = userRole === 'instructor' 
+        const role = userRole === 'instructor'
           ? 'instructor'
-          : userRole === 'employer' 
+          : userRole === 'employer'
           ? 'employer'
+          : userRole === 'alumni'
+          ? 'alumni'
+          : userRole === 'staff'
+          ? 'staff'
           : 'student';
-        
+         
+        console.log('Loading forms for role:', role);
         const publishedForms = await getFormsForUserRole(role);
+        
+        console.log('Published forms received:', publishedForms.length);
         
         const forms = publishedForms.map(form => ({
           id: form.id,
@@ -501,7 +509,8 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
           imageUrl: form.image,
           questions: form.questions
         }));
-        
+         
+        console.log('Mapped forms:', forms);
         setAvailableForms(forms);
       } catch (error) {
         console.error('Error loading forms:', error);
@@ -514,8 +523,24 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     loadForms();
   }, [userRole]);
 
-  const handleSelectForm = (form: FeedbackForm) => {
-    setSelectedForm(form);
+  const handleSelectForm = async (form: FeedbackForm) => {
+    try {
+      // Fetch the full form data including questions
+      const result = await getForm(form.id);
+      if (result.success && result.form) {
+        setSelectedForm({
+          ...form,
+          questions: result.form.questions || []
+        });
+      } else {
+        // Fallback to the basic form data if full fetch fails
+        setSelectedForm(form);
+      }
+    } catch (error) {
+      console.error('Error loading form details:', error);
+      // Fallback to basic form data
+      setSelectedForm(form);
+    }
     setAnswers({});
     setCurrentQuestionIndex(0);
   };

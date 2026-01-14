@@ -65,14 +65,19 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
   }, []);
 
   // Transform published forms to match expected format
-  const pendingForms = publishedForms.map(form => ({
-    id: form.id,
-    title: form.title,
-    course: form.category === 'Academic' ? form.title : null,
-    instructor: form.category === 'Academic' ? 'Instructor' : null,
-    dueDate: form.dueDate,
-    priority: form.category === 'Academic' ? 'high' : 'medium',
-  }));
+  const pendingForms = publishedForms
+    .filter(form => form.assignment_status === 'pending')
+    .map(form => ({
+      id: form.id,
+      title: form.title,
+      course: form.category === 'Academic' ? form.title : null,
+      instructor: form.category === 'Academic' ? 'Instructor' : null,
+      dueDate: form.dueDate,
+      priority: form.category === 'Academic' ? 'high' : 'medium',
+    }));
+
+  // Get completed forms count
+  const completedFormsCount = publishedForms.filter(form => form.assignment_status === 'completed').length;
 
   return (
     <div className="space-y-6">
@@ -101,7 +106,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
             <CheckCircle className="w-5 h-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">{completedForms.length}</div>
+            <div className="text-3xl">{completedFormsCount}</div>
             <p className="text-xs text-green-600 mt-1">This semester</p>
           </CardContent>
         </Card>
@@ -112,8 +117,8 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
             <ClipboardList className="w-5 h-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">75%</div>
-            <Progress value={75} className="mt-2 h-2" />
+            <div className="text-3xl">{formStats.completionRate}%</div>
+            <Progress value={formStats.completionRate} className="mt-2 h-2" />
           </CardContent>
         </Card>
 

@@ -59,6 +59,7 @@ import {
   duplicateForm,
   getFormTemplates,
   saveAsTemplate,
+  deployForm,
   FormData,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
@@ -126,6 +127,7 @@ export function FeedbackFormsManagement({
 
   const [loading, setLoading] = useState(true);
   const [savingAsTemplate, setSavingAsTemplate] = useState<string | null>(null);
+  const [deployingForm, setDeployingForm] = useState<string | null>(null);
   const [customForms, setCustomForms] = useState<FormData[]>([]);
   const [templateForms, setTemplateForms] = useState<FormData[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -307,6 +309,35 @@ export function FeedbackFormsManagement({
       toast.error("An error occurred while saving as template");
     } finally {
       setSavingAsTemplate(null);
+    }
+  };
+
+  const handleDeployForm = async (formId: string) => {
+    try {
+      setDeployingForm(formId);
+      
+      // Call the deployment API
+      const result = await deployForm(formId, {
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        targetFilters: {
+          roles: ['student'],
+          target_audience: 'Students'
+        }
+      });
+      
+      if (result.success) {
+        toast.success(result.message);
+        // Reload forms to show the updated status
+        await loadForms();
+      } else {
+        toast.error(result.message || 'Failed to deploy form');
+      }
+    } catch (error) {
+      console.error("Error deploying form:", error);
+      toast.error("An error occurred while deploying the form");
+    } finally {
+      setDeployingForm(null);
     }
   };
 
@@ -724,6 +755,17 @@ export function FeedbackFormsManagement({
                               {savingAsTemplate === form.id
                                 ? "Saving..."
                                 : "Save as Template"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleDeployForm(form.id)}
+                              disabled={deployingForm === form.id || form.status === 'active'}
+                            >
+                              <Send className="w-4 h-4 mr-2" />
+                              {deployingForm === form.id
+                                ? "Deploying..."
+                                : form.status === 'active'
+                                ? "Already Published"
+                                : "Publish Form"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"

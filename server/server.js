@@ -2471,21 +2471,325 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
   const { startDate, endDate, targetFilters } = req.body;
   const deployedBy = req.userId;
 
-  const deployQuery = `
-    INSERT INTO Form_Deployments (form_id, deployed_by, start_date, end_date, target_filters)
-    VALUES (?, ?, ?, ?, ?)
-  `;
+  console.log(`🚀 Deploying form ${formId} with data:`, { startDate, endDate, targetFilters });
 
-  db.query(deployQuery, [formId, deployedBy, startDate, endDate, JSON.stringify(targetFilters)], (err, result) => {
+  // Start transaction
+  db.beginTransaction((err) => {
     if (err) {
-      console.error("Deploy error:", err);
-      return res.status(500).json({ success: false, message: "Failed to deploy form" });
+      console.error("Transaction start error:", err);
+      return res.status(500).json({ success: false, message: "Failed to start deployment transaction" });
     }
 
-    // Update form status to active
-    db.query("UPDATE Forms SET status = 'active' WHERE id = ?", [formId]);
+    try {
+      // Insert deployment record
+      const deployQuery = `
+        INSERT INTO Form_Deployments (form_id, deployed_by, start_date, end_date, target_filters)
+        VALUES (?, ?, ?, ?, ?)
+      `;
 
-    res.json({ success: true, message: "Form deployed successfully" });
+      db.query(deployQuery, [formId, deployedBy, startDate, endDate, JSON.stringify(targetFilters)], (err, result) => {
+        if (err) {
+          console.error("💥 Deployment insertion error:", err);
+          db.rollback(() => {
+            res.status(500).json({ success: false, message: "Failed to create deployment record", error: err.message });
+          });
+          return;
+        }
+
+        console.log(`✅ Deployment record created with ID: ${result.insertId}`);
+
+        // Update form status to active
+        db.query("UPDATE Forms SET status = 'active' WHERE id = ?", [formId], (updateErr, updateResult) => {
+          if (updateErr) {
+            console.error("💥 Form status update error:", updateErr);
+            db.rollback(() => {
+              res.status(500).json({ success: false, message: "Failed to update form status", error: updateErr.message });
+            });
+            return;
+          }
+
+          console.log(`✅ Form ${formId} status updated to active`);
+
+          // After deployment, assign the form to users based on target audience
+          const targetAudience = targetFilters?.target_audience;
+          if (targetAudience) {
+            console.log(`👥 Assigning form ${formId} to users with target audience: ${targetAudience}`);
+
+            // Build query to get users based on target audience
+            let userQuery = `SELECT DISTINCT u.id FROM Users u WHERE u.status = 'active'`;
+            const queryParams = [];
+
+            // Parse target audience
+            if (targetAudience && targetAudience !== 'All Users') {
+              console.log('📊 Parsing target audience:', targetAudience);
+
+              if (targetAudience.startsWith('Students - ')) {
+                // Extract the part after "Students - "
+                const targetPart = targetAudience.replace('Students - ', '').trim();
+                console.log('🎓 Student target part:', targetPart);
+
+                if (targetPart.startsWith('College ')) {
+                  // Format: "Students - College BSIT"
+                  const courseName = targetPart.replace('College ', '').trim();
+                  console.log('🏫 College course:', courseName);
+
+                  userQuery = `
+                    SELECT DISTINCT u.id
+                    FROM Users u
+                    JOIN Students s ON u.id = s.user_id
+                    WHERE u.status = 'active'
+                      AND u.role = 'student'
+                      AND s.course_yr_section LIKE ?
+                  `;
+                  queryParams.push(`${courseName}%`);
+
+                } else if (targetPart.includes('-')) {
+                  // Format: "Students - BSIT 4-A" or "Students - Grade 11-A"
+                  console.log('🎯 Specific section:', targetPart);
+
+                  userQuery = `
+                    SELECT DISTINCT u.id
+                    FROM Users u
+                    JOIN Students s ON u.id = s.user_id
+                    WHERE u.status = 'active'
+                      AND u.role = 'student'
+                      AND s.course_yr_section = ?
+                  `;
+                  queryParams.push(targetPart);
+
+                } else if (targetPart.startsWith('Grade ')) {
+                  // Format: "Students - Grade 11"
+                  console.log('📚 High school grade:', targetPart);
+
+                  userQuery = `
+                    SELECT DISTINCT u.id
+                    FROM Users u
+                    JOIN Students s ON u.id = s.user_id
+                    WHERE u.status = 'active'
+                      AND u.role = 'student'
+                      AND s.course_yr_section LIKE ?
+                  `;
+                  queryParams.push(`${targetPart}%`);
+
+                } else {
+                  // Just "Students" or unknown format
+                  userQuery = `
+                    SELECT DISTINCT u.id
+                    FROM Users u
+                    WHERE u.status = 'active'
+                      AND u.role = 'student'
+                  `;
+                }
+
+              } else if (targetAudience.startsWith('Instructors - ')) {
+                const dept = targetAudience.replace('Instructors - ', '').trim();
+                console.log('👨‍🏫 Instructor department:', dept);
+
+                userQuery = `
+                  SELECT DISTINCT u.id
+                  FROM Users u
+                  JOIN Instructors i ON u.id = i.user_id
+                  WHERE u.status = 'active'
+                    AND u.role = 'instructor'
+                    AND i.department = ?
+                `;
+                queryParams.push(dept);
+
+              } else if (targetAudience === 'Students') {
+                userQuery += " AND u.role = 'student'";
+              } else if (targetAudience === 'Instructors') {
+                userQuery += " AND u.role = 'instructor'";
+              } else if (targetAudience === 'Alumni') {
+                userQuery += " AND u.role = 'alumni'";
+              } else if (targetAudience === 'Staff') {
+                userQuery += " AND u.role = 'staff'";
+              }
+            }
+
+            console.log('🔍 Final user query:', userQuery);
+            console.log('📋 Query params:', queryParams);
+
+            db.query(userQuery, queryParams, (userErr, userResults) => {
+              if (userErr) {
+                console.error("❌ User query error:", userErr);
+                // Continue with deployment even if assignment fails
+                db.commit((commitErr) => {
+                  if (commitErr) {
+                    console.error("💥 Transaction commit error:", commitErr);
+                    db.rollback(() => {
+                      res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                    });
+                    return;
+                  }
+
+                  res.json({
+                    success: true,
+                    message: "Form deployed successfully (assignment may have failed)",
+                    deploymentId: result.insertId
+                  });
+                });
+                return;
+              }
+
+              console.log(`✅ Found ${userResults.length} users for assignment`);
+
+              if (userResults.length === 0) {
+                console.warn('⚠️ No users found for target audience:', targetAudience);
+                // Continue with deployment
+                db.commit((commitErr) => {
+                  if (commitErr) {
+                    console.error("💥 Transaction commit error:", commitErr);
+                    db.rollback(() => {
+                      res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                    });
+                    return;
+                  }
+
+                  res.json({
+                    success: true,
+                    message: "Form deployed successfully (no users to assign)",
+                    deploymentId: result.insertId
+                  });
+                });
+                return;
+              }
+
+              const userIdsToAssign = userResults.map(u => u.id);
+              console.log('👥 User IDs to assign:', userIdsToAssign);
+
+              // Check for existing assignments to avoid duplicates
+              const checkQuery = `
+                SELECT user_id FROM Form_Assignments
+                WHERE form_id = ? AND user_id IN (?)
+              `;
+
+              db.query(checkQuery, [formId, userIdsToAssign], (checkErr, existingAssignments) => {
+                if (checkErr) {
+                  console.error("Check assignments error:", checkErr);
+                  // Continue with deployment
+                  db.commit((commitErr) => {
+                    if (commitErr) {
+                      console.error("💥 Transaction commit error:", commitErr);
+                      db.rollback(() => {
+                        res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                      });
+                      return;
+                    }
+
+                    res.json({
+                      success: true,
+                      message: "Form deployed successfully (assignment check failed)",
+                      deploymentId: result.insertId
+                    });
+                  });
+                  return;
+                }
+
+                // Filter out users who already have assignments
+                const existingUserIds = existingAssignments.map(a => a.user_id);
+                const newUserIds = userIdsToAssign.filter(id => !existingUserIds.includes(id));
+
+                if (newUserIds.length === 0) {
+                  console.log('ℹ️ All users already assigned to this form');
+                  // Continue with deployment
+                  db.commit((commitErr) => {
+                    if (commitErr) {
+                      console.error("💥 Transaction commit error:", commitErr);
+                      db.rollback(() => {
+                        res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                      });
+                      return;
+                    }
+
+                    res.json({
+                      success: true,
+                      message: "Form deployed successfully (already assigned to all users)",
+                      deploymentId: result.insertId
+                    });
+                  });
+                  return;
+                }
+
+                // Create assignments for new users
+                const assignmentValues = newUserIds.map(userId => [formId, userId, 'pending']);
+                const insertQuery = `
+                  INSERT INTO Form_Assignments (form_id, user_id, status)
+                  VALUES ?
+                `;
+
+                db.query(insertQuery, [assignmentValues], (insertErr, insertResult) => {
+                  if (insertErr) {
+                    console.error("Insert assignments error:", insertErr);
+                    // Continue with deployment even if assignment fails
+                    db.commit((commitErr) => {
+                      if (commitErr) {
+                        console.error("💥 Transaction commit error:", commitErr);
+                        db.rollback(() => {
+                          res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                        });
+                        return;
+                      }
+
+                      res.json({
+                        success: true,
+                        message: "Form deployed successfully (assignment failed)",
+                        deploymentId: result.insertId
+                      });
+                    });
+                    return;
+                  }
+
+                  console.log(`✅ Created ${insertResult.affectedRows} form assignments`);
+
+                  // Commit transaction
+                  db.commit((commitErr) => {
+                    if (commitErr) {
+                      console.error("💥 Transaction commit error:", commitErr);
+                      db.rollback(() => {
+                        res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                      });
+                      return;
+                    }
+
+                    res.json({
+                      success: true,
+                      message: `Form deployed successfully and assigned to ${insertResult.affectedRows} users`,
+                      deploymentId: result.insertId,
+                      assignedCount: insertResult.affectedRows
+                    });
+                  });
+                });
+              });
+            });
+          } else {
+            // No target audience specified, just deploy without assignment
+            console.log('⚠️ No target audience specified for assignment');
+
+            // Commit transaction
+            db.commit((commitErr) => {
+              if (commitErr) {
+                console.error("💥 Transaction commit error:", commitErr);
+                db.rollback(() => {
+                  res.status(500).json({ success: false, message: "Failed to commit deployment transaction" });
+                });
+                return;
+              }
+
+              res.json({
+                success: true,
+                message: "Form deployed successfully",
+                deploymentId: result.insertId
+              });
+            });
+          }
+        });
+      });
+    } catch (error) {
+      console.error("💥 Deployment error:", error);
+      db.rollback(() => {
+        res.status(500).json({ success: false, message: "Deployment failed", error: error.message });
+      });
+    }
   });
 });
 
@@ -2736,7 +3040,7 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
   console.log(`📋 Fetching assigned forms for user ${userId}`);
 
   let query = `
-    SELECT 
+    SELECT
       f.id,
       f.title,
       f.description,
@@ -2750,14 +3054,16 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
       fa.assigned_at,
       fa.status as assignment_status,
       u.full_name as creator_name,
-      CASE 
-        WHEN fr.id IS NOT NULL THEN TRUE 
-        ELSE FALSE 
+      COUNT(DISTINCT q.id) as question_count,
+      CASE
+        WHEN fr.id IS NOT NULL THEN TRUE
+        ELSE FALSE
       END as has_responded
     FROM Form_Assignments fa
     JOIN Forms f ON fa.form_id = f.id
     LEFT JOIN Users u ON f.created_by = u.id
     LEFT JOIN Form_Responses fr ON f.id = fr.form_id AND fr.user_id = fa.user_id
+    LEFT JOIN Questions q ON f.id = q.form_id
     WHERE fa.user_id = ?
   `;
 
@@ -2770,6 +3076,8 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
 
   // Only show active forms
   query += " AND f.status = 'active'";
+
+  query += " GROUP BY f.id, fa.assigned_at, fa.status, u.full_name, fr.id";
 
   query += " ORDER BY fa.assigned_at DESC";
 
