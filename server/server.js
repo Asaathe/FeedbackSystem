@@ -3667,10 +3667,26 @@ app.post("/api/forms/:formId/submit", verifyToken, formSubmissionLimiter, (req, 
 
           console.log(`✅ Form ${formId} submitted successfully with response ID: ${insertResult.insertId}`);
 
-          res.json({
-            success: true,
-            message: "Form submitted successfully",
-            responseId: insertResult.insertId
+          // Update assignment status to completed
+          const updateAssignmentQuery = `
+            UPDATE Form_Assignments
+            SET status = 'completed'
+            WHERE form_id = ? AND user_id = ?
+          `;
+
+          db.query(updateAssignmentQuery, [formId, userId], (updateErr, updateResult) => {
+            if (updateErr) {
+              console.error("Assignment status update error:", updateErr);
+              // Don't fail the submission if assignment update fails
+            } else {
+              console.log(`✅ Assignment status updated to completed for user ${userId}, form ${formId}`);
+            }
+
+            res.json({
+              success: true,
+              message: "Form submitted successfully",
+              responseId: insertResult.insertId
+            });
           });
         });
       });

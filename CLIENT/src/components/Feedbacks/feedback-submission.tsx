@@ -12,6 +12,7 @@ import { ArrowLeft, Send, ClipboardList, Clock } from "lucide-react";
 import { Badge } from "../Reusable_components/badge";
 import { getFormsForUserRole, FormQuestion as ServiceFormQuestion, PublishedForm } from "../../services/publishedFormsService";
 import { getForm } from "../../services/formManagementService";
+import { getAuthToken } from "../../utils/auth";
 
 type FormQuestion = ServiceFormQuestion;
 
@@ -558,7 +559,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     }
 
     try {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
       if (!token) {
         alert('You must be logged in to submit feedback.');
         return;
