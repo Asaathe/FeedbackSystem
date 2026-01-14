@@ -2130,9 +2130,23 @@ app.get("/api/forms/:id", verifyToken, (req, res) => {
 
       // Parse options JSON
       const questions = questionsResults.map(q => ({
-        ...q,
-        options: q.options_json ? JSON.parse(`[${q.options_json}]`) : []
+        id: q.id,
+        type: q.question_type,
+        question: q.question_text, // Map question_text to question for client compatibility
+        description: q.description,
+        required: q.required,
+        options: q.options_json ? JSON.parse(`[${q.options_json}]`) : [],
+        min: q.min_value,
+        max: q.max_value
       }));
+
+      console.log(`📋 Form ${formId} questions from database:`, questions.map(q => ({
+        id: q.id,
+        type: q.type,
+        question: q.question,
+        hasText: !!q.question,
+        textLength: q.question?.length || 0
+      })));
 
       res.json({
         success: true,
@@ -2290,24 +2304,178 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
     }
   });
 
-  if (updateFields.length === 0) {
+  if (updateFields.length === 0 && !updates.questions) {
     return res.status(400).json({ success: false, message: "No valid fields to update" });
   }
 
-  const updateQuery = `UPDATE Forms SET ${updateFields.join(', ')}, updated_at = NOW() WHERE id = ?`;
-  updateValues.push(formId);
-
-  db.query(updateQuery, updateValues, (err, result) => {
+  // Start transaction for form and questions update
+  db.beginTransaction((err) => {
     if (err) {
-      console.error("Form update error:", err);
-      return res.status(500).json({ success: false, message: "Failed to update form" });
+      console.error("Transaction start error:", err);
+      return res.status(500).json({ success: false, message: "Database error" });
     }
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, message: "Form not found" });
-    }
+    const updateFormAndQuestions = () => {
+      // Update form basic fields
+      if (updateFields.length > 0) {
+        const updateQuery = `UPDATE Forms SET ${updateFields.join(', ')}, updated_at = NOW() WHERE id = ?`;
+        updateValues.push(formId);
 
-    res.json({ success: true, message: "Form updated successfully" });
+        db.query(updateQuery, updateValues, (err, result) => {
+          if (err) {
+            console.error("Form update error:", err);
+            db.rollback(() => {
+              res.status(500).json({ success: false, message: "Failed to update form" });
+            });
+            return;
+          }
+
+          if (result.affectedRows === 0) {
+            db.rollback(() => {
+              res.status(404).json({ success: false, message: "Form not found" });
+            });
+            return;
+          }
+
+          // Update questions if provided
+          if (updates.questions && Array.isArray(updates.questions)) {
+            updateQuestions();
+          } else {
+            db.commit((commitErr) => {
+              if (commitErr) {
+                console.error("Commit error:", commitErr);
+                db.rollback(() => {
+                  res.status(500).json({ success: false, message: "Failed to commit changes" });
+                });
+                return;
+              }
+              res.json({ success: true, message: "Form updated successfully" });
+            });
+          }
+        });
+      } else if (updates.questions && Array.isArray(updates.questions)) {
+        // Only update questions
+        updateQuestions();
+      } else {
+        db.rollback(() => {
+          res.status(400).json({ success: false, message: "No valid fields to update" });
+        });
+      }
+    };
+
+    const updateQuestions = () => {
+      // First, delete existing questions and options
+      db.query("DELETE FROM Question_Options WHERE question_id IN (SELECT id FROM Questions WHERE form_id = ?)", [formId], (deleteOptionsErr) => {
+        if (deleteOptionsErr) {
+          console.error("Delete options error:", deleteOptionsErr);
+          db.rollback(() => {
+            res.status(500).json({ success: false, message: "Failed to update questions" });
+          });
+          return;
+        }
+
+        db.query("DELETE FROM Questions WHERE form_id = ?", [formId], (deleteQuestionsErr) => {
+          if (deleteQuestionsErr) {
+            console.error("Delete questions error:", deleteQuestionsErr);
+            db.rollback(() => {
+              res.status(500).json({ success: false, message: "Failed to update questions" });
+            });
+            return;
+          }
+
+          // Insert new questions
+          const questionPromises = updates.questions.map((q, index) => {
+            return new Promise((resolve, reject) => {
+              // Validate question
+              if (!q.question || !q.type) {
+                reject(new Error("Question text and type are required"));
+                return;
+              }
+
+              const questionQuery = `
+                INSERT INTO Questions (form_id, question_text, question_type, description, required, min_value, max_value, order_index)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              `;
+
+              db.query(questionQuery, [
+                formId,
+                q.question,
+                q.type,
+                q.description || null,
+                q.required || false,
+                q.min || null,
+                q.max || null,
+                index
+              ], (qErr, qResult) => {
+                if (qErr) {
+                  console.error("Question creation error:", qErr);
+                  reject(qErr);
+                } else {
+                  const questionId = qResult.insertId;
+
+                  // Insert options if they exist
+                  if (q.options && q.options.length > 0) {
+                    const optionPromises = q.options.map((opt, optIndex) => {
+                      return new Promise((optResolve, optReject) => {
+                        // Handle both string options and option objects
+                        const optionText = typeof opt === 'string' ? opt : opt.option_text || opt.text || opt.label;
+
+                        if (!optionText) {
+                          optReject(new Error("Option text is required"));
+                          return;
+                        }
+
+                        db.query(
+                          "INSERT INTO Question_Options (question_id, option_text, order_index) VALUES (?, ?, ?)",
+                          [questionId, optionText, optIndex],
+                          (optErr) => optErr ? optReject(optErr) : optResolve()
+                        );
+                      });
+                    });
+
+                    Promise.all(optionPromises)
+                      .then(() => resolve())
+                      .catch((optError) => {
+                        console.error("Option creation error:", optError);
+                        reject(optError);
+                      });
+                  } else {
+                    resolve();
+                  }
+                }
+              });
+            });
+          });
+
+          Promise.all(questionPromises)
+            .then(() => {
+              console.log(`✅ Form ${formId} questions updated with ${updates.questions.length} questions`);
+              db.commit((commitErr) => {
+                if (commitErr) {
+                  console.error("Commit error:", commitErr);
+                  db.rollback(() => {
+                    res.status(500).json({ success: false, message: "Failed to commit changes" });
+                  });
+                  return;
+                }
+                res.json({ success: true, message: "Form updated successfully" });
+              });
+            })
+            .catch((error) => {
+              console.error("Questions creation error:", error);
+              db.rollback(() => {
+                res.status(500).json({
+                  success: false,
+                  message: "Failed to update form questions",
+                  error: error.message
+                });
+              });
+            });
+        });
+      });
+    };
+
+    updateFormAndQuestions();
   });
 });
 
