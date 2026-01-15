@@ -2568,66 +2568,20 @@ app.post("/api/forms/:id/save-as-template", verifyToken, (req, res) => {
       image_url: originalForm.image_url ? 'present' : 'none'
     });
 
-    // Create template from the original form
-    const templateQuery = `
-      INSERT INTO Forms (title, description, category, target_audience, status, image_url, start_date, end_date, is_template, created_by)
-      VALUES (?, ?, ?, ?, 'template', ?, ?, ?, TRUE, ?)
-    `;
-
-    db.query(templateQuery, [
-      originalForm.title + ' (Template)',
-      originalForm.description,
-      originalForm.category,
-      originalForm.target_audience,
-      originalForm.image_url,
-      originalForm.start_date,
-      originalForm.end_date,
-      userId
-    ], (templateErr, templateResult) => {
-      if (templateErr) {
-        console.error("Template creation error:", templateErr);
-        return res.status(500).json({ success: false, message: "Failed to create template" });
+    // Mark original form as template (move it to templates tab)
+    const updateOriginalQuery = "UPDATE Forms SET is_template = TRUE, status = 'template' WHERE id = ?";
+    db.query(updateOriginalQuery, [formId], (updateErr, updateResult) => {
+      if (updateErr) {
+        console.error("Original form update error:", updateErr);
+        return res.status(500).json({ success: false, message: "Failed to update form to template" });
       }
 
-      const templateId = templateResult.insertId;
-      console.log(`✅ Template created with ID: ${templateId}`);
+      console.log(`✅ Form ${formId} saved as template successfully`);
 
-      // Copy questions from original form to template
-      const copyQuestionsQuery = `
-        INSERT INTO Questions (form_id, question_text, question_type, description, required, min_value, max_value, order_index)
-        SELECT ?, question_text, question_type, description, required, min_value, max_value, order_index
-        FROM Questions WHERE form_id = ?
-      `;
-
-      db.query(copyQuestionsQuery, [templateId, formId], (copyErr, copyResult) => {
-        if (copyErr) {
-          console.error("Questions copy error:", copyErr);
-          // Rollback template creation if questions fail
-          db.query("DELETE FROM Forms WHERE id = ?", [templateId]);
-          return res.status(500).json({ success: false, message: "Failed to copy questions to template" });
-        }
-
-        console.log(`📋 Copied ${copyResult.affectedRows} questions to template`);
-
-        // Mark original form as template (move it to templates tab)
-        const updateOriginalQuery = "UPDATE Forms SET is_template = TRUE, status = 'template' WHERE id = ?";
-        db.query(updateOriginalQuery, [formId], (updateErr, updateResult) => {
-          if (updateErr) {
-            console.error("Original form update error:", updateErr);
-            // Rollback template creation if original form update fails
-            db.query("DELETE FROM Forms WHERE id = ?", [templateId]);
-            return res.status(500).json({ success: false, message: "Failed to update original form" });
-          }
-
-          console.log(`✅ Form ${formId} saved as template successfully`);
-          console.log(`✅ Original form ${formId} marked as template`);
-
-          res.json({
-            success: true,
-            message: "Form saved as template successfully",
-            templateId: templateId
-          });
-        });
+      res.json({
+        success: true,
+        message: "Form saved as template successfully",
+        templateId: formId
       });
     });
   });

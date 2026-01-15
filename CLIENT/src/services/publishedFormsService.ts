@@ -7,7 +7,7 @@ export interface FormQuestion {
   question: string;
   description?: string;
   required: boolean;
-  options?: string[];
+  options?: Array<{ id: number; option_text: string; order_index: number }>;
   min?: number;
   max?: number;
 }

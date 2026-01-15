@@ -67,6 +67,7 @@ import {
   updateFormCategory,
   deleteFormCategory,
   assignFormToUsers,
+  deployForm,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../Reusable_components/checkbox";
@@ -609,21 +610,43 @@ export function FormBuilder({
   // Publish Form Function
   const publishForm = async () => {
     // Validate required fields
+    if (!formTitle.trim()) {
+      toast.error("Please enter a form title");
+      return;
+    }
+    if (!formCategory) {
+      toast.error("Please select a category");
+      return;
+    }
     if (!formTarget || formTarget === "") {
-      toast.error("Please select a target audience before publishing");
+      toast.error("Please select a target audience");
       return;
     }
 
-    // Validate that at least one recipient is selected
-    if (selectedRecipients.size === 0 && selectedAudienceType !== "All Users") {
-      toast.error("Please select at least one recipient");
-      return;
+    // Validate questions
+    for (const q of questions) {
+      if (!q.question.trim()) {
+        toast.error("All questions must have text");
+        return;
+      }
+      if (!q.type) {
+        toast.error("All questions must have a type");
+        return;
+      }
     }
 
     try {
       setLoading(true);
 
-      const formData = {
+      // For existing forms, don't update questions to avoid issues
+      const formData = formId ? {
+        title: formTitle,
+        description: formDescription,
+        category: formCategory,
+        targetAudience: formTarget,
+        imageUrl: formImage || undefined,
+        status: "active",
+      } : {
         title: formTitle,
         description: formDescription,
         category: formCategory,
@@ -634,63 +657,46 @@ export function FormBuilder({
         questions_count: questions.length,
         imageUrl: formImage || undefined,
         isTemplate: false,
-        status: "active",
+        status: "draft",
       };
 
-      console.log("📝 Publishing form with data:", formData);
-      console.log("🖼️ Image URL being sent:", formData.imageUrl);
-
-      const result = formId
-        ? await updateForm(formId, { ...formData, status: "active" })
+      const saveResult = formId
+        ? await updateForm(formId, formData)
         : await createForm(formData);
 
-      console.log("📨 API response:", result);
+      if (!saveResult.success) {
+        toast.error(saveResult.message || "Failed to save form");
+        return;
+      }
+
+      const currentFormId = formId || (saveResult as any).formId;
+
+      if (!currentFormId) {
+        toast.error("Failed to get form ID");
+        return;
+      }
+
+      // Deploy the form
+      const result = await deployForm(currentFormId, {
+        startDate: submissionSchedule.startDate || new Date().toISOString().split('T')[0],
+        endDate: submissionSchedule.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        targetFilters: {
+          roles: formTarget === 'All Users' ? ['all'] : [formTarget.toLowerCase().replace(' ', '')],
+          target_audience: formTarget
+        }
+      });
 
       if (result.success) {
-        // When updating an existing form, use the existing formId
-        // When creating a new form, use the returned formId
-        const publishedFormId = formId || (result as any).formId;
-
-        // Create form assignments
-        console.log("👥 Creating form assignments for:", formTarget);
-        console.log("📋 Selected recipients:", Array.from(selectedRecipients));
-        console.log("✅ Select all?:", selectAllRecipients);
-
-        // For "All Users", we don't need to assign to specific users
-        if (selectedAudienceType === "All Users") {
-          console.log("🌍 Assigning to all users - no specific assignments needed");
-          toast.success("Form published and available to all users!");
-        } else {
-          // For specific audiences, create assignments
-          const assignmentResult = await assignFormToUsers(
-            publishedFormId,
-            Array.from(selectedRecipients),
-            formTarget
-          );
-
-          console.log("📨 Assignment result:", assignmentResult);
-
-          if (assignmentResult.success) {
-            toast.success(
-              `Form published and assigned to ${assignmentResult.assignedCount} user(s)!`
-            );
-          } else {
-            toast.warning(
-              "Form published but failed to create some assignments: " +
-                assignmentResult.message
-            );
-          }
-        }
-
+        toast.success(result.message);
         setPublishDialogOpen(false);
         setTimeout(() => {
           onBack();
         }, 1500);
       } else {
-        toast.error(result.message || "Failed to publish form");
+        toast.error(result.message || 'Failed to deploy form');
       }
     } catch (err) {
-      console.error("❌ Error publishing form:", err);
+      console.error("Error publishing form:", err);
       toast.error("Failed to publish form");
     } finally {
       setLoading(false);

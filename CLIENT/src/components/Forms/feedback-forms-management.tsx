@@ -757,17 +757,6 @@ export function FeedbackFormsManagement({
                                 : "Save as Template"}
                             </DropdownMenuItem>
                             <DropdownMenuItem
-                              onClick={() => handleDeployForm(form.id)}
-                              disabled={deployingForm === form.id || form.status === 'active'}
-                            >
-                              <Send className="w-4 h-4 mr-2" />
-                              {deployingForm === form.id
-                                ? "Deploying..."
-                                : form.status === 'active'
-                                ? "Already Published"
-                                : "Publish Form"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
                               className="text-red-600"
                               onClick={() => handleDeleteForm(form.id)}
                             >
