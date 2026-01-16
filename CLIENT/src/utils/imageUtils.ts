@@ -57,7 +57,7 @@ export const formatImageUrl = (imageUrl: string | undefined | null): string => {
  * Used when an image fails to load or is not found
  */
 export const getDefaultFallbackImage = (): string => {
-  return '/public/placeholder.png';
+  return '/placeholder.png';
 };
 
 /**
