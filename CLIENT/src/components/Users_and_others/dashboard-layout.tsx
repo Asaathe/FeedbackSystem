@@ -1,5 +1,5 @@
 import { ReactNode, useState } from "react";
-import { Button } from "../Reusable_components/button";
+import { Button } from "../ui/button";
 import { 
   LayoutDashboard, 
   FileText, 
@@ -18,7 +18,7 @@ import {
   HelpCircle,
   Shield
 } from "lucide-react";
-import { Avatar, AvatarFallback } from "../Reusable_components/avatar";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 
 import {
   DropdownMenu,
@@ -27,7 +27,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "../Reusable_components/dropdown-menu";
+} from "../ui/dropdown-menu";
 
 interface DashboardLayoutProps {
   children: ReactNode;

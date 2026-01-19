@@ -1,15 +1,15 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Label } from "../Reusable_components/label";
-import { Input } from "../Reusable_components/input";
-import { Textarea } from "../Reusable_components/textarea";
-import { RadioGroup, RadioGroupItem } from "../Reusable_components/radio-group";
-import { Checkbox } from "../Reusable_components/checkbox";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Reusable_components/select";
-import { Progress } from "../Reusable_components/progress";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Checkbox } from "../ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { Progress } from "../ui/progress";
 import { ArrowLeft, Send, Briefcase, GraduationCap } from "lucide-react";
-import { Badge } from "../Reusable_components/badge";
+import { Badge } from "../ui/badge";
 
 interface AlumniForm {
   id: string;

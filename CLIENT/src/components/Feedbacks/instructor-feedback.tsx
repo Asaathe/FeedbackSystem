@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Badge } from "../Reusable_components/badge";
-import { Input } from "../Reusable_components/input";
-import { Textarea } from "../Reusable_components/textarea";
-import { Label } from "../Reusable_components/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Reusable_components/select";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Label } from "../ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Search, Filter, MessageSquare, TrendingUp, Eye, ChevronDown, ChevronUp } from "lucide-react";
-import { Progress } from "../Reusable_components/progress";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Reusable_components/dialog";
+import { Progress } from "../ui/progress";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 
 const courseFeedback = [
   {

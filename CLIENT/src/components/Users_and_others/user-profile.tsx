@@ -1,10 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Input } from "../Reusable_components/input";
-import { Label } from "../Reusable_components/label";
-import { Textarea } from "../Reusable_components/textarea";
-import { Avatar, AvatarFallback } from "../Reusable_components/avatar";
-import { Badge } from "../Reusable_components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
+import { Avatar, AvatarFallback } from "../ui/avatar";
+import { Badge } from "../ui/badge";
 import {
   User,
   Mail,

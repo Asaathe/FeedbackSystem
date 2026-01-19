@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Input } from "../Reusable_components/input";
-import { Badge } from "../Reusable_components/badge";
-import { Avatar, AvatarFallback } from "../Reusable_components/avatar";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Search, UserPlus, Filter, MoreVertical, Mail, Shield, Trash2, CheckCircle, XCircle, Edit } from "lucide-react";
 import {
   Table,
@@ -12,20 +12,20 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "../Reusable_components/table";
+} from "../ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../Reusable_components/dropdown-menu";
+} from "../ui/dropdown-menu";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../Reusable_components/select";
+} from "../ui/select";
 import {
   Dialog,
   DialogContent,
@@ -34,7 +34,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../Reusable_components/dialog";
+} from "../ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,9 +44,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../Reusable_components/alert-dialog";
-import { Label } from "../Reusable_components/label";
-import { Textarea } from "../Reusable_components/textarea";
+} from "../ui/alert-dialog";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
 import { toast } from "sonner";
 
 interface User {

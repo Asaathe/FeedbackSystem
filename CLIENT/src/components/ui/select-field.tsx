@@ -5,7 +5,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../Reusable_components/select";
+} from "./select";
 
 interface SelectFieldProps {
   label: string;

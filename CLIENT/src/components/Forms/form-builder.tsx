@@ -4,20 +4,20 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Input } from "../Reusable_components/input";
-import { Textarea } from "../Reusable_components/textarea";
-import { Label } from "../Reusable_components/label";
-import { Badge } from "../Reusable_components/badge";
+} from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { Label } from "../ui/label";
+import { Badge } from "../ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../Reusable_components/select";
-import { Switch } from "../Reusable_components/switch";
+} from "../ui/select";
+import { Switch } from "../ui/switch";
 import {
   Plus,
   Trash2,
@@ -51,7 +51,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../Reusable_components/dialog";
+} from "../ui/dialog";
 import { toast } from "sonner";
 import {
   getForms,
@@ -70,15 +70,15 @@ import {
   deployForm,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
-import { Checkbox } from "../Reusable_components/checkbox";
+import { Checkbox } from "../ui/checkbox";
 import { EnhancedImage, validateImageFile } from "../../utils/imageUtils";
-import { ScrollArea } from "../Reusable_components/scroll-area";
-import { Separator } from "../Reusable_components/separator";
+import { ScrollArea } from "../ui/scroll-area";
+import { Separator } from "../ui/separator";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-} from "../Reusable_components/collapsible";
+} from "../ui/collapsible";
 
 interface FormQuestion {
   id: string;

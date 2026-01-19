@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Badge } from "../Reusable_components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { Users, FileText, Clock, CheckCircle, Building2, ArrowRight } from "lucide-react";
 import { getFormsForUserRole, PublishedForm } from "../../services/publishedFormsService";
 

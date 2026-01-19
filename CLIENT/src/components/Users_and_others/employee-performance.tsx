@@ -1,8 +1,8 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Badge } from "../Reusable_components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { ArrowLeft, Award, TrendingUp, TrendingDown, Users } from "lucide-react";
-import { Progress } from "../Reusable_components/progress";
+import { Progress } from "../ui/progress";
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 const ratingTrend = [

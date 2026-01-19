@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Input } from "../Reusable_components/input";
-import { Badge } from "../Reusable_components/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../Reusable_components/select";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Search, Filter, Users } from "lucide-react";
 
 // Alumni employees working at this company

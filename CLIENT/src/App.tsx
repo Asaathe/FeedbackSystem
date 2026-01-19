@@ -3,7 +3,7 @@ import { autoRefreshToken } from "./utils/auth";
 import { LoginPage } from "./components/Users_and_others/login-page";
 import { SignupPage } from "./components/Users_and_others/signup-page";
 import { DashboardLayout } from "./components/Users_and_others/dashboard-layout";
-import { Toaster } from "./components/Reusable_components/sonner";
+import { Toaster } from "./components/ui/sonner";
 
 // Lazy load components
 const AdminDashboard = lazy(() =>

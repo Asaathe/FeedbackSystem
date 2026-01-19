@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Badge } from "../Reusable_components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Button } from "../ui/button";
+import { Badge } from "../ui/badge";
 import { 
   Users, 
   FileText, 
@@ -13,7 +13,7 @@ import {
   Eye,
  
 } from "lucide-react";
-import { Progress } from "../Reusable_components/progress";
+import { Progress } from "../ui/progress";
 
 // ============================================================
 // TODO: BACKEND - Admin Dashboard Data

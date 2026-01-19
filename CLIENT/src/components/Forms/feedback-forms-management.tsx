@@ -4,10 +4,10 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Input } from "../Reusable_components/input";
-import { Badge } from "../Reusable_components/badge";
+} from "../ui/card";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
 import {
   Plus,
   Search,
@@ -25,7 +25,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "../Reusable_components/dropdown-menu";
+} from "../ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -33,22 +33,22 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../Reusable_components/dialog";
-import { Label } from "../Reusable_components/label";
-import { Textarea } from "../Reusable_components/textarea";
+} from "../ui/dialog";
+import { Label } from "../ui/label";
+import { Textarea } from "../ui/textarea";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../Reusable_components/select";
+} from "../ui/select";
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "../Reusable_components/tabs";
+} from "../ui/tabs";
 import { toast } from "sonner";
 import {
   getForms,

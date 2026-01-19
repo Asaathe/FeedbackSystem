@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { FormContainer } from "../Forms/form-container";
-import { InputField } from "../Reusable_components/input-field";
-import { SelectField } from "../Reusable_components/select-field";
+import { InputField } from "../ui/input-field";
+import { SelectField } from "../ui/select-field";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -11,7 +11,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "../Reusable_components/alert-dialog";
+} from "../ui/alert-dialog";
 
 interface SignupPageProps {
   onSignupSuccess: (role: string) => void;

@@ -4,23 +4,23 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-} from "../Reusable_components/card";
-import { Button } from "../Reusable_components/button";
-import { Label } from "../Reusable_components/label";
-import { Input } from "../Reusable_components/input";
-import { Textarea } from "../Reusable_components/textarea";
-import { RadioGroup, RadioGroupItem } from "../Reusable_components/radio-group";
-import { Checkbox } from "../Reusable_components/checkbox";
+} from "../ui/card";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
+import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
+import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
+import { Checkbox } from "../ui/checkbox";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../Reusable_components/select";
-import { Progress } from "../Reusable_components/progress";
+} from "../ui/select";
+import { Progress } from "../ui/progress";
 import { ArrowLeft, Send, ClipboardList, Clock } from "lucide-react";
-import { Badge } from "../Reusable_components/badge";
+import { Badge } from "../ui/badge";
 import {
   getFormsForUserRole,
   FormQuestion as ServiceFormQuestion,

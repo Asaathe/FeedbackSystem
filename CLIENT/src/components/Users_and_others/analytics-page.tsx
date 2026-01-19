@@ -1,5 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "../Reusable_components/card";
-import { Badge } from "../Reusable_components/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Badge } from "../ui/badge";
+import { Progress } from "../ui/progress";
 import { TrendingUp, Users, FileText, MessageSquare } from "lucide-react";
 
 export function AnalyticsPage() {
