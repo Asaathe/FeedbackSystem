@@ -23,7 +23,7 @@ export function SignupPage({
   onSignupSuccess,
   onBackToLogin,
 }: SignupPageProps) {
-  // Use Vite's import.meta.env.DEV to detect development mode
+  
   const API_BASE_URL = import.meta.env.DEV ? "http://localhost:5000/api" : "/api";
   
   const [formData, setFormData] = useState({

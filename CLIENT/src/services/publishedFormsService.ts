@@ -19,6 +19,7 @@ export interface PublishedForm {
   category: string;
   target: string; // Target audience: Students, Alumni, Instructors, Staff, All Users
   questions: FormQuestion[];
+  questionCount?: number;
   image?: string;
   status: 'published';
   publishedAt: string;
@@ -125,10 +126,11 @@ export const getFormsForUserRole = async (userRole: string): Promise<PublishedFo
           category: form.category,
           target: form.target_audience,
           questions: form.questions || [], // Include questions from the form data
+          questionCount: form.question_count || 0,
           image: form.image_url,
           status: 'published',
           publishedAt: form.created_at,
-          dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString() : undefined,
+          dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
           assignment_status: form.assignment_status || 'pending'
         }));
     }

@@ -872,16 +872,13 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
   });
 });
 
-// Get users filtered by role and specific criteria for form targeting
--
-// REPLACE the /api/users/filter endpoint (around line 715) with this:
 
 // Get users filtered by role and specific criteria for form targeting
 app.get("/api/users/filter", verifyToken, (req, res) => {
   try {
     const { role, course_year_section, department, company } = req.query;
 
-    console.log('🔍 Filtering users with params:', { 
+    console.log('Filtering users with params:', { 
       role, course_year_section, department, company 
     });
 
@@ -939,7 +936,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       if (department) {
         query += " AND i.department = ?";
         params.push(department);
-        console.log('👨‍🏫 Filtering by department:', department);
+        console.log('Filtering by department:', department);
        }
        
     } 
@@ -3171,7 +3168,7 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
       f.status as form_status,
       f.image_url,
       f.start_date,
-      f.end_date,
+      COALESCE(fd.end_date, f.end_date, DATE_ADD(fa.assigned_at, INTERVAL 7 DAY)) as end_date,
       f.created_at,
       fa.assigned_at,
       fa.status as assignment_status,
@@ -3183,6 +3180,7 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
       END as has_responded
     FROM Form_Assignments fa
     JOIN Forms f ON fa.form_id = f.id
+    LEFT JOIN Form_Deployments fd ON f.id = fd.form_id
     LEFT JOIN Users u ON f.created_by = u.id
     LEFT JOIN Form_Responses fr ON f.id = fr.form_id AND fr.user_id = fa.user_id
     LEFT JOIN Questions q ON f.id = q.form_id

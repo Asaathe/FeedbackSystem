@@ -39,6 +39,7 @@ interface FeedbackForm {
   dueDate: string;
   imageUrl?: string;
   questions: FormQuestion[];
+  questionCount?: number;
 }
 
 // ============================================================
@@ -156,6 +157,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
           dueDate: form.dueDate || "No due date",
           imageUrl: form.image,
           questions: form.questions,
+          questionCount: form.questionCount,
         }));
 
         console.log("Mapped forms:", forms);
@@ -267,7 +269,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
       case "multiple-choice":
         return (
           <RadioGroup
-            value={answers[question.id]}
+            value={answers[question.id] || ""}
             onValueChange={(value) =>
               setAnswers({ ...answers, [question.id]: value })
             }
@@ -505,7 +507,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <ClipboardList className="w-4 h-4" />
-                      <span>{form.questions.length} questions</span>
+                      <span>{form.questionCount || form.questions.length} questions</span>
                     </div>
                     <Button
                       className="bg-green-500 hover:bg-green-600"
