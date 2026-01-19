@@ -84,43 +84,6 @@ const UserProfile = lazy(() =>
   }))
 );
 
-// Add loading state for dynamic data
-const DynamicDataLoader = ({ children }: { children: React.ReactNode }) => {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // This is a placeholder - in reality, FormBuilder fetches its own data
-    setLoading(false);
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading form builder...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-red-600 mb-4">{error}</p>
-        <button
-          onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-        >
-          Retry
-        </button>
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-};
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -279,13 +242,11 @@ export default function App() {
           );
         case "form-builder":
           return (
-            <DynamicDataLoader>
-              <FormBuilder
-                onBack={handleBackFromFormBuilder}
-                formId={editingFormId}
-                isCustomFormTab={!isEditingTemplate}
-              />
-            </DynamicDataLoader>
+            <FormBuilder
+              onBack={handleBackFromFormBuilder}
+              formId={editingFormId}
+              isCustomFormTab={!isEditingTemplate}
+            />
           );
         case "users":
           return <UserManagement />;
