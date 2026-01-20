@@ -1,10 +1,7 @@
 -- ============================================================
 -- FEEDBACK FORMS SYSTEM DATABASE SCHEMA
 -- ============================================================
--- This schema supports the complete feedback forms management system
--- including form creation, templates, submissions, and deployment
 
--- Forms table - stores all feedback forms and templates
 CREATE TABLE IF NOT EXISTS Forms (
     id INT AUTO_INCREMENT PRIMARY KEY,
     title VARCHAR(255) NOT NULL,

@@ -638,27 +638,20 @@ export function FormBuilder({
     try {
       setLoading(true);
 
-      // For existing forms, don't update questions to avoid issues
-      const formData = formId ? {
-        title: formTitle,
-        description: formDescription,
-        category: formCategory,
-        targetAudience: formTarget,
-        imageUrl: formImage || undefined,
-        status: "active",
-      } : {
-        title: formTitle,
-        description: formDescription,
-        category: formCategory,
-        targetAudience: formTarget,
-        questions: questions,
-        question_count: questions.length,
-        total_questions: questions.length,
-        questions_count: questions.length,
-        imageUrl: formImage || undefined,
-        isTemplate: false,
-        status: "draft",
-      };
+     // ALWAYS include questions when publishing
+const formData = {
+  title: formTitle,
+  description: formDescription,
+  category: formCategory,
+  targetAudience: formTarget,
+  questions: questions,
+  question_count: questions.length,
+  total_questions: questions.length,
+  questions_count: questions.length,
+  imageUrl: formImage || undefined,
+  isTemplate: false,
+  status: "active", // Set to active when publishing
+};
 
       const saveResult = formId
         ? await updateForm(formId, formData)
