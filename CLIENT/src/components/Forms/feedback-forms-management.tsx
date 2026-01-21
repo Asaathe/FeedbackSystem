@@ -808,9 +808,8 @@ export function FeedbackFormsManagement({
                         <Button
                           variant="outline"
                           className="flex-1 border-green-200 hover:bg-green-50"
-                          onClick={() => handlePreviewForm(form)}
                         >
-                          View
+                          Responses
                         </Button>
                         <Button
                           className="flex-1 bg-green-500 hover:bg-green-600"
