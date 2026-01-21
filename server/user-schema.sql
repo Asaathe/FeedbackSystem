@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS students (
     user_id INT UNIQUE NOT NULL,
     studentID VARCHAR(50),
     course_yr_section VARCHAR(50),
+    department VARCHAR(255),
     contact_number VARCHAR(20),
     subjects TEXT,
     image VARCHAR(500),

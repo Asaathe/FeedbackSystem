@@ -11,7 +11,7 @@ const crypto = require("crypto");
 const multer = require("multer");
 const fs = require("fs");
 const db = require("./db");
-console.log("Dependencies loaded successfully");
+
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -276,8 +276,8 @@ const isValidEmail = (email) => {
 const insertStudentData = (userId, data) => {
   return new Promise((resolve, reject) => {
     const query = `
-      INSERT INTO students (user_id, studentID, course_yr_section, contact_number, subjects)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO students (user_id, studentID, course_yr_section, department, contact_number, subjects)
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     db.query(
       query,
@@ -285,6 +285,7 @@ const insertStudentData = (userId, data) => {
         userId,
         data.studentId,
         data.courseYrSection,
+        data.department,
         data.contactNumber,
         data.subjects,
       ],
@@ -1248,7 +1249,7 @@ app.get("/api/users", verifyToken, (req, res) => {
     let query = `
       SELECT
         u.id, u.email, u.full_name, u.role, u.status, u.registration_date as created_at,
-        s.studentID, s.course_yr_section,
+        s.studentID, s.course_yr_section, s.department as student_department,
         i.instructor_id, i.department,
         a.degree, a.company,
         e.companyname, e.industry
@@ -1326,7 +1327,7 @@ app.get("/api/users", verifyToken, (req, res) => {
           name: user.full_name,
           email: user.email,
           role: user.role,
-          department: user.department || "N/A", // Default department
+          department: user.student_department || user.department || "N/A", // Default department
           status: user.status,
           createdAt: user.created_at,
           // Role-specific data
@@ -1645,7 +1646,7 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
       role,
       department,
       studentId,
-      year,
+      course_year_section,
       employeeId,
       companyName,
       graduationYear,
@@ -1699,11 +1700,13 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
           try {
             switch (role) {
               case "student":
-                if (studentId || year) {
+                if (studentId || course_year_section) {
                   await insertStudentData(userId, {
                     studentId: studentId || null,
-                    courseYrSection: year || null,
+                    courseYrSection: course_year_section || null,
+                    department: department || null,
                     contactNumber: phoneNumber || null,
+                    subjects: null,
                   });
                 }
                 break;

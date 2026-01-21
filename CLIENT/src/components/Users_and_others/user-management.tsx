@@ -4,7 +4,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Search, UserPlus, Filter, MoreVertical, Mail, Shield, Trash2, CheckCircle, XCircle, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, UserPlus, Filter, MoreVertical, Trash2, CheckCircle, XCircle, Edit, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -72,126 +72,6 @@ interface User {
   graduationYear?: string;
 }
 
-// ============================================================
-// TODO: BACKEND - Fetch users from database
-// ============================================================
-// Endpoint: GET /api/users?search={query}&role={role}&status={status}&page={page}&limit={limit}
-// Headers: Authorization: Bearer {token}
-// Response: { users: [], pagination: { total, page, limit, totalPages } }
-//
-// Example implementation:
-/*
-const fetchUsers = async (search = '', role = 'all', status = 'all', page = 1, limit = 10) => {
-  try {
-    const token = localStorage.getItem('token');
-    const params = new URLSearchParams({
-      ...(search && { search }),
-      ...(role !== 'all' && { role }),
-      ...(status !== 'all' && { status }),
-      page: String(page),
-      limit: String(limit)
-    });
-    
-    const response = await fetch(`/api/users?${params}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      }
-    });
-    
-    if (!response.ok) throw new Error('Failed to fetch users');
-    
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Error fetching users:', error);
-    throw error;
-  }
-};
-*/
-// ============================================================
-
-// ============================================================
-// TODO: BACKEND - Create New User (Admin Manual Addition)
-// ============================================================
-// Endpoint: POST /api/users/create
-// Headers: Authorization: Bearer {token}, Content-Type: application/json
-// Request Body: {
-//   email: string,
-//   password: string,
-//   fullName: string,
-//   role: 'Student' | 'Instructor' | 'Staff' | 'Alumni' | 'Employer',
-//   department: string,
-//   // Role-specific fields:
-//   studentId?: string,        // For Students
-//   year?: string,             // For Students
-//   employeeId?: string,       // For Instructors/Staff
-//   companyName?: string,      // For Employers
-//   graduationYear?: string,   // For Alumni
-//   phoneNumber?: string,
-//   address?: string
-// }
-// Response: { 
-//   success: true, 
-//   user: { id, email, fullName, role, status: 'pending', ... },
-//   message: 'User created successfully. Account is pending approval.'
-// }
-// ============================================================
-
-// ============================================================
-// TODO: BACKEND - Approve User Account
-// ============================================================
-// Endpoint: PATCH /api/users/:id/approve
-// Headers: Authorization: Bearer {token}
-// Response: { success: true, user: {...}, message: 'User account approved' }
-// Notes: 
-// - Changes user status from 'pending' to 'active'
-// - Sends email notification to user
-// - User can now log in to the system
-// ============================================================
-
-// ============================================================
-// TODO: BACKEND - Reject User Account
-// ============================================================
-// Endpoint: PATCH /api/users/:id/reject
-// Headers: Authorization: Bearer {token}
-// Request Body: { reason?: string }
-// Response: { success: true, message: 'User account rejected' }
-// Notes:
-// - Changes user status to 'rejected' or deletes the user
-// - Optionally sends email notification with rejection reason
-// ============================================================
-
-// ============================================================
-// TODO: BACKEND - Update User Information
-// ============================================================
-// Endpoint: PATCH /api/users/:id
-// Headers: Authorization: Bearer {token}, Content-Type: application/json
-// Request Body: {
-//   fullName?: string,
-//   email?: string,
-//   role?: 'Student' | 'Instructor' | 'Staff' | 'Alumni' | 'Employer',
-//   department?: string,
-//   status?: 'active' | 'pending' | 'inactive',
-//   // Role-specific fields:
-//   studentId?: string,
-//   year?: string,
-//   employeeId?: string,
-//   companyName?: string,
-//   graduationYear?: string,
-//   phoneNumber?: string,
-//   address?: string
-// }
-// Response: { 
-//   success: true, 
-//   user: { id, email, fullName, role, status, ... },
-//   message: 'User updated successfully.'
-// }
-// ============================================================
-
-// TEMPORARY: Mock data for development
-
-
 export function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -216,7 +96,7 @@ export function UserManagement() {
     address: '',
     // Role-specific fields
     studentId: '',
-    year: '',
+    course_year_section: '',
     employeeId: '',
     companyName: '',
     graduationYear: ''
@@ -233,7 +113,7 @@ export function UserManagement() {
     address: '',
     // Role-specific fields
     studentId: '',
-    year: '',
+    course_year_section: '',
     employeeId: '',
     companyName: '',
     graduationYear: ''
@@ -246,9 +126,21 @@ export function UserManagement() {
   const [isRemoveDialogOpen, setIsRemoveDialogOpen] = useState(false);
   const [userToRemove, setUserToRemove] = useState<number | null>(null);
 
+  // State for approve user confirmation dialog
+  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
+  const [userToApprove, setUserToApprove] = useState<any>(null);
+
+  // State for reject user confirmation dialog
+  const [isRejectDialogOpen, setIsRejectDialogOpen] = useState(false);
+  const [userToReject, setUserToReject] = useState<any>(null);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // Pagination state for pending approvals
+  const [pendingPage, setPendingPage] = useState(1);
+  const pendingItemsPerPage = 3; // Show fewer in pending section
 
   // Fetch users from API
   const fetchUsers = async (search = '', role = 'all', status = 'all', page = 1, limit = 1000) => {
@@ -307,15 +199,9 @@ export function UserManagement() {
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
+    setPendingPage(1);
   }, [searchQuery, roleFilter, statusFilter]);
 
-  // ============================================================
-  // TODO: BACKEND - Replace local filter with API call
-  // ============================================================
-  // Call fetchUsers() whenever searchQuery, roleFilter, or statusFilter changes
-  // Use useEffect hook to trigger API calls
-  // Add loading state and error handling
-  // ============================================================
   
   const filteredUsers = users.filter(user => {
     const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -330,6 +216,11 @@ export function UserManagement() {
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const pendingCount = users.filter(u => u.status === 'pending').length;
+
+  // Pending users pagination
+  const pendingUsers = users.filter(u => u.status === 'pending');
+  const totalPendingPages = Math.ceil(pendingUsers.length / pendingItemsPerPage);
+  const paginatedPendingUsers = pendingUsers.slice((pendingPage - 1) * pendingItemsPerPage, pendingPage * pendingItemsPerPage);
 
   const getRoleBadgeColor = (role: string) => {
     switch (role.toLowerCase()) {
@@ -392,40 +283,25 @@ export function UserManagement() {
       return;
     }
 
-    // Validate department based on role and year
+    // Validate role-specific fields
     if (newUser.role.toLowerCase() === 'student') {
-      if (!newUser.year) {
-        toast.error('Please select a year level');
+      if (!newUser.course_year_section) {
+        toast.error('Please select a course year and section');
         return;
       }
-      
-      // Auto-set department based on year
-      const year = newUser.year;
-      
-      // Check for Senior High strands (ABM, HUMSS, STEM, ICT) with grade levels
-      const seniorHighStrands = ['ABM', 'HUMSS', 'STEM', 'ICT'];
-      const isSeniorHigh = seniorHighStrands.some(strand =>
-        year.includes(strand) &&
-        (year.includes('11') || year.includes('12'))
-      );
-      
-      // Check for College courses (BSIT, BSBA, BSCS, BSEN, BSOA, BSAIS, BTVTEd)
-      const collegeCourses = ['BSIT', 'BSBA', 'BSCS', 'BSEN', 'BSOA', 'BSAIS', 'BTVTEd'];
-      const isCollege = collegeCourses.some(course =>
-        year.includes(course)
-      );
-      
-      if (isSeniorHigh) {
-        newUser.department = 'Senior High';
-      } else if (isCollege) {
-        newUser.department = 'College';
-      } else {
-        // Default to College if no specific pattern is matched
-        newUser.department = 'College';
+      if (!newUser.department) {
+        toast.error('Please select a department');
+        return;
       }
-    } else if (!newUser.department) {
-      toast.error('Please fill in the department field');
-      return;
+    } else if (newUser.role.toLowerCase() === 'instructor') {
+      if (!newUser.employeeId) {
+        toast.error('Please fill in the employee ID');
+        return;
+      }
+      if (!newUser.department) {
+        toast.error('Please select a department');
+        return;
+      }
     }
 
     try {
@@ -441,7 +317,7 @@ export function UserManagement() {
         // Role-specific fields
         ...(newUser.role.toLowerCase() === 'student' && {
           studentId: newUser.studentId,
-          year: newUser.year
+          course_year_section: newUser.course_year_section
         }),
         ...(newUser.role.toLowerCase() === 'instructor' && {
           employeeId: newUser.employeeId
@@ -486,7 +362,7 @@ export function UserManagement() {
         phoneNumber: '',
         address: '',
         studentId: '',
-        year: '',
+        course_year_section: '',
         employeeId: '',
         companyName: '',
         graduationYear: ''
@@ -521,6 +397,19 @@ export function UserManagement() {
     }
   };
 
+  const handleApproveClick = (user: any) => {
+    setUserToApprove(user);
+    setIsApproveDialogOpen(true);
+  };
+
+  const confirmApproveUser = async () => {
+    if (userToApprove) {
+      await handleApproveUser(userToApprove.id);
+      setIsApproveDialogOpen(false);
+      setUserToApprove(null);
+    }
+  };
+
   const handleRejectUser = async (userId: number) => {
     try {
       const token = sessionStorage.getItem('authToken');
@@ -546,45 +435,19 @@ export function UserManagement() {
     }
   };
 
-  const handleUpdateUser = () => {
-    // ============================================================
-    // TODO: BACKEND - Call PATCH /api/users/:id endpoint
-    // ============================================================
-    // Send editUser data to backend with editingUserId
-    // On success: Update user in list
-    // Show success toast
-    // Close dialog
-    // ============================================================
-    
-    // Validation
-    if (!editUser.fullName || !editUser.email || !editUser.role || !editUser.department) {
-      toast.error('Please fill in all required fields');
-      return;
-    }
-
-    // Mock implementation - Update user locally
-    setUsers(users.map(user =>
-      user.id === editingUserId
-        ? {
-            ...user,
-            name: editUser.fullName,
-            email: editUser.email,
-            role: editUser.role,
-            department: editUser.department,
-            status: editUser.status,
-            ...(editUser.studentId && { studentId: editUser.studentId }),
-            ...(editUser.year && { year: editUser.year }),
-            ...(editUser.employeeId && { employeeId: editUser.employeeId }),
-            ...(editUser.companyName && { companyName: editUser.companyName }),
-            ...(editUser.graduationYear && { graduationYear: editUser.graduationYear }),
-          }
-        : user
-    ));
-    
-    toast.success('User updated successfully');
-    setIsEditUserOpen(false);
-    setEditingUserId(null);
+  const handleRejectClick = (user: any) => {
+    setUserToReject(user);
+    setIsRejectDialogOpen(true);
   };
+
+  const confirmRejectUser = async () => {
+    if (userToReject) {
+      await handleRejectUser(userToReject.id);
+      setIsRejectDialogOpen(false);
+      setUserToReject(null);
+    }
+  };
+
 
   const handleViewDetails = (user: any) => {
     setSelectedUser(user);
@@ -599,7 +462,7 @@ export function UserManagement() {
       phoneNumber: user.phoneNumber || '',
       address: user.address || '',
       studentId: user.studentId || '',
-      year: user.year || '',
+      course_year_section: user.courseYrSection || '',
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
       graduationYear: user.graduationYear || ''
@@ -620,7 +483,7 @@ export function UserManagement() {
       phoneNumber: user.phoneNumber || '',
       address: user.address || '',
       studentId: user.studentId || '',
-      year: user.year || '',
+      course_year_section: user.courseYrSection || '',
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
       graduationYear: user.graduationYear || ''
@@ -648,7 +511,7 @@ export function UserManagement() {
         // Role-specific fields
         ...(editUser.role.toLowerCase() === 'student' && {
           studentId: editUser.studentId,
-          year: editUser.year
+          course_year_section: editUser.course_year_section
         }),
         ...(editUser.role.toLowerCase() === 'instructor' && {
           instructorId: editUser.employeeId
@@ -700,7 +563,7 @@ export function UserManagement() {
         phoneNumber: selectedUser.phoneNumber || '',
         address: selectedUser.address || '',
         studentId: selectedUser.studentId || '',
-        year: selectedUser.year || '',
+        course_year_section: selectedUser.courseYrSection || '',
         employeeId: selectedUser.employeeId || '',
         companyName: selectedUser.companyName || '',
         graduationYear: selectedUser.graduationYear || ''
@@ -764,33 +627,113 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="year">Year Level *</Label>
-              <Select value={newUser.year} onValueChange={(value) => setNewUser({ ...newUser, year: value })}>
-                <SelectTrigger id="year">
-                  <SelectValue placeholder="Select year" />
+              <Label htmlFor="course_year_section">Course-Year and Section *</Label>
+              <Select value={newUser.course_year_section} onValueChange={(value) => setNewUser({ ...newUser, course_year_section: value })}>
+                <SelectTrigger id="course_year_section">
+                  <SelectValue placeholder="Select course-year and section" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1st Year">1st Year</SelectItem>
-                  <SelectItem value="2nd Year">2nd Year</SelectItem>
-                  <SelectItem value="3rd Year">3rd Year</SelectItem>
-                  <SelectItem value="4th Year">4th Year</SelectItem>
+                  {/* Grade 11 */}
+                  <SelectItem value="ABM11-LOVE">ABM11-LOVE</SelectItem>
+                  <SelectItem value="ABM11-HOPE">ABM11-HOPE</SelectItem>
+                  <SelectItem value="ABM11-FAITH">ABM11-FAITH</SelectItem>
+                  <SelectItem value="HUMSS11-LOVE">HUMSS11-LOVE</SelectItem>
+                  <SelectItem value="HUMSS11-HOPE">HUMSS11-HOPE</SelectItem>
+                  <SelectItem value="HUMSS11-FAITH">HUMSS11-FAITH</SelectItem>
+                  <SelectItem value="HUMSS11-JOY">HUMSS11-JOY</SelectItem>
+                  <SelectItem value="HUMSS11-GENEROSITY">HUMSS11-GENEROSITY</SelectItem>
+                  <SelectItem value="HUMSS11-HUMILITY">HUMSS11-HUMILITY</SelectItem>
+                  <SelectItem value="HUMSS11-INTEGRITY">HUMSS11-INTEGRITY</SelectItem>
+                  <SelectItem value="HUMSS11-WISDOM">HUMSS11-WISDOM</SelectItem>
+                  <SelectItem value="STEM11-HOPE">STEM11-HOPE</SelectItem>
+                  <SelectItem value="STEM11-FAITH">STEM11-FAITH</SelectItem>
+                  <SelectItem value="STEM11-JOY">STEM11-JOY</SelectItem>
+                  <SelectItem value="STEM11-GENEROSITY">STEM11-GENEROSITY</SelectItem>
+                  <SelectItem value="ICT11-LOVE">ICT11-LOVE</SelectItem>
+                  <SelectItem value="ICT11-HOPE">ICT11-HOPE</SelectItem>
+                  {/* Grade 12 */}
+                  <SelectItem value="ABM12-LOVE">ABM12-LOVE</SelectItem>
+                  <SelectItem value="ABM12-HOPE">ABM12-HOPE</SelectItem>
+                  <SelectItem value="ABM12-FAITH">ABM12-FAITH</SelectItem>
+                  <SelectItem value="HUMSS12-LOVE">HUMSS12-LOVE</SelectItem>
+                  <SelectItem value="HUMSS12-HOPE">HUMSS12-HOPE</SelectItem>
+                  <SelectItem value="HUMSS12-FAITH">HUMSS12-FAITH</SelectItem>
+                  <SelectItem value="HUMSS12-JOY">HUMSS12-JOY</SelectItem>
+                  <SelectItem value="HUMSS12-GENEROSITY">HUMSS12-GENEROSITY</SelectItem>
+                  <SelectItem value="HUMSS12-HUMILITY">HUMSS12-HUMILITY</SelectItem>
+                  <SelectItem value="STEM12-LOVE">STEM12-LOVE</SelectItem>
+                  <SelectItem value="STEM12-HOPE">STEM12-HOPE</SelectItem>
+                  <SelectItem value="STEM12-FAITH">STEM12-FAITH</SelectItem>
+                  <SelectItem value="STEM12-JOY">STEM12-JOY</SelectItem>
+                  <SelectItem value="STEM12-GENEROSITY">STEM12-GENEROSITY</SelectItem>
+                  <SelectItem value="ICT12-LOVE">ICT12-LOVE</SelectItem>
+                  <SelectItem value="ICT12-HOPE">ICT12-HOPE</SelectItem>
+                  {/* College - BSIT */}
+                  <SelectItem value="BSIT-1A">BSIT-1A</SelectItem>
+                  <SelectItem value="BSIT-1B">BSIT-1B</SelectItem>
+                  <SelectItem value="BSIT-1C">BSIT-1C</SelectItem>
+                  <SelectItem value="BSIT-2A">BSIT-2A</SelectItem>
+                  <SelectItem value="BSIT-2B">BSIT-2B</SelectItem>
+                  <SelectItem value="BSIT-2C">BSIT-2C</SelectItem>
+                  <SelectItem value="BSIT-3A">BSIT-3A</SelectItem>
+                  <SelectItem value="BSIT-3B">BSIT-3B</SelectItem>
+                  <SelectItem value="BSIT-3C">BSIT-3C</SelectItem>
+                  <SelectItem value="BSIT-4A">BSIT-4A</SelectItem>
+                  <SelectItem value="BSIT-4B">BSIT-4B</SelectItem>
+                  <SelectItem value="BSIT-4C">BSIT-4C</SelectItem>
+                  {/* College - BSBA */}
+                  <SelectItem value="BSBA-1A">BSBA-1A</SelectItem>
+                  <SelectItem value="BSBA-2A">BSBA-2A</SelectItem>
+                  <SelectItem value="BSBA-3A">BSBA-3A</SelectItem>
+                  <SelectItem value="BSBA-4A">BSBA-4A</SelectItem>
+                  {/* College - BSCS */}
+                  <SelectItem value="BSCS-1A">BSCS-1A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="College">College</SelectItem>
+                  <SelectItem value="Senior High">Senior High</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </>
         );
       case 'Instructor':
-      case 'Staff':
         return (
-          <div className="grid gap-2">
-            <Label htmlFor="employeeId">Employee ID *</Label>
-            <Input
-              id="employeeId"
-              placeholder={newUser.role === 'Instructor' ? 'e.g., INS-001' : 'e.g., STF-001'}
-              value={newUser.employeeId}
-              onChange={(e) => setNewUser({ ...newUser, employeeId: e.target.value })}
-            />
-          </div>
+          <>
+            <div className="grid gap-2">
+              <Label htmlFor="employeeId">Employee ID *</Label>
+              <Input
+                id="employeeId"
+                placeholder="e.g., INS-001"
+                value={newUser.employeeId}
+                onChange={(e) => setNewUser({ ...newUser, employeeId: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Computer Science">Computer Science</SelectItem>
+                  <SelectItem value="Information Technology">Information Technology</SelectItem>
+                  <SelectItem value="Business Administration">Business Administration</SelectItem>
+                  <SelectItem value="Engineering">Engineering</SelectItem>
+                  <SelectItem value="Education">Education</SelectItem>
+                  <SelectItem value="Arts and Sciences">Arts and Sciences</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
         );
       case 'Employer':
         return (
@@ -837,33 +780,113 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="year">Year Level *</Label>
-              <Select value={editUser.year} onValueChange={(value) => setEditUser({ ...editUser, year: value })}>
-                <SelectTrigger id="year">
-                  <SelectValue placeholder="Select year" />
+              <Label htmlFor="course_year_section">Course-Year and Section *</Label>
+              <Select value={editUser.course_year_section} onValueChange={(value) => setEditUser({ ...editUser, course_year_section: value })}>
+                <SelectTrigger id="course_year_section">
+                  <SelectValue placeholder="Select course-year and section" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="1st Year">1st Year</SelectItem>
-                  <SelectItem value="2nd Year">2nd Year</SelectItem>
-                  <SelectItem value="3rd Year">3rd Year</SelectItem>
-                  <SelectItem value="4th Year">4th Year</SelectItem>
+                  {/* Grade 11 */}
+                  <SelectItem value="ABM11-LOVE">ABM11-LOVE</SelectItem>
+                  <SelectItem value="ABM11-HOPE">ABM11-HOPE</SelectItem>
+                  <SelectItem value="ABM11-FAITH">ABM11-FAITH</SelectItem>
+                  <SelectItem value="HUMSS11-LOVE">HUMSS11-LOVE</SelectItem>
+                  <SelectItem value="HUMSS11-HOPE">HUMSS11-HOPE</SelectItem>
+                  <SelectItem value="HUMSS11-FAITH">HUMSS11-FAITH</SelectItem>
+                  <SelectItem value="HUMSS11-JOY">HUMSS11-JOY</SelectItem>
+                  <SelectItem value="HUMSS11-GENEROSITY">HUMSS11-GENEROSITY</SelectItem>
+                  <SelectItem value="HUMSS11-HUMILITY">HUMSS11-HUMILITY</SelectItem>
+                  <SelectItem value="HUMSS11-INTEGRITY">HUMSS11-INTEGRITY</SelectItem>
+                  <SelectItem value="HUMSS11-WISDOM">HUMSS11-WISDOM</SelectItem>
+                  <SelectItem value="STEM11-HOPE">STEM11-HOPE</SelectItem>
+                  <SelectItem value="STEM11-FAITH">STEM11-FAITH</SelectItem>
+                  <SelectItem value="STEM11-JOY">STEM11-JOY</SelectItem>
+                  <SelectItem value="STEM11-GENEROSITY">STEM11-GENEROSITY</SelectItem>
+                  <SelectItem value="ICT11-LOVE">ICT11-LOVE</SelectItem>
+                  <SelectItem value="ICT11-HOPE">ICT11-HOPE</SelectItem>
+                  {/* Grade 12 */}
+                  <SelectItem value="ABM12-LOVE">ABM12-LOVE</SelectItem>
+                  <SelectItem value="ABM12-HOPE">ABM12-HOPE</SelectItem>
+                  <SelectItem value="ABM12-FAITH">ABM12-FAITH</SelectItem>
+                  <SelectItem value="HUMSS12-LOVE">HUMSS12-LOVE</SelectItem>
+                  <SelectItem value="HUMSS12-HOPE">HUMSS12-HOPE</SelectItem>
+                  <SelectItem value="HUMSS12-FAITH">HUMSS12-FAITH</SelectItem>
+                  <SelectItem value="HUMSS12-JOY">HUMSS12-JOY</SelectItem>
+                  <SelectItem value="HUMSS12-GENEROSITY">HUMSS12-GENEROSITY</SelectItem>
+                  <SelectItem value="HUMSS12-HUMILITY">HUMSS12-HUMILITY</SelectItem>
+                  <SelectItem value="STEM12-LOVE">STEM12-LOVE</SelectItem>
+                  <SelectItem value="STEM12-HOPE">STEM12-HOPE</SelectItem>
+                  <SelectItem value="STEM12-FAITH">STEM12-FAITH</SelectItem>
+                  <SelectItem value="STEM12-JOY">STEM12-JOY</SelectItem>
+                  <SelectItem value="STEM12-GENEROSITY">STEM12-GENEROSITY</SelectItem>
+                  <SelectItem value="ICT12-LOVE">ICT12-LOVE</SelectItem>
+                  <SelectItem value="ICT12-HOPE">ICT12-HOPE</SelectItem>
+                  {/* College - BSIT */}
+                  <SelectItem value="BSIT-1A">BSIT-1A</SelectItem>
+                  <SelectItem value="BSIT-1B">BSIT-1B</SelectItem>
+                  <SelectItem value="BSIT-1C">BSIT-1C</SelectItem>
+                  <SelectItem value="BSIT-2A">BSIT-2A</SelectItem>
+                  <SelectItem value="BSIT-2B">BSIT-2B</SelectItem>
+                  <SelectItem value="BSIT-2C">BSIT-2C</SelectItem>
+                  <SelectItem value="BSIT-3A">BSIT-3A</SelectItem>
+                  <SelectItem value="BSIT-3B">BSIT-3B</SelectItem>
+                  <SelectItem value="BSIT-3C">BSIT-3C</SelectItem>
+                  <SelectItem value="BSIT-4A">BSIT-4A</SelectItem>
+                  <SelectItem value="BSIT-4B">BSIT-4B</SelectItem>
+                  <SelectItem value="BSIT-4C">BSIT-4C</SelectItem>
+                  {/* College - BSBA */}
+                  <SelectItem value="BSBA-1A">BSBA-1A</SelectItem>
+                  <SelectItem value="BSBA-2A">BSBA-2A</SelectItem>
+                  <SelectItem value="BSBA-3A">BSBA-3A</SelectItem>
+                  <SelectItem value="BSBA-4A">BSBA-4A</SelectItem>
+                  {/* College - BSCS */}
+                  <SelectItem value="BSCS-1A">BSCS-1A</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="College">College</SelectItem>
+                  <SelectItem value="Senior High">Senior High</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </>
         );
       case 'Instructor':
-      case 'Staff':
         return (
-          <div className="grid gap-2">
-            <Label htmlFor="employeeId">Employee ID *</Label>
-            <Input
-              id="employeeId"
-              placeholder={editUser.role === 'Instructor' ? 'e.g., INS-001' : 'e.g., STF-001'}
-              value={editUser.employeeId}
-              onChange={(e) => setEditUser({ ...editUser, employeeId: e.target.value })}
-            />
-          </div>
+          <>
+            <div className="grid gap-2">
+              <Label htmlFor="employeeId">Employee ID *</Label>
+              <Input
+                id="employeeId"
+                placeholder="e.g., INS-001"
+                value={editUser.employeeId}
+                onChange={(e) => setEditUser({ ...editUser, employeeId: e.target.value })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="department">Department *</Label>
+              <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
+                <SelectTrigger id="department">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Computer Science">Computer Science</SelectItem>
+                  <SelectItem value="Information Technology">Information Technology</SelectItem>
+                  <SelectItem value="Business Administration">Business Administration</SelectItem>
+                  <SelectItem value="Engineering">Engineering</SelectItem>
+                  <SelectItem value="Education">Education</SelectItem>
+                  <SelectItem value="Arts and Sciences">Arts and Sciences</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </>
         );
       case 'Employer':
         return (
@@ -948,26 +971,15 @@ export function UserManagement() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password *</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="••••••••"
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="department">Department *</Label>
-                    <Input
-                      id="department"
-                      placeholder="e.g., Computer Science"
-                      value={newUser.department}
-                      onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
-                    />
-                  </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="password">Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    placeholder="••••••••"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                  />
                 </div>
               </div>
 
@@ -987,7 +999,6 @@ export function UserManagement() {
                     <SelectContent>
                       <SelectItem value="Student">Student</SelectItem>
                       <SelectItem value="Instructor">Instructor</SelectItem>
-                      <SelectItem value="Staff">Department Staff</SelectItem>
                       <SelectItem value="Alumni">Alumni</SelectItem>
                       <SelectItem value="Employer">Employer</SelectItem>
                     </SelectContent>
@@ -1092,7 +1103,6 @@ export function UserManagement() {
                 <SelectItem value="all">All Roles</SelectItem>
                 <SelectItem value="student">Students</SelectItem>
                 <SelectItem value="instructor">Instructors</SelectItem>
-              
                 <SelectItem value="alumni">Alumni</SelectItem>
                 <SelectItem value="employer">Employers</SelectItem>
               </SelectContent>
@@ -1142,7 +1152,7 @@ export function UserManagement() {
           {showPendingSection && (
             <CardContent>
               <div className="grid gap-3">
-                {users.filter(u => u.status === 'pending').map((user) => (
+                {paginatedPendingUsers.map((user) => (
                   <div 
                     key={user.id}
                     className="flex items-center justify-between p-4 bg-white rounded-lg border border-yellow-200 hover:border-yellow-300 transition-all"
@@ -1177,7 +1187,7 @@ export function UserManagement() {
                       <Button
                         size="sm"
                         className="bg-green-500 hover:bg-green-600"
-                        onClick={() => handleApproveUser(user.id)}
+                        onClick={() => handleApproveClick(user)}
                       >
                         <CheckCircle className="w-4 h-4 mr-1" />
                         Approve
@@ -1186,7 +1196,7 @@ export function UserManagement() {
                         size="sm"
                         variant="outline"
                         className="border-red-200 text-red-600 hover:bg-red-50"
-                        onClick={() => handleRejectUser(user.id)}
+                        onClick={() => handleRejectClick(user)}
                       >
                         <XCircle className="w-4 h-4 mr-1" />
                         Reject
@@ -1195,6 +1205,37 @@ export function UserManagement() {
                   </div>
                 ))}
               </div>
+
+              {/* Pagination for pending approvals */}
+              {totalPendingPages > 1 && (
+                <div className="flex items-center justify-between mt-4 pt-4 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPendingPage(prev => Math.max(prev - 1, 1))}
+                    disabled={pendingPage === 1}
+                    className="text-gray-600 hover:text-gray-800"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Previous
+                  </Button>
+
+                  <span className="text-sm text-gray-600">
+                    Page {pendingPage} of {totalPendingPages}
+                  </span>
+
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setPendingPage(prev => Math.min(prev + 1, totalPendingPages))}
+                    disabled={pendingPage === totalPendingPages}
+                    className="text-gray-600 hover:text-gray-800"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4 mr-1" />
+                  </Button>
+                </div>
+              )}
             </CardContent>
           )}
         </Card>
@@ -1266,16 +1307,16 @@ export function UserManagement() {
                           
                           {user.status === 'pending' && (
                             <>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-green-600"
-                                onClick={() => handleApproveUser(user.id)}
+                                onClick={() => handleApproveClick(user)}
                               >
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 Approve Account
                               </DropdownMenuItem>
-                              <DropdownMenuItem 
+                              <DropdownMenuItem
                                 className="text-red-600"
-                                onClick={() => handleRejectUser(user.id)}
+                                onClick={() => handleRejectClick(user)}
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
                                 Reject Account
@@ -1428,8 +1469,8 @@ export function UserManagement() {
                   )}
                   {selectedUser.year && (
                     <div>
-                      <p className="text-sm text-gray-600">Year Level</p>
-                      <p>{selectedUser.year}</p>
+                      <p className="text-sm text-gray-600">Course-Year and Section</p>
+                      <p>{selectedUser.courseYrSection}</p>
                     </div>
                   )}
                   {selectedUser.employeeId && (
@@ -1489,21 +1530,38 @@ export function UserManagement() {
                         <SelectContent>
                           <SelectItem value="Student">Student</SelectItem>
                           <SelectItem value="Instructor">Instructor</SelectItem>
-                          <SelectItem value="Staff">Department Staff</SelectItem>
                           <SelectItem value="Alumni">Alumni</SelectItem>
                           <SelectItem value="Employer">Employer</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-department">Department *</Label>
-                      <Input
-                        id="edit-department"
-                        placeholder="e.g., Computer Science"
-                        value={editUser.department}
-                        onChange={(e) => setEditUser({ ...editUser, department: e.target.value })}
-                      />
-                    </div>
+                    {(editUser.role.toLowerCase() === 'student' || editUser.role.toLowerCase() === 'instructor') && (
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-department">Department *</Label>
+                        <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
+                          <SelectTrigger id="edit-department">
+                            <SelectValue placeholder="Select department" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {editUser.role.toLowerCase() === 'student' ? (
+                              <>
+                                <SelectItem value="College">College</SelectItem>
+                                <SelectItem value="Senior High">Senior High</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <SelectItem value="Computer Science">Computer Science</SelectItem>
+                                <SelectItem value="Information Technology">Information Technology</SelectItem>
+                                <SelectItem value="Business Administration">Business Administration</SelectItem>
+                                <SelectItem value="Engineering">Engineering</SelectItem>
+                                <SelectItem value="Education">Education</SelectItem>
+                                <SelectItem value="Arts and Sciences">Arts and Sciences</SelectItem>
+                              </>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
 
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -1584,6 +1642,42 @@ export function UserManagement() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={confirmRemoveUser} className="bg-red-500 hover:bg-red-600">
               Remove
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Approve User Confirmation Dialog */}
+      <AlertDialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Approve User Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to approve this user account? The user will be able to log in to the system.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmApproveUser} className="bg-green-500 hover:bg-green-600">
+              Approve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject User Confirmation Dialog */}
+      <AlertDialog open={isRejectDialogOpen} onOpenChange={setIsRejectDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reject User Account</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to reject this user account? The account will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmRejectUser} className="bg-red-500 hover:bg-red-600">
+              Reject
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
