@@ -67,6 +67,7 @@ import { formatImageUrl, EnhancedImage } from "../../utils/imageUtils";
 
 interface FeedbackFormsManagementProps {
   onNavigateToBuilder?: (formId?: string) => void;
+  onNavigateToResponses?: (formId: string) => void;
 }
 
 const categories = [
@@ -92,6 +93,7 @@ interface FeedbackFormsManagementProps {
 
 export function FeedbackFormsManagement({
   onNavigateToBuilder,
+  onNavigateToResponses,
 }: FeedbackFormsManagementProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
@@ -808,6 +810,7 @@ export function FeedbackFormsManagement({
                         <Button
                           variant="outline"
                           className="flex-1 border-green-200 hover:bg-green-50"
+                          onClick={() => onNavigateToResponses?.(form.id)}
                         >
                           Responses
                         </Button>
@@ -906,25 +909,14 @@ export function FeedbackFormsManagement({
                         <Badge variant="outline" className="border-purple-200">
                           {template.category}
                         </Badge>
-                        <Badge variant="outline" className="border-blue-200">
-                          {template.target_audience}
-                        </Badge>
                       </div>
-                      <div className="grid grid-cols-2 gap-3 text-sm">
-                        <div>
-                          <p className="text-gray-500">Questions</p>
-                          <p className="font-medium">
-                            {getQuestionCount(template) > 0
-                              ? getQuestionCount(template)
-                              : "N/A"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Target</p>
-                          <p className="font-medium">
-                            {template.target_audience}
-                          </p>
-                        </div>
+                      <div className="text-sm">
+                        <p className="text-gray-500">Questions</p>
+                        <p className="font-medium">
+                          {getQuestionCount(template) > 0
+                            ? getQuestionCount(template)
+                            : "N/A"}
+                        </p>
                       </div>
                       <div className="flex gap-2">
                         <Button

@@ -1027,17 +1027,17 @@ export const deployForm = async (formId: string, deploymentData: {
   };
 }): Promise<{ success: boolean; message: string }> => {
   logDebug('deployForm called with formId:', formId, 'deploymentData:', deploymentData);
-  
+
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {
       logError('No authentication token found');
       return { success: false, message: 'No authentication token found' };
     }
- 
+
     const apiUrl = `/api/forms/${formId}/deploy`;
     logDebug(`Making POST request to: ${apiUrl}`);
-    
+
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -1046,12 +1046,12 @@ export const deployForm = async (formId: string, deploymentData: {
       },
       body: JSON.stringify(deploymentData),
     });
- 
+
     logDebug('Response status:', response.status, response.statusText);
-    
+
     const result = await response.json();
     logDebug('Response data:', result);
-    
+
     if (response.ok && result.success) {
       logDebug('Form deployed successfully');
       return { success: true, message: result.message || 'Form deployed successfully' };
@@ -1062,5 +1062,72 @@ export const deployForm = async (formId: string, deploymentData: {
   } catch (error) {
     logError('Exception in deployForm:', error);
     return { success: false, message: 'An error occurred while deploying the form' };
+  }
+};
+
+// Form Response interface
+export interface FormResponse {
+  id: string;
+  user_id: number;
+  submitted_at: string;
+  response_data: Record<string, any>; // JSON object of question_id -> answer
+  respondent_name?: string;
+  respondent_email?: string;
+  respondent_role?: string;
+}
+
+// Get form responses for analysis
+export const getFormResponses = async (formId: string): Promise<{ success: boolean; responses: FormResponse[]; form?: any; pagination?: any; message: string }> => {
+  logDebug('getFormResponses called with formId:', formId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, responses: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = `/api/forms/${formId}/responses`;
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      try {
+        const errorData = await response.json();
+        logError('Error details:', errorData);
+      } catch (e) {
+        logError('Could not parse error response');
+      }
+      return { success: false, responses: [], message: 'Failed to fetch form responses' };
+    }
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (result.success && result.responses) {
+      logDebug(`Successfully loaded ${result.responses.length} responses`);
+      return {
+        success: true,
+        responses: result.responses,
+        form: result.form,
+        pagination: result.pagination,
+        message: 'Form responses fetched successfully'
+      };
+    } else {
+      logError('Unexpected response format:', result);
+      return { success: false, responses: [], message: result.message || 'Failed to fetch form responses' };
+    }
+  } catch (error) {
+    logError('Exception in getFormResponses:', error);
+    return { success: false, responses: [], message: 'An error occurred while fetching form responses' };
   }
 };

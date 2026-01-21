@@ -21,6 +21,11 @@ const FormBuilder = lazy(() =>
     default: m.FormBuilder,
   }))
 );
+const FormResponsesViewer = lazy(() =>
+  import("./components/Forms/form-responses-viewer").then((m) => ({
+    default: m.FormResponsesViewer,
+  }))
+);
 const UserManagement = lazy(() =>
   import("./components/Users_and_others/user-management").then((m) => ({
     default: m.UserManagement,
@@ -94,6 +99,9 @@ export default function App() {
     undefined
   );
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+  const [viewingResponsesFormId, setViewingResponsesFormId] = useState<string | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     // Check sessionStorage for token (standardized storage)
@@ -209,6 +217,18 @@ export default function App() {
     setCurrentPage("forms");
   };
 
+  // Navigate to responses viewer
+  const handleNavigateToResponsesViewer = (formId: string) => {
+    setViewingResponsesFormId(formId);
+    setCurrentPage("form-responses");
+  };
+
+  // Navigate back from responses viewer
+  const handleBackFromResponsesViewer = () => {
+    setViewingResponsesFormId(undefined);
+    setCurrentPage("forms");
+  };
+
   if (!isLoggedIn) {
     if (showSignup) {
       return (
@@ -238,6 +258,7 @@ export default function App() {
               onNavigateToBuilder={(formId) => {
                 handleNavigateToFormBuilder(formId, false);
               }}
+              onNavigateToResponses={handleNavigateToResponsesViewer}
             />
           );
         case "form-builder":
@@ -246,6 +267,13 @@ export default function App() {
               onBack={handleBackFromFormBuilder}
               formId={editingFormId}
               isCustomFormTab={!isEditingTemplate}
+            />
+          );
+        case "form-responses":
+          return (
+            <FormResponsesViewer
+              formId={viewingResponsesFormId!}
+              onBack={handleBackFromResponsesViewer}
             />
           );
         case "users":
