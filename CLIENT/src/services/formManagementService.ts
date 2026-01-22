@@ -95,7 +95,16 @@ export const getForm = async (formId: string): Promise<{ success: boolean; form?
 
     if (result.success && result.form) {
       logDebug('Form fetched successfully');
-      return { success: true, form: result.form, message: 'Form fetched successfully' };
+      // Standardize question properties for consistency
+      const standardizedForm = {
+        ...result.form,
+        questions: result.form.questions?.map((question: any) => ({
+          ...question,
+          type: question.question_type || question.type,
+          question: question.question_text || question.question,
+        }))
+      };
+      return { success: true, form: standardizedForm, message: 'Form fetched successfully' };
     } else {
       logError('Unexpected response format:', result);
       return { success: false, message: result.message || 'Failed to fetch form' };

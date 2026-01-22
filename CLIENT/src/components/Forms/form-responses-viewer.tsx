@@ -62,15 +62,30 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
   // Question analytics data
   const getQuestionAnalytics = (question: any) => {
-    if (!responses.length) return null;
+    console.log('=== getQuestionAnalytics ===');
+    console.log('Question:', question);
+    console.log('Responses:', responses);
+    
+    if (!responses.length) {
+      console.log('No responses');
+      return null;
+    }
 
-    if (question.type === 'rating' || question.type === 'linear-scale') {
+    const questionId = question.id;
+    const questionIdStr = String(question.id);
+    console.log('Question ID:', questionId, 'String:', questionIdStr);
+
+    const questionType = question.question_type || question.type;
+    console.log('Question Type:', questionType);
+
+    if (questionType === 'rating' || questionType === 'linear-scale' || questionType === 'linear_scale') {
       // Calculate average for rating/linear scale questions
       let sum = 0;
       let count = 0;
 
       responses.forEach(response => {
-        const answer = response.response_data[question.id];
+        const answer = response.response_data[questionId] || response.response_data[questionIdStr];
+        console.log('Response:', response.id, 'Answer:', answer);
         if (answer !== undefined && answer !== null && answer !== '') {
           const numAnswer = parseFloat(answer);
           if (!isNaN(numAnswer)) {
@@ -81,7 +96,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       });
 
       const average = count > 0 ? (sum / count).toFixed(2) : '0.00';
-      const maxRating = question.type === 'rating' ? 5 : (question.max || 10);
+      const maxRating = questionType === 'rating' ? 5 : (question.max || 10);
 
       return {
         question,
@@ -96,7 +111,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       const answerCounts: Record<string, number> = {};
 
       responses.forEach(response => {
-        const answer = response.response_data[question.id];
+        const answer = response.response_data[questionId] || response.response_data[questionIdStr];
+        console.log('Response:', response.id, 'Question ID:', questionId, 'Answer:', JSON.stringify(answer));
         if (answer !== undefined && answer !== null && answer !== '') {
           if (Array.isArray(answer)) {
             // For checkboxes
@@ -111,12 +127,16 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         }
       });
 
+      console.log('Answer Counts:', answerCounts);
+      
       const totalAnswers = responses.length;
       const chartData = Object.entries(answerCounts).map(([answer, count]) => ({
         answer,
         count,
         percentage: Math.round((count / totalAnswers) * 100)
       }));
+
+      console.log('Chart Data:', chartData);
 
       return {
         question,
@@ -127,9 +147,16 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     }
   };
 
-  const applicableQuestions = form?.questions?.filter(q =>
-    ['multiple-choice', 'rating', 'linear-scale', 'dropdown', 'checkbox'].includes(q.type)
-  ) || [];
+  const applicableQuestions = form?.questions?.filter(q => {
+    const qType = q.question_type || q.type;
+    return ['multiple-choice', 'multiple_choice', 'rating', 'linear-scale', 'linear_scale', 'dropdown', 'checkbox'].includes(qType);
+  }) || [];
+
+  console.log('Form loaded:', !!form);
+  console.log('Form questions:', form?.questions?.length);
+  console.log('Applicable questions:', applicableQuestions.length);
+  console.log('Applicable questions details:', applicableQuestions.map(q => ({id: q.id, type: q.question_type || q.type, question: q.question})));
+  console.log('Responses loaded:', responses.length);
 
   // Function to render star rating
   const renderStars = (rating: number, maxRating: number = 5) => {
@@ -223,7 +250,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
         if (form.questions) {
           form.questions.forEach((q) => {
-            const answer = response.response_data[q.id];
+            const answer = response.response_data[String(q.id)];
             let displayAnswer = "";
             if (answer !== undefined && answer !== null) {
               if (Array.isArray(answer)) {
@@ -259,7 +286,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       return <span className="text-gray-400 italic">No answer</span>;
     }
 
-    switch (question.type) {
+    const qType = question.question_type || question.type;
+    switch (qType) {
       case "multiple-choice":
       case "dropdown":
         return <span className="font-medium">{String(value)}</span>;
@@ -282,8 +310,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
           <div className="flex items-center gap-2">
             <span className="font-bold text-lg">{value}</span>
             <span className="text-gray-500">/</span>
-            <span className="text-gray-600">{question.type === 'rating' ? 5 : (question.max || 10)}</span>
-            {question.type === 'rating' && renderStars(parseFloat(value), 5)}
+            <span className="text-gray-600">{qType === 'rating' ? 5 : (question.max || 10)}</span>
+            {qType === 'rating' && renderStars(parseFloat(value), 5)}
           </div>
         );
       case "text":
@@ -393,6 +421,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {applicableQuestions.map((question, index) => {
               const analytics = getQuestionAnalytics(question);
+              console.log('Analytics for question', question.id, ':', analytics);
               if (!analytics) return null;
 
               if (analytics.type === 'average' && typeof analytics.average === 'number') {
@@ -403,7 +432,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                         Q{index + 1}: {question.question}
                       </CardTitle>
                       <p className="text-sm text-gray-600 truncate">
-                        {question.type.replace('-', ' ').toUpperCase()} • {analytics.count} responses
+                        {(question.question_type || question.type).replace('-', ' ').toUpperCase()} • {analytics.count} responses
                       </p>
                     </CardHeader>
                     <CardContent>
@@ -438,51 +467,33 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                         Q{index + 1}: {question.question}
                       </CardTitle>
                       <p className="text-sm text-gray-600 truncate">
-                        {question.type.replace('-', ' ').toUpperCase()} • {analytics.totalAnswers} responses
+                        {(question.question_type || question.type).replace('-', ' ').toUpperCase()} • {analytics.totalAnswers} responses
                       </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="h-64">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart
+                      <div className="flex justify-center">
+                        <PieChart width={400} height={256}>
+                          <Pie
                             data={analytics.chartData}
-                            layout="horizontal"
-                            margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+                            dataKey="count"
+                            nameKey="answer"
+                            cx="50%"
+                            cy="50%"
+                            outerRadius={80}
+                            fill="#8884d8"
                           >
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis 
-                              type="number" 
-                              tick={{ fontSize: 12 }}
-                              axisLine={{ stroke: '#e5e7eb' }}
-                              tickLine={{ stroke: '#e5e7eb' }}
-                            />
-                            <YAxis
-                              dataKey="answer"
-                              type="category"
-                              width={90}
-                              tick={{ fontSize: 12 }}
-                              axisLine={{ stroke: '#e5e7eb' }}
-                              tickLine={{ stroke: '#e5e7eb' }}
-                            />
-                            <Tooltip
-                              formatter={(value, name) => [
-                                `${value} responses (${analytics.chartData.find(d => d.count === value)?.percentage}%)`,
-                                'Count'
-                              ]}
-                              contentStyle={{ 
-                                borderRadius: '8px',
-                                border: '1px solid #e5e7eb',
-                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
-                              }}
-                            />
-                            <Bar 
-                              dataKey="count" 
-                              fill="#8884d8" 
-                              radius={[4, 4, 0, 0]}
-                              maxBarSize={40}
-                            />
-                          </BarChart>
-                        </ResponsiveContainer>
+                            {analytics.chartData.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip
+                            formatter={(value, name) => [
+                              `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
+                              'Count'
+                            ]}
+                          />
+                          <Legend />
+                        </PieChart>
                       </div>
                     </CardContent>
                   </Card>
@@ -637,11 +648,11 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                           variant="secondary" 
                           className="text-xs w-fit sm:w-auto flex-shrink-0 capitalize mt-1 sm:mt-0"
                         >
-                          {question.type.replace('-', ' ')}
+                          {(question.question_type || question.type).replace('-', ' ')}
                         </Badge>
                       </div>
                       <div className="text-gray-800 bg-gray-50 rounded p-3 border border-gray-100">
-                        {renderResponseValue(question, selectedResponse.response_data[question.id])}
+                        {renderResponseValue(question, selectedResponse.response_data[String(question.id)])}
                       </div>
                     </div>
                   ))}
