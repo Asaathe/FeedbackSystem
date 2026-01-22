@@ -472,28 +472,76 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                     </CardHeader>
                     <CardContent>
                       <div className="flex justify-center">
-                        <PieChart width={400} height={256}>
-                          <Pie
-                            data={analytics.chartData}
-                            dataKey="count"
-                            nameKey="answer"
-                            cx="50%"
-                            cy="50%"
-                            outerRadius={80}
-                            fill="#8884d8"
-                          >
-                            {analytics.chartData.map((entry, index) => (
-                              <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
-                          </Pie>
-                          <Tooltip
-                            formatter={(value, name) => [
-                              `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
-                              'Count'
-                            ]}
-                          />
-                          <Legend />
-                        </PieChart>
+                        {question.question_type === 'multiple-choice' || question.type === 'multiple-choice' || question.type === 'multiple_choice' ? (
+                          <PieChart width={400} height={256}>
+                            <Pie
+                              data={analytics.chartData}
+                              dataKey="count"
+                              nameKey="answer"
+                              cx="50%"
+                              cy="50%"
+                              outerRadius={80}
+                              fill="#8884d8"
+                            >
+                              {analytics.chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value, name) => [
+                                `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
+                                'Count'
+                              ]}
+                            />
+                            <Legend />
+                          </PieChart>
+                        ) : question.question_type === 'dropdown' || question.type === 'dropdown' ? (
+                          <PieChart width={400} height={256}>
+                            <Pie
+                              data={analytics.chartData}
+                              dataKey="count"
+                              nameKey="answer"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={100}
+                              fill="#8884d8"
+                            >
+                              {analytics.chartData.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip
+                              formatter={(value, name) => [
+                                `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
+                                'Count'
+                              ]}
+                            />
+                            <Legend />
+                          </PieChart>
+                        ) : (
+                          <BarChart width={400} height={256} data={analytics.chartData}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis
+                              dataKey="answer"
+                              tick={{ fontSize: 12 }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
+                            />
+                            <YAxis
+                              tick={{ fontSize: 12 }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
+                            />
+                            <Tooltip
+                              formatter={(value, name) => [
+                                `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
+                                'Count'
+                              ]}
+                            />
+                            <Bar dataKey="count" fill="#8884d8" />
+                          </BarChart>
+                        )}
                       </div>
                     </CardContent>
                   </Card>
