@@ -15,27 +15,7 @@ import {
 } from "lucide-react";
 import { Progress } from "../ui/progress";
 
-// ============================================================
-// TODO: BACKEND - Admin Dashboard Data
-// ============================================================
-// Dashboard Overview:
-// - GET /api/admin/dashboard/stats
-//   Response: { totalUsers, activeForms, totalFeedback, avgRating, pendingSuggestions }
-//
-// Submission Trends:
-// - GET /api/admin/dashboard/trends?period=12weeks
-//   Response: [{ week, submissions, target }]
-//
-// Department Response Rates:
-// - GET /api/admin/dashboard/response-rates
-//   Response: [{ department, actual, target, responses, expected }]
-//
-// Recent Activities:
-// - GET /api/admin/dashboard/activities?limit=10
-//   Response: [{ type, description, timestamp, userId }]
-// ============================================================
 
-// TEMPORARY: Mock data for development
 const systemStats = {
   totalUsers: 3250,
   activeForms: 8,

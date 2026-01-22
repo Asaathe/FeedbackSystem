@@ -17,6 +17,7 @@ import {
   FileText,
   BarChart3,
   Star,
+  Mail,
 } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import {
@@ -255,13 +256,13 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
   const renderResponseValue = (question: any, value: any) => {
     if (value === undefined || value === null || value === "") {
-      return <span className="text-gray-400">No answer</span>;
+      return <span className="text-gray-400 italic">No answer</span>;
     }
 
     switch (question.type) {
       case "multiple-choice":
       case "dropdown":
-        return <span>{String(value)}</span>;
+        return <span className="font-medium">{String(value)}</span>;
       case "checkbox":
         if (Array.isArray(value)) {
           return (
@@ -274,15 +275,22 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
             </div>
           );
         }
-        return <span>{String(value)}</span>;
+        return <span className="font-medium">{String(value)}</span>;
       case "rating":
       case "linear-scale":
-        return <span className="font-medium">{value}/5</span>;
+        return (
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-lg">{value}</span>
+            <span className="text-gray-500">/</span>
+            <span className="text-gray-600">{question.type === 'rating' ? 5 : (question.max || 10)}</span>
+            {question.type === 'rating' && renderStars(parseFloat(value), 5)}
+          </div>
+        );
       case "text":
       case "textarea":
-        return <span>{String(value)}</span>;
+        return <div className="whitespace-pre-wrap break-words">{String(value)}</div>;
       default:
-        return <span>{String(value)}</span>;
+        return <span className="font-medium">{String(value)}</span>;
     }
   };
 
@@ -299,24 +307,27 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex justify-between items-center">
-          {onBack && (
-            <Button variant="outline" onClick={onBack}>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back
-            </Button>
-          )}
-          <div className="flex-1 text-center">
-            <h2 className="text-2xl">Form Responses</h2>
-            <p className="text-gray-600">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {onBack && (
+              <Button variant="outline" onClick={onBack} className="shrink-0">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+            )}
+          </div>
+          <div className="flex-1 text-center min-w-0">
+            <h2 className="text-xl sm:text-2xl font-bold truncate">Form Responses</h2>
+            <p className="text-gray-600 truncate">
               {form?.title} - {responses.length} responses
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
               onClick={exportToCSV}
               disabled={responses.length === 0}
+              className="flex-1 sm:flex-none"
             >
               <Download className="w-4 h-4 mr-2" />
               Export CSV
@@ -329,10 +340,12 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <FileText className="w-5 h-5 text-blue-500" />
-              <div>
-                <p className="text-sm text-gray-600">Total Responses</p>
+            <div className="flex items-center gap-3">
+              <div className="bg-blue-100 p-2 rounded-lg">
+                <FileText className="w-5 h-5 text-blue-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-gray-600 truncate">Total Responses</p>
                 <p className="text-2xl font-bold">{responses.length}</p>
               </div>
             </div>
@@ -340,10 +353,12 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <User className="w-5 h-5 text-green-500" />
-              <div>
-                <p className="text-sm text-gray-600">Unique Respondents</p>
+            <div className="flex items-center gap-3">
+              <div className="bg-green-100 p-2 rounded-lg">
+                <User className="w-5 h-5 text-green-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-gray-600 truncate">Unique Respondents</p>
                 <p className="text-2xl font-bold">
                   {new Set(responses.map(r => r.user_id)).size}
                 </p>
@@ -353,11 +368,13 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-purple-500" />
-              <div>
-                <p className="text-sm text-gray-600">Latest Response</p>
-                <p className="text-sm font-bold">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-100 p-2 rounded-lg">
+                <Calendar className="w-5 h-5 text-purple-600" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-gray-600 truncate">Latest Response</p>
+                <p className="text-sm font-bold truncate">
                   {responses.length > 0
                     ? new Date(Math.max(...responses.map(r => new Date(r.submitted_at).getTime()))).toLocaleDateString()
                     : "No responses"
@@ -369,7 +386,6 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         </Card>
       </div>
 
-
       {/* Question Analytics */}
       {applicableQuestions.length > 0 && (
         <div className="space-y-6">
@@ -380,19 +396,18 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
               if (!analytics) return null;
 
               if (analytics.type === 'average' && typeof analytics.average === 'number') {
-                // Average display for rating/linear scale
                 return (
-                  <Card key={question.id}>
+                  <Card key={question.id} className="overflow-hidden">
                     <CardHeader>
-                      <CardTitle className="text-lg">
+                      <CardTitle className="text-lg truncate" title={question.question}>
                         Q{index + 1}: {question.question}
                       </CardTitle>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 truncate">
                         {question.type.replace('-', ' ').toUpperCase()} • {analytics.count} responses
                       </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-center py-8">
+                      <div className="text-center py-6">
                         <div className="flex items-center justify-center gap-4 mb-4">
                           <div className="text-4xl font-bold text-blue-600">
                             {analytics.average.toFixed(1)}
@@ -402,9 +417,9 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                         <div className="text-sm text-gray-600 mb-4">
                           out of {analytics.maxRating}
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-4 mb-2">
+                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
                           <div
-                            className="bg-blue-600 h-4 rounded-full transition-all duration-300"
+                            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
                             style={{ width: `${(analytics.average / analytics.maxRating) * 100}%` }}
                           ></div>
                         </div>
@@ -416,46 +431,63 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                   </Card>
                 );
               } else if (analytics.type === 'distribution' && analytics.chartData && analytics.chartData.length > 0) {
-                // Distribution chart for multiple choice, dropdown, checkboxes
                 return (
-                  <Card key={question.id}>
+                  <Card key={question.id} className="overflow-hidden">
                     <CardHeader>
-                      <CardTitle className="text-lg">
+                      <CardTitle className="text-lg truncate" title={question.question}>
                         Q{index + 1}: {question.question}
                       </CardTitle>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 truncate">
                         {question.type.replace('-', ' ').toUpperCase()} • {analytics.totalAnswers} responses
                       </p>
                     </CardHeader>
                     <CardContent>
-                      <ResponsiveContainer width="100%" height={300}>
+                      <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
                           <BarChart
                             data={analytics.chartData}
                             layout="horizontal"
-                            margin={{ top: 20, right: 30, left: 100, bottom: 5 }}
+                            margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
                           >
-                            <CartesianGrid strokeDasharray="3 3" />
-                            <XAxis type="number" />
+                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                            <XAxis 
+                              type="number" 
+                              tick={{ fontSize: 12 }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
+                            />
                             <YAxis
                               dataKey="answer"
                               type="category"
                               width={90}
                               tick={{ fontSize: 12 }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
                             />
                             <Tooltip
                               formatter={(value, name) => [
                                 `${value} responses (${analytics.chartData.find(d => d.count === value)?.percentage}%)`,
                                 'Count'
                               ]}
+                              contentStyle={{ 
+                                borderRadius: '8px',
+                                border: '1px solid #e5e7eb',
+                                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                              }}
                             />
-                            <Bar dataKey="count" fill="#8884d8" />
+                            <Bar 
+                              dataKey="count" 
+                              fill="#8884d8" 
+                              radius={[4, 4, 0, 0]}
+                              maxBarSize={40}
+                            />
                           </BarChart>
                         </ResponsiveContainer>
+                      </div>
                     </CardContent>
                   </Card>
                 );
               }
-
               return null;
             })}
           </div>
@@ -490,119 +522,136 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       ) : (
         <Card>
           <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Submitted</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredResponses.map((response) => (
-                  <TableRow key={response.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{response.respondent_name || "Anonymous"}</p>
-                        <p className="text-sm text-gray-500">{response.respondent_email}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{response.respondent_role || "Unknown"}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(response.submitted_at).toLocaleString()}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleViewResponse(response)}
-                      >
-                        View Response
-                      </Button>
-                    </TableCell>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[200px]">User</TableHead>
+                    <TableHead className="min-w-[120px]">Role</TableHead>
+                    <TableHead className="min-w-[150px]">Submitted</TableHead>
+                    <TableHead className="min-w-[100px]">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredResponses.map((response) => (
+                    <TableRow key={response.id}>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-medium truncate">{response.respondent_name || "Anonymous"}</p>
+                          <p className="text-sm text-gray-500 truncate">{response.respondent_email}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="truncate max-w-[100px]">
+                          {response.respondent_role || "Unknown"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {new Date(response.submitted_at).toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleViewResponse(response)}
+                          className="w-full sm:w-auto"
+                        >
+                          View Response
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
       )}
 
       {/* View Response Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
               Response Details
             </DialogTitle>
-            <DialogDescription className="space-y-1">
-              <div className="font-medium text-gray-900">
-                {selectedResponse?.respondent_name || "Anonymous"}
-              </div>
-              <div className="text-sm text-gray-600">
-                {selectedResponse?.respondent_email && `${selectedResponse.respondent_email} • `}
-                {selectedResponse?.respondent_role || "Unknown"} •
-                Submitted {selectedResponse ? new Date(selectedResponse.submitted_at).toLocaleString() : ""}
-              </div>
-            </DialogDescription>
           </DialogHeader>
-
+          
           {selectedResponse && form && (
-            <div
-              className="max-h-[60vh] overflow-y-auto custom-scrollbar"
-              style={{
-                scrollbarWidth: 'thin',
-                scrollbarColor: '#10b981 #f3f4f6'
-              }}
-            >
-              <style dangerouslySetInnerHTML={{
-                __html: `
-                  .custom-scrollbar::-webkit-scrollbar {
-                    width: 8px;
-                  }
-                  .custom-scrollbar::-webkit-scrollbar-track {
-                    background: #f3f4f6;
-                    border-radius: 4px;
-                  }
-                  .custom-scrollbar::-webkit-scrollbar-thumb {
-                    background: #10b981;
-                    border-radius: 4px;
-                  }
-                  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-                    background: #059669;
-                  }
-                `
-              }} />
-              <div className="space-y-4">
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold mb-4 text-gray-800">Question Responses</h4>
-                  <div className="space-y-3">
-                    {form.questions?.map((question, idx) => (
-                      <div key={question.id} className="bg-gray-50 rounded-lg p-4 border">
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="font-medium text-sm leading-relaxed">
-                            {idx + 1}. {question.question}
-                          </p>
-                          <Badge variant="secondary" className="text-xs ml-2 flex-shrink-0">
-                            {question.type.replace('-', ' ')}
-                          </Badge>
-                        </div>
-                        <div className="text-gray-700 font-medium">
-                          {renderResponseValue(question, selectedResponse.response_data[question.id])}
-                        </div>
-                      </div>
-                    ))}
+            <div className="flex flex-col h-full overflow-hidden">
+              {/* User Info Card */}
+              <div className="px-6 py-4 bg-gray-50 border-b">
+                <div className="flex items-start gap-3">
+                  <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
+                    <User className="w-6 h-6 text-blue-600" />
                   </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 truncate text-lg">
+                      {selectedResponse.respondent_name || "Anonymous"}
+                    </h3>
+                    <div className="flex flex-wrap items-center gap-2 mt-1">
+                      {selectedResponse.respondent_email && (
+                        <div className="flex items-center gap-1 text-sm text-gray-600">
+                          <Mail className="w-3 h-3" />
+                          <span className="truncate">{selectedResponse.respondent_email}</span>
+                        </div>
+                      )}
+                      {selectedResponse.respondent_role && (
+                        <>
+                          <span className="text-gray-400 hidden sm:inline">•</span>
+                          <Badge variant="secondary" className="text-xs flex-shrink-0">
+                            {selectedResponse.respondent_role}
+                          </Badge>
+                        </>
+                      )}
+                      <span className="text-gray-400 hidden sm:inline">•</span>
+                      <div className="flex items-center gap-1 text-sm text-gray-600">
+                        <Calendar className="w-3 h-3" />
+                        <span className="whitespace-nowrap">
+                          {new Date(selectedResponse.submitted_at).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Scrollable Responses Area */}
+              <div className="flex-1 overflow-hidden px-6 pb-6">
+                <h4 className="font-semibold mb-4 text-gray-800 pt-4">Question Responses</h4>
+                <div 
+                  className="overflow-y-auto pr-1 space-y-4"
+                  style={{ 
+                    maxHeight: 'calc(70vh - 180px)',
+                  }}
+                >
+                  {form.questions?.map((question, idx) => (
+                    <div key={question.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+                        <p className="font-medium text-sm leading-relaxed flex-1">
+                          <span className="inline-block w-6 text-gray-500 font-bold">{idx + 1}.</span>
+                          {question.question}
+                        </p>
+                        <Badge 
+                          variant="secondary" 
+                          className="text-xs w-fit sm:w-auto flex-shrink-0 capitalize mt-1 sm:mt-0"
+                        >
+                          {question.type.replace('-', ' ')}
+                        </Badge>
+                      </div>
+                      <div className="text-gray-800 bg-gray-50 rounded p-3 border border-gray-100">
+                        {renderResponseValue(question, selectedResponse.response_data[question.id])}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

@@ -499,7 +499,32 @@
     scrollbar-width: thin !important;
     scrollbar-color: #10b981 #f0fdf4 !important;
   }
-  
+
+  /* Custom scrollbar for overflow utilities */
+  .overflow-y-auto::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: #f3f4f6;
+    border-radius: 4px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #9ca3af;
+    border-radius: 4px;
+  }
+
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+  }
+
+  .overflow-x-auto {
+    scrollbar-width: thin;
+    scrollbar-color: #9ca3af #f3f4f6;
+  }
+
   /* Thin scrollbar variant */
   .scrollbar-thin::-webkit-scrollbar {
     width: 4px !important;
