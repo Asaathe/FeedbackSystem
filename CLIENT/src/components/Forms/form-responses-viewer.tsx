@@ -20,6 +20,7 @@ import {
   Mail,
 } from "lucide-react";
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import jsPDF from 'jspdf';
 import {
   Table,
   TableBody,
@@ -227,58 +228,103 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     setViewDialogOpen(true);
   };
 
-  const exportToCSV = () => {
+  const generatePDF = () => {
     if (!form || responses.length === 0) return;
 
-    // Create CSV content
-    const headers = ["User Name", "User Email", "User Role", "Submitted At"];
-    if (form.questions) {
-      form.questions.forEach((q) => {
-        headers.push(q.question);
+    const doc = new jsPDF();
+    let yPosition = 20;
+
+    // Title
+    doc.setFontSize(18);
+    doc.text(`${form.title} - Analytics Report`, 20, yPosition);
+    yPosition += 20;
+
+    doc.setFontSize(12);
+    doc.text(`Total Responses: ${responses.length}`, 20, yPosition);
+    yPosition += 15;
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, yPosition);
+    yPosition += 20;
+
+    // Analytics for each applicable question
+    applicableQuestions.forEach((question, index) => {
+      if (yPosition > 250) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      const analytics = getQuestionAnalytics(question);
+      if (!analytics) return;
+
+      doc.setFontSize(14);
+      doc.text(`Q${index + 1}: ${question.question}`, 20, yPosition);
+      yPosition += 10;
+
+      if (analytics.type === 'average') {
+        doc.setFontSize(12);
+        if (analytics.average !== undefined && analytics.maxRating !== undefined) {
+          doc.text(`Average Rating: ${analytics.average.toFixed(1)} / ${analytics.maxRating}`, 30, yPosition);
+        } else {
+          doc.text(`Average Rating: N/A`, 30, yPosition);
+        }
+        yPosition += 10;
+        doc.text(`Based on ${analytics.count} responses`, 30, yPosition);
+        yPosition += 15;
+      } else if (analytics.type === 'distribution') {
+        doc.setFontSize(12);
+        if (analytics.chartData) {
+          analytics.chartData.forEach((item) => {
+            doc.text(`${item.answer}: ${item.count} responses (${item.percentage}%)`, 30, yPosition);
+            yPosition += 8;
+          });
+        }
+        yPosition += 10;
+      }
+    });
+
+    // Text questions answers
+    const textQuestions = form.questions?.filter(q =>
+      ['text', 'textarea'].includes(q.question_type || q.type)
+    ) || [];
+
+    if (textQuestions.length > 0) {
+      if (yPosition > 200) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.setFontSize(16);
+      doc.text('Text Question Responses', 20, yPosition);
+      yPosition += 15;
+
+      textQuestions.forEach((question, qIndex) => {
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        doc.setFontSize(14);
+        doc.text(`Q: ${question.question}`, 20, yPosition);
+        yPosition += 10;
+
+        responses.forEach((response, rIndex) => {
+          const answer = response.response_data[question.id] || response.response_data[String(question.id)];
+          if (answer && answer.trim()) {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            doc.setFontSize(10);
+            const respondent = response.respondent_name || `Respondent ${rIndex + 1}`;
+            doc.text(`${respondent}: ${String(answer)}`, 30, yPosition);
+            yPosition += 8;
+          }
+        });
+        yPosition += 10;
       });
     }
 
-    const csvContent = [
-      headers.join(","),
-      ...responses.map((response) => {
-        const row = [
-          response.respondent_name || "",
-          response.respondent_email || "",
-          response.respondent_role || "",
-          new Date(response.submitted_at).toLocaleString(),
-        ];
-
-        if (form.questions) {
-          form.questions.forEach((q) => {
-            const answer = response.response_data[String(q.id)];
-            let displayAnswer = "";
-            if (answer !== undefined && answer !== null) {
-              if (Array.isArray(answer)) {
-                displayAnswer = answer.join("; ");
-              } else if (typeof answer === "object") {
-                displayAnswer = JSON.stringify(answer);
-              } else {
-                displayAnswer = String(answer);
-              }
-            }
-            row.push(displayAnswer);
-          });
-        }
-
-        return row.map(field => `"${field.replace(/"/g, '""')}"`).join(",");
-      }),
-    ].join("\n");
-
-    // Download CSV
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    const url = URL.createObjectURL(blob);
-    link.setAttribute("href", url);
-    link.setAttribute("download", `${form.title}_responses.csv`);
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // Download PDF
+    doc.save(`${form.title}_analytics_report.pdf`);
   };
 
   const renderResponseValue = (question: any, value: any) => {
@@ -353,12 +399,12 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
           <div className="flex gap-2 w-full sm:w-auto">
             <Button
               variant="outline"
-              onClick={exportToCSV}
+              onClick={generatePDF}
               disabled={responses.length === 0}
               className="flex-1 sm:flex-none"
             >
               <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              Generate PDF
             </Button>
           </div>
         </div>
