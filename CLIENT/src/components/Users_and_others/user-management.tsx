@@ -621,7 +621,6 @@ export function UserManagement() {
               <Label htmlFor="studentId">Student ID *</Label>
               <Input
                 id="studentId"
-                placeholder="e.g., 2024-0001"
                 value={newUser.studentId}
                 onChange={(e) => setNewUser({ ...newUser, studentId: e.target.value })}
               />
@@ -712,7 +711,6 @@ export function UserManagement() {
               <Label htmlFor="employeeId">Employee ID *</Label>
               <Input
                 id="employeeId"
-                placeholder="e.g., INS-001"
                 value={newUser.employeeId}
                 onChange={(e) => setNewUser({ ...newUser, employeeId: e.target.value })}
               />
@@ -741,7 +739,6 @@ export function UserManagement() {
             <Label htmlFor="companyName">Company Name *</Label>
             <Input
               id="companyName"
-              placeholder="e.g., Tech Corp Inc."
               value={newUser.companyName}
               onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
             />
@@ -753,7 +750,6 @@ export function UserManagement() {
             <Label htmlFor="graduationYear">Graduation Year *</Label>
             <Input
               id="graduationYear"
-              placeholder="e.g., 2020"
               type="number"
               value={newUser.graduationYear}
               onChange={(e) => setNewUser({ ...newUser, graduationYear: e.target.value })}
@@ -954,7 +950,6 @@ export function UserManagement() {
                     <Label htmlFor="fullName">Full Name *</Label>
                     <Input
                       id="fullName"
-                      placeholder="John Doe"
                       value={newUser.fullName}
                       onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
                     />
@@ -964,7 +959,6 @@ export function UserManagement() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="john.doe@university.edu"
                       value={newUser.email}
                       onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                     />
@@ -976,7 +970,6 @@ export function UserManagement() {
                   <Input
                     id="password"
                     type="password"
-                    placeholder="••••••••"
                     value={newUser.password}
                     onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                   />
@@ -1031,7 +1024,7 @@ export function UserManagement() {
                     <Label htmlFor="phoneNumber">Phone Number</Label>
                     <Input
                       id="phoneNumber"
-                      placeholder="+1 234 567 8900"
+                      placeholder="+63 912 345 6789"
                       value={newUser.phoneNumber}
                       onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
                     />
@@ -1042,7 +1035,6 @@ export function UserManagement() {
                   <Label htmlFor="address">Address</Label>
                   <Textarea
                     id="address"
-                    placeholder="Enter address"
                     value={newUser.address}
                     onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
                     rows={2}
