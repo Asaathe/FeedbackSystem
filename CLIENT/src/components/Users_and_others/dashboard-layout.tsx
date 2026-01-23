@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Button } from "../ui/button";
 import { 
   LayoutDashboard, 
@@ -38,6 +38,29 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children, currentPage, onNavigate, onLogout, role }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [userName, setUserName] = useState<string>("");
+
+  useEffect(() => {
+    const fetchUserName = async () => {
+      const token = sessionStorage.getItem('authToken');
+      if (token) {
+        try {
+          const response = await fetch('http://localhost:5000/api/auth/verify', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const data = await response.json();
+          if (data.success && data.user) {
+            setUserName(data.user.fullName);
+          }
+        } catch (error) {
+          console.error('Failed to fetch user name:', error);
+        }
+      }
+    };
+    fetchUserName();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -50,13 +73,15 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
   
   // User display name based on role
   const getUserName = () => {
+    if (userName) return userName;
+    // Fallback to role-based names if not loaded
     switch(role) {
-      case 'admin': return 'Admin User';
+      case 'admin': return 'System Administrator';
       case 'instructor': return 'Dr. Sarah Johnson';
       case 'student': return 'Student User';
       case 'alumni': return 'Alumni User';
       case 'employer': return 'Employer User';
-      case 'staff': return 'Staff User';
+
       default: return 'Demo User';
     }
   };
