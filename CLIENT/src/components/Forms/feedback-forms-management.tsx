@@ -97,7 +97,9 @@ export function FeedbackFormsManagement({
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
+  const [formToDelete, setFormToDelete] = useState<FormData | null>(null);
   const [categories, setCategories] = useState<FormCategory[]>([]);
   const [loadingCategoryOperation, setLoadingCategoryOperation] = useState(false);
 
@@ -329,9 +331,9 @@ export function FeedbackFormsManagement({
     }
   };
 
-  const handleDeleteForm = async (formId: string) => {
+  const handleDeleteForm = async (form: FormData) => {
     try {
-      const result = await deleteForm(formId);
+      const result = await deleteForm(form.id);
       if (result.success) {
         toast.success(result.message);
         // Reload forms to remove the deleted one
@@ -342,7 +344,15 @@ export function FeedbackFormsManagement({
     } catch (error) {
       console.error("Error deleting form:", error);
       toast.error("An error occurred while deleting the form");
+    } finally {
+      setDeleteDialogOpen(false);
+      setFormToDelete(null);
     }
+  };
+
+  const openDeleteDialog = (form: FormData) => {
+    setFormToDelete(form);
+    setDeleteDialogOpen(true);
   };
 
   const handleSaveAsTemplate = async (formId: string) => {
@@ -872,7 +882,7 @@ export function FeedbackFormsManagement({
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => handleDeleteForm(form.id)}
+                              onClick={() => openDeleteDialog(form)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete
@@ -1000,7 +1010,7 @@ export function FeedbackFormsManagement({
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               className="text-red-600"
-                              onClick={() => handleDeleteForm(template.id)}
+                              onClick={() => openDeleteDialog(template)}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete
@@ -1055,6 +1065,35 @@ export function FeedbackFormsManagement({
           </TabsContent>
         </Tabs>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Form</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete "{formToDelete?.title}"? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end gap-3 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setDeleteDialogOpen(false);
+                setFormToDelete(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => formToDelete && handleDeleteForm(formToDelete)}
+            >
+              Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

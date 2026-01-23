@@ -918,7 +918,7 @@ export async function getAssignmentStats(formId: string) {
 // Get alumni companies for filtering
 export const getAlumniCompanies = async (): Promise<{ success: boolean; companies: string[]; message?: string }> => {
   logDebug('getAlumniCompanies called');
-  
+
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {
@@ -944,10 +944,47 @@ export const getAlumniCompanies = async (): Promise<{ success: boolean; companie
       logDebug(`Successfully loaded ${result.companies.length} companies`);
       return { success: true, companies: result.companies, message: 'Companies fetched successfully' };
     }
-    
+
     return { success: false, companies: [], message: result.message || 'Failed to fetch companies' };
   } catch (error) {
     logError('Exception in getAlumniCompanies:', error);
+    return { success: false, companies: [], message: 'An error occurred while fetching companies' };
+  }
+};
+
+// Get employer companies for filtering
+export const getEmployerCompanies = async (): Promise<{ success: boolean; companies: string[]; message?: string }> => {
+  logDebug('getEmployerCompanies called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, companies: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/employers/companies';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, companies: [], message: 'Failed to fetch employer companies' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.companies) {
+      logDebug(`Successfully loaded ${result.companies.length} companies`);
+      return { success: true, companies: result.companies, message: 'Companies fetched successfully' };
+    }
+
+    return { success: false, companies: [], message: result.message || 'Failed to fetch companies' };
+  } catch (error) {
+    logError('Exception in getEmployerCompanies:', error);
     return { success: false, companies: [], message: 'An error occurred while fetching companies' };
   }
 };

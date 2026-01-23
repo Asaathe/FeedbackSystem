@@ -68,6 +68,8 @@ import {
   deleteFormCategory,
   assignFormToUsers,
   deployForm,
+  getAlumniCompanies,
+  getEmployerCompanies,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../ui/checkbox";
@@ -137,14 +139,15 @@ export function FormBuilder({
   const [loadingCategoryOperation, setLoadingCategoryOperation] =
     useState<boolean>(false);
   const [customAudiences, setCustomAudiences] = useState<string[]>([
-    "All Users",
     "Students",
-    "Alumni",
     "Instructors",
+    "Alumni",
+    "Employers",
   ]);
 
   // Course Year Section options from signup page (Students)
   const [courseYearSections, setCourseYearSections] = useState<string[]>([
+    "All Students",
     // Grade 11
     "ABM11-LOVE", "ABM11-HOPE", "ABM11-FAITH",
     "HUMSS11-LOVE", "HUMSS11-HOPE", "HUMSS11-FAITH", "HUMSS11-JOY", "HUMSS11-GENEROSITY", "HUMSS11-HUMILITY", "HUMSS11-INTEGRITY", "HUMSS11-WISDOM",
@@ -178,11 +181,11 @@ export function FormBuilder({
 
   // Dynamic audience options based on user type
   const [instructorDepartments, setInstructorDepartments] = useState<string[]>([
-    "IT Department",
-    "Business Department",
-    "Education Department",
-    "Hospitality Department",
+    "Senior High Department",
+    "College Department",
   ]);
+  const [alumniCompanies, setAlumniCompanies] = useState<string[]>([]);
+  const [employerCompanies, setEmployerCompanies] = useState<string[]>([]);
 
   // Recipients management
   const [recipients, setRecipients] = useState<
@@ -336,11 +339,30 @@ export function FormBuilder({
 
     loadCategories();
   }, []);
+  // Load companies for alumni and employers
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const alumniResult = await getAlumniCompanies();
+        if (alumniResult.success) {
+          setAlumniCompanies(alumniResult.companies || []);
+        }
+        const employerResult = await getEmployerCompanies();
+        if (employerResult.success) {
+          setEmployerCompanies(employerResult.companies || []);
+        }
+      } catch (error) {
+        console.error("Error loading companies:", error);
+      }
+    };
+    loadCompanies();
+  }, []);
 
   // Dialog States
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
   // Loading State
   const [loading, setLoading] = useState(false);
@@ -645,15 +667,25 @@ const formData = {
         return;
       }
 
-      // Deploy the form
-      const result = await deployForm(currentFormId, {
-        startDate: submissionSchedule.startDate || new Date().toISOString().split('T')[0],
-        endDate: submissionSchedule.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        targetFilters: {
-          roles: formTarget === 'All Users' ? ['all'] : [formTarget.toLowerCase().replace(' ', '')],
-          target_audience: formTarget
-        }
-      });
+      // Check if specific recipients are selected (not all recipients)
+      const hasSpecificRecipients = selectedRecipients.size > 0 && selectedRecipients.size < recipients.length;
+
+      let result;
+      if (hasSpecificRecipients) {
+        // Assign to specific users
+        const selectedUserIds = Array.from(selectedRecipients).map(id => parseInt(id.toString()));
+        result = await assignFormToUsers(currentFormId, selectedUserIds, formTarget);
+      } else {
+        // Deploy to group
+        result = await deployForm(currentFormId, {
+          startDate: submissionSchedule.startDate || new Date().toISOString().split('T')[0],
+          endDate: submissionSchedule.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          targetFilters: {
+            roles: formTarget === 'All Users' ? ['all'] : [formTarget.toLowerCase().replace(' ', '')],
+            target_audience: formTarget
+          }
+        });
+      }
 
       if (result.success) {
         toast.success(result.message);
@@ -689,7 +721,7 @@ const formData = {
       let filters: any = { role: roleMap[audienceType] || audienceType.toLowerCase() };
 
       if (audienceType === "Students") {
-        if (courseYearSection) {
+        if (courseYearSection && courseYearSection !== "All Students") {
           filters.course_year_section = courseYearSection;
         }
       } else if (audienceType === "Instructors") {
@@ -894,18 +926,49 @@ const formData = {
             {/* Right Section - Action Buttons */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <>
-                <Button
-                  variant="outline"
-                  onClick={saveForm}
-                  disabled={loading}
-                  size="sm"
-                  className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                <Dialog
+                  open={saveDialogOpen}
+                  onOpenChange={setSaveDialogOpen}
                 >
-                  <Save className="w-4 h-4 sm:mr-2" />
-                  <span className="hidden sm:inline">
-                    {loading ? "Saving..." : "Save"}
-                  </span>
-                </Button>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      disabled={loading}
+                      size="sm"
+                      className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                    >
+                      <Save className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">
+                        {loading ? "Saving..." : "Save"}
+                      </span>
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Save as Draft</DialogTitle>
+                      <DialogDescription>
+                        Your form will be saved as a draft and you can continue editing it later.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex justify-end gap-3 pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={() => setSaveDialogOpen(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setSaveDialogOpen(false);
+                          saveForm();
+                        }}
+                        disabled={loading}
+                      >
+                        {loading ? "Saving..." : "Save Draft"}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
 
                 <Dialog
                   open={previewDialogOpen}
@@ -1139,7 +1202,7 @@ const formData = {
                             {/* Main Audience Type Selection */}
                             <div className="space-y-2">
                               <Label className="text-sm font-medium">
-                                Select Audience
+                                Select Respondents
                               </Label>
                               <Select
                                 value={selectedAudienceType}
@@ -1153,9 +1216,6 @@ const formData = {
                                   <SelectValue placeholder="Select audience" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="All Users">
-                                    All Users
-                                  </SelectItem>
                                   <SelectItem value="Students">
                                     Students
                                   </SelectItem>
@@ -1163,6 +1223,7 @@ const formData = {
                                     Instructors
                                   </SelectItem>
                                   <SelectItem value="Alumni">Alumni</SelectItem>
+                                  <SelectItem value="Employers">Employers</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1174,6 +1235,7 @@ const formData = {
                                   {selectedAudienceType === "Students" && "Course Year Section"}
                                   {selectedAudienceType === "Instructors" && "Department"}
                                   {selectedAudienceType === "Alumni" && "Company"}
+                                  {selectedAudienceType === "Employers" && "Company"}
                                 </Label>
                                 <Select
                                   value={selectedCourseYearSection}
@@ -1207,7 +1269,18 @@ const formData = {
                                       ))
                                     )}
                                     {selectedAudienceType === "Alumni" && (
-                                      <SelectItem value="Company A">Company A</SelectItem>
+                                      alumniCompanies.map((company) => (
+                                        <SelectItem key={company} value={company}>
+                                          {company}
+                                        </SelectItem>
+                                      ))
+                                    )}
+                                    {selectedAudienceType === "Employers" && (
+                                      employerCompanies.map((company) => (
+                                        <SelectItem key={company} value={company}>
+                                          {company}
+                                        </SelectItem>
+                                      ))
                                     )}
                                   </SelectContent>
                                 </Select>
@@ -1289,7 +1362,7 @@ const formData = {
                                   </div>
 
                                   {/* Recipients list with checkboxes */}
-                                  <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-64">
+                                  <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-24">
                                     {recipients.length > 0 ? (
                                       <div className="space-y-2">
                                         {filteredRecipients.map((recipient) => (

@@ -1158,6 +1158,44 @@ app.get("/api/alumni/companies", verifyToken, (req, res) => {
   }
 });
 
+// Get unique companies for employer filtering
+app.get("/api/employers/companies", verifyToken, (req, res) => {
+  try {
+    const query = `
+      SELECT DISTINCT e.companyname
+      FROM Employers e
+      JOIN Users u ON e.user_id = u.id
+      WHERE u.status = 'active' AND e.companyname IS NOT NULL AND e.companyname != ''
+      ORDER BY e.companyname
+    `;
+
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      const companies = results
+        .map((row) => row.companyname)
+        .filter((company) => company);
+
+      res.json({
+        success: true,
+        companies,
+      });
+    });
+  } catch (error) {
+    console.error("Get employer companies error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+});
+
 // ADD this function to dynamically fetch departments for instructor filtering
 app.get("/api/instructors/departments", verifyToken, (req, res) => {
   try {
