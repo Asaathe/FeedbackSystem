@@ -60,7 +60,11 @@ import {
   getFormTemplates,
   saveAsTemplate,
   deployForm,
+  getFormCategories,
+  addFormCategory,
+  deleteFormCategory,
   FormData,
+  FormCategory,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { formatImageUrl, EnhancedImage } from "../../utils/imageUtils";
@@ -70,14 +74,6 @@ interface FeedbackFormsManagementProps {
   onNavigateToResponses?: (formId: string) => void;
 }
 
-const categories = [
-  "Academic",
-  "Facilities",
-  "Services",
-  "Alumni",
-  "Career Support",
-  "General Feedback",
-];
 
 const targetAudienceOptions = [
   "All Users",
@@ -100,7 +96,10 @@ export function FeedbackFormsManagement({
   const [selectedTarget, setSelectedTarget] = useState("all");
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
+  const [categories, setCategories] = useState<FormCategory[]>([]);
+  const [loadingCategoryOperation, setLoadingCategoryOperation] = useState(false);
 
   // Load question count cache from localStorage on component mount
   const [formQuestionCache, setFormQuestionCache] = useState<
@@ -141,10 +140,63 @@ export function FeedbackFormsManagement({
   const [editFormCategory, setEditFormCategory] = useState("Academic");
   const [editFormTarget, setEditFormTarget] = useState("All Users");
 
-  // Load forms on component mount
+  // Load forms and categories on component mount
   useEffect(() => {
     loadForms();
+    loadCategories();
   }, []);
+
+  const loadCategories = async () => {
+    try {
+      const result = await getFormCategories();
+      if (result.success) {
+        setCategories(result.categories);
+      } else {
+        console.error('Failed to load categories:', result.message);
+      }
+    } catch (error) {
+      console.error('Error loading categories:', error);
+    }
+  };
+
+  const addCategory = async (category: string) => {
+    if (!category.trim() || categories.some(cat => cat.name === category.trim())) return;
+    setLoadingCategoryOperation(true);
+    try {
+      const result = await addFormCategory(category.trim());
+      if (result.success && result.category) {
+        setCategories([...categories, result.category]);
+        toast.success(`Category "${category.trim()}" added`);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error adding category:', error);
+      toast.error('Failed to add category');
+    } finally {
+      setLoadingCategoryOperation(false);
+    }
+  };
+
+  const removeCategory = async (category: string) => {
+    const cat = categories.find(c => c.name === category);
+    if (!cat) return;
+    setLoadingCategoryOperation(true);
+    try {
+      const result = await deleteFormCategory(cat.id);
+      if (result.success) {
+        setCategories(categories.filter(c => c.id !== cat.id));
+        toast.success(`Category "${category}" removed`);
+      } else {
+        toast.error(result.message);
+      }
+    } catch (error) {
+      console.error('Error removing category:', error);
+      toast.error('Failed to remove category');
+    } finally {
+      setLoadingCategoryOperation(false);
+    }
+  };
 
   const loadForms = async () => {
     setLoading(true);
@@ -561,8 +613,8 @@ export function FeedbackFormsManagement({
                   </SelectTrigger>
                   <SelectContent>
                     {categories.map((cat) => (
-                      <SelectItem key={cat} value={cat}>
-                        {cat}
+                      <SelectItem key={cat.id} value={cat.name}>
+                        {cat.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -606,6 +658,66 @@ export function FeedbackFormsManagement({
         </DialogContent>
       </Dialog>
 
+      {/* Manage Categories Dialog */}
+      <Dialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-lg">
+              Manage Categories
+            </DialogTitle>
+            <DialogDescription>
+              Add or remove form categories
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="New category name"
+                id="new-category-input"
+                className="flex-1"
+              />
+              <Button
+                onClick={() => {
+                  const input = document.getElementById(
+                    "new-category-input"
+                  ) as HTMLInputElement;
+                  if (input?.value.trim()) {
+                    addCategory(input.value.trim());
+                    input.value = "";
+                  }
+                }}
+                size="sm"
+                disabled={loadingCategoryOperation}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {categories.map((cat) => (
+                <div
+                  key={cat.id}
+                  className="flex items-center justify-between p-2 rounded border"
+                >
+                  <span className="text-sm">{cat.name}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                    onClick={() => removeCategory(cat.name)}
+                    disabled={
+                      categories.length <= 1 ||
+                      loadingCategoryOperation
+                    }
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
@@ -624,8 +736,8 @@ export function FeedbackFormsManagement({
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
             {categories.map((cat) => (
-              <SelectItem key={cat} value={cat}>
-                {cat}
+              <SelectItem key={cat.id} value={cat.name}>
+                {cat.name}
               </SelectItem>
             ))}
           </SelectContent>

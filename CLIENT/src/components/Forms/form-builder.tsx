@@ -120,7 +120,7 @@ export function FormBuilder({
   isCustomFormTab,
 }: FormBuilderProps) {
   // Form Settings State
-  const [formTitle, setFormTitle] = useState("Untitled Feedback Form");
+  const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
   const [formCategory, setFormCategory] = useState("");
   const [formTarget, setFormTarget] = useState<string>("All Users");
@@ -206,15 +206,8 @@ export function FormBuilder({
   });
 
   // Questions State
-  const [questions, setQuestions] = useState<FormQuestion[]>([
-    {
-      id: "1",
-      type: "rating",
-      question: "How would you rate the overall quality?",
-      required: true,
-    },
-  ]);
-  const [activeQuestion, setActiveQuestion] = useState<string | null>("1");
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
 
   // Load existing form data when formId is provided
   useEffect(() => {
@@ -228,7 +221,7 @@ export function FormBuilder({
           if (savedFormData) {
             console.log("📦 Loading from localStorage");
             const formData = JSON.parse(savedFormData);
-            setFormTitle(formData.title || "Untitled Feedback Form");
+            setFormTitle(formData.title || "");
             setFormDescription(formData.description || "");
             setFormCategory(formData.category || "Academic");
             setFormTarget(formData.target || "All Users");
@@ -250,17 +243,8 @@ export function FormBuilder({
                 endTime: "",
               }
             );
-            setQuestions(
-              formData.questions || [
-                {
-                  id: "1",
-                  type: "rating",
-                  question: "How would you rate the overall quality?",
-                  required: true,
-                },
-              ]
-            );
-            setActiveQuestion(formData.questions?.[0]?.id || "1");
+            setQuestions(formData.questions || []);
+            setActiveQuestion(formData.questions?.[0]?.id || null);
             console.log("✅ Form loaded from localStorage");
           } else {
             // Load from API if no localStorage data
@@ -270,7 +254,7 @@ export function FormBuilder({
             if (result.success && result.form) {
               const form = result.form;
               console.log("📋 Form data:", form);
-              setFormTitle(form.title || "Untitled Feedback Form");
+              setFormTitle(form.title || "");
               setFormDescription(form.description || "");
               setFormCategory(form.category || "Academic");
               setFormTarget(form.target_audience || "All Users");
@@ -297,17 +281,10 @@ export function FormBuilder({
                 setQuestions(apiQuestions);
                 setActiveQuestion(apiQuestions[0]?.id || null);
               } else {
-                console.log("⚠️ No questions found, using default");
-                // Default question if no questions
-                setQuestions([
-                  {
-                    id: "1",
-                    type: "rating",
-                    question: "How would you rate the overall quality?",
-                    required: true,
-                  },
-                ]);
-                setActiveQuestion("1");
+                console.log("⚠️ No questions found, using empty");
+                // No default question
+                setQuestions([]);
+                setActiveQuestion(null);
               }
               console.log("✅ Form loaded from API");
             } else {
@@ -455,12 +432,12 @@ export function FormBuilder({
     const newQuestion: FormQuestion = {
       id: Date.now().toString(),
       type: type,
-      question: "Untitled Question",
+      question: "",
       required: false,
       ...(type === "multiple-choice" ||
       type === "checkbox" ||
       type === "dropdown"
-        ? { options: ["Option 1"] }
+        ? { options: [""] }
         : {}),
     };
     setQuestions([...questions, newQuestion]);
@@ -492,12 +469,6 @@ export function FormBuilder({
   };
 
   const deleteQuestion = (id: string) => {
-    if (questions.length === 1) {
-      toast.error("Cannot delete", {
-        description: "Form must have at least one question",
-      });
-      return;
-    }
     setQuestions(questions.filter((q) => q.id !== id));
     setActiveQuestion(null);
     toast.success("Question deleted");
@@ -620,6 +591,11 @@ export function FormBuilder({
     }
     if (!formTarget || formTarget === "") {
       toast.error("Please select a target audience");
+      return;
+    }
+
+    if (questions.length === 0) {
+      toast.error("Please add at least one question to your form");
       return;
     }
 
@@ -910,7 +886,7 @@ const formData = {
               <div className="hidden sm:flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                 <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 shrink-0" />
                 <h1 className="text-sm sm:text-lg truncate text-gray-700">
-                  {loading ? "Saving..." : formTitle || "Untitled Form"}
+                  {loading ? "Saving..." : formTitle || "New Form"}
                 </h1>
               </div>
             </div>
@@ -1611,7 +1587,7 @@ const formData = {
                     <Input
                       value={formTitle}
                       onChange={(e) => setFormTitle(e.target.value)}
-                      placeholder="Enter form title"
+                      placeholder="Name your feedback form"
                     />
                   </div>
 
@@ -1621,7 +1597,7 @@ const formData = {
                     <Textarea
                       value={formDescription}
                       onChange={(e) => setFormDescription(e.target.value)}
-                      placeholder="Provide instructions or context for your form respondents..."
+                      placeholder="Describe your form (optional)"
                       rows={3}
                       className="resize-none"
                     />
@@ -1803,6 +1779,13 @@ const formData = {
           </Card>
 
           {/* Questions */}
+          {questions.length === 0 && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="pt-6 text-center">
+                <p className="text-gray-600">No questions yet. Add your first question below.</p>
+              </CardContent>
+            </Card>
+          )}
           {questions.map((question, index) => (
             <Card
               key={question.id}
@@ -1838,7 +1821,7 @@ const formData = {
                               question: e.target.value,
                             })
                           }
-                          placeholder="Question text"
+                          placeholder="Enter your question"
                           className="flex-1 text-sm sm:text-base"
                         />
                         <Select
@@ -1888,7 +1871,7 @@ const formData = {
                               description: e.target.value,
                             })
                           }
-                          placeholder="Description (optional)"
+                          placeholder="Add a description (optional)"
                           className="text-sm"
                         />
                       )}
@@ -1919,7 +1902,7 @@ const formData = {
                                     e.target.value
                                   )
                                 }
-                                placeholder={`Option ${optIdx + 1}`}
+                                placeholder={`Enter option ${optIdx + 1}`}
                                 className="flex-1 text-sm"
                               />
                               {question.options &&
