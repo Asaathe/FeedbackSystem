@@ -2336,11 +2336,22 @@ app.get("/api/forms", verifyToken, (req, res) => {
 app.get("/api/forms/:id", verifyToken, (req, res) => {
   const formId = req.params.id;
 
-  // Get form details
+  // Get form details with deployment info for published forms
   const formQuery = `
-    SELECT f.*, u.full_name as creator_name
+    SELECT f.*, u.full_name as creator_name,
+           COALESCE(
+             CASE WHEN f.status = 'active' THEN DATE_FORMAT(fd.start_date, '%Y-%m-%d') END,
+             DATE_FORMAT(f.start_date, '%Y-%m-%d')
+           ) as start_date,
+           COALESCE(
+             CASE WHEN f.status = 'active' THEN DATE_FORMAT(fd.end_date, '%Y-%m-%d') END,
+             DATE_FORMAT(f.end_date, '%Y-%m-%d')
+           ) as end_date,
+           fd.start_date as deployment_start_date,
+           fd.end_date as deployment_end_date
     FROM Forms f
     LEFT JOIN Users u ON f.created_by = u.id
+    LEFT JOIN Form_Deployments fd ON f.id = fd.form_id AND fd.deployment_status = 'active'
     WHERE f.id = ?
   `;
 
@@ -2359,6 +2370,15 @@ app.get("/api/forms/:id", verifyToken, (req, res) => {
     }
 
     const form = formResults[0];
+    console.log("Form data from database:", {
+      id: form.id,
+      title: form.title,
+      status: form.status,
+      form_start_date: form.start_date,
+      form_end_date: form.end_date,
+      deployment_start_date: form.deployment_start_date,
+      deployment_end_date: form.deployment_end_date
+    });
 
     // Get questions with options
     const questionsQuery = `
@@ -3115,16 +3135,46 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
     }
 
     try {
-      // Insert deployment record
-      const deployQuery = `
-        INSERT INTO Form_Deployments (form_id, deployed_by, start_date, end_date, target_filters)
-        VALUES (?, ?, ?, ?, ?)
-      `;
+      // Check if deployment already exists for this form
+      const checkQuery = `SELECT id FROM Form_Deployments WHERE form_id = ? LIMIT 1`;
 
-      db.query(
-        deployQuery,
-        [formId, deployedBy, startDate, endDate, JSON.stringify(targetFilters)],
-        (err, result) => {
+      db.query(checkQuery, [formId], (checkErr, checkResult) => {
+        if (checkErr) {
+          console.error("💥 Deployment check error:", checkErr);
+          db.rollback(() => {
+            res.status(500).json({
+              success: false,
+              message: "Failed to check existing deployment",
+              error: checkErr.message,
+            });
+          });
+          return;
+        }
+
+        const deploymentExists = checkResult.length > 0;
+        let deployQuery;
+        let queryParams;
+
+        if (deploymentExists) {
+          // Update existing deployment
+          console.log(`🔄 Updating existing deployment for form ${formId}`);
+          deployQuery = `
+            UPDATE Form_Deployments
+            SET start_date = ?, end_date = ?, target_filters = ?, deployment_status = 'active'
+            WHERE form_id = ?
+          `;
+          queryParams = [startDate, endDate, JSON.stringify(targetFilters), formId];
+        } else {
+          // Insert new deployment record
+          console.log(`➕ Creating new deployment for form ${formId}`);
+          deployQuery = `
+            INSERT INTO Form_Deployments (form_id, deployed_by, start_date, end_date, target_filters)
+            VALUES (?, ?, ?, ?, ?)
+          `;
+          queryParams = [formId, deployedBy, startDate, endDate, JSON.stringify(targetFilters)];
+        }
+
+        db.query(deployQuery, queryParams, (err, result) => {
           if (err) {
             console.error("💥 Deployment insertion error:", err);
             db.rollback(() => {
@@ -3140,7 +3190,7 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
           }
 
           console.log(
-            `✅ Deployment record created with ID: ${result.insertId}`,
+            `✅ Deployment record ${deploymentExists ? 'updated' : 'created'} with ID: ${result.insertId || 'existing'}`,
           );
 
           // Update form status to active
@@ -3535,6 +3585,7 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
           );
         },
       );
+      }); // Close checkQuery callback
     } catch (error) {
       console.error("💥 Deployment error:", error);
       db.rollback(() => {

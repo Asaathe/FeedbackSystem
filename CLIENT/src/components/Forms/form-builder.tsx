@@ -129,6 +129,7 @@ export function FormBuilder({
   const [formImage, setFormImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(true);
+  const [isPublished, setIsPublished] = useState(false);
 
   // Dynamic Categories and Audiences State
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -262,6 +263,38 @@ export function FormBuilder({
               setFormCategory(form.category || "Academic");
               setFormTarget(form.target_audience || "All Users");
               setFormImage(form.image_url || null);
+              setIsPublished(form.status === "active");
+
+              // Parse target_audience to set audience selection fields
+              const target = form.target_audience || "All Users";
+              if (target === "All Users") {
+                setSelectedAudienceType("All Users");
+                setSelectedCourseYearSection("");
+              } else if (target.includes(" - ")) {
+                const [audienceType, courseYearSection] = target.split(" - ");
+                setSelectedAudienceType(audienceType);
+                setSelectedCourseYearSection(courseYearSection);
+              } else {
+                setSelectedAudienceType(target);
+                setSelectedCourseYearSection("");
+              }
+
+              // Load submission schedule if available
+              console.log("Loading schedule from form:", {
+                start_date: form.start_date,
+                end_date: form.end_date,
+                status: form.status
+              });
+              setSubmissionSchedule({
+                startDate: form.start_date || "",
+                endDate: form.end_date || "",
+                startTime: "",
+                endTime: "",
+              });
+              console.log("Set submissionSchedule to:", {
+                startDate: form.start_date || "",
+                endDate: form.end_date || "",
+              });
 
               // Convert API questions to FormQuestion format
               if (form.questions && form.questions.length > 0) {
@@ -645,6 +678,8 @@ const formData = {
   description: formDescription,
   category: formCategory,
   targetAudience: formTarget,
+  startDate: submissionSchedule.startDate || undefined,
+  endDate: submissionSchedule.endDate || undefined,
   questions: questions,
   question_count: questions.length,
   total_questions: questions.length,
@@ -930,49 +965,51 @@ const formData = {
             {/* Right Section - Action Buttons */}
             <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
               <>
-                <Dialog
-                  open={saveDialogOpen}
-                  onOpenChange={setSaveDialogOpen}
-                >
-                  <DialogTrigger asChild>
-                    <Button
-                      variant="outline"
-                      disabled={loading}
-                      size="sm"
-                      className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
-                    >
-                      <Save className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">
-                        {loading ? "Saving..." : "Save"}
-                      </span>
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-md">
-                    <DialogHeader>
-                      <DialogTitle>Save as Draft</DialogTitle>
-                      <DialogDescription>
-                        Your form will be saved as a draft and you can continue editing it later.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="flex justify-end gap-3 pt-4">
+                {!isPublished && (
+                  <Dialog
+                    open={saveDialogOpen}
+                    onOpenChange={setSaveDialogOpen}
+                  >
+                    <DialogTrigger asChild>
                       <Button
                         variant="outline"
-                        onClick={() => setSaveDialogOpen(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          setSaveDialogOpen(false);
-                          saveForm();
-                        }}
                         disabled={loading}
+                        size="sm"
+                        className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                       >
-                        {loading ? "Saving..." : "Save Draft"}
+                        <Save className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">
+                          {loading ? "Saving..." : "Save"}
+                        </span>
                       </Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle>Save as Draft</DialogTitle>
+                        <DialogDescription>
+                          Your form will be saved as a draft and you can continue editing it later.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={() => setSaveDialogOpen(false)}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setSaveDialogOpen(false);
+                            saveForm();
+                          }}
+                          disabled={loading}
+                        >
+                          {loading ? "Saving..." : "Save Draft"}
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                )}
 
                 <Dialog
                   open={previewDialogOpen}
@@ -1173,14 +1210,14 @@ const formData = {
                       disabled={!formTitle.trim() || questions.length === 0}
                     >
                       <SendHorizontal className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Publish</span>
+                      <span className="hidden sm:inline">{isPublished ? "Update" : "Publish"}</span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Publish Feedback Form</DialogTitle>
+                      <DialogTitle>{isPublished ? "Update Feedback Form" : "Publish Feedback Form"}</DialogTitle>
                       <DialogDescription>
-                        Review your form before publishing
+                        {isPublished ? "Review your changes before updating the form" : "Review your form before publishing"}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
@@ -1650,7 +1687,7 @@ const formData = {
                           )}
                           {formTarget && formTitle.trim() && questions.length > 0 && (
                             <p className="text-sm text-blue-900">
-                              <strong>Ready to publish!</strong> This form will
+                              <strong>{isPublished ? "Ready to update!" : "Ready to publish!"}</strong> This form will
                               be available to {formTarget.toLowerCase()}.
                             </p>
                           )}
@@ -1661,7 +1698,7 @@ const formData = {
                             onClick={publishForm}
                             disabled={loading || !formTarget || !formTitle.trim() || questions.length === 0}
                           >
-                            {loading ? "Saving..." : "Publish Now"}
+                            {loading ? "Saving..." : (isPublished ? "Update Now" : "Publish Now")}
                           </Button>
                         </div>
                       </div>
