@@ -273,7 +273,7 @@ export function FormBuilder({
                     description: q.description || "",
                     required: q.required || false,
                     options: q.options
-                      ? q.options.map((opt: any) => opt.option_text)
+                      ? q.options.map((opt: any) => opt.option_text).filter((opt: string) => opt && opt.trim() !== '')
                       : undefined,
                     min: q.min_value,
                     max: q.max_value,
@@ -561,15 +561,21 @@ export function FormBuilder({
     try {
       setLoading(true);
 
+      // Clean questions data before sending
+      const cleanedQuestions = questions.map(q => ({
+        ...q,
+        options: q.options && q.options.filter(opt => opt && opt.trim() !== '') || undefined
+      }));
+
       const formData = {
         title: formTitle,
         description: formDescription,
         category: formCategory,
         targetAudience: formTarget,
-        questions: questions,
-        question_count: questions.length,
-        total_questions: questions.length,
-        questions_count: questions.length,
+        questions: cleanedQuestions,
+        question_count: cleanedQuestions.length,
+        total_questions: cleanedQuestions.length,
+        questions_count: cleanedQuestions.length,
         imageUrl: formImage || undefined,
         isTemplate: false,
         status: "draft",

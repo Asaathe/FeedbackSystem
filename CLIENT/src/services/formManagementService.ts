@@ -284,7 +284,7 @@ export const updateForm = async (
   updates: Partial<CreateFormData>
 ): Promise<{ success: boolean; message: string }> => {
   logDebug('updateForm called with formId:', formId, 'updates:', updates);
-  
+
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {

@@ -2649,6 +2649,7 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
   const formId = req.params.id;
   const updates = req.body;
 
+
   // Build update query dynamically
   const updateFields = [];
   const updateValues = [];
@@ -2671,7 +2672,11 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
     }
   });
 
-  if (updateFields.length === 0 && !updates.questions) {
+  // Handle questions field separately
+  const questions = updates.questions;
+  delete updates.questions;
+
+  if (updateFields.length === 0 && !questions) {
     return res
       .status(400)
       .json({ success: false, message: "No valid fields to update" });
@@ -2713,7 +2718,7 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
           }
 
           // Update questions if provided
-          if (updates.questions && Array.isArray(updates.questions)) {
+          if (questions && Array.isArray(questions)) {
             updateQuestions();
           } else {
             db.commit((commitErr) => {
@@ -2733,7 +2738,7 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
             });
           }
         });
-      } else if (updates.questions && Array.isArray(updates.questions)) {
+      } else if (questions && Array.isArray(questions)) {
         // Only update questions
         updateQuestions();
       } else {
@@ -2764,6 +2769,27 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
             return;
           }
 
+          // Check if questions array is empty
+          if (!questions || questions.length === 0) {
+            console.log("No questions to update, skipping question update");
+            db.commit((commitErr) => {
+              if (commitErr) {
+                console.error("Commit error:", commitErr);
+                db.rollback(() => {
+                  res
+                    .status(500)
+                    .json({
+                      success: false,
+                      message: "Failed to commit changes",
+                    });
+                });
+                return;
+              }
+              res.json({ success: true, message: "Form updated successfully" });
+            });
+            return;
+          }
+
           db.query(
             "DELETE FROM Questions WHERE form_id = ?",
             [formId],
@@ -2781,8 +2807,29 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
                 return;
               }
 
+              // Check if questions array is empty
+              if (!questions || questions.length === 0) {
+                console.log("No questions to insert, committing transaction");
+                db.commit((commitErr) => {
+                  if (commitErr) {
+                    console.error("Commit error:", commitErr);
+                    db.rollback(() => {
+                      res
+                        .status(500)
+                        .json({
+                          success: false,
+                          message: "Failed to commit changes",
+                        });
+                    });
+                    return;
+                  }
+                  res.json({ success: true, message: "Form updated successfully" });
+                });
+                return;
+              }
+
               // Insert new questions
-              const questionPromises = updates.questions.map((q, index) => {
+              const questionPromises = questions.map((q, index) => {
                 return new Promise((resolve, reject) => {
                   // Validate question
                   if (!q.question || !q.type) {
@@ -2823,9 +2870,10 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
                                 const optionText =
                                   typeof opt === "string"
                                     ? opt
-                                    : opt.option_text || opt.text || opt.label;
+                                    : (opt && (opt.option_text || opt.text || opt.label));
 
                                 if (!optionText) {
+                                  console.error("Invalid option object:", opt);
                                   optReject(
                                     new Error("Option text is required"),
                                   );
@@ -2860,7 +2908,7 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
               Promise.all(questionPromises)
                 .then(() => {
                   console.log(
-                    `✅ Form ${formId} questions updated with ${updates.questions.length} questions`,
+                    `✅ Form ${formId} questions updated with ${questions.length} questions`,
                   );
                   db.commit((commitErr) => {
                     if (commitErr) {
@@ -2887,7 +2935,6 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
                     res.status(500).json({
                       success: false,
                       message: "Failed to update form questions",
-                      error: error.message,
                     });
                   });
                 });

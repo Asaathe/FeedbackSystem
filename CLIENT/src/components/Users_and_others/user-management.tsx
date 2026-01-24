@@ -261,7 +261,7 @@ export function UserManagement() {
       const isCollege = collegeCourses.some(course =>
         courseYrSection.includes(course)
       );
-      
+
       if (isSeniorHigh) {
         return 'Senior High';
       } else if (isCollege) {
@@ -273,6 +273,36 @@ export function UserManagement() {
       return user.department || 'Not Assigned';
     } else {
       return user.department || 'N/A';
+    }
+  };
+
+  const getPendingInfo = (user: any) => {
+    const role = user.role?.toLowerCase();
+    if (role === 'student') {
+      return user.courseYrSection || user.year || 'N/A';
+    } else if (role === 'instructor') {
+      return user.department || 'Not Assigned';
+    } else if (role === 'alumni') {
+      return user.degree || 'N/A';
+    } else if (role === 'employer') {
+      return `${user.companyName || 'N/A'} ${user.employeeId || 'N/A'}`;
+    } else {
+      return user.department || 'N/A';
+    }
+  };
+
+  const getPendingLabel = (user: any) => {
+    const role = user.role?.toLowerCase();
+    if (role === 'student') {
+      return 'Course Year and Section';
+    } else if (role === 'instructor') {
+      return 'Department';
+    } else if (role === 'alumni') {
+      return 'Degree';
+    } else if (role === 'employer') {
+      return 'Company and Employee';
+    } else {
+      return 'Department';
     }
   };
 
@@ -1163,7 +1193,7 @@ export function UserManagement() {
                           </Badge>
                         </div>
                         <p className="text-sm text-gray-600">{user.email}</p>
-                        <p className="text-sm text-gray-500">{getDisplayDepartment(user)}</p>
+                        <p className="text-sm text-gray-500">{getPendingInfo(user)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -1438,8 +1468,8 @@ export function UserManagement() {
                     </Badge>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Department</p>
-                    <p>{getDisplayDepartment(selectedUser)}</p>
+                    <p className="text-sm text-gray-600">{getPendingLabel(selectedUser)}</p>
+                    <p>{getPendingInfo(selectedUser)}</p>
                   </div>
                   {selectedUser.phoneNumber && (
                     <div>
