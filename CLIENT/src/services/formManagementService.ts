@@ -219,6 +219,11 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       return { success: false, message: 'No authentication token found' };
     }
 
+    // Send questions as-is - let the server handle the format
+    const questionsToSend = formData.questions || [];
+    console.log('📤 Questions being sent to server:', questionsToSend);
+    console.log('📤 First question sample:', questionsToSend[0]);
+
     const requestData = {
       title: formData.title,
       description: formData.description,
@@ -226,13 +231,24 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       targetAudience: formData.targetAudience,
       startDate: formData.startDate,
       endDate: formData.endDate,
-      questions: formData.questions,
+      questions: questionsToSend,
       imageUrl: formData.imageUrl,
       isTemplate: formData.isTemplate,
     };
 
     logDebug('Making POST request to: /api/forms');
     logDebug('Request data:', requestData);
+    console.log('🔍 CLIENT: Form creation request data:', JSON.stringify(requestData, null, 2));
+    if (requestData.questions && requestData.questions.length > 0) {
+      console.log('🔍 CLIENT: Questions being sent:', requestData.questions.map((q, i) => ({
+        index: i + 1,
+        question: q.question,
+        type: q.type,
+        required: q.required,
+        hasOptions: !!(q.options && q.options.length > 0),
+        optionsCount: q.options ? q.options.length : 0
+      })));
+    }
 
     const response = await fetch('/api/forms', {
       method: 'POST',

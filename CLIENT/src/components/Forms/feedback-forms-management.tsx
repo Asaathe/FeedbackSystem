@@ -93,7 +93,6 @@ export function FeedbackFormsManagement({
 }: FeedbackFormsManagementProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedTarget, setSelectedTarget] = useState("all");
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
@@ -284,9 +283,7 @@ export function FeedbackFormsManagement({
       form.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
       selectedCategory === "all" || form.category === selectedCategory;
-    const matchesTarget =
-      selectedTarget === "all" || form.target_audience === selectedTarget;
-    return matchesSearch && matchesCategory && matchesTarget;
+    return matchesSearch && matchesCategory;
   });
 
   const filteredTemplateForms = templateForms.filter((form) => {
@@ -295,9 +292,7 @@ export function FeedbackFormsManagement({
       form.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory =
       selectedCategory === "all" || form.category === selectedCategory;
-    const matchesTarget =
-      selectedTarget === "all" || form.target_audience === selectedTarget;
-    return matchesSearch && matchesCategory && matchesTarget;
+    return matchesSearch && matchesCategory;
   });
 
   const handlePreviewForm = async (form: FormData) => {
@@ -356,20 +351,73 @@ export function FeedbackFormsManagement({
   };
 
   const handleSaveAsTemplate = async (formId: string) => {
+    console.log(`[DEBUG] handleSaveAsTemplate called for formId: ${formId}`);
     try {
       setSavingAsTemplate(formId);
-      const result = await saveAsTemplate(formId);
-      if (result.success) {
-        toast.success(result.message);
-        // Reload forms to show the template in the templates tab and remove from custom forms
+      // First, get the original form data
+      console.log(`[DEBUG] Fetching form data for formId: ${formId}`);
+      const getResult = await getForm(formId);
+      if (!getResult.success || !getResult.form) {
+        console.error(`[DEBUG] Failed to load form data:`, getResult.message);
+        toast.error("Failed to load form data");
+        return;
+      }
+      const originalForm = getResult.form;
+      console.log(`[DEBUG] Original form status: ${originalForm.status}, is_template: ${originalForm.is_template}`);
+      console.log(`[DEBUG] Original form questions:`, originalForm.questions);
+      console.log(`[DEBUG] Original form questions length:`, originalForm.questions?.length);
+      console.log(`[DEBUG] Raw getResult.form:`, getResult.form);
+
+      // Then, create a new form as template
+      console.log(`[DEBUG] Creating new template form from original`);
+
+      // Filter out empty options for questions that don't need them
+      const cleanedQuestions = originalForm.questions?.map((q: any) => {
+        const questionType = q.type;
+        let options = q.options;
+
+        // Only keep options for question types that actually use them
+        if (!['multiple-choice', 'checkbox', 'dropdown'].includes(questionType)) {
+          options = []; // Empty array for questions that don't use options
+        } else {
+          // Filter out null/empty options for questions that do use options
+          options = options?.filter((opt: any) => opt && opt.option_text && opt.option_text.trim()) || [];
+        }
+
+        return {
+          ...q,
+          options: options
+        };
+      });
+
+      console.log(`[DEBUG] Cleaned questions:`, cleanedQuestions);
+
+      const createResult = await createForm({
+        title: originalForm.title,
+        description: originalForm.description,
+        category: originalForm.category,
+        targetAudience: originalForm.target_audience,
+        questions: cleanedQuestions,
+        imageUrl: originalForm.image_url,
+        isTemplate: true,
+      });
+      console.log(`[DEBUG] Create result:`, createResult);
+      if (!createResult.success) {
+        console.error(`[DEBUG] Create failed with message:`, createResult.message);
+      }
+      if (createResult.success) {
+        console.log(`[DEBUG] Template created successfully, reloading forms`);
+        toast.success("Form copied to templates successfully");
+        // Reload forms to show the new template in the templates tab while keeping the original in custom forms
         await loadForms();
         // Switch to templates tab
         setActiveTab("templates");
       } else {
-        toast.error(result.message);
+        console.error(`[DEBUG] Failed to create template:`, createResult.message);
+        toast.error(createResult.message);
       }
     } catch (error) {
-      console.error("Error saving as template:", error);
+      console.error("[DEBUG] Exception in handleSaveAsTemplate:", error);
       toast.error("An error occurred while saving as template");
     } finally {
       setSavingAsTemplate(null);
@@ -748,19 +796,6 @@ export function FeedbackFormsManagement({
             {categories.map((cat) => (
               <SelectItem key={cat.id} value={cat.name}>
                 {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={selectedTarget} onValueChange={setSelectedTarget}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Targets" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Targets</SelectItem>
-            {targetAudienceOptions.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
               </SelectItem>
             ))}
           </SelectContent>

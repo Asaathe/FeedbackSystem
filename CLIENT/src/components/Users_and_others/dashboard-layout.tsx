@@ -143,7 +143,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
               className="w-10 h-10 object-contain"
             />
             <div>
-              <h1 className="text-lg font-semibold">Feedback System</h1>
+              <h1 className="text-lg font-semibold">FeedbACTS System</h1>
             </div>
           </div>
 

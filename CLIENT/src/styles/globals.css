@@ -5,7 +5,7 @@
   --font-size: 16px;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   
-  /* Modern Color Palette - Enhanced Green & White Theme */
+  /* Modern Color Palette - Deep Green & White Theme */
   --background: #f8fdf9;
   --foreground: #0f1f13;
   --card: #ffffff;
@@ -13,12 +13,12 @@
   --popover: #ffffff;
   --popover-foreground: #0f1f13;
   
-  /* Primary - Vibrant Green Palette */
-  --primary: #10b981;
+  /* Primary - Deep Green Palette */
+  --primary: #013207;
   --primary-foreground: #ffffff;
-  --primary-hover: #059669;
+  --primary-hover: #025a0e;
   --primary-light: #d1fae5;
-  --primary-dark: #047857;
+  --primary-dark: #011a05;
   --primary-subtle: #f0fdf4;
   
   /* Secondary - Yellow-Green Accent */
@@ -48,9 +48,9 @@
   --input: transparent;
   --input-background: #ffffff;
   --input-border: #d1e5db;
-  --input-focus: #10b981;
+  --input-focus: #013207;
   --switch-background: #d1e5db;
-  --ring: #10b981;
+  --ring: #013207;
   
   /* Charts - Enhanced Green Palette */
   --chart-1: #10b981;
@@ -63,29 +63,29 @@
   /* Modern Radius */
   --radius: 0.75rem;
   
-  /* Sidebar - Green Theme */
+  /* Sidebar - Deep Green Theme */
   --sidebar: #ffffff;
   --sidebar-foreground: #0f1f13;
-  --sidebar-primary: #10b981;
+  --sidebar-primary: #013207;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #f0fdf4;
-  --sidebar-accent-foreground: #047857;
+  --sidebar-accent-foreground: #011a05;
   --sidebar-border: #e8f5f0;
-  --sidebar-ring: #10b981;
+  --sidebar-ring: #013207;
   --sidebar-hover: #f0fdf4;
   
-  /* Modern Shadows with Green Tints */
-  --shadow-xs: 0 1px 2px 0 rgb(16 185 129 / 0.05);
-  --shadow-sm: 0 1px 3px 0 rgb(16 185 129 / 0.08), 0 1px 2px -1px rgb(16 185 129 / 0.08);
-  --shadow-md: 0 4px 6px -1px rgb(16 185 129 / 0.1), 0 2px 4px -2px rgb(16 185 129 / 0.1);
-  --shadow-lg: 0 10px 15px -3px rgb(16 185 129 / 0.12), 0 4px 6px -4px rgb(16 185 129 / 0.1);
-  --shadow-xl: 0 20px 25px -5px rgb(16 185 129 / 0.15), 0 8px 10px -6px rgb(16 185 129 / 0.1);
-  --shadow-green: 0 10px 40px -10px rgba(16, 185, 129, 0.25);
-  --shadow-green-lg: 0 20px 60px -15px rgba(16, 185, 129, 0.35);
+  /* Modern Shadows with Deep Green Tints */
+  --shadow-xs: 0 1px 2px 0 rgb(1 50 7 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(1 50 7 / 0.08), 0 1px 2px -1px rgb(1 50 7 / 0.08);
+  --shadow-md: 0 4px 6px -1px rgb(1 50 7 / 0.1), 0 2px 4px -2px rgb(1 50 7 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(1 50 7 / 0.12), 0 4px 6px -4px rgb(1 50 7 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(1 50 7 / 0.15), 0 8px 10px -6px rgb(1 50 7 / 0.1);
+  --shadow-green: 0 10px 40px -10px rgba(1, 50, 7, 0.25);
+  --shadow-green-lg: 0 20px 60px -15px rgba(1, 50, 7, 0.35);
   
-  /* Glassmorphism with Green Tint */
+  /* Glassmorphism with Deep Green Tint */
   --glass-bg: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(16, 185, 129, 0.15);
+  --glass-border: rgba(1, 50, 7, 0.15);
   --glass-green: rgba(240, 253, 244, 0.9);
   
   /* Transitions */
@@ -94,9 +94,9 @@
   --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
   
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-primary: linear-gradient(135deg, #013207 0%, #025a0e 100%);
   --gradient-secondary: linear-gradient(135deg, #84cc16 0%, #65a30d 100%);
-  --gradient-accent: linear-gradient(135deg, #10b981 0%, #84cc16 100%);
+  --gradient-accent: linear-gradient(135deg, #013207 0%, #84cc16 100%);
   --gradient-subtle: linear-gradient(180deg, #ffffff 0%, #f0fdf4 100%);
   --gradient-card: linear-gradient(135deg, #ffffff 0%, #f8fdf9 100%);
   --gradient-shine: linear-gradient(135deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0) 100%);
@@ -109,10 +109,10 @@
   --card-foreground: #fafafa;
   --popover: #171717;
   --popover-foreground: #fafafa;
-  --primary: #10b981;
+  --primary: #013207;
   --primary-foreground: #ffffff;
-  --primary-hover: #059669;
-  --primary-light: #064e3b;
+  --primary-hover: #025a0e;
+  --primary-light: #011a05;
   --secondary: #84cc16;
   --secondary-foreground: #ffffff;
   --secondary-hover: #65a30d;
@@ -120,27 +120,27 @@
   --muted: #262626;
   --muted-foreground: #a3a3a3;
   --accent: #1c1c1c;
-  --accent-foreground: #10b981;
+  --accent-foreground: #013207;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #262626;
   --input: transparent;
   --input-background: #171717;
   --switch-background: #404040;
-  --ring: #10b981;
-  --chart-1: #10b981;
+  --ring: #013207;
+  --chart-1: #013207;
   --chart-2: #84cc16;
   --chart-3: #22d3ee;
   --chart-4: #8b5cf6;
   --chart-5: #f59e0b;
   --sidebar: #171717;
   --sidebar-foreground: #fafafa;
-  --sidebar-primary: #10b981;
+  --sidebar-primary: #013207;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1c1c1c;
-  --sidebar-accent-foreground: #10b981;
+  --sidebar-accent-foreground: #013207;
   --sidebar-border: #262626;
-  --sidebar-ring: #10b981;
+  --sidebar-ring: #013207;
   --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.3);
   --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
   --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.4);
@@ -485,19 +485,19 @@
   }
 
   .scrollbar-modern::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #10b981, #059669) !important;
+    background: linear-gradient(180deg, #013207, #025a0e) !important;
     border-radius: 4px !important;
     transition: background-color 200ms ease;
   }
 
   .scrollbar-modern::-webkit-scrollbar-thumb:hover {
-    background: linear-gradient(180deg, #059669, #047857) !important;
+    background: linear-gradient(180deg, #025a0e, #011a05) !important;
   }
 
   /* Firefox */
   .scrollbar-modern {
     scrollbar-width: thin !important;
-    scrollbar-color: #10b981 #f0fdf4 !important;
+    scrollbar-color: #013207 #f0fdf4 !important;
   }
 
   /* Custom scrollbar for overflow utilities */
@@ -536,17 +536,17 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: rgba(16, 185, 129, 0.3) !important;
+    background-color: rgba(1, 50, 7, 0.3) !important;
     border-radius: 2px !important;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    background-color: rgba(16, 185, 129, 0.5) !important;
+    background-color: rgba(1, 50, 7, 0.5) !important;
   }
 
   .scrollbar-thin {
     scrollbar-width: thin !important;
-    scrollbar-color: rgba(16, 185, 129, 0.3) transparent !important;
+    scrollbar-color: rgba(1, 50, 7, 0.3) transparent !important;
   }
 }
 
@@ -616,15 +616,15 @@
   
   @keyframes glow {
     0%, 100% {
-      box-shadow: 0 0 20px rgba(16, 185, 129, 0.3);
+      box-shadow: 0 0 20px rgba(1, 50, 7, 0.3);
     }
     50% {
-      box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+      box-shadow: 0 0 30px rgba(1, 50, 7, 0.6);
     }
   }
-  
+
   .animate-shimmer {
-    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.15), transparent);
+    background: linear-gradient(90deg, transparent, rgba(1, 50, 7, 0.15), transparent);
     background-size: 200% 100%;
     animation: shimmer 2s infinite;
   }

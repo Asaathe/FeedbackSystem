@@ -248,10 +248,7 @@ export function SignupPage({
         });
         setShowSuccessDialog(true);
 
-        // Don't redirect immediately - user needs admin approval
-        // setTimeout(() => {
-        //   onSignupSuccess(data.user.role);
-        // }, 2000);
+        
       } else {
         setErrors({ general: "Registration failed - no token received" });
         toast.error("Registration failed", {

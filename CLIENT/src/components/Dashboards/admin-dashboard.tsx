@@ -24,14 +24,6 @@ const systemStats = {
   pendingSuggestions: 12,
 };
 
-const submissionTrends = [
-  { week: 'Week 10', submissions: 145, target: 120 },
-  { week: 'Week 11', submissions: 132, target: 120 },
-  { week: 'Week 12', submissions: 158, target: 120 },
-];
-
-
-
 
 
 // Helper function to get color based on performance
@@ -146,198 +138,22 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
       {/* Form Activity Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Form Activity Summary */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <CardTitle>Form Activity Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {formActivityData.map((form, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
-                  <div>
-                    <p className="font-medium">{form.type}</p>
-                    <p className="text-sm text-gray-600">Active: {form.active} | Completed: {form.completed}</p>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-green-600">{form.active + form.completed}</div>
-                    <p className="text-xs text-gray-500">Total</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+       
 
-        {/* Response Rate by Role */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <CardTitle>Response Rate by Role</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {responseRateByRole.map((role, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg border border-gray-200">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: role.color }}></div>
-                    <span className="font-medium">{role.name}</span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold">{role.value}</div>
-                    <p className="text-xs text-gray-500">Responses</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        
       </div>
 
       
       {/* Top Performers & Issues */}
       <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <Card className="border-green-100">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-yellow-500" />
-                Top Performing Instructors
-              </CardTitle>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-green-200 hover:bg-green-50"
-                onClick={() => onNavigate?.('analytics')}
-              >
-                View All
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {topPerformers.map((performer, index) => (
-                <div 
-                  key={index}
-                  className="flex items-center justify-between p-3 rounded-lg bg-gradient-to-r from-green-50 to-lime-50 border border-green-100"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p>{performer.name}</p>
-                      <p className="text-sm text-gray-600">{performer.department}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="flex items-center gap-1">
-                      <span className="text-lg">⭐</span>
-                      <span>{performer.rating}</span>
-                    </div>
-                    <p className="text-xs text-gray-500">{performer.responses} responses</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+      
 
         
       </div>
 
-      {/* Active Forms */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Active Feedback Forms</CardTitle>
-            <Button
-              className="bg-green-500 hover:bg-green-600"
-              onClick={() => {
-                console.log('Navigate to forms');
-                onNavigate?.('forms');
-              }}
-            >
-              Manage Forms
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {activeForms.map((form, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-green-200 transition-colors"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h4>{form.title}</h4>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700">
-                      {form.status}
-                    </Badge>
-                    <Badge variant="outline" className="border-gray-300">
-                      {form.target}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-600">{form.responses} responses • {form.period}</p>
-                </div>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  className="border-green-200 hover:bg-green-50"
-                  onClick={() => onNavigate?.('analytics')}
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  View Results
-                </Button>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      
 
-      {/* Recent Suggestions */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Recent Suggestions</CardTitle>
-            <Button 
-              variant="outline"
-              className="border-green-200 hover:bg-green-50"
-              onClick={() => onNavigate?.('suggestions')}
-            >
-              View All
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentSuggestions.map((suggestion, index) => (
-              <div 
-                key={index}
-                className="flex items-start justify-between p-3 rounded-lg border border-gray-200"
-              >
-                <div className="flex-1">
-                  <p className="mb-1">{suggestion.text}</p>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>By: {suggestion.submittedBy}</span>
-                    <span>•</span>
-                    <span>{suggestion.date}</span>
-                  </div>
-                </div>
-                <Badge 
-                  variant="secondary"
-                  className={
-                    suggestion.status === 'Pending'
-                      ? 'bg-yellow-100 text-yellow-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }
-                >
-                  {suggestion.status}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+      
     </div>
   );
 }

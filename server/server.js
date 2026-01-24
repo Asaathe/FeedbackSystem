@@ -2466,10 +2466,28 @@ app.post("/api/forms", verifyToken, (req, res) => {
 
       // Insert questions if provided
       if (questions && questions.length > 0) {
+        console.log(`🔍 Processing ${questions.length} questions for form ${formId}`);
+        console.log("📋 Questions data:", JSON.stringify(questions, null, 2));
+
         const questionPromises = questions.map((q, index) => {
           return new Promise((resolve, reject) => {
+            console.log(`🔍 Processing question ${index + 1}:`, {
+              question: q.question,
+              type: q.type,
+              required: q.required,
+              options: q.options,
+              min: q.min,
+              max: q.max
+            });
+
             // Validate question
             if (!q.question || !q.type) {
+              console.error(`❌ Question ${index + 1} validation failed:`, {
+                hasQuestion: !!q.question,
+                hasType: !!q.type,
+                questionValue: q.question,
+                typeValue: q.type
+              });
               reject(new Error("Question text and type are required"));
               return;
             }
@@ -2479,56 +2497,90 @@ app.post("/api/forms", verifyToken, (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `;
 
+            const queryParams = [
+              formId,
+              q.question,
+              q.type,
+              q.description || null,
+              (q.required === true || q.required === 1) ? 1 : 0,
+              q.min || null,
+              q.max || null,
+              index,
+            ];
+
+            console.log(`🔍 Question ${index + 1} INSERT params:`, queryParams);
+
             db.query(
               questionQuery,
-              [
-                formId,
-                q.question,
-                q.type,
-                q.description || null,
-               (q.required === true || q.required === 1) ? 1 : 0,
-                q.min || null,
-                q.max || null,
-                index,
-              ],
+              queryParams,
               (qErr, qResult) => {
                 if (qErr) {
-                  console.error("Question creation error:", qErr);
+                  console.error(`❌ Question ${index + 1} creation error:`, qErr);
+                  console.error("❌ Error details:", {
+                    code: qErr.code,
+                    errno: qErr.errno,
+                    sqlMessage: qErr.sqlMessage,
+                    sqlState: qErr.sqlState
+                  });
                   reject(qErr);
                 } else {
                   const questionId = qResult.insertId;
+                  console.log(`✅ Question ${index + 1} created with ID: ${questionId}`);
 
                   // Insert options if they exist
                   if (q.options && q.options.length > 0) {
-                    const optionPromises = q.options.map((opt, optIndex) => {
-                      return new Promise((optResolve, optReject) => {
-                        // Handle both string options and option objects
-                        const optionText =
-                          typeof opt === "string"
-                            ? opt
-                            : opt.option_text || opt.text || opt.label;
-
-                        if (!optionText) {
-                          optReject(new Error("Option text is required"));
-                          return;
-                        }
-
-                        db.query(
-                          "INSERT INTO Question_Options (question_id, option_text, order_index) VALUES (?, ?, ?)",
-                          [questionId, optionText, optIndex],
-                          (optErr) =>
-                            optErr ? optReject(optErr) : optResolve(),
-                        );
-                      });
+                    // Filter out options with empty text
+                    const validOptions = q.options.filter((opt) => {
+                      const optionText =
+                        typeof opt === "string"
+                          ? opt
+                          : opt.option_text || opt.text || opt.label;
+                      return optionText && optionText.trim().length > 0;
                     });
 
-                    Promise.all(optionPromises)
-                      .then(() => resolve())
-                      .catch((optError) => {
-                        console.error("Option creation error:", optError);
-                        reject(optError);
+                    if (validOptions.length > 0) {
+                      console.log(`🔍 Processing ${validOptions.length} valid options for question ${questionId}`);
+                      const optionPromises = validOptions.map((opt, optIndex) => {
+                        return new Promise((optResolve, optReject) => {
+                          // Handle both string options and option objects
+                          const optionText =
+                            typeof opt === "string"
+                              ? opt
+                              : opt.option_text || opt.text || opt.label;
+
+                          console.log(`🔍 Option ${optIndex + 1}:`, { raw: opt, processed: optionText });
+
+                          db.query(
+                            "INSERT INTO Question_Options (question_id, option_text, order_index) VALUES (?, ?, ?)",
+                            [questionId, optionText, optIndex],
+                            (optErr) => {
+                              if (optErr) {
+                                console.error(`❌ Option ${optIndex + 1} creation error:`, optErr);
+                                optReject(optErr);
+                              } else {
+                                console.log(`✅ Option ${optIndex + 1} created`);
+                                optResolve();
+                              }
+                            }
+                          );
+                        });
                       });
+
+                      Promise.all(optionPromises)
+                        .then(() => {
+                          console.log(`✅ All options created for question ${questionId}`);
+                          resolve();
+                        })
+                        .catch((optError) => {
+                          console.error(`❌ Option creation error for question ${questionId}:`, optError);
+                          reject(optError);
+                        });
+                    } else {
+                      console.log(`ℹ️ No valid options for question ${questionId}`);
+                      resolve();
+                    }
                   } else {
+                    console.log(`ℹ️ No options for question ${questionId}`);
                     resolve();
                   }
                 }
@@ -2556,9 +2608,23 @@ app.post("/api/forms", verifyToken, (req, res) => {
             });
           })
           .catch((error) => {
-            console.error("Questions creation error:", error);
+            console.error("❌ Questions creation error:", error);
+            console.error("❌ Error details:", {
+              message: error.message,
+              code: error.code,
+              errno: error.errno,
+              sqlMessage: error.sqlMessage,
+              sqlState: error.sqlState,
+              stack: error.stack
+            });
             // Rollback form creation if questions fail
-            db.query("DELETE FROM Forms WHERE id = ?", [formId]);
+            db.query("DELETE FROM Forms WHERE id = ?", [formId], (deleteErr) => {
+              if (deleteErr) {
+                console.error("❌ Failed to rollback form creation:", deleteErr);
+              } else {
+                console.log(`✅ Rolled back form ${formId} creation`);
+              }
+            });
             res.status(500).json({
               success: false,
               message: "Failed to create form questions",

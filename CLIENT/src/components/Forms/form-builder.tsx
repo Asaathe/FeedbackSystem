@@ -264,13 +264,12 @@ export function FormBuilder({
               setFormImage(form.image_url || null);
 
               // Convert API questions to FormQuestion format
-              console.log("❓ Questions data:", form.questions);
               if (form.questions && form.questions.length > 0) {
                 const apiQuestions = form.questions.map(
                   (q: any, index: number) => ({
                     id: q.id?.toString() || `q_${index + 1}`,
-                    type: q.question_type || "text",
-                    question: q.question_text || "",
+                    type: q.question_type || q.type || "text",
+                    question: q.question_text || q.question || "",
                     description: q.description || "",
                     required: q.required || false,
                     options: q.options
@@ -280,12 +279,10 @@ export function FormBuilder({
                     max: q.max_value,
                   })
                 );
-                console.log("🔄 Converted questions:", apiQuestions);
                 setQuestions(apiQuestions);
                 setActiveQuestion(apiQuestions[0]?.id || null);
               } else {
-                console.log("⚠️ No questions found, using empty");
-                // No default question
+                // No questions found
                 setQuestions([]);
                 setActiveQuestion(null);
               }
@@ -821,6 +818,7 @@ const formData = {
     }
   }, [searchTerm, recipients]);
 
+
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
     switch (question.type) {
@@ -1166,6 +1164,7 @@ const formData = {
                     <Button
                       className="bg-green-500 hover:bg-green-600 h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                       size="sm"
+                      disabled={!formTitle.trim() || questions.length === 0}
                     >
                       <SendHorizontal className="w-4 h-4 sm:mr-2" />
                       <span className="hidden sm:inline">Publish</span>
@@ -1362,48 +1361,93 @@ const formData = {
                                   </div>
 
                                   {/* Recipients list with checkboxes */}
-                                  <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-24">
-                                    {recipients.length > 0 ? (
-                                      <div className="space-y-2">
-                                        {filteredRecipients.map((recipient) => (
-                                          <div
-                                            key={recipient.id}
-                                            className="flex items-center gap-2"
-                                          >
-                                            <Checkbox
-                                              id={`recipient-${recipient.id}`}
-                                              checked={selectedRecipients.has(recipient.id)}
-                                              onCheckedChange={(checked) => {
-                                                const newSelected = new Set(selectedRecipients);
-                                                if (checked) {
-                                                  newSelected.add(recipient.id);
-                                                } else {
-                                                  newSelected.delete(recipient.id);
-                                                }
-                                                setSelectedRecipients(newSelected);
-                                                setSelectAllRecipients(
-                                                  newSelected.size === recipients.length
-                                                );
-                                              }}
-                                            />
-                                            <Label
-                                              htmlFor={`recipient-${recipient.id}`}
-                                              className="text-sm flex-1"
+                                  {filteredRecipients.length > 5 ? (
+                                    <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-24">
+                                      {recipients.length > 0 ? (
+                                        <div className="space-y-2">
+                                          {filteredRecipients.map((recipient) => (
+                                            <div
+                                              key={recipient.id}
+                                              className="flex items-center gap-2"
                                             >
-                                              {recipient.name}{" "}
-                                              <span className="text-gray-500">
-                                                ({recipient.details})
-                                              </span>
-                                            </Label>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    ) : (
-                                      <p className="text-xs text-gray-500">
-                                        {searchTerm ? `No users found matching "${searchTerm}"` : "No users found in this group."}
-                                      </p>
-                                    )}
-                                  </ScrollArea>
+                                              <Checkbox
+                                                id={`recipient-${recipient.id}`}
+                                                checked={selectedRecipients.has(recipient.id)}
+                                                onCheckedChange={(checked) => {
+                                                  const newSelected = new Set(selectedRecipients);
+                                                  if (checked) {
+                                                    newSelected.add(recipient.id);
+                                                  } else {
+                                                    newSelected.delete(recipient.id);
+                                                  }
+                                                  setSelectedRecipients(newSelected);
+                                                  setSelectAllRecipients(
+                                                    newSelected.size === recipients.length
+                                                  );
+                                                }}
+                                              />
+                                              <Label
+                                                htmlFor={`recipient-${recipient.id}`}
+                                                className="text-sm flex-1"
+                                              >
+                                                {recipient.name}{" "}
+                                                <span className="text-gray-500">
+                                                  ({recipient.details})
+                                                </span>
+                                              </Label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-gray-500">
+                                          {searchTerm ? `No users found matching "${searchTerm}"` : "No users found in this group."}
+                                        </p>
+                                      )}
+                                    </ScrollArea>
+                                  ) : (
+                                    <div className="border rounded-lg p-3 bg-gray-50">
+                                      {recipients.length > 0 ? (
+                                        <div className="space-y-2">
+                                          {filteredRecipients.map((recipient) => (
+                                            <div
+                                              key={recipient.id}
+                                              className="flex items-center gap-2"
+                                            >
+                                              <Checkbox
+                                                id={`recipient-${recipient.id}`}
+                                                checked={selectedRecipients.has(recipient.id)}
+                                                onCheckedChange={(checked) => {
+                                                  const newSelected = new Set(selectedRecipients);
+                                                  if (checked) {
+                                                    newSelected.add(recipient.id);
+                                                  } else {
+                                                    newSelected.delete(recipient.id);
+                                                  }
+                                                  setSelectedRecipients(newSelected);
+                                                  setSelectAllRecipients(
+                                                    newSelected.size === recipients.length
+                                                  );
+                                                }}
+                                              />
+                                              <Label
+                                                htmlFor={`recipient-${recipient.id}`}
+                                                className="text-sm flex-1"
+                                              >
+                                                {recipient.name}{" "}
+                                                <span className="text-gray-500">
+                                                  ({recipient.details})
+                                                </span>
+                                              </Label>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      ) : (
+                                        <p className="text-xs text-gray-500">
+                                          {searchTerm ? `No users found matching "${searchTerm}"` : "No users found in this group."}
+                                        </p>
+                                      )}
+                                    </div>
+                                  )}
                                 </CollapsibleContent>
                               </Collapsible>
                             )}
@@ -1591,12 +1635,14 @@ const formData = {
 
                       <div className="flex items-center justify-between pt-4 border-t">
                         <div className="flex-1">
-                          {!formTarget && (
-                            <p className="text-sm text-red-600">
-                              Please select a target audience above.
-                            </p>
+                          {(!formTarget || !formTitle.trim() || questions.length === 0) && (
+                            <div className="text-sm text-red-600 space-y-1">
+                              {!formTitle.trim() && <p>• Please enter a form title</p>}
+                              {questions.length === 0 && <p>• Please add at least one question</p>}
+                              {!formTarget && <p>• Please select a target audience</p>}
+                            </div>
                           )}
-                          {formTarget && (
+                          {formTarget && formTitle.trim() && questions.length > 0 && (
                             <p className="text-sm text-blue-900">
                               <strong>Ready to publish!</strong> This form will
                               be available to {formTarget.toLowerCase()}.
@@ -1605,18 +1651,9 @@ const formData = {
                         </div>
                         <div className="flex gap-3 ml-4">
                           <Button
-                            variant="outline"
-                            onClick={() => {
-                              toast.success("Form saved successfully");
-                              setPublishDialogOpen(false);
-                            }}
-                          >
-                            Save
-                          </Button>
-                          <Button
                             className="bg-green-600 hover:bg-green-700"
                             onClick={publishForm}
-                            disabled={loading || !formTarget}
+                            disabled={loading || !formTarget || !formTitle.trim() || questions.length === 0}
                           >
                             {loading ? "Saving..." : "Publish Now"}
                           </Button>
@@ -1852,14 +1889,14 @@ const formData = {
           </Card>
 
           {/* Questions */}
-          {questions.length === 0 && (
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="pt-6 text-center">
-                <p className="text-gray-600">No questions yet. Add your first question below.</p>
-              </CardContent>
-            </Card>
-          )}
-          {questions.map((question, index) => (
+           {questions.length === 0 && (
+             <Card className="border-blue-200 bg-blue-50">
+               <CardContent className="pt-6 text-center">
+                 <p className="text-gray-600">No questions yet. Add your first question below.</p>
+               </CardContent>
+             </Card>
+           )}
+           {questions.map((question, index) => (
             <Card
               key={question.id}
               className={`transition-all ${
