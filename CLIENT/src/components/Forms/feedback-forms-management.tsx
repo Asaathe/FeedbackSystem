@@ -43,6 +43,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import { Separator } from "../ui/separator";
 import {
   Tabs,
   TabsContent,
@@ -557,80 +558,177 @@ export function FeedbackFormsManagement({
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Form View</DialogTitle>
             <DialogDescription>
-              View of: {selectedForm?.title}
+              This is how respondents will see your feedback form
             </DialogDescription>
           </DialogHeader>
-          {selectedForm && (
-            <div className="space-y-4 py-4">
-              <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-200">
-                <h3 className="text-lg font-semibold">{selectedForm.title}</h3>
-                <p className="text-gray-600 mt-1">{selectedForm.description}</p>
-                <div className="flex gap-2 mt-3">
-                  <Badge variant="secondary">{selectedForm.category}</Badge>
-                  <Badge variant="outline">
-                    Target: {selectedForm.target_audience}
-                  </Badge>
-                  <Badge variant="outline">
-                    {selectedForm.questions?.length ||
-                      selectedForm.question_count ||
-                      0}{" "}
-                    Questions
-                  </Badge>
-                  <Badge variant="outline">Status: {selectedForm.status}</Badge>
+          <div className="py-4">
+            {/* Preview Form */}
+            <div className="bg-white rounded-lg border shadow-sm">
+              {/* Form Header */}
+              {selectedForm?.image_url && (
+                <div className="w-full">
+                  <EnhancedImage
+                    src={formatImageUrl(selectedForm.image_url)}
+                    alt={selectedForm.title || "Form header"}
+                    className="w-full h-48 object-cover rounded-t-lg"
+                  />
                 </div>
-              </div>
+              )}
 
-              <div className="space-y-3">
-                <h4 className="font-medium">Questions:</h4>
-                {selectedForm.questions?.slice(0, 5).map((question, idx) => (
-                  <div key={idx} className="p-3 border rounded-lg bg-gray-50">
-                    <p className="text-sm">
-                      {idx + 1}. {question.question}
-                    </p>
-                    <Badge variant="outline" className="mt-2 text-xs">
-                      {question.type}
-                    </Badge>
+              <div className="p-6 space-y-6">
+                {/* Title and Description */}
+                <div className="space-y-3">
+                  <h1 className="text-3xl">{selectedForm?.title}</h1>
+                  {selectedForm?.description && (
+                    <p className="text-gray-600">{selectedForm.description}</p>
+                  )}
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge variant="secondary">{selectedForm?.category}</Badge>
                   </div>
-                )) ||
-                  Array.from({
-                    length: Math.min(selectedForm.question_count || 0, 5),
-                  }).map((_, idx) => (
-                    <div key={idx} className="p-3 border rounded-lg bg-gray-50">
-                      <p className="text-sm">
-                        {idx + 1}. Sample question text would appear here...
-                      </p>
-                      <Badge variant="outline" className="mt-2 text-xs">
-                        Question Type
-                      </Badge>
+                </div>
+
+                <Separator />
+
+                {/* Questions */}
+                <div className="space-y-6">
+                  {selectedForm?.questions?.map((question, index) => (
+                    <div key={question.id || index} className="space-y-3">
+                      <div className="flex items-start gap-2">
+                        <span className="text-gray-500 shrink-0">
+                          {index + 1}.
+                        </span>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <Label className="text-base">
+                              {question.question_text || question.question}
+                              {question.required && (
+                                <span className="text-red-500 ml-1">
+                                  *
+                                </span>
+                              )}
+                            </Label>
+                          </div>
+                          {question.description && (
+                            <p className="text-sm text-gray-500">
+                              {question.description}
+                            </p>
+                          )}
+
+                          {/* Question Input Based on Type */}
+                          <div className="pt-2">
+                            {question.question_type === "rating" && (
+                              <div className="flex gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                  <Star
+                                    key={star}
+                                    className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors"
+                                  />
+                                ))}
+                              </div>
+                            )}
+
+                            {question.question_type === "multiple-choice" && (
+                              <div className="space-y-2">
+                                {question.options?.map(
+                                  (option: any, i: number) => (
+                                    <label
+                                      key={i}
+                                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
+                                    >
+                                      <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                                      <span>{option.option_text || option}</span>
+                                    </label>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            {question.question_type === "checkbox" && (
+                              <div className="space-y-2">
+                                {question.options?.map(
+                                  (option: any, i: number) => (
+                                    <label
+                                      key={i}
+                                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
+                                    >
+                                      <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
+                                      <span>{option.option_text || option}</span>
+                                    </label>
+                                  )
+                                )}
+                              </div>
+                            )}
+
+                            {question.question_type === "dropdown" && (
+                              <Select disabled>
+                                <SelectTrigger className="w-full max-w-md">
+                                  <SelectValue placeholder="Select an option" />
+                                </SelectTrigger>
+                              </Select>
+                            )}
+
+                            {question.question_type === "linear-scale" && (
+                              <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                                  <span className="text-sm text-gray-500 shrink-0">
+                                    1
+                                  </span>
+                                  <div className="flex gap-2">
+                                    {[
+                                      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
+                                    ].map((num) => (
+                                      <button
+                                        key={num}
+                                        className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
+                                      >
+                                        {num}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <span className="text-sm text-gray-500 shrink-0">
+                                    10
+                                  </span>
+                                </div>
+                              </div>
+                            )}
+
+                            {question.question_type === "text" && (
+                              <Input
+                                placeholder="Your answer"
+                                className="max-w-md"
+                              />
+                            )}
+
+                            {question.question_type === "textarea" && (
+                              <Textarea
+                                placeholder="Your answer"
+                                rows={4}
+                                className="resize-none"
+                              />
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   ))}
-                {(selectedForm.questions?.length ||
-                  selectedForm.question_count ||
-                  0) > 5 && (
-                  <p className="text-sm text-gray-500 text-center py-2">
-                    ... and{" "}
-                    {(selectedForm.questions?.length ||
-                      selectedForm.question_count ||
-                      0) - 5}{" "}
-                    more questions
-                  </p>
-                )}
-              </div>
+                </div>
 
-              <div className="flex justify-end pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setPreviewDialogOpen(false)}
-                >
-                  Close View
-                </Button>
+                {/* Submit Button Preview */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    className="bg-green-500 hover:bg-green-600"
+                    disabled
+                  >
+                    Submit Feedback
+                  </Button>
+                </div>
               </div>
             </div>
-          )}
+          </div>
         </DialogContent>
       </Dialog>
 
