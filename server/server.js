@@ -2847,7 +2847,7 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
           originalForm.title + " (Copy)",
           originalForm.description,
           originalForm.category,
-          originalForm.target_audience,
+          "All Users", // Don't copy target_audience, set to default
           originalForm.image_url,
           originalForm.start_date,
           originalForm.end_date,
@@ -2863,13 +2863,117 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
           }
 
           const newFormId = dupResult.insertId;
-          res
-            .status(201)
-            .json({
-              success: true,
-              message: "Form duplicated successfully",
-              formId: newFormId,
-            });
+
+          // Now duplicate questions
+          db.query(
+            "SELECT * FROM Questions WHERE form_id = ? ORDER BY order_index",
+            [originalFormId],
+            (qErr, questions) => {
+              if (qErr) {
+                console.error("Error fetching questions:", qErr);
+                return res
+                  .status(500)
+                  .json({ success: false, message: "Failed to duplicate questions" });
+              }
+
+              if (questions.length === 0) {
+                // No questions to duplicate
+                return res
+                  .status(201)
+                  .json({
+                    success: true,
+                    message: "Form duplicated successfully",
+                    formId: newFormId,
+                  });
+              }
+
+              let questionsProcessed = 0;
+              const totalQuestions = questions.length;
+
+              questions.forEach((question) => {
+                const insertQuestionQuery = `
+                  INSERT INTO Questions (form_id, question_text, question_type, description, required, min_value, max_value, order_index)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                `;
+
+                db.query(
+                  insertQuestionQuery,
+                  [
+                    newFormId,
+                    question.question_text,
+                    question.question_type,
+                    question.description,
+                    question.required,
+                    question.min_value,
+                    question.max_value,
+                    question.order_index,
+                  ],
+                  (qInsErr, qInsResult) => {
+                    if (qInsErr) {
+                      console.error("Error inserting question:", qInsErr);
+                      return res
+                        .status(500)
+                        .json({ success: false, message: "Failed to duplicate questions" });
+                    }
+
+                    const newQuestionId = qInsResult.insertId;
+
+                    // Duplicate options for this question
+                    db.query(
+                      "SELECT * FROM Question_Options WHERE question_id = ? ORDER BY order_index",
+                      [question.id],
+                      (optErr, options) => {
+                        if (optErr) {
+                          console.error("Error fetching options:", optErr);
+                          return res
+                            .status(500)
+                            .json({ success: false, message: "Failed to duplicate options" });
+                        }
+
+                        if (options.length > 0) {
+                          const insertOptionsQuery = `
+                            INSERT INTO Question_Options (question_id, option_text, order_index)
+                            VALUES ${options.map(() => "(?, ?, ?)").join(", ")}
+                          `;
+
+                          const optionValues = [];
+                          options.forEach((option) => {
+                            optionValues.push(newQuestionId, option.option_text, option.order_index);
+                          });
+
+                          db.query(insertOptionsQuery, optionValues, (optInsErr) => {
+                            if (optInsErr) {
+                              console.error("Error inserting options:", optInsErr);
+                              return res
+                                .status(500)
+                                .json({ success: false, message: "Failed to duplicate options" });
+                            }
+
+                            checkCompletion();
+                          });
+                        } else {
+                          checkCompletion();
+                        }
+                      }
+                    );
+                  }
+                );
+              });
+
+              const checkCompletion = () => {
+                questionsProcessed++;
+                if (questionsProcessed === totalQuestions) {
+                  res
+                    .status(201)
+                    .json({
+                      success: true,
+                      message: "Form duplicated successfully",
+                      formId: newFormId,
+                    });
+                }
+              };
+            }
+          );
         },
       );
     },

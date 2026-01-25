@@ -504,6 +504,7 @@ export function FormBuilder({
         ...question,
         id: Date.now().toString(),
         question: question.question + " (Copy)",
+        options: question.options ? [...question.options] : undefined,
       };
       const index = questions.findIndex((q) => q.id === id);
       const newQuestions = [...questions];
