@@ -12,7 +12,6 @@ const multer = require("multer");
 const fs = require("fs");
 const db = require("./db");
 
-
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -34,6 +33,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
 
@@ -42,6 +42,7 @@ if (process.env.NODE_ENV === "production" && !process.env.JWT_SECRET) {
     "Using default JWT secret - set JWT_SECRET environment variable for production",
   );
 }
+
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "24h";
 
 // Security middleware
@@ -69,7 +70,7 @@ app.use(
       includeSubDomains: true,
       preload: true,
     },
-    crossOriginEmbedderPolicy: false, // Allow embedding for development
+    crossOriginEmbedderPolicy: false,
   }),
 );
 
@@ -78,17 +79,14 @@ const isDevelopment = process.env.NODE_ENV !== "production";
 
 // HTTPS enforcement middleware (for production)
 app.use((req, res, next) => {
-  // Skip HTTPS redirect in development
   if (isDevelopment) {
     return next();
   }
 
-  // Check if request is already HTTPS
   if (req.secure || req.headers["x-forwarded-proto"] === "https") {
     return next();
   }
 
-  // Redirect to HTTPS
   const host = req.get("Host");
   const httpsUrl = `https://${host}${req.originalUrl}`;
   return res.redirect(301, httpsUrl);
@@ -96,26 +94,16 @@ app.use((req, res, next) => {
 
 // Add security headers
 app.use((req, res, next) => {
-  // Prevent MIME type sniffing
   res.setHeader("X-Content-Type-Options", "nosniff");
-
-  // Prevent clickjacking
   res.setHeader("X-Frame-Options", "DENY");
-
-  // XSS protection
   res.setHeader("X-XSS-Protection", "1; mode=block");
-
-  // Referrer policy
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-
   next();
 });
 
-// Enhanced CORS configuration - simplified for development
+// Enhanced CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    // Also allow any localhost origin for development
     if (
       !origin ||
       origin.match(/^http:\/\/localhost(:\d+)?$/) ||
@@ -125,7 +113,6 @@ const corsOptions = {
     ) {
       callback(null, true);
     } else {
-      // In production, only allow specified domains
       const allowedOrigins = process.env.CORS_ORIGIN
         ? process.env.CORS_ORIGIN.split(",")
         : [];
@@ -153,23 +140,22 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Rate limiting for authentication endpoints
+// Rate limiting
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 10,
   message: {
     success: false,
     message: "Too many authentication attempts, please try again later.",
   },
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
+  skipSuccessfulRequests: true,
 });
 
-// Rate limiting for form submissions
 const formSubmissionLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5, // limit each IP to 5 form submissions per hour
+  windowMs: 60 * 60 * 1000,
+  max: 5,
   message: {
     success: false,
     message: "Too many form submissions, please try again later.",
@@ -178,13 +164,12 @@ const formSubmissionLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// Rate limiting for general API
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful requests
+  skipSuccessfulRequests: true,
 });
 
 app.use(generalLimiter);
@@ -195,6 +180,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 const generateToken = (userId) => {
   return jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN });
 };
+
 const verifyToken = (req, res, next) => {
   const authHeader = req.headers.authorization;
   console.log("Server verifyToken: authHeader:", authHeader);
@@ -226,7 +212,6 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Name formatting function to enforce proper capitalization
 const formatName = (name) => {
   return name
     .toLowerCase()
@@ -240,7 +225,6 @@ const sanitizeInput = (input) => {
   return input.trim().replace(/[<>]/g, "");
 };
 
-// Password strength validation
 const validatePassword = (password) => {
   const minLength = 8;
   const hasUpperCase = /[A-Z]/.test(password);
@@ -266,7 +250,6 @@ const validatePassword = (password) => {
   return null;
 };
 
-// Email validation
 const isValidEmail = (email) => {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
@@ -386,7 +369,7 @@ app.get("/api/db-status", (req, res) => {
   });
 });
 
-// Signup route with validation
+// Signup route
 app.post(
   "/api/auth/signup",
   authLimiter,
@@ -405,7 +388,6 @@ app.post(
     body("role")
       .isIn(["student", "instructor", "alumni", "employer"])
       .withMessage("Invalid role"),
-    // Role-specific validations
     body("student_id")
       .if(body("role").equals("student"))
       .notEmpty()
@@ -438,22 +420,6 @@ app.post(
       .if(body("role").equals("alumni"))
       .notEmpty()
       .withMessage("Company name is required"),
-    body("instructorId").optional().trim().isLength({ max: 50 }),
-    body("department").optional().trim().isLength({ max: 100 }),
-    body("specialization").optional().trim().isLength({ max: 255 }),
-    body("gradYear")
-      .optional()
-      .isInt({ min: 1900, max: new Date().getFullYear() + 10 }),
-    body("degree").optional().trim().isLength({ max: 255 }),
-    body("jobTitle").optional().trim().isLength({ max: 255 }),
-    body("company").optional().trim().isLength({ max: 255 }),
-    body("industry").optional().trim().isLength({ max: 100 }),
-    body("location").optional().trim().isLength({ max: 255 }),
-    body("alumniGraduationDate").optional().isISO8601(),
-    body("companyName").optional().trim().isLength({ max: 255 }),
-    body("employerIndustry").optional().trim().isLength({ max: 100 }),
-    body("position").optional().trim().isLength({ max: 255 }),
-    body("employerContactNumber").optional().trim().isLength({ max: 20 }),
   ],
   async (req, res) => {
     try {
@@ -481,7 +447,6 @@ app.post(
         alumni_company_name,
       } = req.body;
 
-      // Additional password strength validation
       const passwordError = validatePassword(password);
       if (passwordError) {
         return res.status(400).json({
@@ -490,16 +455,10 @@ app.post(
         });
       }
 
-      // Sanitize inputs
       const sanitizedEmail = sanitizeInput(email);
       const sanitizedFullName = sanitizeInput(fullName);
-
-      // Format name to enforce proper capitalization
       const formattedFullName = formatName(sanitizedFullName);
 
-      // Role-specific data will be collected later in profile update
-
-      // Check if user already exists
       const checkUserQuery = "SELECT * FROM Users WHERE email = ?";
       db.query(checkUserQuery, [sanitizedEmail], async (err, results) => {
         if (err) {
@@ -517,11 +476,9 @@ app.post(
           });
         }
 
-        // Hash password
         const saltRounds = 12;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-        // Insert new user into users table
         const insertUserQuery = `
           INSERT INTO users (email, password_hash, full_name, role, status, registration_date)
           VALUES (?, ?, ?, ?, 'pending', NOW())
@@ -541,7 +498,6 @@ app.post(
 
             const userId = result.insertId;
 
-            // Insert role-specific data
             try {
               switch (role) {
                 case "student":
@@ -583,10 +539,8 @@ app.post(
               }
             } catch (roleError) {
               console.error("Role-specific data insertion error:", roleError);
-              // Continue with signup even if role data fails, but log it
             }
 
-            // Generate JWT token
             const token = generateToken(userId);
 
             res.status(201).json({
@@ -599,7 +553,7 @@ app.post(
                 email: sanitizedEmail,
                 fullName: formattedFullName,
                 role: role,
-                status: "pending", // New users are pending after signup
+                status: "pending",
               },
             });
           },
@@ -615,7 +569,7 @@ app.post(
   },
 );
 
-// Login route with validation
+// Login route
 app.post(
   "/api/auth/login",
   authLimiter,
@@ -638,11 +592,8 @@ app.post(
       }
 
       const { email, password } = req.body;
-
-      // Sanitize inputs
       const sanitizedEmail = sanitizeInput(email);
 
-      // Find user by email with role-specific data
       const findUserQuery = `
         SELECT
             u.id, u.email, u.password_hash, u.full_name, u.role, u.status,
@@ -676,7 +627,6 @@ app.post(
 
         const user = results[0];
 
-        // Check if user is active
         if (user.status !== "active") {
           return res.status(401).json({
             success: false,
@@ -684,7 +634,6 @@ app.post(
           });
         }
 
-        // Compare password
         const isPasswordValid = await bcrypt.compare(
           password,
           user.password_hash,
@@ -696,10 +645,7 @@ app.post(
           });
         }
 
-        // Generate JWT token
         const token = generateToken(user.id);
-
-        // Build user response with role-specific data
         const userResponse = {
           id: user.id,
           email: user.email,
@@ -707,7 +653,6 @@ app.post(
           role: user.role,
         };
 
-        // Add role-specific fields
         switch (user.role) {
           case "student":
             userResponse.studentId = user.studentID;
@@ -735,7 +680,6 @@ app.post(
             break;
         }
 
-        // Return user information and token
         res.json({
           success: true,
           message: "Login successful",
@@ -787,8 +731,6 @@ app.get("/api/auth/verify", verifyToken, (req, res) => {
     }
 
     const user = results[0];
-
-    // Build user response with role-specific data
     const userResponse = {
       id: user.id,
       email: user.email,
@@ -797,7 +739,6 @@ app.get("/api/auth/verify", verifyToken, (req, res) => {
       status: user.status,
     };
 
-    // Add role-specific fields
     switch (user.role) {
       case "student":
         userResponse.studentId = user.studentID;
@@ -832,10 +773,8 @@ app.get("/api/auth/verify", verifyToken, (req, res) => {
   });
 });
 
-// Logout route (for token blacklisting in production)
+// Logout route
 app.post("/api/auth/logout", verifyToken, (req, res) => {
-  // In production, you would add the token to a blacklist
-  // For now, we'll just return success
   res.json({
     success: true,
     message: "Logged out successfully",
@@ -845,11 +784,8 @@ app.post("/api/auth/logout", verifyToken, (req, res) => {
 // Token refresh route
 app.post("/api/auth/refresh", verifyToken, (req, res) => {
   const userId = req.userId;
-
-  // Generate new token
   const newToken = generateToken(userId);
 
-  // Get user data
   const findUserQuery = `
     SELECT
       u.id, u.email, u.full_name, u.role, u.status,
@@ -882,8 +818,6 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
     }
 
     const user = results[0];
-
-    // Build user response with role-specific data
     const userResponse = {
       id: user.id,
       email: user.email,
@@ -892,7 +826,6 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
       status: user.status,
     };
 
-    // Add role-specific fields
     switch (user.role) {
       case "student":
         userResponse.studentId = user.studentID;
@@ -929,7 +862,7 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
   });
 });
 
-// Get users filtered by role and specific criteria for form targeting
+// Get users filtered by role
 app.get("/api/users/filter", verifyToken, (req, res) => {
   try {
     const { role, course_year_section, department, company } = req.query;
@@ -951,7 +884,6 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
     let query;
     let params = [];
 
-    // STUDENTS FILTERING
     if (role === "student" || role === "students") {
       query = `
         SELECT
@@ -967,18 +899,11 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         WHERE u.role = 'student' AND u.status = 'active'
       `;
 
-      // If a specific course_year_section is provided
       if (course_year_section) {
         query += " AND s.course_yr_section = ?";
         params.push(course_year_section);
-        console.log(
-          "🎓 Filtering students by course_year_section:",
-          course_year_section,
-        );
       }
-    }
-    // INSTRUCTORS FILTERING
-    else if (role === "instructor" || role === "instructors") {
+    } else if (role === "instructor" || role === "instructors") {
       query = `
         SELECT
           u.id,
@@ -997,11 +922,8 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       if (department) {
         query += " AND i.department = ?";
         params.push(department);
-        console.log("Filtering by department:", department);
       }
-    }
-    // ALUMNI FILTERING
-    else if (role === "alumni" || role === "alumni") {
+    } else if (role === "alumni" || role === "alumni") {
       query = `
         SELECT
           u.id,
@@ -1022,11 +944,8 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       if (company) {
         query += " AND a.company = ?";
         params.push(company);
-        console.log("🎓 Filtering alumni by company:", company);
       }
-    }
-    // ALL USERS
-    else if (role === "all") {
+    } else if (role === "all") {
       query = `
         SELECT
           u.id,
@@ -1037,9 +956,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         FROM Users u
         WHERE u.status = 'active'
       `;
-      console.log("👥 Fetching all active users");
     } else {
-      // Generic query for other roles
       query = `
         SELECT
           u.id,
@@ -1055,9 +972,6 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
 
     query += " ORDER BY u.full_name";
 
-    console.log("📋 Executing query:", query);
-    console.log("📋 With params:", params);
-
     db.query(query, params, (err, results) => {
       if (err) {
         console.error("❌ Database error:", err);
@@ -1070,17 +984,15 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
 
       console.log(`✅ Found ${results.length} users`);
 
-      // Format users data
       const users = results.map((user) => {
         const formattedUser = {
           id: user.id,
-          name: user.full_name || user.name, // Use whichever field exists
+          name: user.full_name || user.name,
           email: user.email,
           role: user.role,
           status: user.status,
         };
 
-        // Add role-specific data
         if (user.studentID) {
           formattedUser.details = user.course_yr_section || "No section";
           formattedUser.studentId = user.studentID;
@@ -1116,9 +1028,6 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
     });
   }
 });
-
-// ADD this function to dynamically fetch companies for alumni filtering
-// Add this around line 800, before the /api/users/filter endpoint
 
 // Get unique companies for alumni filtering
 app.get("/api/alumni/companies", verifyToken, (req, res) => {
@@ -1196,7 +1105,7 @@ app.get("/api/employers/companies", verifyToken, (req, res) => {
   }
 });
 
-// ADD this function to dynamically fetch departments for instructor filtering
+// Get unique departments for instructor filtering
 app.get("/api/instructors/departments", verifyToken, (req, res) => {
   try {
     const query = `
@@ -1234,7 +1143,7 @@ app.get("/api/instructors/departments", verifyToken, (req, res) => {
   }
 });
 
-// ADD this function to dynamically fetch course_year_sections for student filtering
+// Get unique course_year_sections for student filtering
 app.get("/api/students/sections", verifyToken, (req, res) => {
   try {
     const query = `
@@ -1328,7 +1237,6 @@ app.get("/api/users", verifyToken, (req, res) => {
         });
       }
 
-      // Get total count for pagination
       let countQuery = `SELECT COUNT(*) as total FROM Users u WHERE 1=1`;
       const countParams = [];
 
@@ -1359,16 +1267,14 @@ app.get("/api/users", verifyToken, (req, res) => {
         const total = countResults[0].total;
         const totalPages = Math.ceil(total / parseInt(limit));
 
-        // Format users data
         const users = results.map((user) => ({
           id: user.id,
           name: user.full_name,
           email: user.email,
           role: user.role,
-          department: user.student_department || user.department || "N/A", // Default department
+          department: user.student_department || user.department || "N/A",
           status: user.status,
           createdAt: user.created_at,
-          // Role-specific data
           ...(user.studentID && {
             studentId: user.studentID,
             courseYrSection: user.course_yr_section,
@@ -1411,7 +1317,6 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
     const userId = req.userId;
     const updateData = req.body;
 
-    // Get current user role
     const userQuery = "SELECT role FROM Users WHERE id = ?";
     db.query(userQuery, [userId], (err, results) => {
       if (err) {
@@ -1429,7 +1334,6 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
 
       const userRole = results[0].role;
 
-      // Update role-specific data
       switch (userRole) {
         case "student":
           if (
@@ -1445,7 +1349,6 @@ app.patch("/api/users/me/profile", verifyToken, async (req, res) => {
               subjects: updateData.subjects,
             };
 
-            // Insert or update student data
             const studentQuery = `
               INSERT INTO students (user_id, studentID, course_yr_section, contact_number, subjects)
               VALUES (?, ?, ?, ?, ?)
@@ -1692,7 +1595,6 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
       address,
     } = req.body;
 
-    // Check if user already exists
     const checkUserQuery = "SELECT * FROM Users WHERE email = ?";
     db.query(checkUserQuery, [email], async (err, results) => {
       if (err) {
@@ -1710,11 +1612,9 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
         });
       }
 
-      // Hash password
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // Insert new user
       const insertUserQuery = `
         INSERT INTO users (email, password_hash, full_name, role, status, registration_date)
         VALUES (?, ?, ?, ?, 'pending', NOW())
@@ -1734,7 +1634,6 @@ app.post("/api/users/create", verifyToken, async (req, res) => {
 
           const userId = result.insertId;
 
-          // Insert role-specific data
           try {
             switch (role) {
               case "student":
@@ -1847,7 +1746,6 @@ app.patch("/api/users/:id/approve", verifyToken, (req, res) => {
         });
       }
 
-      // Get updated user data
       const userQuery = `
         SELECT
           u.id, u.email, u.full_name, u.role, u.status,
@@ -1917,7 +1815,6 @@ app.patch("/api/users/:id/reject", verifyToken, (req, res) => {
     const userId = req.params.id;
     const { reason } = req.body;
 
-    // Option 1: Delete the user
     const deleteQuery = "DELETE FROM Users WHERE id = ?";
     db.query(deleteQuery, [userId], (err, result) => {
       if (err) {
@@ -1940,12 +1837,6 @@ app.patch("/api/users/:id/reject", verifyToken, (req, res) => {
         message: "User account rejected and removed",
       });
     });
-
-    // Option 2: Set status to 'rejected' instead of deleting
-    // const updateQuery = "UPDATE Users SET status = 'rejected' WHERE id = ?";
-    // db.query(updateQuery, [userId], (err, result) => {
-    //   ...
-    // });
   } catch (error) {
     console.error("Reject user error:", error);
     res.status(500).json({
@@ -1961,7 +1852,6 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
     const userId = req.params.id;
     const updateData = req.body;
 
-    // Update basic user info
     const updateFields = [];
     const updateValues = [];
 
@@ -1995,7 +1885,6 @@ app.patch("/api/users/:id", verifyToken, (req, res) => {
           });
         }
 
-        // Update role-specific data if provided
         const role = updateData.role;
         if (role) {
           switch (role) {
@@ -2104,7 +1993,6 @@ app.delete("/api/users/:id", verifyToken, (req, res) => {
   try {
     const userId = req.params.id;
 
-    // First check if user exists
     const checkUserQuery = "SELECT id, role FROM Users WHERE id = ?";
     db.query(checkUserQuery, [userId], (err, results) => {
       if (err) {
@@ -2124,7 +2012,6 @@ app.delete("/api/users/:id", verifyToken, (req, res) => {
 
       const userRole = results[0].role;
 
-      // Delete from role-specific tables first (due to foreign key constraints)
       const deleteRoleSpecificData = (callback) => {
         switch (userRole) {
           case "student":
@@ -2170,7 +2057,6 @@ app.delete("/api/users/:id", verifyToken, (req, res) => {
           });
         }
 
-        // Delete from users table
         const deleteUserQuery = "DELETE FROM Users WHERE id = ?";
         db.query(deleteUserQuery, [userId], (deleteErr, result) => {
           if (deleteErr) {
@@ -2260,7 +2146,6 @@ app.get("/api/forms", verifyToken, (req, res) => {
         .json({ success: false, message: "Database error" });
     }
 
-    // Get total count for pagination
     let countQuery = `SELECT COUNT(*) as total FROM Forms f WHERE 1=1`;
     const countParams = [];
 
@@ -2293,7 +2178,6 @@ app.get("/api/forms", verifyToken, (req, res) => {
       const total = countResults[0].total;
       const totalPages = Math.ceil(total / parseInt(limit));
 
-      // ADD THIS LOGGING
       console.log("Forms API response:", {
         success: true,
         formCount: results.length,
@@ -2336,7 +2220,6 @@ app.get("/api/forms", verifyToken, (req, res) => {
 app.get("/api/forms/:id", verifyToken, (req, res) => {
   const formId = req.params.id;
 
-  // Get form details with deployment info for published forms
   const formQuery = `
     SELECT f.*, u.full_name as creator_name,
            COALESCE(
@@ -2370,17 +2253,7 @@ app.get("/api/forms/:id", verifyToken, (req, res) => {
     }
 
     const form = formResults[0];
-    console.log("Form data from database:", {
-      id: form.id,
-      title: form.title,
-      status: form.status,
-      form_start_date: form.start_date,
-      form_end_date: form.end_date,
-      deployment_start_date: form.deployment_start_date,
-      deployment_end_date: form.deployment_end_date
-    });
 
-    // Get questions with options
     const questionsQuery = `
       SELECT q.*,
              GROUP_CONCAT(
@@ -2407,22 +2280,11 @@ app.get("/api/forms/:id", verifyToken, (req, res) => {
         type: q.question_type,
         question: q.question_text,
         description: q.description,
-        required: q.required === 1 || q.required === true, // Convert 0/1 to boolean
+        required: q.required === 1 || q.required === true,
         options: q.options_json ? JSON.parse(`[${q.options_json}]`) : [],
         min: q.min_value,
         max: q.max_value,
       }));
-
-      console.log(
-        `📋 Form ${formId} questions from database:`,
-        questions.map((q) => ({
-          id: q.id,
-          type: q.type,
-          question: q.question,
-          hasText: !!q.question,
-          textLength: q.question?.length || 0,
-        })),
-      );
 
       res.json({
         success: true,
@@ -2447,7 +2309,6 @@ app.post("/api/forms", verifyToken, (req, res) => {
   } = req.body;
   const createdBy = req.userId;
 
-  // Validate required fields
   if (!title || !category || !targetAudience) {
     return res.status(400).json({
       success: false,
@@ -2455,7 +2316,6 @@ app.post("/api/forms", verifyToken, (req, res) => {
     });
   }
 
-  // Insert form
   const formQuery = `
     INSERT INTO Forms (title, description, category, target_audience, start_date, end_date, image_url, is_template, status, created_by)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?)
@@ -2484,30 +2344,10 @@ app.post("/api/forms", verifyToken, (req, res) => {
 
       const formId = result.insertId;
 
-      // Insert questions if provided
       if (questions && questions.length > 0) {
-        console.log(`🔍 Processing ${questions.length} questions for form ${formId}`);
-        console.log("📋 Questions data:", JSON.stringify(questions, null, 2));
-
         const questionPromises = questions.map((q, index) => {
           return new Promise((resolve, reject) => {
-            console.log(`🔍 Processing question ${index + 1}:`, {
-              question: q.question,
-              type: q.type,
-              required: q.required,
-              options: q.options,
-              min: q.min,
-              max: q.max
-            });
-
-            // Validate question
             if (!q.question || !q.type) {
-              console.error(`❌ Question ${index + 1} validation failed:`, {
-                hasQuestion: !!q.question,
-                hasType: !!q.type,
-                questionValue: q.question,
-                typeValue: q.type
-              });
               reject(new Error("Question text and type are required"));
               return;
             }
@@ -2517,39 +2357,26 @@ app.post("/api/forms", verifyToken, (req, res) => {
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
           `;
 
-            const queryParams = [
-              formId,
-              q.question,
-              q.type,
-              q.description || null,
-              (q.required === true || q.required === 1) ? 1 : 0,
-              q.min || null,
-              q.max || null,
-              index,
-            ];
-
-            console.log(`🔍 Question ${index + 1} INSERT params:`, queryParams);
-
             db.query(
               questionQuery,
-              queryParams,
+              [
+                formId,
+                q.question,
+                q.type,
+                q.description || null,
+                (q.required === true || q.required === 1) ? 1 : 0,
+                q.min || null,
+                q.max || null,
+                index,
+              ],
               (qErr, qResult) => {
                 if (qErr) {
-                  console.error(`❌ Question ${index + 1} creation error:`, qErr);
-                  console.error("❌ Error details:", {
-                    code: qErr.code,
-                    errno: qErr.errno,
-                    sqlMessage: qErr.sqlMessage,
-                    sqlState: qErr.sqlState
-                  });
+                  console.error(`Question ${index + 1} creation error:`, qErr);
                   reject(qErr);
                 } else {
                   const questionId = qResult.insertId;
-                  console.log(`✅ Question ${index + 1} created with ID: ${questionId}`);
 
-                  // Insert options if they exist
                   if (q.options && q.options.length > 0) {
-                    // Filter out options with empty text
                     const validOptions = q.options.filter((opt) => {
                       const optionText =
                         typeof opt === "string"
@@ -2559,26 +2386,21 @@ app.post("/api/forms", verifyToken, (req, res) => {
                     });
 
                     if (validOptions.length > 0) {
-                      console.log(`🔍 Processing ${validOptions.length} valid options for question ${questionId}`);
                       const optionPromises = validOptions.map((opt, optIndex) => {
                         return new Promise((optResolve, optReject) => {
-                          // Handle both string options and option objects
                           const optionText =
                             typeof opt === "string"
                               ? opt
                               : opt.option_text || opt.text || opt.label;
-
-                          console.log(`🔍 Option ${optIndex + 1}:`, { raw: opt, processed: optionText });
 
                           db.query(
                             "INSERT INTO Question_Options (question_id, option_text, order_index) VALUES (?, ?, ?)",
                             [questionId, optionText, optIndex],
                             (optErr) => {
                               if (optErr) {
-                                console.error(`❌ Option ${optIndex + 1} creation error:`, optErr);
+                                console.error(`Option ${optIndex + 1} creation error:`, optErr);
                                 optReject(optErr);
                               } else {
-                                console.log(`✅ Option ${optIndex + 1} created`);
                                 optResolve();
                               }
                             }
@@ -2587,20 +2409,12 @@ app.post("/api/forms", verifyToken, (req, res) => {
                       });
 
                       Promise.all(optionPromises)
-                        .then(() => {
-                          console.log(`✅ All options created for question ${questionId}`);
-                          resolve();
-                        })
-                        .catch((optError) => {
-                          console.error(`❌ Option creation error for question ${questionId}:`, optError);
-                          reject(optError);
-                        });
+                        .then(() => resolve())
+                        .catch((optError) => reject(optError));
                     } else {
-                      console.log(`ℹ️ No valid options for question ${questionId}`);
                       resolve();
                     }
                   } else {
-                    console.log(`ℹ️ No options for question ${questionId}`);
                     resolve();
                   }
                 }
@@ -2611,15 +2425,6 @@ app.post("/api/forms", verifyToken, (req, res) => {
 
         Promise.all(questionPromises)
           .then(() => {
-            console.log(
-              `✅ Form ${formId} created with ${questions.length} questions`,
-            );
-            console.log("Form creation response:", {
-              success: true,
-              message: "Form created successfully",
-              formId,
-              questionCount: questions.length,
-            });
             res.status(201).json({
               success: true,
               message: "Form created successfully",
@@ -2628,21 +2433,9 @@ app.post("/api/forms", verifyToken, (req, res) => {
             });
           })
           .catch((error) => {
-            console.error("❌ Questions creation error:", error);
-            console.error("❌ Error details:", {
-              message: error.message,
-              code: error.code,
-              errno: error.errno,
-              sqlMessage: error.sqlMessage,
-              sqlState: error.sqlState,
-              stack: error.stack
-            });
-            // Rollback form creation if questions fail
             db.query("DELETE FROM Forms WHERE id = ?", [formId], (deleteErr) => {
               if (deleteErr) {
-                console.error("❌ Failed to rollback form creation:", deleteErr);
-              } else {
-                console.log(`✅ Rolled back form ${formId} creation`);
+                console.error("Failed to rollback form creation:", deleteErr);
               }
             });
             res.status(500).json({
@@ -2652,7 +2445,6 @@ app.post("/api/forms", verifyToken, (req, res) => {
             });
           });
       } else {
-        console.log(`✅ Form ${formId} created without questions`);
         res.status(201).json({
           success: true,
           message: "Form created successfully",
@@ -2664,13 +2456,30 @@ app.post("/api/forms", verifyToken, (req, res) => {
   );
 });
 
-// Update form
+// Update form - FIXED VERSION
 app.patch("/api/forms/:id", verifyToken, (req, res) => {
   const formId = req.params.id;
   const updates = req.body;
 
+  console.log(`🔄 Updating form ${formId} with data:`, updates);
 
-  // Build update query dynamically
+  const fieldMapping = {
+    targetAudience: 'target_audience',
+    imageUrl: 'image_url',
+    startDate: 'start_date',
+    endDate: 'end_date'
+  };
+
+  Object.keys(fieldMapping).forEach(clientField => {
+    if (updates[clientField] !== undefined) {
+      updates[fieldMapping[clientField]] = updates[clientField];
+      delete updates[clientField];
+    }
+  });
+
+  const targetAudienceChanged = updates.target_audience !== undefined;
+  let oldTargetAudience = null;
+
   const updateFields = [];
   const updateValues = [];
 
@@ -2692,7 +2501,6 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
     }
   });
 
-  // Handle questions field separately
   const questions = updates.questions;
   delete updates.questions;
 
@@ -2702,111 +2510,26 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
       .json({ success: false, message: "No valid fields to update" });
   }
 
-  // Start transaction for form and questions update
-  db.beginTransaction((err) => {
-    if (err) {
-      console.error("Transaction start error:", err);
-      return res
-        .status(500)
-        .json({ success: false, message: "Database error" });
+  const updateQuestions = (callback) => {
+    if (!questions || !Array.isArray(questions)) {
+      callback();
+      return;
     }
 
-    const updateFormAndQuestions = () => {
-      // Update form basic fields
-      if (updateFields.length > 0) {
-        const updateQuery = `UPDATE Forms SET ${updateFields.join(", ")}, updated_at = NOW() WHERE id = ?`;
-        updateValues.push(formId);
-
-        db.query(updateQuery, updateValues, (err, result) => {
-          if (err) {
-            console.error("Form update error:", err);
-            db.rollback(() => {
-              res
-                .status(500)
-                .json({ success: false, message: "Failed to update form" });
-            });
-            return;
-          }
-
-          if (result.affectedRows === 0) {
-            db.rollback(() => {
-              res
-                .status(404)
-                .json({ success: false, message: "Form not found" });
-            });
-            return;
-          }
-
-          // Update questions if provided
-          if (questions && Array.isArray(questions)) {
-            updateQuestions();
-          } else {
-            db.commit((commitErr) => {
-              if (commitErr) {
-                console.error("Commit error:", commitErr);
-                db.rollback(() => {
-                  res
-                    .status(500)
-                    .json({
-                      success: false,
-                      message: "Failed to commit changes",
-                    });
-                });
-                return;
-              }
-              res.json({ success: true, message: "Form updated successfully" });
-            });
-          }
-        });
-      } else if (questions && Array.isArray(questions)) {
-        // Only update questions
-        updateQuestions();
-      } else {
-        db.rollback(() => {
-          res
-            .status(400)
-            .json({ success: false, message: "No valid fields to update" });
-        });
+    db.beginTransaction((transactionErr) => {
+      if (transactionErr) {
+        console.error("Transaction start error:", transactionErr);
+        callback();
+        return;
       }
-    };
 
-    const updateQuestions = () => {
-      // First, delete existing questions and options
       db.query(
         "DELETE FROM Question_Options WHERE question_id IN (SELECT id FROM Questions WHERE form_id = ?)",
         [formId],
         (deleteOptionsErr) => {
           if (deleteOptionsErr) {
             console.error("Delete options error:", deleteOptionsErr);
-            db.rollback(() => {
-              res
-                .status(500)
-                .json({
-                  success: false,
-                  message: "Failed to update questions",
-                });
-            });
-            return;
-          }
-
-          // Check if questions array is empty
-          if (!questions || questions.length === 0) {
-            console.log("No questions to update, skipping question update");
-            db.commit((commitErr) => {
-              if (commitErr) {
-                console.error("Commit error:", commitErr);
-                db.rollback(() => {
-                  res
-                    .status(500)
-                    .json({
-                      success: false,
-                      message: "Failed to commit changes",
-                    });
-                });
-                return;
-              }
-              res.json({ success: true, message: "Form updated successfully" });
-            });
+            db.rollback(() => callback());
             return;
           }
 
@@ -2816,42 +2539,22 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
             (deleteQuestionsErr) => {
               if (deleteQuestionsErr) {
                 console.error("Delete questions error:", deleteQuestionsErr);
-                db.rollback(() => {
-                  res
-                    .status(500)
-                    .json({
-                      success: false,
-                      message: "Failed to update questions",
-                    });
-                });
+                db.rollback(() => callback());
                 return;
               }
 
-              // Check if questions array is empty
-              if (!questions || questions.length === 0) {
-                console.log("No questions to insert, committing transaction");
+              if (questions.length === 0) {
                 db.commit((commitErr) => {
                   if (commitErr) {
                     console.error("Commit error:", commitErr);
-                    db.rollback(() => {
-                      res
-                        .status(500)
-                        .json({
-                          success: false,
-                          message: "Failed to commit changes",
-                        });
-                    });
-                    return;
                   }
-                  res.json({ success: true, message: "Form updated successfully" });
+                  callback();
                 });
                 return;
               }
 
-              // Insert new questions
               const questionPromises = questions.map((q, index) => {
                 return new Promise((resolve, reject) => {
-                  // Validate question
                   if (!q.question || !q.type) {
                     reject(new Error("Question text and type are required"));
                     return;
@@ -2869,7 +2572,7 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
                       q.question,
                       q.type,
                       q.description || null,
-                     (q.required === true || q.required === 1) ? 1 : 0,
+                      (q.required === true || q.required === 1) ? 1 : 0,
                       q.min || null,
                       q.max || null,
                       index,
@@ -2881,12 +2584,10 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
                       } else {
                         const questionId = qResult.insertId;
 
-                        // Insert options if they exist
                         if (q.options && q.options.length > 0) {
                           const optionPromises = q.options.map(
                             (opt, optIndex) => {
                               return new Promise((optResolve, optReject) => {
-                                // Handle both string options and option objects
                                 const optionText =
                                   typeof opt === "string"
                                     ? opt
@@ -2894,9 +2595,7 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
 
                                 if (!optionText) {
                                   console.error("Invalid option object:", opt);
-                                  optReject(
-                                    new Error("Option text is required"),
-                                  );
+                                  optReject(new Error("Option text is required"));
                                   return;
                                 }
 
@@ -2927,45 +2626,175 @@ app.patch("/api/forms/:id", verifyToken, (req, res) => {
 
               Promise.all(questionPromises)
                 .then(() => {
-                  console.log(
-                    `✅ Form ${formId} questions updated with ${questions.length} questions`,
-                  );
                   db.commit((commitErr) => {
                     if (commitErr) {
                       console.error("Commit error:", commitErr);
-                      db.rollback(() => {
-                        res
-                          .status(500)
-                          .json({
-                            success: false,
-                            message: "Failed to commit changes",
-                          });
-                      });
-                      return;
+                      db.rollback(() => callback());
+                    } else {
+                      console.log(`✅ Questions updated for form ${formId}`);
+                      callback();
                     }
-                    res.json({
-                      success: true,
-                      message: "Form updated successfully",
-                    });
                   });
                 })
                 .catch((error) => {
-                  console.error("Questions creation error:", error);
-                  db.rollback(() => {
-                    res.status(500).json({
-                      success: false,
-                      message: "Failed to update form questions",
-                    });
-                  });
+                  console.error("Questions update error:", error);
+                  db.rollback(() => callback());
                 });
-            },
+            }
           );
-        },
+        }
       );
+    });
+  };
+
+  const reassignFormToNewAudience = (callback) => {
+    console.log(`🔄 Reassigning form ${formId} from "${oldTargetAudience}" to "${updates.target_audience}"`);
+
+    const roleMapping = {
+      'Students': 'student',
+      'Instructors': 'instructor',
+      'Alumni': 'alumni',
+      'Staff': 'employer',
+      'All Users': 'all'
     };
 
-    updateFormAndQuestions();
-  });
+    const oldRole = roleMapping[oldTargetAudience] || 'all';
+    const newRole = roleMapping[updates.target_audience] || 'all';
+
+    let deleteQuery = "DELETE FROM Form_Assignments WHERE form_id = ?";
+    let deleteParams = [formId];
+
+    if (oldRole !== 'all') {
+      deleteQuery += " AND user_id IN (SELECT id FROM Users WHERE role = ?)";
+      deleteParams.push(oldRole);
+    }
+
+    db.query(deleteQuery, deleteParams, (deleteErr) => {
+      if (deleteErr) {
+        console.error("Error deleting old assignments:", deleteErr);
+      }
+
+      if (newRole === 'all') {
+        db.query("SELECT id FROM Users", (userErr, userResults) => {
+          if (userErr) {
+            console.error("Error fetching users:", userErr);
+            callback();
+            return;
+          }
+
+          if (userResults.length === 0) {
+            callback();
+            return;
+          }
+
+          const assignmentValues = userResults.map(user => [formId, user.id, 'pending']);
+          db.query("INSERT INTO Form_Assignments (form_id, user_id, status) VALUES ?", [assignmentValues], (assignErr) => {
+            if (assignErr) {
+              console.error("Error creating assignments:", assignErr);
+            } else {
+              console.log(`✅ Reassigned form to ${userResults.length} users`);
+            }
+            callback();
+          });
+        });
+      } else {
+        db.query("SELECT id FROM Users WHERE role = ?", [newRole], (userErr, userResults) => {
+          if (userErr) {
+            console.error("Error fetching users:", userErr);
+            callback();
+            return;
+          }
+
+          if (userResults.length === 0) {
+            callback();
+            return;
+          }
+
+          const assignmentValues = userResults.map(user => [formId, user.id, 'pending']);
+          db.query("INSERT INTO Form_Assignments (form_id, user_id, status) VALUES ?", [assignmentValues], (assignErr) => {
+            if (assignErr) {
+              console.error("Error creating assignments:", assignErr);
+            } else {
+              console.log(`✅ Reassigned form to ${userResults.length} users with role ${newRole}`);
+            }
+            callback();
+          });
+        });
+      }
+    });
+  };
+
+  const performUpdate = () => {
+    if (updateFields.length > 0) {
+      const updateQuery = `UPDATE Forms SET ${updateFields.join(", ")}, updated_at = NOW() WHERE id = ?`;
+      const finalUpdateValues = [...updateValues, formId];
+
+      db.query(updateQuery, finalUpdateValues, (err, result) => {
+        if (err) {
+          console.error("Form update error:", err);
+          return res
+            .status(500)
+            .json({ success: false, message: "Failed to update form" });
+        }
+
+        if (result.affectedRows === 0) {
+          return res
+            .status(404)
+            .json({ success: false, message: "Form not found" });
+        }
+
+        console.log(`✅ Form ${formId} basic info updated successfully`);
+
+        if (questions && Array.isArray(questions)) {
+          updateQuestions(() => {
+            if (targetAudienceChanged && oldTargetAudience !== updates.target_audience) {
+              reassignFormToNewAudience(() => {
+                res.json({ success: true, message: "Form updated successfully with questions and reassigned" });
+              });
+            } else {
+              res.json({ success: true, message: "Form updated successfully with questions" });
+            }
+          });
+        } else {
+          if (targetAudienceChanged && oldTargetAudience !== updates.target_audience) {
+            reassignFormToNewAudience(() => {
+              res.json({ success: true, message: "Form updated and reassigned successfully" });
+            });
+          } else {
+            res.json({ success: true, message: "Form updated successfully" });
+          }
+        }
+      });
+    } else if (questions && Array.isArray(questions)) {
+      updateQuestions(() => {
+        res.json({ success: true, message: "Form questions updated successfully" });
+      });
+    } else {
+      res.status(400).json({ success: false, message: "No valid fields to update" });
+    }
+  };
+
+  const getCurrentFormAndUpdate = () => {
+    if (targetAudienceChanged) {
+      db.query("SELECT target_audience FROM Forms WHERE id = ?", [formId], (err, results) => {
+        if (err) {
+          console.error("Error fetching current form:", err);
+          return res.status(500).json({ success: false, message: "Database error" });
+        }
+
+        if (results.length === 0) {
+          return res.status(404).json({ success: false, message: "Form not found" });
+        }
+
+        oldTargetAudience = results[0].target_audience;
+        performUpdate();
+      });
+    } else {
+      performUpdate();
+    }
+  };
+
+  getCurrentFormAndUpdate();
 });
 
 // Delete form
@@ -2995,7 +2824,6 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
   const originalFormId = req.params.id;
   const userId = req.userId;
 
-  // First, get the original form
   db.query(
     "SELECT * FROM Forms WHERE id = ?",
     [originalFormId],
@@ -3008,7 +2836,6 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
 
       const originalForm = formResults[0];
 
-      // Create duplicate
       const duplicateQuery = `
       INSERT INTO Forms (title, description, category, target_audience, status, image_url, start_date, end_date, is_template, created_by)
       VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)
@@ -3036,8 +2863,6 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
           }
 
           const newFormId = dupResult.insertId;
-
-          // Copy questions (simplified - in production you'd copy all questions and options)
           res
             .status(201)
             .json({
@@ -3051,7 +2876,7 @@ app.post("/api/forms/:id/duplicate", verifyToken, (req, res) => {
   );
 });
 
-// Save form as template (moves form to templates and updates status)
+// Save form as template
 app.post("/api/forms/:id/save-as-template", verifyToken, (req, res) => {
   const formId = req.params.id;
   const userId = req.userId;
@@ -3060,7 +2885,6 @@ app.post("/api/forms/:id/save-as-template", verifyToken, (req, res) => {
     `🔄 Save as template request for form ${formId} by user ${userId}`,
   );
 
-  // First, get the original form
   db.query("SELECT * FROM Forms WHERE id = ?", [formId], (err, formResults) => {
     if (err) {
       console.error("Database error fetching form:", err);
@@ -3077,15 +2901,7 @@ app.post("/api/forms/:id/save-as-template", verifyToken, (req, res) => {
     }
 
     const originalForm = formResults[0];
-    console.log(`📋 Original form data:`, {
-      id: originalForm.id,
-      title: originalForm.title,
-      is_template: originalForm.is_template,
-      status: originalForm.status,
-      image_url: originalForm.image_url ? "present" : "none",
-    });
 
-    // Mark original form as template (move it to templates tab)
     const updateOriginalQuery =
       "UPDATE Forms SET is_template = TRUE, status = 'template' WHERE id = ?";
     db.query(updateOriginalQuery, [formId], (updateErr, updateResult) => {
@@ -3110,7 +2926,7 @@ app.post("/api/forms/:id/save-as-template", verifyToken, (req, res) => {
   });
 });
 
-// Deploy form
+// Deploy form - FIXED VERSION
 app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
   const formId = req.params.id;
   const { startDate, endDate, targetFilters } = req.body;
@@ -3122,7 +2938,6 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
     targetFilters,
   });
 
-  // Start transaction
   db.beginTransaction((err) => {
     if (err) {
       console.error("Transaction start error:", err);
@@ -3134,116 +2949,100 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
         });
     }
 
-    try {
-      // Check if deployment already exists for this form
-      const checkQuery = `SELECT id FROM Form_Deployments WHERE form_id = ? LIMIT 1`;
+    const checkQuery = `SELECT id FROM Form_Deployments WHERE form_id = ? LIMIT 1`;
 
-      db.query(checkQuery, [formId], (checkErr, checkResult) => {
-        if (checkErr) {
-          console.error("💥 Deployment check error:", checkErr);
+    db.query(checkQuery, [formId], (checkErr, checkResult) => {
+      if (checkErr) {
+        console.error("💥 Deployment check error:", checkErr);
+        db.rollback(() => {
+          res.status(500).json({
+            success: false,
+            message: "Failed to check existing deployment",
+            error: checkErr.message,
+          });
+        });
+        return;
+      }
+
+      const deploymentExists = checkResult.length > 0;
+      let deployQuery;
+      let queryParams;
+
+      if (deploymentExists) {
+        deployQuery = `
+          UPDATE Form_Deployments
+          SET start_date = ?, end_date = ?, target_filters = ?, deployment_status = 'active'
+          WHERE form_id = ?
+        `;
+        queryParams = [startDate, endDate, JSON.stringify(targetFilters), formId];
+      } else {
+        deployQuery = `
+          INSERT INTO Form_Deployments (form_id, deployed_by, start_date, end_date, target_filters)
+          VALUES (?, ?, ?, ?, ?)
+        `;
+        queryParams = [formId, deployedBy, startDate, endDate, JSON.stringify(targetFilters)];
+      }
+
+      db.query(deployQuery, queryParams, (err, result) => {
+        if (err) {
+          console.error("💥 Deployment insertion error:", err);
           db.rollback(() => {
-            res.status(500).json({
-              success: false,
-              message: "Failed to check existing deployment",
-              error: checkErr.message,
-            });
+            res
+              .status(500)
+              .json({
+                success: false,
+                message: "Failed to create deployment record",
+                error: err.message,
+              });
           });
           return;
         }
 
-        const deploymentExists = checkResult.length > 0;
-        let deployQuery;
-        let queryParams;
+        console.log(
+          `✅ Deployment record ${deploymentExists ? 'updated' : 'created'} with ID: ${result.insertId || 'existing'}`,
+        );
 
-        if (deploymentExists) {
-          // Update existing deployment
-          console.log(`🔄 Updating existing deployment for form ${formId}`);
-          deployQuery = `
-            UPDATE Form_Deployments
-            SET start_date = ?, end_date = ?, target_filters = ?, deployment_status = 'active'
-            WHERE form_id = ?
-          `;
-          queryParams = [startDate, endDate, JSON.stringify(targetFilters), formId];
-        } else {
-          // Insert new deployment record
-          console.log(`➕ Creating new deployment for form ${formId}`);
-          deployQuery = `
-            INSERT INTO Form_Deployments (form_id, deployed_by, start_date, end_date, target_filters)
-            VALUES (?, ?, ?, ?, ?)
-          `;
-          queryParams = [formId, deployedBy, startDate, endDate, JSON.stringify(targetFilters)];
-        }
+        db.query(
+          "UPDATE Forms SET status = 'active' WHERE id = ?",
+          [formId],
+          (updateErr, updateResult) => {
+            if (updateErr) {
+              console.error("💥 Form status update error:", updateErr);
+              db.rollback(() => {
+                res
+                  .status(500)
+                  .json({
+                    success: false,
+                    message: "Failed to update form status",
+                    error: updateErr.message,
+                  });
+              });
+              return;
+            }
 
-        db.query(deployQuery, queryParams, (err, result) => {
-          if (err) {
-            console.error("💥 Deployment insertion error:", err);
-            db.rollback(() => {
-              res
-                .status(500)
-                .json({
-                  success: false,
-                  message: "Failed to create deployment record",
-                  error: err.message,
-                });
-            });
-            return;
-          }
+            console.log(`✅ Form ${formId} status updated to active`);
 
-          console.log(
-            `✅ Deployment record ${deploymentExists ? 'updated' : 'created'} with ID: ${result.insertId || 'existing'}`,
-          );
+            const targetAudience = targetFilters?.target_audience;
+            if (targetAudience) {
+              console.log(
+                `👥 Assigning form ${formId} to users with target audience: ${targetAudience}`,
+              );
 
-          // Update form status to active
-          db.query(
-            "UPDATE Forms SET status = 'active' WHERE id = ?",
-            [formId],
-            (updateErr, updateResult) => {
-              if (updateErr) {
-                console.error("💥 Form status update error:", updateErr);
-                db.rollback(() => {
-                  res
-                    .status(500)
-                    .json({
-                      success: false,
-                      message: "Failed to update form status",
-                      error: updateErr.message,
-                    });
-                });
-                return;
-              }
+              let userQuery = `SELECT DISTINCT u.id FROM Users u WHERE u.status = 'active'`;
+              const queryParams = [];
 
-              console.log(`✅ Form ${formId} status updated to active`);
+              if (targetAudience && targetAudience !== "All Users") {
+                if (targetAudience.startsWith("Students - ")) {
+                  const targetPart = targetAudience
+                    .replace("Students - ", "")
+                    .trim();
 
-              // After deployment, assign the form to users based on target audience
-              const targetAudience = targetFilters?.target_audience;
-              if (targetAudience) {
-                console.log(
-                  `👥 Assigning form ${formId} to users with target audience: ${targetAudience}`,
-                );
-
-                // Build query to get users based on target audience
-                let userQuery = `SELECT DISTINCT u.id FROM Users u WHERE u.status = 'active'`;
-                const queryParams = [];
-
-                // Parse target audience
-                if (targetAudience && targetAudience !== "All Users") {
-                  console.log("📊 Parsing target audience:", targetAudience);
-
-                  if (targetAudience.startsWith("Students - ")) {
-                    // Extract the part after "Students - "
-                    const targetPart = targetAudience
-                      .replace("Students - ", "")
+                  if (targetPart.startsWith("College ")) {
+                    const courseName = targetPart
+                      .replace("College ", "")
                       .trim();
-                    console.log("🎓 Student target part:", targetPart);
 
-                    if (targetPart.startsWith("College ")) {
-                      // Format: "Students - College BSIT"
-                      const courseName = targetPart
-                        .replace("College ", "")
-                        .trim();
-                      console.log("🏫 College course:", courseName);
-
-                      userQuery = `
+                    userQuery = `
                     SELECT DISTINCT u.id
                     FROM Users u
                     JOIN Students s ON u.id = s.user_id
@@ -3251,12 +3050,9 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
                       AND u.role = 'student'
                       AND s.course_yr_section LIKE ?
                   `;
-                      queryParams.push(`${courseName}%`);
-                    } else if (targetPart.includes("-")) {
-                      // Format: "Students - BSIT 4-A" or "Students - Grade 11-A"
-                      console.log("🎯 Specific section:", targetPart);
-
-                      userQuery = `
+                    queryParams.push(`${courseName}%`);
+                  } else if (targetPart.includes("-")) {
+                    userQuery = `
                     SELECT DISTINCT u.id
                     FROM Users u
                     JOIN Students s ON u.id = s.user_id
@@ -3264,12 +3060,9 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
                       AND u.role = 'student'
                       AND s.course_yr_section = ?
                   `;
-                      queryParams.push(targetPart);
-                    } else if (targetPart.startsWith("Grade ")) {
-                      // Format: "Students - Grade 11"
-                      console.log("📚 High school grade:", targetPart);
-
-                      userQuery = `
+                    queryParams.push(targetPart);
+                  } else if (targetPart.startsWith("Grade ")) {
+                    userQuery = `
                     SELECT DISTINCT u.id
                     FROM Users u
                     JOIN Students s ON u.id = s.user_id
@@ -3277,23 +3070,21 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
                       AND u.role = 'student'
                       AND s.course_yr_section LIKE ?
                   `;
-                      queryParams.push(`${targetPart}%`);
-                    } else {
-                      // Just "Students" or unknown format
-                      userQuery = `
+                    queryParams.push(`${targetPart}%`);
+                  } else {
+                    userQuery = `
                     SELECT DISTINCT u.id
                     FROM Users u
                     WHERE u.status = 'active'
                       AND u.role = 'student'
                   `;
-                    }
-                  } else if (targetAudience.startsWith("Instructors - ")) {
-                    const dept = targetAudience
-                      .replace("Instructors - ", "")
-                      .trim();
-                    console.log("👨‍🏫 Instructor department:", dept);
+                  }
+                } else if (targetAudience.startsWith("Instructors - ")) {
+                  const dept = targetAudience
+                    .replace("Instructors - ", "")
+                    .trim();
 
-                    userQuery = `
+                  userQuery = `
                   SELECT DISTINCT u.id
                   FROM Users u
                   JOIN Instructors i ON u.id = i.user_id
@@ -3301,243 +3092,162 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
                     AND u.role = 'instructor'
                     AND i.department = ?
                 `;
-                    queryParams.push(dept);
-                  } else if (targetAudience === "Students") {
-                    userQuery += " AND u.role = 'student'";
-                  } else if (targetAudience === "Instructors") {
-                    userQuery += " AND u.role = 'instructor'";
-                  } else if (targetAudience === "Alumni") {
-                    userQuery += " AND u.role = 'alumni'";
-                  } else if (targetAudience === "Staff") {
-                    userQuery += " AND u.role = 'staff'";
-                  }
+                  queryParams.push(dept);
+                } else if (targetAudience === "Students") {
+                  userQuery += " AND u.role = 'student'";
+                } else if (targetAudience === "Instructors") {
+                  userQuery += " AND u.role = 'instructor'";
+                } else if (targetAudience === "Alumni") {
+                  userQuery += " AND u.role = 'alumni'";
+                } else if (targetAudience === "Staff") {
+                  userQuery += " AND u.role = 'staff'";
+                }
+              }
+
+              db.query(userQuery, queryParams, (userErr, userResults) => {
+                if (userErr) {
+                  console.error("❌ User query error:", userErr);
+                  db.commit((commitErr) => {
+                    if (commitErr) {
+                      console.error("💥 Transaction commit error:", commitErr);
+                      db.rollback(() => {
+                        res
+                          .status(500)
+                          .json({
+                            success: false,
+                            message: "Failed to commit deployment transaction",
+                          });
+                      });
+                      return;
+                    }
+
+                    res.json({
+                      success: true,
+                      message: "Form deployed successfully (assignment may have failed)",
+                      deploymentId: result.insertId,
+                    });
+                  });
+                  return;
                 }
 
-                console.log("🔍 Final user query:", userQuery);
-                console.log("📋 Query params:", queryParams);
+                console.log(`✅ Found ${userResults.length} users for assignment`);
 
-                db.query(userQuery, queryParams, (userErr, userResults) => {
-                  if (userErr) {
-                    console.error("❌ User query error:", userErr);
-                    // Continue with deployment even if assignment fails
-                    db.commit((commitErr) => {
-                      if (commitErr) {
-                        console.error(
-                          "💥 Transaction commit error:",
-                          commitErr,
-                        );
-                        db.rollback(() => {
-                          res
-                            .status(500)
-                            .json({
-                              success: false,
-                              message:
-                                "Failed to commit deployment transaction",
-                            });
-                        });
-                        return;
-                      }
-
-                      res.json({
-                        success: true,
-                        message:
-                          "Form deployed successfully (assignment may have failed)",
-                        deploymentId: result.insertId,
+                if (userResults.length === 0) {
+                  db.commit((commitErr) => {
+                    if (commitErr) {
+                      console.error("💥 Transaction commit error:", commitErr);
+                      db.rollback(() => {
+                        res
+                          .status(500)
+                          .json({
+                            success: false,
+                            message: "Failed to commit deployment transaction",
+                          });
                       });
+                      return;
+                    }
+
+                    res.json({
+                      success: true,
+                      message: "Form deployed successfully (no users to assign)",
+                      deploymentId: result.insertId,
                     });
-                    return;
-                  }
+                  });
+                  return;
+                }
 
-                  console.log(
-                    `✅ Found ${userResults.length} users for assignment`,
-                  );
+                const userIdsToAssign = userResults.map((u) => u.id);
 
-                  if (userResults.length === 0) {
-                    console.warn(
-                      "⚠️ No users found for target audience:",
-                      targetAudience,
-                    );
-                    // Continue with deployment
-                    db.commit((commitErr) => {
-                      if (commitErr) {
-                        console.error(
-                          "💥 Transaction commit error:",
-                          commitErr,
-                        );
-                        db.rollback(() => {
-                          res
-                            .status(500)
-                            .json({
-                              success: false,
-                              message:
-                                "Failed to commit deployment transaction",
-                            });
-                        });
-                        return;
-                      }
-
-                      res.json({
-                        success: true,
-                        message:
-                          "Form deployed successfully (no users to assign)",
-                        deploymentId: result.insertId,
-                      });
-                    });
-                    return;
-                  }
-
-                  const userIdsToAssign = userResults.map((u) => u.id);
-                  console.log("👥 User IDs to assign:", userIdsToAssign);
-
-                  // Check for existing assignments to avoid duplicates
-                  const checkQuery = `
+                const checkQuery = `
                 SELECT user_id FROM Form_Assignments
                 WHERE form_id = ? AND user_id IN (?)
               `;
 
-                  db.query(
-                    checkQuery,
-                    [formId, userIdsToAssign],
-                    (checkErr, existingAssignments) => {
-                      if (checkErr) {
-                        console.error("Check assignments error:", checkErr);
-                        // Continue with deployment
-                        db.commit((commitErr) => {
-                          if (commitErr) {
-                            console.error(
-                              "💥 Transaction commit error:",
-                              commitErr,
-                            );
-                            db.rollback(() => {
-                              res
-                                .status(500)
-                                .json({
-                                  success: false,
-                                  message:
-                                    "Failed to commit deployment transaction",
-                                });
-                            });
-                            return;
-                          }
-
-                          res.json({
-                            success: true,
-                            message:
-                              "Form deployed successfully (assignment check failed)",
-                            deploymentId: result.insertId,
+                db.query(
+                  checkQuery,
+                  [formId, userIdsToAssign],
+                  (checkErr, existingAssignments) => {
+                    if (checkErr) {
+                      console.error("Check assignments error:", checkErr);
+                      db.commit((commitErr) => {
+                        if (commitErr) {
+                          console.error("💥 Transaction commit error:", commitErr);
+                          db.rollback(() => {
+                            res
+                              .status(500)
+                              .json({
+                                success: false,
+                                message: "Failed to commit deployment transaction",
+                              });
                           });
+                          return;
+                        }
+
+                        res.json({
+                          success: true,
+                          message: "Form deployed successfully (assignment check failed)",
+                          deploymentId: result.insertId,
                         });
-                        return;
-                      }
+                      });
+                      return;
+                    }
 
-                      // Filter out users who already have assignments
-                      const existingUserIds = existingAssignments.map(
-                        (a) => a.user_id,
-                      );
-                      const newUserIds = userIdsToAssign.filter(
-                        (id) => !existingUserIds.includes(id),
-                      );
+                    const existingUserIds = existingAssignments.map(
+                      (a) => a.user_id,
+                    );
+                    const newUserIds = userIdsToAssign.filter(
+                      (id) => !existingUserIds.includes(id),
+                    );
 
-                      if (newUserIds.length === 0) {
-                        console.log(
-                          "ℹ️ All users already assigned to this form",
-                        );
-                        // Continue with deployment
-                        db.commit((commitErr) => {
-                          if (commitErr) {
-                            console.error(
-                              "💥 Transaction commit error:",
-                              commitErr,
-                            );
-                            db.rollback(() => {
-                              res
-                                .status(500)
-                                .json({
-                                  success: false,
-                                  message:
-                                    "Failed to commit deployment transaction",
-                                });
-                            });
-                            return;
-                          }
-
-                          res.json({
-                            success: true,
-                            message:
-                              "Form deployed successfully (already assigned to all users)",
-                            deploymentId: result.insertId,
+                    if (newUserIds.length === 0) {
+                      db.commit((commitErr) => {
+                        if (commitErr) {
+                          console.error("💥 Transaction commit error:", commitErr);
+                          db.rollback(() => {
+                            res
+                              .status(500)
+                              .json({
+                                success: false,
+                                message: "Failed to commit deployment transaction",
+                              });
                           });
-                        });
-                        return;
-                      }
+                          return;
+                        }
 
-                      // Create assignments for new users
-                      const assignmentValues = newUserIds.map((userId) => [
-                        formId,
-                        userId,
-                        "pending",
-                      ]);
-                      const insertQuery = `
+                        res.json({
+                          success: true,
+                          message: "Form deployed successfully (already assigned to all users)",
+                          deploymentId: result.insertId,
+                        });
+                      });
+                      return;
+                    }
+
+                    const assignmentValues = newUserIds.map((userId) => [
+                      formId,
+                      userId,
+                      "pending",
+                    ]);
+                    const insertQuery = `
                   INSERT INTO Form_Assignments (form_id, user_id, status)
                   VALUES ?
                 `;
 
-                      db.query(
-                        insertQuery,
-                        [assignmentValues],
-                        (insertErr, insertResult) => {
-                          if (insertErr) {
-                            console.error(
-                              "Insert assignments error:",
-                              insertErr,
-                            );
-                            // Continue with deployment even if assignment fails
-                            db.commit((commitErr) => {
-                              if (commitErr) {
-                                console.error(
-                                  "💥 Transaction commit error:",
-                                  commitErr,
-                                );
-                                db.rollback(() => {
-                                  res
-                                    .status(500)
-                                    .json({
-                                      success: false,
-                                      message:
-                                        "Failed to commit deployment transaction",
-                                    });
-                                });
-                                return;
-                              }
-
-                              res.json({
-                                success: true,
-                                message:
-                                  "Form deployed successfully (assignment failed)",
-                                deploymentId: result.insertId,
-                              });
-                            });
-                            return;
-                          }
-
-                          console.log(
-                            `✅ Created ${insertResult.affectedRows} form assignments`,
-                          );
-
-                          // Commit transaction
+                    db.query(
+                      insertQuery,
+                      [assignmentValues],
+                      (insertErr, insertResult) => {
+                        if (insertErr) {
+                          console.error("Insert assignments error:", insertErr);
                           db.commit((commitErr) => {
                             if (commitErr) {
-                              console.error(
-                                "💥 Transaction commit error:",
-                                commitErr,
-                              );
+                              console.error("💥 Transaction commit error:", commitErr);
                               db.rollback(() => {
                                 res
                                   .status(500)
                                   .json({
                                     success: false,
-                                    message:
-                                      "Failed to commit deployment transaction",
+                                    message: "Failed to commit deployment transaction",
                                   });
                               });
                               return;
@@ -3545,59 +3255,69 @@ app.post("/api/forms/:id/deploy", verifyToken, (req, res) => {
 
                             res.json({
                               success: true,
-                              message: `Form deployed successfully and assigned to ${insertResult.affectedRows} users`,
+                              message: "Form deployed successfully (assignment failed)",
                               deploymentId: result.insertId,
-                              assignedCount: insertResult.affectedRows,
                             });
                           });
-                        },
-                      );
-                    },
-                  );
-                });
-              } else {
-                // No target audience specified, just deploy without assignment
-                console.log("⚠️ No target audience specified for assignment");
+                          return;
+                        }
 
-                // Commit transaction
-                db.commit((commitErr) => {
-                  if (commitErr) {
-                    console.error("💥 Transaction commit error:", commitErr);
-                    db.rollback(() => {
-                      res
-                        .status(500)
-                        .json({
-                          success: false,
-                          message: "Failed to commit deployment transaction",
+                        console.log(`✅ Created ${insertResult.affectedRows} form assignments`);
+
+                        db.commit((commitErr) => {
+                          if (commitErr) {
+                            console.error("💥 Transaction commit error:", commitErr);
+                            db.rollback(() => {
+                              res
+                                .status(500)
+                                .json({
+                                  success: false,
+                                  message: "Failed to commit deployment transaction",
+                                });
+                            });
+                            return;
+                          }
+
+                          res.json({
+                            success: true,
+                            message: `Form deployed successfully and assigned to ${insertResult.affectedRows} users`,
+                            deploymentId: result.insertId,
+                            assignedCount: insertResult.affectedRows,
+                          });
                         });
-                    });
-                    return;
-                  }
+                      },
+                    );
+                  },
+                );
+              });
+            } else {
+              console.log("⚠️ No target audience specified for assignment");
 
-                  res.json({
-                    success: true,
-                    message: "Form deployed successfully",
-                    deploymentId: result.insertId,
+              db.commit((commitErr) => {
+                if (commitErr) {
+                  console.error("💥 Transaction commit error:", commitErr);
+                  db.rollback(() => {
+                    res
+                      .status(500)
+                      .json({
+                        success: false,
+                        message: "Failed to commit deployment transaction",
+                      });
                   });
+                  return;
+                }
+
+                res.json({
+                  success: true,
+                  message: "Form deployed successfully",
+                  deploymentId: result.insertId,
                 });
-              }
-            },
-          );
-        },
-      );
-      }); // Close checkQuery callback
-    } catch (error) {
-      console.error("💥 Deployment error:", error);
-      db.rollback(() => {
-        res
-          .status(500)
-          .json({
-            success: false,
-            message: "Deployment failed",
-            error: error.message,
-          });
+              });
+            }
+          }
+        );
       });
-    }
+    });
   });
 });
 
@@ -3627,14 +3347,13 @@ app.get("/api/forms/templates", verifyToken, (req, res) => {
 });
 
 // ============================================================
-// FORM ASSIGNMENT ENDPOINTS - ADD THESE AFTER FORM TEMPLATES
+// FORM ASSIGNMENT ENDPOINTS
 // ============================================================
 
-// Create form assignments when publishing a form
-// Find this POST route for form assignments and fix it:
+// Create form assignments
 app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
   const formId = req.params.formId;
-  const { userIds, targetAudience = "All Users", filters } = req.body; // Provide default value for targetAudience
+  const { userIds, targetAudience = "All Users", filters } = req.body;
   const assignedBy = req.userId;
 
   console.log(`📋 Creating assignments for form ${formId}`);
@@ -3642,7 +3361,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
   console.log("User IDs:", userIds);
 
   try {
-    // Verify form exists
     const formCheckQuery = "SELECT id, title, status FROM Forms WHERE id = ?";
     db.query(formCheckQuery, [formId], (err, formResults) => {
       if (err) {
@@ -3658,26 +3376,16 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
           .json({ success: false, message: "Form not found" });
       }
 
-      // If no specific userIds provided, fetch users based on filters
       if (!userIds || userIds.length === 0) {
-        // Build query to get users based on target audience
         let userQuery = `SELECT DISTINCT u.id FROM Users u WHERE u.status = 'active'`;
         const queryParams = [];
 
-        // Parse target audience - ADD NULL CHECK
         if (targetAudience && targetAudience !== "All Users") {
-          console.log("📊 Parsing target audience:", targetAudience);
-
           if (targetAudience.startsWith("Students - ")) {
-            // Extract the part after "Students - "
             const targetPart = targetAudience.replace("Students - ", "").trim();
-            console.log("🎓 Student target part:", targetPart);
 
             if (targetPart.startsWith("College ")) {
-              // Format: "Students - College BSIT"
               const courseName = targetPart.replace("College ", "").trim();
-              console.log("🏫 College course:", courseName);
-
               userQuery = `
                 SELECT DISTINCT u.id
                 FROM Users u
@@ -3688,9 +3396,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
               `;
               queryParams.push(`${courseName}%`);
             } else if (targetPart.includes("-")) {
-              // Format: "Students - BSIT 4-A" or "Students - Grade 11-A"
-              console.log("🎯 Specific section:", targetPart);
-
               userQuery = `
                 SELECT DISTINCT u.id
                 FROM Users u
@@ -3701,9 +3406,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
               `;
               queryParams.push(targetPart);
             } else if (targetPart.startsWith("Grade ")) {
-              // Format: "Students - Grade 11"
-              console.log("📚 High school grade:", targetPart);
-
               userQuery = `
                 SELECT DISTINCT u.id
                 FROM Users u
@@ -3714,7 +3416,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
               `;
               queryParams.push(`${targetPart}%`);
             } else {
-              // Just "Students" or unknown format
               userQuery = `
                 SELECT DISTINCT u.id
                 FROM Users u
@@ -3724,8 +3425,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
             }
           } else if (targetAudience.startsWith("Instructors - ")) {
             const dept = targetAudience.replace("Instructors - ", "").trim();
-            console.log("👨‍🏫 Instructor department:", dept);
-
             userQuery = `
               SELECT DISTINCT u.id
               FROM Users u
@@ -3746,9 +3445,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
           }
         }
 
-        console.log("🔍 Final user query:", userQuery);
-        console.log("📋 Query params:", queryParams);
-
         db.query(userQuery, queryParams, (userErr, userResults) => {
           if (userErr) {
             console.error("❌ User query error:", userErr);
@@ -3760,10 +3456,6 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
           console.log(`✅ Found ${userResults.length} users for assignment`);
 
           if (userResults.length === 0) {
-            console.warn(
-              "⚠️ No users found for target audience:",
-              targetAudience,
-            );
             return res.status(200).json({
               success: true,
               message: "No users found matching the criteria",
@@ -3772,12 +3464,9 @@ app.post("/api/forms/:formId/assign", verifyToken, async (req, res) => {
           }
 
           const userIdsToAssign = userResults.map((u) => u.id);
-          console.log("👥 User IDs to assign:", userIdsToAssign);
           createAssignments(formId, userIdsToAssign, assignedBy, res);
         });
       } else {
-        // Use provided user IDs
-        console.log("👥 Using provided user IDs:", userIds);
         createAssignments(formId, userIds, assignedBy, res);
       }
     });
@@ -3796,7 +3485,6 @@ function createAssignments(formId, userIds, assignedBy, res) {
     });
   }
 
-  // Check for existing assignments to avoid duplicates
   const checkQuery = `
     SELECT user_id FROM Form_Assignments 
     WHERE form_id = ? AND user_id IN (?)
@@ -3810,7 +3498,6 @@ function createAssignments(formId, userIds, assignedBy, res) {
         .json({ success: false, message: "Database error" });
     }
 
-    // Filter out users who already have assignments
     const existingUserIds = existingAssignments.map((a) => a.user_id);
     const newUserIds = userIds.filter((id) => !existingUserIds.includes(id));
 
@@ -3823,7 +3510,6 @@ function createAssignments(formId, userIds, assignedBy, res) {
       });
     }
 
-    // Create assignments for new users
     const assignmentValues = newUserIds.map((userId) => [
       formId,
       userId,
@@ -3897,11 +3583,8 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
     params.push(status);
   }
 
-  // Only show active forms
   query += " AND f.status = 'active'";
-
   query += " GROUP BY f.id, fa.assigned_at, fa.status, u.full_name, fr.id";
-
   query += " ORDER BY fa.assigned_at DESC";
 
   db.query(query, params, (err, results) => {
@@ -3921,7 +3604,7 @@ app.get("/api/users/assigned-forms", verifyToken, (req, res) => {
   });
 });
 
-// Update assignment status (when user completes form)
+// Update assignment status
 app.patch("/api/forms/:formId/assignment-status", verifyToken, (req, res) => {
   const formId = req.params.formId;
   const userId = req.userId;
@@ -3982,9 +3665,11 @@ app.get("/api/forms/:formId/assignment-stats", verifyToken, (req, res) => {
     });
   });
 });
-// Image upload endpoint
 
-// Configure multer for file uploads
+// ============================================================
+// IMAGE UPLOAD ENDPOINTS
+// ============================================================
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, "uploads");
@@ -4001,7 +3686,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype.startsWith("image/")) {
       cb(null, true);
@@ -4027,14 +3712,12 @@ app.post(
   },
 );
 
-// Serve uploaded files
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // ============================================================
 // FORM CATEGORY MANAGEMENT ENDPOINTS
 // ============================================================
 
-// Get all form categories
 app.get("/api/form-categories", verifyToken, (req, res) => {
   const query =
     "SELECT id, name, description FROM Form_Categories ORDER BY name";
@@ -4051,18 +3734,15 @@ app.get("/api/form-categories", verifyToken, (req, res) => {
   });
 });
 
-// Add new form category (admin only)
 app.post("/api/form-categories", verifyToken, (req, res) => {
   const { name, description } = req.body;
 
-  // Validate input
   if (!name || !name.trim()) {
     return res
       .status(400)
       .json({ success: false, message: "Category name is required" });
   }
 
-  // Check if category already exists
   const checkQuery = "SELECT id FROM Form_Categories WHERE name = ?";
   db.query(checkQuery, [name.trim()], (checkErr, checkResults) => {
     if (checkErr) {
@@ -4078,7 +3758,6 @@ app.post("/api/form-categories", verifyToken, (req, res) => {
         .json({ success: false, message: "Category already exists" });
     }
 
-    // Insert new category
     const insertQuery =
       "INSERT INTO Form_Categories (name, description) VALUES (?, ?)";
     db.query(
@@ -4102,23 +3781,20 @@ app.post("/api/form-categories", verifyToken, (req, res) => {
           },
         });
       },
-    ); // Close insertQuery callback
-  }); // Close checkQuery callback
-}); // Close app.post
+    );
+  });
+});
 
-// Update form category (admin only)
 app.patch("/api/form-categories/:id", verifyToken, (req, res) => {
   const categoryId = req.params.id;
   const { name, description } = req.body;
 
-  // Validate input
   if (!name || !name.trim()) {
     return res
       .status(400)
       .json({ success: false, message: "Category name is required" });
   }
 
-  // Check if category exists
   const checkQuery = "SELECT id FROM Form_Categories WHERE id = ?";
   db.query(checkQuery, [categoryId], (checkErr, checkResults) => {
     if (checkErr) {
@@ -4134,7 +3810,6 @@ app.patch("/api/form-categories/:id", verifyToken, (req, res) => {
         .json({ success: false, message: "Category not found" });
     }
 
-    // Update category
     const updateQuery =
       "UPDATE Form_Categories SET name = ?, description = ? WHERE id = ?";
     db.query(
@@ -4164,14 +3839,13 @@ app.patch("/api/form-categories/:id", verifyToken, (req, res) => {
           },
         });
       },
-    ); // Close updateQuery callback
-  }); // Close checkQuery callback
-}); // Close app.patch
-// Delete form category (admin only)
+    );
+  });
+});
+
 app.delete("/api/form-categories/:id", verifyToken, (req, res) => {
   const categoryId = req.params.id;
 
-  // Check if category exists
   const checkQuery = "SELECT id FROM Form_Categories WHERE id = ?";
   db.query(checkQuery, [categoryId], (checkErr, checkResults) => {
     if (checkErr) {
@@ -4187,7 +3861,6 @@ app.delete("/api/form-categories/:id", verifyToken, (req, res) => {
         .json({ success: false, message: "Category not found" });
     }
 
-    // Check if category is used by any forms
     const usageQuery =
       "SELECT COUNT(*) as count FROM Forms WHERE category = (SELECT name FROM Form_Categories WHERE id = ?)";
     db.query(usageQuery, [categoryId], (usageErr, usageResults) => {
@@ -4206,7 +3879,6 @@ app.delete("/api/form-categories/:id", verifyToken, (req, res) => {
         });
       }
 
-      // Delete category
       const deleteQuery = "DELETE FROM Form_Categories WHERE id = ?";
       db.query(deleteQuery, [categoryId], (deleteErr, deleteResult) => {
         if (deleteErr) {
@@ -4235,7 +3907,6 @@ app.delete("/api/form-categories/:id", verifyToken, (req, res) => {
 // FORM RESPONSE SUBMISSION ENDPOINTS
 // ============================================================
 
-// Submit form response
 app.post(
   "/api/forms/:formId/submit",
   verifyToken,
@@ -4246,9 +3917,7 @@ app.post(
     const { responses } = req.body;
 
     console.log(`📤 Submitting form ${formId} for user ${userId}`);
-    console.log("📝 Responses:", responses);
 
-    // Validate that responses is provided
     if (!responses || typeof responses !== "object") {
       return res.status(400).json({
         success: false,
@@ -4256,7 +3925,6 @@ app.post(
       });
     }
 
-    // Check if form exists and is active
     const checkFormQuery = "SELECT id, title, status FROM Forms WHERE id = ?";
     db.query(checkFormQuery, [formId], (err, formResults) => {
       if (err) {
@@ -4276,7 +3944,6 @@ app.post(
 
       const form = formResults[0];
 
-      // Check if form is active
       if (form.status !== "active") {
         return res.status(400).json({
           success: false,
@@ -4284,7 +3951,6 @@ app.post(
         });
       }
 
-      // Check if user already submitted this form
       const checkSubmissionQuery =
         "SELECT id FROM Form_Responses WHERE form_id = ? AND user_id = ?";
       db.query(
@@ -4306,7 +3972,6 @@ app.post(
             });
           }
 
-          // Validate responses against form questions
           const validateResponsesQuery = `
         SELECT q.id, q.question_text, q.question_type, q.required, qo.option_text
         FROM Questions q
@@ -4327,7 +3992,6 @@ app.post(
                 });
               }
 
-              // Group questions and options
               const questions = new Map();
               questionResults.forEach((row) => {
                 if (!questions.has(row.id)) {
@@ -4344,7 +4008,6 @@ app.post(
                 }
               });
 
-              // Validate responses
               const validationErrors = [];
               questions.forEach((question) => {
                 const response = responses[question.id];
@@ -4360,7 +4023,6 @@ app.post(
                   );
                 }
 
-                // Validate choice-based questions
                 if (
                   ["multiple-choice", "checkbox", "dropdown"].includes(
                     question.question_type,
@@ -4390,7 +4052,6 @@ app.post(
                 });
               }
 
-              // Insert the form response
               const insertResponseQuery = `
           INSERT INTO Form_Responses (form_id, user_id, response_data)
           VALUES (?, ?, ?)
@@ -4412,7 +4073,6 @@ app.post(
                     `✅ Form ${formId} submitted successfully with response ID: ${insertResult.insertId}`,
                   );
 
-                  // Update assignment status to completed
                   const updateAssignmentQuery = `
             UPDATE Form_Assignments
             SET status = 'completed'
@@ -4428,7 +4088,6 @@ app.post(
                           "Assignment status update error:",
                           updateErr,
                         );
-                        // Don't fail the submission if assignment update fails
                       } else {
                         console.log(
                           `✅ Assignment status updated to completed for user ${userId}, form ${formId}`,
@@ -4452,7 +4111,6 @@ app.post(
   },
 );
 
-// Get user's submitted responses
 app.get("/api/forms/my-responses", verifyToken, (req, res) => {
   const userId = req.userId;
   const { page = 1, limit = 10, formId } = req.query;
@@ -4490,7 +4148,6 @@ app.get("/api/forms/my-responses", verifyToken, (req, res) => {
       });
     }
 
-    // Get total count for pagination
     let countQuery =
       "SELECT COUNT(*) as total FROM Form_Responses WHERE user_id = ?";
     const countParams = [userId];
@@ -4526,14 +4183,12 @@ app.get("/api/forms/my-responses", verifyToken, (req, res) => {
   });
 });
 
-// Get form responses for analysis (form owners/admins)
 app.get("/api/forms/:formId/responses", verifyToken, (req, res) => {
   const formId = req.params.formId;
   const userId = req.userId;
   const { page = 1, limit = 10, search = "" } = req.query;
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  // Check if user has permission to view responses (form owner or admin)
   const checkPermissionQuery = `
     SELECT f.id, f.title, f.created_by, u.full_name as creator_name
     FROM Forms f
@@ -4562,7 +4217,6 @@ app.get("/api/forms/:formId/responses", verifyToken, (req, res) => {
         });
       }
 
-      // Get form responses
       let query = `
       SELECT 
         fr.id,
@@ -4596,7 +4250,6 @@ app.get("/api/forms/:formId/responses", verifyToken, (req, res) => {
           });
         }
 
-        // Get total count for pagination
         let countQuery =
           "SELECT COUNT(*) as total FROM Form_Responses WHERE form_id = ?";
         const countParams = [formId];
@@ -4639,12 +4292,10 @@ app.get("/api/forms/:formId/responses", verifyToken, (req, res) => {
   );
 });
 
-// Get form summary/analytics
 app.get("/api/forms/:formId/summary", verifyToken, (req, res) => {
   const formId = req.params.formId;
   const userId = req.userId;
 
-  // Check permission
   const checkPermissionQuery =
     "SELECT id, title, created_by FROM Forms WHERE id = ? AND (created_by = ? OR ? IN (SELECT id FROM Users WHERE role = 'admin'))";
 
@@ -4667,7 +4318,6 @@ app.get("/api/forms/:formId/summary", verifyToken, (req, res) => {
         });
       }
 
-      // Get form statistics
       const statsQuery = `
       SELECT 
         COUNT(DISTINCT fr.id) as total_responses,
@@ -4702,7 +4352,6 @@ app.get("/api/forms/:formId/summary", verifyToken, (req, res) => {
           last_response: null,
         };
 
-        // Get response breakdown by role
         const roleQuery = `
         SELECT 
           u.role,
@@ -4736,12 +4385,10 @@ app.get("/api/forms/:formId/summary", verifyToken, (req, res) => {
   );
 });
 
-// Get assigned forms for user
 app.get("/api/forms/assigned-forms", verifyToken, (req, res) => {
   const userId = req.userId;
   const { status = "all", category } = req.query;
 
-  // Get user's role
   const getUserRoleQuery = "SELECT role FROM Users WHERE id = ?";
 
   db.query(getUserRoleQuery, [userId], (err, userResults) => {
@@ -4762,7 +4409,6 @@ app.get("/api/forms/assigned-forms", verifyToken, (req, res) => {
 
     const userRole = userResults[0].role;
 
-    // Get assigned forms based on user role and status
     let query = `
       SELECT DISTINCT
         f.id,
@@ -4786,19 +4432,16 @@ app.get("/api/forms/assigned-forms", verifyToken, (req, res) => {
 
     const params = [userId];
 
-    // Filter by form status if specified
     if (status !== "all") {
       query += " AND f.status = ?";
       params.push(status);
     }
 
-    // Filter by category if specified
     if (category) {
       query += " AND f.category = ?";
       params.push(category);
     }
 
-    // Only show active forms or forms assigned to this user
     query += " AND (f.status = 'active' OR fa.user_id = ?)";
     params.push(userId);
 
@@ -4836,7 +4479,6 @@ app.get("/api/health", (req, res) => {
 app.use((error, req, res, next) => {
   console.error("Express error:", error);
 
-  // Log error details for debugging (but don't expose to client)
   const errorId = Math.random().toString(36).substr(2, 9);
   console.error(`Error ID: ${errorId}`, {
     message: error.message,
@@ -4848,12 +4490,11 @@ app.use((error, req, res, next) => {
     timestamp: new Date().toISOString(),
   });
 
-  // Don't leak error details in production
   if (process.env.NODE_ENV === "production") {
     res.status(500).json({
       success: false,
       message: "Something went wrong! Please try again later.",
-      errorId: errorId, // Provide error ID for support
+      errorId: errorId,
     });
   } else {
     res.status(500).json({
@@ -4865,7 +4506,6 @@ app.use((error, req, res, next) => {
   }
 });
 
-// Specific error handlers for common issues
 app.use((err, req, res, next) => {
   if (err.name === "ValidationError") {
     return res.status(400).json({
@@ -4892,15 +4532,12 @@ app.use((err, req, res, next) => {
   next(err);
 });
 
-// 404 handler - Express 4.x compatible
 app.use((req, res) => {
   res.status(404).json({
     success: false,
     message: "Route not found",
   });
 });
-
-// Routes are handled directly in this file
 
 app.listen(port, () => {
   console.log(`🔧 Starting server...`);
