@@ -7,25 +7,7 @@ import { Progress } from "../ui/progress";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getFormsForUserRole, getFormStatsForUser, getCompletedFormsForUser, PublishedForm } from "../../services/publishedFormsService";
 
-// ============================================================
-// TODO: BACKEND - Student Dashboard Data
-// ============================================================
-// Dashboard Overview:
-// - GET /api/student/dashboard/overview
-//   Response: { pendingForms, completedForms, overdueCount, completionRate }
-//
-// Assigned Forms:
-// - GET /api/forms/assigned?userId={userId}&status=pending
-//   Response: [{ id, title, course, instructor, dueDate, priority }]
-//
-// Completion Trend:
-// - GET /api/student/dashboard/completion-trend?weeks=6
-//   Response: [{ week, completed, target }]
-//
-// Recent Activities:
-// - GET /api/student/dashboard/activities?limit=5
-//   Response: [{ type, title, timestamp }]
-// ============================================================
+
 
 // Generate completion trend data (mock for now, would come from analytics API)
 const completionTrendData = [
@@ -51,6 +33,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
   const [publishedForms, setPublishedForms] = useState<PublishedForm[]>([]);
   const [formStats, setFormStats] = useState({ pending: 0, completed: 0, total: 0, completionRate: 0 });
   const [completedForms, setCompletedForms] = useState<Array<{title: string, date: string, rating?: number}>>([]);
+  const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const loadData = async () => {
@@ -60,13 +43,33 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
       setFormStats(stats);
       const completed = await getCompletedFormsForUser('student');
       setCompletedForms(completed || []);
+
+      // Fetch submitted form ids
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+        if (token) {
+          const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (response.ok) {
+            const result = await response.json();
+            const submittedIds = new Set<string>(result.responses?.map((r: any) => String(r.form_id)) || []);
+            setSubmittedFormIds(submittedIds);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching submitted forms:', error);
+      }
     };
     loadData();
   }, []);
 
   // Transform published forms to match expected format
   const pendingForms = publishedForms
-    .filter(form => form.assignment_status === 'pending')
+    .filter(form => form.assignment_status === 'pending' && !submittedFormIds.has(form.id))
     .map(form => ({
       id: form.id,
       title: form.title,
@@ -172,11 +175,12 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
                   </div>
                 </div>
                 <div className="flex gap-2 mt-3">
-                  <Button 
+                  <Button
                     className="bg-green-500 hover:bg-green-600"
+                    disabled={submittedFormIds.has(form.id)}
                     onClick={() => onNavigate?.('submit-feedback')}
                   >
-                    Start Feedback
+                    {submittedFormIds.has(form.id) ? 'Already Submitted' : 'Start Feedback'}
                   </Button>
                   <Button variant="outline" className="border-green-200 hover:bg-green-50">
                     View Details

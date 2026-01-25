@@ -1,10 +1,5 @@
 import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -44,12 +39,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Separator } from "../ui/separator";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "../ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { toast } from "sonner";
 import {
   getForms,
@@ -74,7 +64,6 @@ interface FeedbackFormsManagementProps {
   onNavigateToBuilder?: (formId?: string) => void;
   onNavigateToResponses?: (formId: string) => void;
 }
-
 
 const targetAudienceOptions = [
   "All Users",
@@ -101,7 +90,8 @@ export function FeedbackFormsManagement({
   const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
   const [formToDelete, setFormToDelete] = useState<FormData | null>(null);
   const [categories, setCategories] = useState<FormCategory[]>([]);
-  const [loadingCategoryOperation, setLoadingCategoryOperation] = useState(false);
+  const [loadingCategoryOperation, setLoadingCategoryOperation] =
+    useState(false);
 
   // Load question count cache from localStorage on component mount
   const [formQuestionCache, setFormQuestionCache] = useState<
@@ -121,7 +111,7 @@ export function FeedbackFormsManagement({
     try {
       localStorage.setItem(
         "form_question_cache",
-        JSON.stringify(formQuestionCache)
+        JSON.stringify(formQuestionCache),
       );
     } catch (error) {
       console.error("Error saving form question cache:", error);
@@ -154,15 +144,19 @@ export function FeedbackFormsManagement({
       if (result.success) {
         setCategories(result.categories);
       } else {
-        console.error('Failed to load categories:', result.message);
+        console.error("Failed to load categories:", result.message);
       }
     } catch (error) {
-      console.error('Error loading categories:', error);
+      console.error("Error loading categories:", error);
     }
   };
 
   const addCategory = async (category: string) => {
-    if (!category.trim() || categories.some(cat => cat.name === category.trim())) return;
+    if (
+      !category.trim() ||
+      categories.some((cat) => cat.name === category.trim())
+    )
+      return;
     setLoadingCategoryOperation(true);
     try {
       const result = await addFormCategory(category.trim());
@@ -173,28 +167,28 @@ export function FeedbackFormsManagement({
         toast.error(result.message);
       }
     } catch (error) {
-      console.error('Error adding category:', error);
-      toast.error('Failed to add category');
+      console.error("Error adding category:", error);
+      toast.error("Failed to add category");
     } finally {
       setLoadingCategoryOperation(false);
     }
   };
 
   const removeCategory = async (category: string) => {
-    const cat = categories.find(c => c.name === category);
+    const cat = categories.find((c) => c.name === category);
     if (!cat) return;
     setLoadingCategoryOperation(true);
     try {
       const result = await deleteFormCategory(cat.id);
       if (result.success) {
-        setCategories(categories.filter(c => c.id !== cat.id));
+        setCategories(categories.filter((c) => c.id !== cat.id));
         toast.success(`Category "${category}" removed`);
       } else {
         toast.error(result.message);
       }
     } catch (error) {
-      console.error('Error removing category:', error);
-      toast.error('Failed to remove category');
+      console.error("Error removing category:", error);
+      toast.error("Failed to remove category");
     } finally {
       setLoadingCategoryOperation(false);
     }
@@ -217,7 +211,7 @@ export function FeedbackFormsManagement({
       setError(
         `Only administrators can manage feedback forms. Your current role is: ${
           userRole || "unknown"
-        }.`
+        }.`,
       );
       setLoading(false);
       return;
@@ -244,7 +238,7 @@ export function FeedbackFormsManagement({
             is_template: f.is_template,
             status: f.status,
             target_audience: f.target_audience, // Added for debugging
-          }))
+          })),
         );
       } else {
         console.log("No custom forms loaded");
@@ -254,12 +248,12 @@ export function FeedbackFormsManagement({
         console.log("Loaded forms:", customResult.forms);
         // Filter out templates from custom forms
         const customFormsOnly = customResult.forms.filter(
-          (f) => !f.is_template
+          (f) => !f.is_template,
         );
         setCustomForms(customFormsOnly);
       } else {
         setError(
-          "Unable to load feedback forms. Please check your connection and try again."
+          "Unable to load feedback forms. Please check your connection and try again.",
         );
       }
 
@@ -270,7 +264,7 @@ export function FeedbackFormsManagement({
     } catch (err) {
       console.error("Error loading forms:", err);
       setError(
-        "Failed to connect to the server. Please check your internet connection."
+        "Failed to connect to the server. Please check your internet connection.",
       );
     } finally {
       setLoading(false);
@@ -364,9 +358,14 @@ export function FeedbackFormsManagement({
         return;
       }
       const originalForm = getResult.form;
-      console.log(`[DEBUG] Original form status: ${originalForm.status}, is_template: ${originalForm.is_template}`);
+      console.log(
+        `[DEBUG] Original form status: ${originalForm.status}, is_template: ${originalForm.is_template}`,
+      );
       console.log(`[DEBUG] Original form questions:`, originalForm.questions);
-      console.log(`[DEBUG] Original form questions length:`, originalForm.questions?.length);
+      console.log(
+        `[DEBUG] Original form questions length:`,
+        originalForm.questions?.length,
+      );
       console.log(`[DEBUG] Raw getResult.form:`, getResult.form);
 
       // Then, create a new form as template
@@ -378,16 +377,21 @@ export function FeedbackFormsManagement({
         let options = q.options;
 
         // Only keep options for question types that actually use them
-        if (!['multiple-choice', 'checkbox', 'dropdown'].includes(questionType)) {
+        if (
+          !["multiple-choice", "checkbox", "dropdown"].includes(questionType)
+        ) {
           options = []; // Empty array for questions that don't use options
         } else {
           // Filter out null/empty options for questions that do use options
-          options = options?.filter((opt: any) => opt && opt.option_text && opt.option_text.trim()) || [];
+          options =
+            options?.filter(
+              (opt: any) => opt && opt.option_text && opt.option_text.trim(),
+            ) || [];
         }
 
         return {
           ...q,
-          options: options
+          options: options,
         };
       });
 
@@ -404,7 +408,10 @@ export function FeedbackFormsManagement({
       });
       console.log(`[DEBUG] Create result:`, createResult);
       if (!createResult.success) {
-        console.error(`[DEBUG] Create failed with message:`, createResult.message);
+        console.error(
+          `[DEBUG] Create failed with message:`,
+          createResult.message,
+        );
       }
       if (createResult.success) {
         console.log(`[DEBUG] Template created successfully, reloading forms`);
@@ -414,7 +421,10 @@ export function FeedbackFormsManagement({
         // Switch to templates tab
         setActiveTab("templates");
       } else {
-        console.error(`[DEBUG] Failed to create template:`, createResult.message);
+        console.error(
+          `[DEBUG] Failed to create template:`,
+          createResult.message,
+        );
         toast.error(createResult.message);
       }
     } catch (error) {
@@ -428,23 +438,25 @@ export function FeedbackFormsManagement({
   const handleDeployForm = async (formId: string) => {
     try {
       setDeployingForm(formId);
-      
+
       // Call the deployment API
       const result = await deployForm(formId, {
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        startDate: new Date().toISOString().split("T")[0],
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+          .toISOString()
+          .split("T")[0],
         targetFilters: {
-          roles: ['student'],
-          target_audience: 'Students'
-        }
+          roles: ["student"],
+          target_audience: "Students",
+        },
       });
-      
+
       if (result.success) {
         toast.success(result.message);
         // Reload forms to show the updated status
         await loadForms();
       } else {
-        toast.error(result.message || 'Failed to deploy form');
+        toast.error(result.message || "Failed to deploy form");
       }
     } catch (error) {
       console.error("Error deploying form:", error);
@@ -606,9 +618,7 @@ export function FeedbackFormsManagement({
                             <Label className="text-base">
                               {question.question_text || question.question}
                               {question.required && (
-                                <span className="text-red-500 ml-1">
-                                  *
-                                </span>
+                                <span className="text-red-500 ml-1">*</span>
                               )}
                             </Label>
                           </div>
@@ -640,9 +650,11 @@ export function FeedbackFormsManagement({
                                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
                                     >
                                       <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
-                                      <span>{option.option_text || option}</span>
+                                      <span>
+                                        {option.option_text || option}
+                                      </span>
                                     </label>
-                                  )
+                                  ),
                                 )}
                               </div>
                             )}
@@ -656,9 +668,11 @@ export function FeedbackFormsManagement({
                                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
                                     >
                                       <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
-                                      <span>{option.option_text || option}</span>
+                                      <span>
+                                        {option.option_text || option}
+                                      </span>
                                     </label>
-                                  )
+                                  ),
                                 )}
                               </div>
                             )}
@@ -678,16 +692,16 @@ export function FeedbackFormsManagement({
                                     1
                                   </span>
                                   <div className="flex gap-2">
-                                    {[
-                                      1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                                    ].map((num) => (
-                                      <button
-                                        key={num}
-                                        className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
-                                      >
-                                        {num}
-                                      </button>
-                                    ))}
+                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
+                                      (num) => (
+                                        <button
+                                          key={num}
+                                          className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
+                                        >
+                                          {num}
+                                        </button>
+                                      ),
+                                    )}
                                   </div>
                                   <span className="text-sm text-gray-500 shrink-0">
                                     10
@@ -719,10 +733,7 @@ export function FeedbackFormsManagement({
 
                 {/* Submit Button Preview */}
                 <div className="flex justify-end pt-4 border-t">
-                  <Button
-                    className="bg-green-500 hover:bg-green-600"
-                    disabled
-                  >
+                  <Button className="bg-green-500 hover:bg-green-600" disabled>
                     Submit Feedback
                   </Button>
                 </div>
@@ -815,15 +826,14 @@ export function FeedbackFormsManagement({
       </Dialog>
 
       {/* Manage Categories Dialog */}
-      <Dialog open={manageCategoriesOpen} onOpenChange={setManageCategoriesOpen}>
+      <Dialog
+        open={manageCategoriesOpen}
+        onOpenChange={setManageCategoriesOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg">
-              Manage Categories
-            </DialogTitle>
-            <DialogDescription>
-              Add or remove form categories
-            </DialogDescription>
+            <DialogTitle className="text-lg">Manage Categories</DialogTitle>
+            <DialogDescription>Add or remove form categories</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="flex gap-2">
@@ -835,7 +845,7 @@ export function FeedbackFormsManagement({
               <Button
                 onClick={() => {
                   const input = document.getElementById(
-                    "new-category-input"
+                    "new-category-input",
                   ) as HTMLInputElement;
                   if (input?.value.trim()) {
                     addCategory(input.value.trim());
@@ -861,8 +871,7 @@ export function FeedbackFormsManagement({
                     className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
                     onClick={() => removeCategory(cat.name)}
                     disabled={
-                      categories.length <= 1 ||
-                      loadingCategoryOperation
+                      categories.length <= 1 || loadingCategoryOperation
                     }
                   >
                     <Trash2 className="w-4 h-4" />
@@ -987,12 +996,6 @@ export function FeedbackFormsManagement({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem
-                              onClick={() => onNavigateToBuilder?.(form.id)}
-                            >
-                              <Edit className="w-4 h-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
                               onClick={() => handlePreviewForm(form)}
                             >
                               <FileText className="w-4 h-4 mr-2" />
@@ -1025,25 +1028,35 @@ export function FeedbackFormsManagement({
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex gap-2">
+                      {/* In feedback-forms-management.tsx - Custom Forms Section */}
+                      <div className="flex flex-wrap gap-1.5">
                         <Badge
                           variant="secondary"
-                          className={
-                            form.status === "active"
-                              ? "bg-green-100 text-green-700"
-                              : form.status === "draft"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : form.status === "template"
-                              ? "bg-purple-100 text-purple-700"
-                              : "bg-gray-100 text-gray-700"
-                          }
+                          className={`
+      ${
+        form.status === "active"
+          ? "bg-green-100 text-green-700"
+          : form.status === "draft"
+            ? "bg-yellow-100 text-yellow-700"
+            : form.status === "template"
+              ? "bg-purple-100 text-purple-700"
+              : "bg-gray-100 text-gray-700"
+      }
+      whitespace-normal break-words text-center min-h-[24px] px-2 py-0.5
+    `}
                         >
                           {form.status}
                         </Badge>
-                        <Badge variant="outline" className="border-green-200">
+                        <Badge
+                          variant="outline"
+                          className="border-green-200 whitespace-normal break-words text-center min-h-[24px] px-2 py-0.5"
+                        >
                           {form.category}
                         </Badge>
-                        <Badge variant="outline" className="border-blue-200">
+                        <Badge
+                          variant="outline"
+                          className="border-blue-200 whitespace-normal break-words text-center min-h-[24px] px-2 py-0.5"
+                        >
                           {form.target_audience}
                         </Badge>
                       </div>
@@ -1156,12 +1169,19 @@ export function FeedbackFormsManagement({
                       <div className="flex gap-2 flex-wrap">
                         <Badge
                           variant="secondary"
+                          truncate
+                          maxWidth={90}
                           className="bg-purple-100 text-purple-700"
                         >
                           <Star className="w-3 h-3 mr-1" />
                           Template
                         </Badge>
-                        <Badge variant="outline" className="border-purple-200">
+                        <Badge
+                          variant="outline"
+                          truncate
+                          maxWidth={90}
+                          className="border-purple-200"
+                        >
                           {template.category}
                         </Badge>
                       </div>
@@ -1181,7 +1201,7 @@ export function FeedbackFormsManagement({
                         >
                           View
                         </Button>
-                       
+
                         <Button
                           className="flex-1 bg-purple-500 hover:bg-purple-600"
                           onClick={() => onNavigateToBuilder?.(template.id)}
@@ -1205,7 +1225,8 @@ export function FeedbackFormsManagement({
           <DialogHeader>
             <DialogTitle>Delete Form</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete "{formToDelete?.title}"? This action cannot be undone.
+              Are you sure you want to delete "{formToDelete?.title}"? This
+              action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="flex justify-end gap-3 pt-4">

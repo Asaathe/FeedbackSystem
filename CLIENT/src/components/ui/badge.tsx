@@ -18,26 +18,48 @@ const badgeVariants = cva(
         outline:
           "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
       },
+      
+      truncate: {
+        true: "truncate",
+        false: "",
+      },
     },
     defaultVariants: {
       variant: "default",
+      truncate: false, 
     },
   },
 );
 
+
+interface BadgeProps extends React.ComponentProps<"span">,
+  VariantProps<typeof badgeVariants> {
+  asChild?: boolean;
+  maxWidth?: string | number; 
+}
+
 function Badge({
   className,
   variant,
+  truncate = false, 
+  maxWidth,
   asChild = false,
+  style,
   ...props
-}: React.ComponentProps<"span"> &
-  VariantProps<typeof badgeVariants> & { asChild?: boolean }) {
+}: BadgeProps) {
   const Comp = asChild ? Slot : "span";
+
+ 
+  const combinedStyle = maxWidth 
+    ? { ...style, maxWidth: typeof maxWidth === 'number' ? `${maxWidth}px` : maxWidth }
+    : style;
 
   return (
     <Comp
       data-slot="badge"
-      className={cn(badgeVariants({ variant }), className)}
+      className={cn(badgeVariants({ variant, truncate }), className)}
+      style={combinedStyle}
+      title={props.title || (typeof props.children === 'string' ? props.children : undefined)} // Add title for tooltip
       {...props}
     />
   );
