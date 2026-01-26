@@ -32,7 +32,7 @@ export function InputField({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className={`border rounded-lg w-full p-2 placeholder-gray-400 focus:ring-2 focus:outline-none ${
+          className={`border rounded-lg w-full p-2 placeholder-gray-400 focus:ring-2 focus:outline-none text-base ${
             onTogglePassword ? "pr-12" : ""
           } ${
             error

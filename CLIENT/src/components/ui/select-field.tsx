@@ -31,7 +31,7 @@ export function SelectField({
       </label>
       <Select value={value} onValueChange={onChange}>
         <SelectTrigger
-          className={`w-full p-2 rounded-lg ${
+          className={`w-full p-3 sm:p-2 rounded-lg min-h-[44px] text-base ${
             error
               ? "border-red-500 focus:ring-red-400"
               : "border-gray-300 focus:ring-green-400"

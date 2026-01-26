@@ -43,7 +43,7 @@ export function FormContainer({
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed transition font-medium text-center flex items-center justify-center"
+            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:bg-green-300 disabled:cursor-not-allowed transition font-medium text-center flex items-center justify-center min-h-[44px] text-base"
           >
             {isLoading ? "Loading..." : buttonText}
           </button>

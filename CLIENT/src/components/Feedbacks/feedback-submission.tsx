@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Card,
   CardContent,
@@ -128,6 +128,45 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   const [availableForms, setAvailableForms] = useState<FeedbackForm[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Mobile swipe gesture handling
+  const touchStartX = useRef<number>(0);
+  const touchStartY = useRef<number>(0);
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (!touchStartX.current || !touchStartY.current) return;
+
+    const touchEndX = e.changedTouches[0].clientX;
+    const touchEndY = e.changedTouches[0].clientY;
+    const deltaX = touchStartX.current - touchEndX;
+    const deltaY = touchStartY.current - touchEndY;
+
+    // Only handle horizontal swipes (ignore vertical scrolls)
+    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+      if (deltaX > 0) {
+        // Swipe left - next question
+        if (currentQuestionIndex < selectedForm!.questions.length - 1) {
+          setCurrentQuestionIndex(currentQuestionIndex + 1);
+        }
+      } else {
+        // Swipe right - previous question
+        if (currentQuestionIndex > 0) {
+          setCurrentQuestionIndex(currentQuestionIndex - 1);
+        } else {
+          handleBack();
+        }
+      }
+    }
+
+    touchStartX.current = 0;
+    touchStartY.current = 0;
+  };
+
   // Load forms when component mounts or userRole changes
   useEffect(() => {
     const loadForms = async () => {
@@ -249,12 +288,12 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     switch (question.type) {
       case "rating":
         return (
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 sm:gap-3 justify-center py-4">
             {[1, 2, 3, 4, 5].map((star) => (
               <button
                 key={star}
                 onClick={() => setAnswers({ ...answers, [question.id]: star })}
-                className={`text-4xl transition-colors ${
+                className={`text-3xl sm:text-4xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center rounded ${
                   answers[question.id] >= star
                     ? "text-yellow-400"
                     : "text-gray-300"
@@ -362,16 +401,16 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
         const currentValue = answers[question.id] || 5;
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-sm text-gray-500">1</span>
-              <div className="flex gap-2">
+            <div className="flex items-center justify-center gap-1 sm:gap-2">
+              <span className="text-xs sm:text-sm text-gray-500">1</span>
+              <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2">
                 {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
                   <button
                     key={num}
                     onClick={() =>
                       setAnswers({ ...answers, [question.id]: num })
                     }
-                    className={`w-10 h-10 rounded border-2 transition-all ${
+                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded border-2 transition-all flex-shrink-0 min-h-[44px] min-w-[44px] ${
                       answers[question.id] === num
                         ? "border-green-500 bg-green-500 text-white"
                         : "border-gray-300 hover:border-green-300"
@@ -381,7 +420,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                   </button>
                 ))}
               </div>
-              <span className="text-sm text-gray-500">10</span>
+              <span className="text-xs sm:text-sm text-gray-500">10</span>
             </div>
           </div>
         );
@@ -394,6 +433,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               setAnswers({ ...answers, [question.id]: e.target.value })
             }
             placeholder="Type your answer here..."
+            className="h-12 sm:h-10 text-base"
           />
         );
 
@@ -406,6 +446,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
             }
             placeholder="Type your answer here..."
             rows={5}
+            className="text-base"
           />
         );
 
@@ -417,11 +458,11 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   // Show form list if no form is selected
   if (!selectedForm) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-          <h2 className="text-2xl">Submit Feedback</h2>
-          <p className="text-gray-600 mt-1">
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
+          <h2 className="text-xl sm:text-2xl">Submit Feedback</h2>
+          <p className="text-gray-600 mt-1 text-sm sm:text-base">
             Complete your assigned feedback forms
           </p>
         </div>
@@ -452,65 +493,63 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               >
                 {/* Form Image */}
                 {form.imageUrl && (
-                  <div className="relative h-48 w-full overflow-hidden bg-gray-100">
+                  <div className="relative h-32 sm:h-48 w-full overflow-hidden bg-gray-100">
                     <img
                       src={form.imageUrl}
                       alt={form.title}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className="absolute bottom-4 left-4 right-4">
-                      <div className="flex items-center gap-2 mb-2">
+                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
                         <Badge
                           variant="outline"
-                          className="bg-white/90 backdrop-blur-sm border-green-200 text-green-700"
+                          className="bg-white/90 backdrop-blur-sm border-green-200 text-green-700 text-xs"
                         >
                           {form.category}
                         </Badge>
-                        <div className="flex items-center gap-1 text-white bg-orange-600/90 backdrop-blur-sm px-2 py-1 rounded">
+                        <div className="flex items-center gap-1 text-white bg-orange-600/90 backdrop-blur-sm px-2 py-1 rounded text-xs">
                           <Clock className="w-3 h-3" />
-                          <span className="text-xs">Due {form.dueDate}</span>
+                          <span>Due {form.dueDate}</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
-                <CardHeader>
+                <CardHeader className="pb-3 sm:pb-6">
                   <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CardTitle>{form.title}</CardTitle>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
+                        <CardTitle className="text-base sm:text-lg leading-tight break-words">{form.title}</CardTitle>
                         {!form.imageUrl && (
-                          <>
-                            <Badge
-                              variant="outline"
-                              className="border-green-200"
-                            >
-                              {form.category}
-                            </Badge>
-                          </>
+                          <Badge
+                            variant="outline"
+                            className="border-green-200 self-start text-xs"
+                          >
+                            {form.category}
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-gray-600">
+                      <p className="text-sm text-gray-600 line-clamp-2 break-words">
                         {form.description}
                       </p>
                     </div>
                     {!form.imageUrl && (
-                      <div className="flex items-center gap-1 text-orange-600">
+                      <div className="flex items-center gap-1 text-orange-600 ml-2 flex-shrink-0">
                         <Clock className="w-4 h-4" />
-                        <span className="text-sm">Due {form.dueDate}</span>
+                        <span className="text-xs sm:text-sm">Due {form.dueDate}</span>
                       </div>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between">
+                <CardContent className="pt-0">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <ClipboardList className="w-4 h-4" />
                       <span>{form.questionCount || form.questions.length} questions</span>
                     </div>
                     <Button
-                      className="bg-green-500 hover:bg-green-600"
+                      className="bg-green-500 hover:bg-green-600 h-10 sm:h-9 min-h-[40px] w-full sm:w-auto"
                       onClick={() => handleSelectForm(form)}
                     >
                       Start Feedback
@@ -533,8 +572,12 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     currentQuestionIndex === selectedForm.questions.length - 1;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-50">
-      <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+    <div
+      className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-50"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
         {/* University Header Banner */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
           <div className="bg-gradient-to-r from-green-600 to-lime-600 px-8 py-6">
@@ -589,9 +632,9 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
           </div>
 
           {/* Progress Section */}
-          <div className="px-8 py-5 bg-gradient-to-r from-green-50 to-lime-50">
+          <div className="px-4 sm:px-8 py-4 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
             <div className="space-y-3">
-              <div className="flex justify-between items-center text-sm">
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 text-sm">
                 <span className="text-gray-700">
                   Question{" "}
                   <span className="text-green-600">
@@ -608,7 +651,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               </div>
               <p className="text-xs text-gray-500 flex items-center gap-1">
                 <svg
-                  className="w-3.5 h-3.5"
+                  className="w-3.5 h-3.5 flex-shrink-0"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -620,30 +663,30 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                     d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
                   />
                 </svg>
-                All responses are confidential and secure
+                <span className="break-words">All responses are confidential and secure</span>
               </p>
             </div>
           </div>
         </div>
 
         {/* Question Card */}
-        <div className="bg-white rounded-xl shadow-md border border-green-100 p-8">
-          <div className="space-y-6">
+        <div className="bg-white rounded-xl shadow-md border border-green-100 p-4 sm:p-8">
+          <div className="space-y-4 sm:space-y-6">
             {/* Question Header */}
             <div className="pb-4 border-b border-gray-100">
               <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-lime-500 flex items-center justify-center text-white">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-lime-500 flex items-center justify-center text-white text-sm sm:text-base">
                   {currentQuestionIndex + 1}
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-lg text-gray-900 mb-1">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base sm:text-lg text-gray-900 mb-1 leading-tight break-words">
                     {currentQuestion.question}
                     {currentQuestion.required && (
                       <span className="text-red-500 ml-1.5">*</span>
                     )}
                   </h3>
                   {currentQuestion.description && (
-                    <p className="text-sm text-gray-500 mt-2 leading-relaxed">
+                    <p className="text-sm text-gray-500 mt-2 leading-relaxed break-words">
                       {currentQuestion.description}
                     </p>
                   )}
@@ -657,8 +700,8 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
         </div>
 
         {/* Navigation Footer */}
-        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-8 py-5">
-          <div className="flex justify-between items-center">
+        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-4 sm:px-8 py-4 sm:py-5">
+          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 sm:gap-0">
             <Button
               variant="outline"
               onClick={() => {
@@ -668,13 +711,18 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                   handleBack();
                 }
               }}
-              className="border-gray-300 hover:bg-gray-50 px-6"
+              className="border-gray-300 hover:bg-gray-50 px-6 h-12 sm:h-10 flex-1 sm:flex-initial min-h-[44px]"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              {currentQuestionIndex === 0 ? "Back to Forms" : "Previous"}
+              <span className="hidden sm:inline">
+                {currentQuestionIndex === 0 ? "Back to Forms" : "Previous"}
+              </span>
+              <span className="sm:hidden">
+                {currentQuestionIndex === 0 ? "Back" : "Prev"}
+              </span>
             </Button>
 
-            <div className="text-sm text-gray-500">
+            <div className="text-center text-sm text-gray-500 order-first sm:order-none">
               {isLastQuestion
                 ? "Ready to submit"
                 : `${
@@ -685,19 +733,21 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
             {isLastQuestion ? (
               <Button
                 onClick={handleSubmit}
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-8 shadow-md"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-8 shadow-md h-12 sm:h-10 flex-1 sm:flex-initial min-h-[44px]"
               >
                 <Send className="w-4 h-4 mr-2" />
-                Submit Feedback
+                <span className="hidden sm:inline">Submit Feedback</span>
+                <span className="sm:hidden">Submit</span>
               </Button>
             ) : (
               <Button
                 onClick={() =>
                   setCurrentQuestionIndex(currentQuestionIndex + 1)
                 }
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-8"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-8 h-12 sm:h-10 flex-1 sm:flex-initial min-h-[44px]"
               >
-                Next Question
+                <span className="hidden sm:inline">Next Question</span>
+                <span className="sm:hidden">Next</span>
                 <svg
                   className="w-4 h-4 ml-2"
                   fill="none"

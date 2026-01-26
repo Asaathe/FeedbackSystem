@@ -504,70 +504,6 @@ export function SignupPage({
             showPassword={showPassword}
             onTogglePassword={togglePasswordVisibility}
           />
-
-          {/* Password strength indicator */}
-          {formData.password && (
-            <div className="mt-2">
-              <div className="flex space-x-1">
-                {[1, 2, 3, 4, 5].map((level) => (
-                  <div
-                    key={level}
-                    className={`h-1 flex-1 rounded ${
-                      level <= passwordStrength
-                        ? strengthColors[passwordStrength - 1] || "bg-gray-300"
-                        : "bg-gray-300"
-                    }`}
-                  />
-                ))}
-              </div>
-              <p className="text-xs text-gray-600 mt-1">
-                Password strength:{" "}
-                {passwordStrength > 0 ? strengthLabels[passwordStrength - 1] : "Very Weak"}
-              </p>
-              <div className="text-xs text-gray-500 mt-1">
-                <p>Requirements:</p>
-                <div className="flex flex-wrap gap-2 mt-1">
-                  <span
-                    className={
-                      formData.password.length >= 8 ? "text-green-600" : ""
-                    }
-                  >
-                    8+ chars
-                  </span>
-                  <span
-                    className={
-                      /[A-Z]/.test(formData.password) ? "text-green-600" : ""
-                    }
-                  >
-                    Uppercase
-                  </span>
-                  <span
-                    className={
-                      /[a-z]/.test(formData.password) ? "text-green-600" : ""
-                    }
-                  >
-                    Lowercase
-                  </span>
-                  <span
-                    className={
-                      /\d/.test(formData.password) ? "text-green-600" : ""
-                    }
-                  >
-                    Number
-                  </span>
-                  <span
-                    className={
-                      /[!@#$%^&*(),.?":{}|<>]/.test(formData.password)
-                        ? "text-green-600"
-                        : ""
-                    }
-                  >
-                    Special char
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
         <div className="flex-1">
           <InputField
@@ -580,16 +516,6 @@ export function SignupPage({
             showPassword={showConfirmPassword}
             onTogglePassword={toggleConfirmPasswordVisibility}
           />
-          {formData.confirmPassword &&
-            formData.password !== formData.confirmPassword && (
-              <p className="text-red-500 text-xs mt-1">
-                Passwords do not match
-              </p>
-            )}
-          {formData.confirmPassword &&
-            formData.password === formData.confirmPassword && (
-            <p className="text-green-500 text-xs mt-1">Passwords match</p>
-          )}
         </div>
       </div>
 

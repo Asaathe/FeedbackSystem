@@ -152,7 +152,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
               value={formData.email}
               onChange={handleChange}
               autoComplete="email"
-              className={`border rounded-lg w-full p-2 placeholder-gray-400 focus:ring-2 focus:outline-none ${
+              className={`border rounded-lg w-full p-2 placeholder-gray-400 focus:ring-2 focus:outline-none text-base ${
                 errors.email
                   ? "border-red-500 focus:ring-red-400"
                   : "border-gray-300 focus:ring-green-400"
@@ -179,7 +179,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
                 value={formData.password}
                 onChange={handleChange}
                 autoComplete="current-password"
-                className={`border rounded-lg w-full p-2 pr-12 placeholder-gray-400 focus:ring-2 focus:outline-none ${
+                className={`border rounded-lg w-full p-2 pr-12 placeholder-gray-400 focus:ring-2 focus:outline-none text-base ${
                   errors.password
                     ? "border-red-500 focus:ring-red-400"
                     : "border-gray-300 focus:ring-green-400"
@@ -239,7 +239,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium text-center flex items-center justify-center"
+            className="w-full bg-green-500 text-white py-2 rounded-lg hover:bg-green-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition font-medium text-center flex items-center justify-center min-h-[44px] text-base"
           >
             {isLoading ? (
               <div className="flex items-center">

@@ -974,7 +974,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
 
     db.query(query, params, (err, results) => {
       if (err) {
-        console.error("❌ Database error:", err);
+        console.error("Database error:", err);
         return res.status(500).json({
           success: false,
           message: "Database error",
@@ -982,7 +982,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
         });
       }
 
-      console.log(`✅ Found ${results.length} users`);
+      console.log(` Found ${results.length} users`);
 
       const users = results.map((user) => {
         const formattedUser = {
@@ -1021,7 +1021,7 @@ app.get("/api/users/filter", verifyToken, (req, res) => {
       });
     });
   } catch (error) {
-    console.error("❌ Get filtered users error:", error);
+    console.error(" Get filtered users error:", error);
     res.status(500).json({
       success: false,
       message: "Internal server error",
@@ -1205,7 +1205,7 @@ app.get("/api/users", verifyToken, (req, res) => {
       LEFT JOIN Instructors i ON u.id = i.user_id
       LEFT JOIN Alumni a ON u.id = a.user_id
       LEFT JOIN Employers e ON u.id = e.user_id
-      WHERE 1=1
+      WHERE u.role != 'admin'
     `;
 
     const params = [];
@@ -1237,7 +1237,7 @@ app.get("/api/users", verifyToken, (req, res) => {
         });
       }
 
-      let countQuery = `SELECT COUNT(*) as total FROM Users u WHERE 1=1`;
+      let countQuery = `SELECT COUNT(*) as total FROM Users u WHERE u.role != 'admin'`;
       const countParams = [];
 
       if (search) {
@@ -4644,10 +4644,10 @@ app.use((req, res) => {
 });
 
 app.listen(port, () => {
-  console.log(`🔧 Starting server...`);
+  console.log(` Starting server...`);
   console.log(` Secure server is running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`✅ Server startup complete`);
+  console.log(`Server startup complete`);
 });
 
 module.exports = app;

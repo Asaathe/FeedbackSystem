@@ -1175,53 +1175,53 @@ export function UserManagement() {
             <CardContent>
               <div className="grid gap-3">
                 {paginatedPendingUsers.map((user) => (
-                  <div 
+                  <div
                     key={user.id}
-                    className="flex items-center justify-between p-4 bg-white rounded-lg border border-yellow-200 hover:border-yellow-300 transition-all"
+                    className="flex items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-yellow-200 hover:border-yellow-300 transition-all"
                   >
-                    <div className="flex items-center gap-4 flex-1">
-                      <Avatar className="w-12 h-12">
-                        <AvatarFallback className="bg-yellow-100 text-yellow-700">
+                    <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                      <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
+                        <AvatarFallback className="bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
                           {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p>{user.name}</p>
-                          <Badge variant="secondary" className={getRoleBadgeColor(user.role)}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-medium text-gray-900 truncate text-sm sm:text-base">{user.name}</p>
+                          <Badge variant="secondary" className={`${getRoleBadgeColor(user.role)} text-xs`}>
                             {user.role}
                           </Badge>
                         </div>
-                        <p className="text-sm text-gray-600">{user.email}</p>
-                        <p className="text-sm text-gray-500">{getPendingInfo(user)}</p>
+                        <p className="text-xs sm:text-sm text-gray-600 truncate">{user.email}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{getPendingInfo(user)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 sm:gap-2 ml-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-blue-200 text-blue-600 hover:bg-blue-50"
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px]"
                         onClick={() => handleViewDetails(user)}
                       >
-                        <Edit className="w-4 h-4 mr-1" />
-                        View
+                        <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline ml-1">View</span>
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-green-500 hover:bg-green-600"
+                        className="bg-green-500 hover:bg-green-600 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px]"
                         onClick={() => handleApproveClick(user)}
                       >
-                        <CheckCircle className="w-4 h-4 mr-1" />
-                        Approve
+                        <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline ml-1">Approve</span>
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-red-200 text-red-600 hover:bg-red-50"
+                        className="border-red-200 text-red-600 hover:bg-red-50 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px]"
                         onClick={() => handleRejectClick(user)}
                       >
-                        <XCircle className="w-4 h-4 mr-1" />
-                        Reject
+                        <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />
+                        <span className="hidden sm:inline ml-1">Reject</span>
                       </Button>
                     </div>
                   </div>
@@ -1230,32 +1230,35 @@ export function UserManagement() {
 
               {/* Pagination for pending approvals */}
               {totalPendingPages > 1 && (
-                <div className="flex items-center justify-between mt-4 pt-4 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPendingPage(prev => Math.max(prev - 1, 1))}
-                    disabled={pendingPage === 1}
-                    className="text-gray-600 hover:text-gray-800"
-                  >
-                    <ChevronLeft className="w-4 h-4 mr-1" />
-                    Previous
-                  </Button>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <span className="text-sm text-gray-600 text-center sm:text-left">
+                      Page {pendingPage} of {totalPendingPages}
+                    </span>
+                    <div className="flex items-center justify-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPendingPage(prev => Math.max(prev - 1, 1))}
+                        disabled={pendingPage === 1}
+                        className="text-gray-600 hover:text-gray-800 h-9 min-h-[36px] px-3"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-1" />
+                        <span className="hidden sm:inline">Previous</span>
+                      </Button>
 
-                  <span className="text-sm text-gray-600">
-                    Page {pendingPage} of {totalPendingPages}
-                  </span>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setPendingPage(prev => Math.min(prev + 1, totalPendingPages))}
-                    disabled={pendingPage === totalPendingPages}
-                    className="text-gray-600 hover:text-gray-800"
-                  >
-                    Next
-                    <ChevronRight className="w-4 h-4 mr-1" />
-                  </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setPendingPage(prev => Math.min(prev + 1, totalPendingPages))}
+                        disabled={pendingPage === totalPendingPages}
+                        className="text-gray-600 hover:text-gray-800 h-9 min-h-[36px] px-3"
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="w-4 h-4 mr-1" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -1273,12 +1276,12 @@ export function UserManagement() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="min-w-[200px]">User</TableHead>
+                  <TableHead className="min-w-[200px]">Email</TableHead>
+                  <TableHead className="min-w-[100px]">Role</TableHead>
+                  <TableHead className="min-w-[120px]">Department</TableHead>
+                  <TableHead className="min-w-[100px]">Status</TableHead>
+                  <TableHead className="text-right min-w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
