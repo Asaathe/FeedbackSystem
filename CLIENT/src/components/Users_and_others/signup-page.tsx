@@ -233,12 +233,11 @@ export function SignupPage({
       }
 
       if (data.token && data.user) {
-        // Store token securely in sessionStorage
-        sessionStorage.setItem("authToken", data.token);
-        sessionStorage.setItem("userData", JSON.stringify(data.user));
-        // Store expiration time
-        const expirationTime = new Date().getTime() + 24 * 60 * 60 * 1000; // 24 hours
-        sessionStorage.setItem("tokenExpiration", expirationTime.toString());
+        // Do not store token for pending users - they need admin approval first
+        // sessionStorage.setItem("authToken", data.token);
+        // sessionStorage.setItem("userData", JSON.stringify(data.user));
+        // const expirationTime = new Date().getTime() + 24 * 60 * 60 * 1000; // 24 hours
+        // sessionStorage.setItem("tokenExpiration", expirationTime.toString());
 
         setSuccessMessage(
           "Account created successfully! Please wait for admin approval before logging in."
@@ -248,7 +247,9 @@ export function SignupPage({
         });
         setShowSuccessDialog(true);
 
-        
+        // Do not call onSignupSuccess to avoid logging in pending users
+        // onSignupSuccess(data.user.role);
+
       } else {
         setErrors({ general: "Registration failed - no token received" });
         toast.error("Registration failed", {

@@ -818,6 +818,14 @@ app.post("/api/auth/refresh", verifyToken, (req, res) => {
     }
 
     const user = results[0];
+
+    // Check if user is active
+    if (user.status !== 'active') {
+      return res.status(403).json({
+        success: false,
+        message: "Account is pending approval",
+      });
+    }
     const userResponse = {
       id: user.id,
       email: user.email,
