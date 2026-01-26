@@ -394,6 +394,27 @@ export function FormBuilder({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
 
+  // Wizard States
+  const [currentWizardStep, setCurrentWizardStep] = useState(1);
+  const totalWizardSteps = 3;
+
+  // Wizard Navigation Functions
+  const nextWizardStep = () => {
+    if (currentWizardStep < totalWizardSteps) {
+      setCurrentWizardStep(currentWizardStep + 1);
+    }
+  };
+
+  const prevWizardStep = () => {
+    if (currentWizardStep > 1) {
+      setCurrentWizardStep(currentWizardStep - 1);
+    }
+  };
+
+  const resetWizard = () => {
+    setCurrentWizardStep(1);
+  };
+
   // Loading State
   const [loading, setLoading] = useState(false);
 
@@ -1202,7 +1223,10 @@ const formData = {
 
                 <Dialog
                   open={publishDialogOpen}
-                  onOpenChange={setPublishDialogOpen}
+                  onOpenChange={(open) => {
+                    setPublishDialogOpen(open);
+                    if (!open) resetWizard();
+                  }}
                 >
                   <DialogTrigger asChild>
                     <Button
@@ -1218,27 +1242,57 @@ const formData = {
                     <DialogHeader>
                       <DialogTitle>{isPublished ? "Update Feedback Form" : "Publish Feedback Form"}</DialogTitle>
                       <DialogDescription>
-                        {isPublished ? "Review your changes before updating the form" : "Review your form before publishing"}
+                        {isPublished ? "Review your changes before updating the form" : "Configure your form settings before publishing"}
                       </DialogDescription>
+                      {/* Wizard Progress */}
+                      <div className="flex items-center justify-center space-x-4 py-4">
+                        {Array.from({ length: totalWizardSteps }, (_, i) => i + 1).map((step) => (
+                          <div key={step} className="flex items-center">
+                            <div
+                              className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                                step === currentWizardStep
+                                  ? "bg-green-500 text-white"
+                                  : step < currentWizardStep
+                                  ? "bg-green-100 text-green-600"
+                                  : "bg-gray-200 text-gray-500"
+                              }`}
+                            >
+                              {step}
+                            </div>
+                            {step < totalWizardSteps && (
+                              <div
+                                className={`w-12 h-0.5 mx-2 ${
+                                  step < currentWizardStep ? "bg-green-500" : "bg-gray-200"
+                                }`}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      {/* Step Titles */}
+                      <div className="text-center">
+                        <h3 className="text-lg font-semibold">
+                          {currentWizardStep === 1 && "Target Audience"}
+                          {currentWizardStep === 2 && "Schedule (Optional)"}
+                          {currentWizardStep === 3 && "Summary & Publish"}
+                        </h3>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {currentWizardStep === 1 && "Select who will receive this feedback form"}
+                          {currentWizardStep === 2 && "Set when respondents can submit their feedback"}
+                          {currentWizardStep === 3 && "Review your settings and publish the form"}
+                        </p>
+                      </div>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
-                      {/* Configuration Grid */}
-                      <div className="grid grid-cols-1 gap-4">
-                        {/* Target Audience Card */}
+                      {/* Step 1: Target Audience */}
+                      {currentWizardStep === 1 && (
                         <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
                           <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2 text-blue-700">
-                                <Target className="w-4 h-4" />
-                                <span className="text-sm font-medium">
-                                  Target Audience
-                                </span>
-                              </div>
-                              <div>
-                                <span className="text-sm font-medium">
-                                  Target Audience
-                                </span>
-                              </div>
+                            <div className="flex items-center gap-2 text-blue-700">
+                              <Target className="w-4 h-4" />
+                              <span className="text-sm font-medium">
+                                Target Audience
+                              </span>
                             </div>
                           </CardHeader>
                           <CardContent className="pt-0 space-y-4">
@@ -1497,8 +1551,10 @@ const formData = {
                             )}
                           </CardContent>
                         </Card>
+                      )}
 
-                        {/* Submission Schedule Card */}
+                      {/* Step 2: Schedule */}
+                      {currentWizardStep === 2 && (
                         <Card className="border-purple-100 bg-gradient-to-br from-purple-50 to-pink-50">
                           <CardHeader className="pb-3">
                             <div className="flex items-center gap-2 text-purple-700">
@@ -1581,64 +1637,65 @@ const formData = {
                               </div>
                             </div>
                           </CardContent>
-                        </Card>
-                      </div>
 
-                      {/* Schedule Preview */}
-                      {(submissionSchedule.startDate ||
-                        submissionSchedule.endDate) && (
-                        <Card className="border-purple-200 bg-purple-50/50">
-                          <CardContent className="py-3">
-                            <div className="flex items-center gap-3">
-                              <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
-                              <div>
-                                <p className="text-sm font-medium text-purple-900">
-                                  Schedule Active
-                                </p>
-                                <p className="text-sm text-purple-700">
-                                  {submissionSchedule.startDate &&
-                                  submissionSchedule.endDate
-                                    ? `From ${new Date(
-                                        submissionSchedule.startDate +
-                                          "T" +
-                                          (submissionSchedule.startTime ||
-                                            "00:00")
-                                      ).toLocaleString()} to ${new Date(
-                                        submissionSchedule.endDate +
-                                          "T" +
-                                          (submissionSchedule.endTime ||
-                                            "23:59")
-                                      ).toLocaleString()}`
-                                    : submissionSchedule.startDate
-                                    ? `Opens ${new Date(
-                                        submissionSchedule.startDate +
-                                          "T" +
-                                          (submissionSchedule.startTime ||
-                                            "00:00")
-                                      ).toLocaleString()}`
-                                    : `Closes ${new Date(
-                                        submissionSchedule.endDate +
-                                          "T" +
-                                          (submissionSchedule.endTime ||
-                                            "23:59")
-                                      ).toLocaleString()}`}
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
+                          {/* Schedule Preview */}
+                          {(submissionSchedule.startDate ||
+                            submissionSchedule.endDate) && (
+                            <Card className="border-purple-200 bg-purple-50/50">
+                              <CardContent className="py-3">
+                                <div className="flex items-center gap-3">
+                                  <Clock className="w-4 h-4 text-purple-600 flex-shrink-0" />
+                                  <div>
+                                    <p className="text-sm font-medium text-purple-900">
+                                      Schedule Active
+                                    </p>
+                                    <p className="text-sm text-purple-700">
+                                      {submissionSchedule.startDate &&
+                                      submissionSchedule.endDate
+                                        ? `From ${new Date(
+                                            submissionSchedule.startDate +
+                                              "T" +
+                                              (submissionSchedule.startTime ||
+                                                "00:00")
+                                          ).toLocaleString()} to ${new Date(
+                                            submissionSchedule.endDate +
+                                              "T" +
+                                              (submissionSchedule.endTime ||
+                                                "23:59")
+                                          ).toLocaleString()}`
+                                        : submissionSchedule.startDate
+                                        ? `Opens ${new Date(
+                                            submissionSchedule.startDate +
+                                              "T" +
+                                              (submissionSchedule.startTime ||
+                                                "00:00")
+                                          ).toLocaleString()}`
+                                        : `Closes ${new Date(
+                                            submissionSchedule.endDate +
+                                              "T" +
+                                              (submissionSchedule.endTime ||
+                                                "23:59")
+                                          ).toLocaleString()}`}
+                                    </p>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
                         </Card>
                       )}
 
-                      {/* Form Summary */}
-                      <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
-                        <CardHeader className="pb-3">
-                          <div className="flex items-center gap-2 text-green-700">
-                            <FileText className="w-4 h-4" />
-                            <span className="text-sm font-medium">
-                              Form Summary
-                            </span>
-                          </div>
-                        </CardHeader>
+                      {/* Step 3: Summary */}
+                      {currentWizardStep === 3 && (
+                        <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 text-green-700">
+                              <FileText className="w-4 h-4" />
+                              <span className="text-sm font-medium">
+                                Form Summary
+                              </span>
+                            </div>
+                          </CardHeader>
                         <CardContent className="space-y-3">
                           <div>
                             <h3 className="text-base font-semibold">
@@ -1676,31 +1733,60 @@ const formData = {
                           </div>
                         </CardContent>
                       </Card>
+                      )}
 
+                      {/* Wizard Navigation */}
                       <div className="flex items-center justify-between pt-4 border-t">
                         <div className="flex-1">
-                          {(!formTarget || !formTitle.trim() || questions.length === 0) && (
+                          {currentWizardStep === 1 && (!formTarget || !formTitle.trim() || questions.length === 0) && (
                             <div className="text-sm text-red-600 space-y-1">
                               {!formTitle.trim() && <p>• Please enter a form title</p>}
                               {questions.length === 0 && <p>• Please add at least one question</p>}
                               {!formTarget && <p>• Please select a target audience</p>}
                             </div>
                           )}
-                          {formTarget && formTitle.trim() && questions.length > 0 && (
+                          {currentWizardStep === 1 && formTarget && formTitle.trim() && questions.length > 0 && (
                             <p className="text-sm text-blue-900">
-                              <strong>{isPublished ? "Ready to update!" : "Ready to publish!"}</strong> This form will
-                              be available to {formTarget.toLowerCase()}.
+                              <strong>Ready to proceed!</strong> Target audience configured.
+                            </p>
+                          )}
+                          {currentWizardStep === 2 && (
+                            <p className="text-sm text-purple-900">
+                              <strong>Optional:</strong> Set submission schedule or proceed to summary.
+                            </p>
+                          )}
+                          {currentWizardStep === 3 && (
+                            <p className="text-sm text-green-900">
+                              <strong>{isPublished ? "Ready to update!" : "Ready to publish!"}</strong> Review your settings and publish the form.
                             </p>
                           )}
                         </div>
                         <div className="flex gap-3 ml-4">
-                          <Button
-                            className="bg-green-600 hover:bg-green-700"
-                            onClick={publishForm}
-                            disabled={loading || !formTarget || !formTitle.trim() || questions.length === 0}
-                          >
-                            {loading ? "Saving..." : (isPublished ? "Update Now" : "Publish Now")}
-                          </Button>
+                          {currentWizardStep > 1 && (
+                            <Button
+                              variant="outline"
+                              onClick={prevWizardStep}
+                            >
+                              Previous
+                            </Button>
+                          )}
+                          {currentWizardStep < totalWizardSteps ? (
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={nextWizardStep}
+                              disabled={currentWizardStep === 1 && (!formTarget || !formTitle.trim() || questions.length === 0)}
+                            >
+                              Next
+                            </Button>
+                          ) : (
+                            <Button
+                              className="bg-green-600 hover:bg-green-700"
+                              onClick={publishForm}
+                              disabled={loading || !formTarget || !formTitle.trim() || questions.length === 0}
+                            >
+                              {loading ? "Saving..." : (isPublished ? "Update Now" : "Publish Now")}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </div>
