@@ -1231,33 +1231,30 @@ export function UserManagement() {
               {/* Pagination for pending approvals */}
               {totalPendingPages > 1 && (
                 <div className="mt-4 pt-4 border-t">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <span className="text-sm text-gray-600 text-center sm:text-left">
+                  <div className="flex items-center justify-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPendingPage(prev => Math.max(prev - 1, 1))}
+                      disabled={pendingPage === 1}
+                      className="text-gray-600 hover:text-gray-800 h-9 min-h-[36px] px-3"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+
+                    <span className="text-sm text-gray-600">
                       Page {pendingPage} of {totalPendingPages}
                     </span>
-                    <div className="flex items-center justify-center gap-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPendingPage(prev => Math.max(prev - 1, 1))}
-                        disabled={pendingPage === 1}
-                        className="text-gray-600 hover:text-gray-800 h-9 min-h-[36px] px-3"
-                      >
-                        <ChevronLeft className="w-4 h-4 mr-1" />
-                        <span className="hidden sm:inline">Previous</span>
-                      </Button>
 
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setPendingPage(prev => Math.min(prev + 1, totalPendingPages))}
-                        disabled={pendingPage === totalPendingPages}
-                        className="text-gray-600 hover:text-gray-800 h-9 min-h-[36px] px-3"
-                      >
-                        <span className="hidden sm:inline">Next</span>
-                        <ChevronRight className="w-4 h-4 mr-1" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setPendingPage(prev => Math.min(prev + 1, totalPendingPages))}
+                      disabled={pendingPage === totalPendingPages}
+                      className="text-gray-600 hover:text-gray-800 h-9 min-h-[36px] px-3"
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               )}

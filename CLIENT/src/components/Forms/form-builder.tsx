@@ -178,6 +178,7 @@ export function FormBuilder({
   // Current selected audience type and course year section
   const [selectedAudienceType, setSelectedAudienceType] =
     useState<string>("All Users");
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
   const [selectedCourseYearSection, setSelectedCourseYearSection] = useState<string>("");
 
   // Dynamic audience options based on user type
@@ -269,13 +270,33 @@ export function FormBuilder({
               const target = form.target_audience || "All Users";
               if (target === "All Users") {
                 setSelectedAudienceType("All Users");
+                setSelectedDepartment("");
                 setSelectedCourseYearSection("");
               } else if (target.includes(" - ")) {
-                const [audienceType, courseYearSection] = target.split(" - ");
+                const parts = target.split(" - ");
+                const audienceType = parts[0];
+                const courseYearSection = parts[parts.length - 1]; // Last part is the section
                 setSelectedAudienceType(audienceType);
                 setSelectedCourseYearSection(courseYearSection);
+                if (audienceType === "Students") {
+                  // Determine department based on section
+                  if (courseYearSection.startsWith("ABM") ||
+                      courseYearSection.startsWith("HUMSS") ||
+                      courseYearSection.startsWith("STEM") ||
+                      courseYearSection.startsWith("ICT")) {
+                    setSelectedDepartment("Senior High Department");
+                  } else if (courseYearSection.startsWith("BS") ||
+                             courseYearSection.startsWith("BTVTEd")) {
+                    setSelectedDepartment("College Department");
+                  } else {
+                    setSelectedDepartment("");
+                  }
+                } else {
+                  setSelectedDepartment("");
+                }
               } else {
                 setSelectedAudienceType(target);
+                setSelectedDepartment("");
                 setSelectedCourseYearSection("");
               }
 
@@ -856,7 +877,17 @@ const formData = {
 
   // Effect to fetch recipients when selection changes
   useEffect(() => {
-    if (selectedAudienceType !== "All Users" && selectedCourseYearSection) {
+    if (selectedAudienceType === "Students") {
+      if (selectedDepartment && selectedCourseYearSection) {
+        fetchRecipients(selectedAudienceType, selectedCourseYearSection);
+      } else {
+        // Clear recipients when department or section is not selected
+        setRecipients([]);
+        setFilteredRecipients([]);
+        setSelectedRecipients(new Set());
+        setSelectAllRecipients(true);
+      }
+    } else if (selectedAudienceType !== "All Users" && selectedCourseYearSection) {
       fetchRecipients(selectedAudienceType, selectedCourseYearSection);
     } else if (selectedAudienceType !== "All Users" && !selectedCourseYearSection) {
       // Clear recipients when course/year/section is not selected
@@ -867,7 +898,7 @@ const formData = {
     } else if (selectedAudienceType === "All Users") {
       setFormTarget("All Users");
     }
-  }, [selectedAudienceType, selectedCourseYearSection]);
+  }, [selectedAudienceType, selectedDepartment, selectedCourseYearSection]);
 
   // Effect to filter recipients based on search term
   useEffect(() => {
@@ -1305,6 +1336,7 @@ const formData = {
                                 value={selectedAudienceType}
                                 onValueChange={(value) => {
                                   setSelectedAudienceType(value);
+                                  setSelectedDepartment("");
                                   setSelectedCourseYearSection("");
                                   setFormTarget(value);
                                 }}
@@ -1325,8 +1357,36 @@ const formData = {
                               </Select>
                             </div>
 
+                            {/* Department Selection for Students */}
+                            {selectedAudienceType === "Students" && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">
+                                  Department
+                                </Label>
+                                <Select
+                                  value={selectedDepartment}
+                                  onValueChange={(value) => {
+                                    setSelectedDepartment(value);
+                                    setSelectedCourseYearSection("");
+                                  }}
+                                >
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue placeholder="Select department" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Senior High Department">
+                                      Senior High Department
+                                    </SelectItem>
+                                    <SelectItem value="College Department">
+                                      College Department
+                                    </SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
                             {/* Course Year Section Selection */}
-                            {selectedAudienceType !== "All Users" && (
+                            {selectedAudienceType !== "All Users" && (selectedAudienceType !== "Students" || selectedDepartment) && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium">
                                   {selectedAudienceType === "Students" && "Course Year Section"}
@@ -1352,11 +1412,26 @@ const formData = {
                                   </SelectTrigger>
                                   <SelectContent>
                                     {selectedAudienceType === "Students" && (
-                                      courseYearSections.map((section) => (
-                                        <SelectItem key={section} value={section}>
-                                          {section}
-                                        </SelectItem>
-                                      ))
+                                      courseYearSections
+                                        .filter((section) => {
+                                          if (selectedDepartment === "Senior High Department") {
+                                            return section === "All Students" ||
+                                                   section.startsWith("ABM") ||
+                                                   section.startsWith("HUMSS") ||
+                                                   section.startsWith("STEM") ||
+                                                   section.startsWith("ICT");
+                                          } else if (selectedDepartment === "College Department") {
+                                            return section === "All Students" ||
+                                                   section.startsWith("BS") ||
+                                                   section.startsWith("BTVTEd");
+                                          }
+                                          return false; // If no department selected, show none
+                                        })
+                                        .map((section) => (
+                                          <SelectItem key={section} value={section}>
+                                            {section}
+                                          </SelectItem>
+                                        ))
                                     )}
                                     {selectedAudienceType === "Instructors" && (
                                       instructorDepartments.map((dept) => (
@@ -1395,7 +1470,7 @@ const formData = {
                             </div>
 
                             {/* Recipients Preview with Search */}
-                            {selectedAudienceType !== "All Users" && selectedCourseYearSection && (
+                            {selectedAudienceType !== "All Users" && ((selectedAudienceType === "Students" && selectedDepartment && selectedCourseYearSection) || (selectedAudienceType !== "Students" && selectedCourseYearSection)) && (
                               <Collapsible>
                                 <CollapsibleTrigger asChild>
                                   <Button
