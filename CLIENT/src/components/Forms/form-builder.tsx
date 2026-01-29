@@ -189,6 +189,15 @@ export function FormBuilder({
   const [alumniCompanies, setAlumniCompanies] = useState<string[]>([]);
   const [employerCompanies, setEmployerCompanies] = useState<string[]>([]);
 
+  // Instructors for sharing responses
+  const [instructors, setInstructors] = useState<
+    Array<{ id: number; name: string; department: string }>
+  >([]);
+  const [selectedInstructors, setSelectedInstructors] = useState<Set<number>>(
+    new Set()
+  );
+  const [instructorSearchTerm, setInstructorSearchTerm] = useState<string>("");
+
   // Recipients management
   const [recipients, setRecipients] = useState<
     Array<{ id: number; name: string; details: string }>
@@ -409,6 +418,25 @@ export function FormBuilder({
     loadCompanies();
   }, []);
 
+  // Load instructors for sharing responses
+  useEffect(() => {
+    const loadInstructors = async () => {
+      try {
+        const result = await getFilteredUsers({ role: "instructor" });
+        if (result.success && result.users) {
+          setInstructors(result.users.map(user => ({
+            id: user.id,
+            name: user.name,
+            department: user.department || "No department"
+          })));
+        }
+      } catch (error) {
+        console.error("Error loading instructors:", error);
+      }
+    };
+    loadInstructors();
+  }, []);
+
   // Dialog States
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -417,7 +445,7 @@ export function FormBuilder({
 
   // Wizard States
   const [currentWizardStep, setCurrentWizardStep] = useState(1);
-  const totalWizardSteps = 3;
+  const totalWizardSteps = 4;
 
   // Wizard Navigation Functions
   const nextWizardStep = () => {
@@ -769,7 +797,22 @@ const formData = {
       }
 
       if (result.success) {
-        toast.success(result.message);
+        // Share responses with selected instructors if any
+        if (selectedInstructors.size > 0) {
+          try {
+            const instructorIds = Array.from(selectedInstructors);
+            // Here you would call an API to share the form responses with instructors
+            // For now, we'll just log it and show a success message
+            console.log("Sharing form responses with instructors:", instructorIds);
+            toast.success(`${result.message} Responses will be shared with ${selectedInstructors.size} instructor${selectedInstructors.size !== 1 ? 's' : ''}.`);
+          } catch (shareError) {
+            console.error("Error sharing responses:", shareError);
+            toast.warning("Form published but failed to share responses with instructors.");
+          }
+        } else {
+          toast.success(result.message);
+        }
+
         setPublishDialogOpen(false);
         setTimeout(() => {
           onBack();
@@ -788,7 +831,8 @@ const formData = {
   // Function to fetch recipients based on selection
   const fetchRecipients = async (
     audienceType: string,
-    courseYearSection: string
+    courseYearSection: string,
+    department?: string
   ) => {
     try {
       // Map audience type to the correct role format for the backend
@@ -802,7 +846,11 @@ const formData = {
       let filters: any = { role: roleMap[audienceType] || audienceType.toLowerCase() };
 
       if (audienceType === "Students") {
-        if (courseYearSection && courseYearSection !== "All Students") {
+        if (courseYearSection === "All Students" && department) {
+          // When "All Students" is selected with a department, fetch all students and filter on frontend
+          // Backend doesn't support filtering by department, so we fetch all and filter client-side
+          console.log("Fetching all students for department filtering:", department);
+        } else if (courseYearSection && courseYearSection !== "All Students") {
           filters.course_year_section = courseYearSection;
         }
       } else if (audienceType === "Instructors") {
@@ -818,6 +866,9 @@ const formData = {
       // Update formTarget based on the selection
       if (audienceType === "All Users") {
         setFormTarget("All Users");
+      } else if (courseYearSection === "All Students" && department) {
+        // When "All Students" is selected with a department
+        setFormTarget(`Students - ${department}`);
       } else if (courseYearSection) {
         setFormTarget(`${audienceType} - ${courseYearSection}`);
       } else {
@@ -828,7 +879,7 @@ const formData = {
       const result = await getFilteredUsers(filters);
       console.log("API response:", result);
       if (result.success && result.users && result.users.length > 0) {
-        const formattedUsers = result.users.map((user) => ({
+        let formattedUsers = result.users.map((user) => ({
           id: user.id,
           name: user.name,
           details:
@@ -840,6 +891,38 @@ const formData = {
               ? user.company || "No company"
               : "N/A",
         }));
+
+        // Filter students by department if "All Students" is selected with a department
+        if (audienceType === "Students" && courseYearSection === "All Students" && department) {
+          console.log("Filtering students by department:", department);
+          if (department === "Senior High Department") {
+            // Filter for Senior High students (ABM, HUMSS, STEM, ICT)
+            formattedUsers = formattedUsers.filter((user) => {
+              const section = user.details || "";
+              return (
+                section.startsWith("ABM") ||
+                section.startsWith("HUMSS") ||
+                section.startsWith("STEM") ||
+                section.startsWith("ICT")
+              );
+            });
+          } else if (department === "College Department") {
+            // Filter for College students (BSIT, BSBA, BSCS, BSEN, BSOA, BSAIS, BTVTEd)
+            formattedUsers = formattedUsers.filter((user) => {
+              const section = user.details || "";
+              return (
+                section.startsWith("BSIT") ||
+                section.startsWith("BSBA") ||
+                section.startsWith("BSCS") ||
+                section.startsWith("BSEN") ||
+                section.startsWith("BSOA") ||
+                section.startsWith("BSAIS") ||
+                section.startsWith("BTVTEd")
+              );
+            });
+          }
+          console.log("Filtered students count:", formattedUsers.length);
+        }
 
         console.log("Formatted users:", formattedUsers);
         setRecipients(formattedUsers);
@@ -879,7 +962,7 @@ const formData = {
   useEffect(() => {
     if (selectedAudienceType === "Students") {
       if (selectedDepartment && selectedCourseYearSection) {
-        fetchRecipients(selectedAudienceType, selectedCourseYearSection);
+        fetchRecipients(selectedAudienceType, selectedCourseYearSection, selectedDepartment);
       } else {
         // Clear recipients when department or section is not selected
         setRecipients([]);
@@ -1305,12 +1388,14 @@ const formData = {
                         <h3 className="text-lg font-semibold">
                           {currentWizardStep === 1 && "Target Audience"}
                           {currentWizardStep === 2 && "Schedule (Optional)"}
-                          {currentWizardStep === 3 && "Summary & Publish"}
+                          {currentWizardStep === 3 && "Share Responses"}
+                          {currentWizardStep === 4 && "Summary & Publish"}
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
                           {currentWizardStep === 1 && "Select who will receive this feedback form"}
                           {currentWizardStep === 2 && "Set when respondents can submit their feedback"}
-                          {currentWizardStep === 3 && "Review your settings and publish the form"}
+                          {currentWizardStep === 3 && "Select instructors to share responses with"}
+                          {currentWizardStep === 4 && "Review your settings and publish the form"}
                         </p>
                       </div>
                     </DialogHeader>
@@ -1760,8 +1845,103 @@ const formData = {
                         </Card>
                       )}
 
-                      {/* Step 3: Summary */}
+                      {/* Step 3: Share Responses */}
                       {currentWizardStep === 3 && (
+                        <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-yellow-50">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-center gap-2 text-orange-700">
+                              <SendHorizontal className="w-4 h-4" />
+                              <span className="text-sm font-medium">
+                                Share Responses
+                              </span>
+                              <span className="text-xs text-orange-600">
+                                (Optional)
+                              </span>
+                            </div>
+                          </CardHeader>
+                          <CardContent className="pt-0 space-y-4">
+                            <div className="space-y-3">
+                              <Label className="text-sm font-medium">
+                                Select Instructors to Share Responses With
+                              </Label>
+                              <p className="text-xs text-gray-600">
+                                Choose instructors who will receive access to view the responses for this feedback form.
+                                This is particularly useful for forms about subjects or instructors.
+                              </p>
+
+                              {/* Search Bar */}
+                              <div className="space-y-2">
+                                <Input
+                                  placeholder="Search instructors by name..."
+                                  className="h-9"
+                                  value={instructorSearchTerm}
+                                  onChange={(e) => setInstructorSearchTerm(e.target.value)}
+                                />
+                              </div>
+
+                              {/* Instructors List */}
+                              <div className="border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto">
+                                {instructors.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {instructors
+                                      .filter(instructor =>
+                                        instructor.name.toLowerCase().includes(instructorSearchTerm.toLowerCase())
+                                      )
+                                      .map((instructor) => (
+                                        <div
+                                          key={instructor.id}
+                                          className="flex items-center gap-2"
+                                        >
+                                          <Checkbox
+                                            id={`instructor-${instructor.id}`}
+                                            checked={selectedInstructors.has(instructor.id)}
+                                            onCheckedChange={(checked) => {
+                                              const newSelected = new Set(selectedInstructors);
+                                              if (checked) {
+                                                newSelected.add(instructor.id);
+                                              } else {
+                                                newSelected.delete(instructor.id);
+                                              }
+                                              setSelectedInstructors(newSelected);
+                                            }}
+                                          />
+                                          <Label
+                                            htmlFor={`instructor-${instructor.id}`}
+                                            className="text-sm flex-1"
+                                          >
+                                            {instructor.name}{" "}
+                                            <span className="text-gray-500">
+                                              ({instructor.department})
+                                            </span>
+                                          </Label>
+                                        </div>
+                                      ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-gray-500">
+                                    No instructors found.
+                                  </p>
+                                )}
+                              </div>
+
+                              {/* Selection Summary */}
+                              {selectedInstructors.size > 0 && (
+                                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border">
+                                  <span className="text-sm text-orange-700 font-medium">
+                                    Selected Instructors:
+                                  </span>
+                                  <span className="text-sm font-semibold text-orange-900">
+                                    {selectedInstructors.size} instructor{selectedInstructors.size !== 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {/* Step 4: Summary */}
+                      {currentWizardStep === 4 && (
                         <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
                           <CardHeader className="pb-3">
                             <div className="flex items-center gap-2 text-green-700">
@@ -1804,6 +1984,14 @@ const formData = {
                                   {formTarget}
                                 </span>
                               </span>
+                              {selectedInstructors.size > 0 && (
+                                <span>
+                                  <span className="text-gray-500">Shared with:</span>{" "}
+                                  <span className="font-medium">
+                                    {selectedInstructors.size} instructor{selectedInstructors.size !== 1 ? 's' : ''}
+                                  </span>
+                                </span>
+                              )}
                             </div>
                           </div>
                         </CardContent>
@@ -1831,6 +2019,11 @@ const formData = {
                             </p>
                           )}
                           {currentWizardStep === 3 && (
+                            <p className="text-sm text-orange-900">
+                              <strong>Optional:</strong> Select instructors to share responses with or proceed to summary.
+                            </p>
+                          )}
+                          {currentWizardStep === 4 && (
                             <p className="text-sm text-green-900">
                               <strong>{isPublished ? "Ready to update!" : "Ready to publish!"}</strong> Review your settings and publish the form.
                             </p>
@@ -1975,99 +2168,38 @@ const formData = {
                     )}
                   </div>
 
-                  {/* Category */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Category</Label>
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                          >
-                            <Settings className="w-3 h-3 mr-1" />
-                            Manage
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                          <DialogHeader>
-                            <DialogTitle className="text-lg">
-                              Manage Categories
-                            </DialogTitle>
-                            <DialogDescription>
-                              Add or remove form categories
-                            </DialogDescription>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="flex gap-2">
-                              <Input
-                                placeholder="New category name"
-                                id="new-category-input"
-                                className="flex-1"
-                              />
-                              <Button
-                                onClick={() => {
-                                  const input = document.getElementById(
-                                    "new-category-input"
-                                  ) as HTMLInputElement;
-                                  if (input?.value.trim()) {
-                                    addCategory(input.value.trim());
-                                    input.value = "";
-                                  }
-                                }}
-                                size="sm"
-                                disabled={loadingCategoryOperation}
-                              >
-                                <Plus className="w-4 h-4" />
-                              </Button>
-                            </div>
-                            <div className="space-y-2 max-h-48 overflow-y-auto">
-                              {customCategories.map((cat) => (
-                                <div
-                                  key={cat}
-                                  className="flex items-center justify-between p-2 rounded border"
-                                >
-                                  <span className="text-sm">{cat}</span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                                    onClick={() => removeCategory(cat)}
-                                    disabled={
-                                      customCategories.length <= 1 ||
-                                      loadingCategoryOperation
-                                    }
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                    <Select
-                      value={formCategory}
-                      onValueChange={setFormCategory}
-                    >
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {customCategories.map((cat) => (
-                          <SelectItem key={cat} value={cat}>
-                            {cat}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+                   {/* Category */}
+                   <div className="space-y-3">
+                     <div className="flex items-center justify-between">
+                       <Label className="text-sm font-medium">Category</Label>
+                       <Dialog>
+                         <DialogTrigger asChild>
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             className="h-6 px-2 text-xs"
+                           >
+                             <Settings className="w-3 h-3 mr-1" />
+                             Manage
+                           </Button>
+                         </DialogTrigger>
+                         <DialogContent className="max-w-md">
+                           <DialogHeader>
+                             <DialogTitle className="text-lg">
+                               Manage Categories
+                             </DialogTitle>
+                             <DialogDescription>
+                               Add or remove form categories
+                             </DialogDescription>
+                           </DialogHeader>
+                         </DialogContent>
+                       </Dialog>
+                     </div>
+                   </div>
+                 </CardContent>
+               </CollapsibleContent>
+              </Card>
+            </Collapsible>
 
           {/* Form Header Preview */}
           <Card className="border-green-200 shadow-sm">

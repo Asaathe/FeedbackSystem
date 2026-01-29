@@ -86,12 +86,11 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
     }
   };
 
-  const menuItems = role === 'admin' 
+  const menuItems = role === 'admin'
     ? [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'forms', label: 'Feedback Forms', icon: FileText },
         { id: 'users', label: 'User Management', icon: Users },
-        
       ]
     : role === 'employer'
     ? [
