@@ -42,80 +42,7 @@ interface FeedbackForm {
   questionCount?: number;
 }
 
-// ============================================================
-// TODO: BACKEND - Feedback Submission
-// ============================================================
-// Get Assigned Forms:
-// - GET /api/forms/assigned?userId={userId}
-//   Response: [{ id, title, description, category, dueDate, imageUrl, questions: [...] }]
-//
-// Get Single Form:
-// - GET /api/forms/:formId
-//   Response: { id, title, description, questions: [...] }
-//
-// Submit Response:
-// - POST /api/forms/:formId/responses
-//   Request: { answers: [{ questionId, answer, rating }], responseTimeSeconds }
-//   Response: { id, message: 'Response submitted successfully' }
-//
-// Save Draft (Optional):
-// - POST /api/forms/:formId/drafts
-//   Request: { answers: [...], isComplete: false }
-//   Response: { draftId, message: 'Draft saved' }
-// ============================================================
-//
-// ============================================================
-// BACKEND FLOW EXPLANATION - Form Creation to Submission
-// ============================================================
-//
-// 1. ADMIN CREATES FORM (Form Builder Component):
-//    - Admin designs form with title, description, image, questions
-//    - Image URL is uploaded/stored during form creation
-//    - POST /api/forms
-//      Request: {
-//        title, description, category, imageUrl (uploaded image),
-//        questions: [...], targetRoles: ['student', 'instructor', etc.],
-//        dueDate, scheduledPublishDate
-//      }
-//      Response: { formId, message: 'Form created successfully' }
-//
-// 2. FORM ASSIGNMENT TO STAKEHOLDERS:
-//    - When Admin publishes form, it gets assigned to target stakeholders
-//    - POST /api/forms/:formId/publish
-//      Request: {
-//        targetRoles: ['student', 'instructor', 'alumni', 'employer', 'staff'],
-//        specificUsers: [userId1, userId2...] (optional),
-//        dueDate
-//      }
-//      Response: { assignedCount, message: 'Form assigned to 150 users' }
-//
-// 3. STAKEHOLDERS RECEIVE FORMS:
-//    - Each stakeholder (Student, Instructor, Alumni, Employer, Staff) sees
-//      their assigned forms when they open Feedback Submission
-//    - GET /api/forms/assigned?userId={userId}&role={userRole}
-//      Response: [{
-//        id, title, description, category, dueDate,
-//        imageUrl (SAME image uploaded by Admin in Form Builder),
-//        questions: [...]
-//      }]
-//
-// 4. STAKEHOLDER SUBMITS FEEDBACK:
-//    - User fills out form and submits
-//    - POST /api/forms/:formId/responses
-//      Request: {
-//        userId, userRole,
-//        answers: [{ questionId, answer, rating }],
-//        completedAt, responseTimeSeconds
-//      }
-//      Response: { responseId, message: 'Response submitted successfully' }
-//
-// KEY POINTS:
-// - The imageUrl created in Form Builder is stored in database
-// - Same imageUrl is sent to ALL stakeholders who receive the form
-// - Forms can be role-specific (e.g., only for Students or Instructors)
-// - All stakeholders (Students, Instructors, Alumni, Employers, Staff)
-//   use the SAME submission interface
-// ============================================================
+
 
 interface FeedbackSubmissionProps {
   userRole?: string;
@@ -485,30 +412,47 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
           </div>
         ) : (
           /* Assigned Forms */
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {availableForms.map((form) => (
               <Card
                 key={form.id}
                 className="border-green-100 hover:shadow-md transition-shadow overflow-hidden"
               >
                 {/* Form Image */}
-                {form.imageUrl && (
+                {form.imageUrl ? (
                   <div className="relative h-32 sm:h-48 w-full overflow-hidden bg-gray-100">
                     <img
                       src={form.imageUrl}
                       alt={form.title}
                       className="w-full h-full object-cover"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 z-10">
                       <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
                         <Badge
                           variant="outline"
-                          className="bg-white/90 backdrop-blur-sm border-green-200 text-green-700 text-xs"
+                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
                         >
                           {form.category}
                         </Badge>
-                        <div className="flex items-center gap-1 text-white bg-orange-600/90 backdrop-blur-sm px-2 py-1 rounded text-xs">
+                        <div className="flex items-center gap-1 text-white bg-orange-600 px-2 py-1 rounded text-xs shadow-md">
+                          <Clock className="w-3 h-3" />
+                          <span>Due {form.dueDate}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="relative h-32 sm:h-48 w-full overflow-hidden bg-gradient-to-br from-green-50 to-lime-50 flex items-center justify-center">
+                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                        <Badge
+                          variant="outline"
+                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
+                        >
+                          {form.category}
+                        </Badge>
+                        <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
                           <Clock className="w-3 h-3" />
                           <span>Due {form.dueDate}</span>
                         </div>
@@ -521,25 +465,11 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                     <div className="flex-1 min-w-0">
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
                         <CardTitle className="text-base sm:text-lg leading-tight break-words">{form.title}</CardTitle>
-                        {!form.imageUrl && (
-                          <Badge
-                            variant="outline"
-                            className="border-green-200 self-start text-xs"
-                          >
-                            {form.category}
-                          </Badge>
-                        )}
                       </div>
                       <p className="text-sm text-gray-600 line-clamp-2 break-words">
                         {form.description}
                       </p>
                     </div>
-                    {!form.imageUrl && (
-                      <div className="flex items-center gap-1 text-orange-600 ml-2 flex-shrink-0">
-                        <Clock className="w-4 h-4" />
-                        <span className="text-xs sm:text-sm">Due {form.dueDate}</span>
-                      </div>
-                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
@@ -549,10 +479,11 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                       <span>{form.questionCount || form.questions.length} questions</span>
                     </div>
                     <Button
-                      className="bg-green-500 hover:bg-green-600 h-10 sm:h-9 min-h-[40px] w-full sm:w-auto"
+                      className="bg-green-500 hover:bg-green-600 h-7 px-1.5 sm:px-2 text-xs whitespace-nowrap"
                       onClick={() => handleSelectForm(form)}
                     >
-                      Start Feedback
+                      <span className="hidden sm:inline">Start Feedback</span>
+                      <span className="sm:hidden">Start</span>
                     </Button>
                   </div>
                 </CardContent>
@@ -593,7 +524,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               <Button
                 variant="ghost"
                 onClick={handleBack}
-                className="text-white hover:bg-white/20 border border-white/30"
+                className="text-white hover:bg-white/20 border border-white/30 h-10 px-3 sm:px-4 text-sm whitespace-nowrap"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Exit Form
@@ -711,12 +642,10 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                   handleBack();
                 }
               }}
-              className="border-gray-300 hover:bg-gray-50 px-6 h-12 sm:h-10 flex-1 sm:flex-initial min-h-[44px]"
+              className="border-gray-300 hover:bg-gray-50 px-3 sm:px-4 h-10 text-sm whitespace-nowrap w-auto"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              <span className="hidden sm:inline">
-                {currentQuestionIndex === 0 ? "Back to Forms" : "Previous"}
-              </span>
+              
               <span className="sm:hidden">
                 {currentQuestionIndex === 0 ? "Back" : "Prev"}
               </span>
@@ -733,21 +662,21 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
             {isLastQuestion ? (
               <Button
                 onClick={handleSubmit}
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-8 shadow-md h-12 sm:h-10 flex-1 sm:flex-initial min-h-[44px]"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-3 sm:px-4 shadow-md h-10 text-sm whitespace-nowrap w-auto"
               >
                 <Send className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Submit Feedback</span>
-                <span className="sm:hidden">Submit</span>
+                
               </Button>
             ) : (
               <Button
                 onClick={() =>
                   setCurrentQuestionIndex(currentQuestionIndex + 1)
                 }
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-8 h-12 sm:h-10 flex-1 sm:flex-initial min-h-[44px]"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-3 sm:px-4 h-10 text-sm whitespace-nowrap w-auto"
               >
-                <span className="hidden sm:inline">Next Question</span>
-                <span className="sm:hidden">Next</span>
+                
+                <span className="sm:hidden ml-2">Next</span>
                 <svg
                   className="w-4 h-4 ml-2"
                   fill="none"

@@ -70,6 +70,7 @@ interface User {
   year?: string;
   employeeId?: string;
   graduationYear?: string;
+  profilePicture?: string;
 }
 
 export function UserManagement() {
@@ -94,6 +95,7 @@ export function UserManagement() {
     department: '',
     phoneNumber: '',
     address: '',
+    profilePicture: '',
     // Role-specific fields
     studentId: '',
     course_year_section: '',
@@ -111,6 +113,7 @@ export function UserManagement() {
     status: '',
     phoneNumber: '',
     address: '',
+    profilePicture: '',
     // Role-specific fields
     studentId: '',
     course_year_section: '',
@@ -344,6 +347,7 @@ export function UserManagement() {
         department: newUser.department,
         phoneNumber: newUser.phoneNumber || undefined,
         address: newUser.address || undefined,
+        profilePicture: newUser.profilePicture || undefined,
         // Role-specific fields
         ...(newUser.role.toLowerCase() === 'student' && {
           studentId: newUser.studentId,
@@ -391,6 +395,7 @@ export function UserManagement() {
         department: '',
         phoneNumber: '',
         address: '',
+        profilePicture: '',
         studentId: '',
         course_year_section: '',
         employeeId: '',
@@ -491,6 +496,7 @@ export function UserManagement() {
       status: user.status,
       phoneNumber: user.phoneNumber || '',
       address: user.address || '',
+      profilePicture: user.profilePicture || '',
       studentId: user.studentId || '',
       course_year_section: user.courseYrSection || '',
       employeeId: user.employeeId || '',
@@ -512,6 +518,7 @@ export function UserManagement() {
       status: user.status,
       phoneNumber: user.phoneNumber || '',
       address: user.address || '',
+      profilePicture: user.profilePicture || '',
       studentId: user.studentId || '',
       course_year_section: user.courseYrSection || '',
       employeeId: user.employeeId || '',
@@ -538,6 +545,7 @@ export function UserManagement() {
         status: editUser.status,
         phoneNumber: editUser.phoneNumber || undefined,
         address: editUser.address || undefined,
+        profilePicture: editUser.profilePicture || undefined,
         // Role-specific fields
         ...(editUser.role.toLowerCase() === 'student' && {
           studentId: editUser.studentId,
@@ -592,6 +600,7 @@ export function UserManagement() {
         status: selectedUser.status,
         phoneNumber: selectedUser.phoneNumber || '',
         address: selectedUser.address || '',
+        profilePicture: selectedUser.profilePicture || '',
         studentId: selectedUser.studentId || '',
         course_year_section: selectedUser.courseYrSection || '',
         employeeId: selectedUser.employeeId || '',
@@ -974,7 +983,55 @@ export function UserManagement() {
                   <div className="w-1 h-4 bg-green-500 rounded-full" />
                   <h4 className="text-sm text-gray-700">Basic Information</h4>
                 </div>
-                
+
+                {/* Profile Picture Upload */}
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <Avatar className="w-20 h-20 border-2 border-gray-200">
+                      {newUser.profilePicture ? (
+                        <img
+                          src={newUser.profilePicture}
+                          alt="Profile preview"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <AvatarFallback className="bg-gray-100 text-gray-500 text-xl">
+                          {newUser.fullName ? newUser.fullName.split(' ').map((n: string) => n[0]).join('') : '?'}
+                        </AvatarFallback>
+                      )}
+                    </Avatar>
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="profilePicture" className="cursor-pointer">
+                      <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span className="text-sm font-medium">Upload Photo</span>
+                      </div>
+                    </Label>
+                    <input
+                      id="profilePicture"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setNewUser({ ...newUser, profilePicture: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Recommended: 2x2 inch photo (JPG, PNG)</p>
+                  </div>
+                </div>
+
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="grid gap-2">
                     <Label htmlFor="fullName">Full Name *</Label>
@@ -1181,9 +1238,17 @@ export function UserManagement() {
                   >
                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
-                        <AvatarFallback className="bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
-                          {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
-                        </AvatarFallback>
+                        {user.profilePicture ? (
+                          <img
+                            src={user.profilePicture}
+                            alt={user.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
+                            {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
+                          </AvatarFallback>
+                        )}
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
@@ -1287,9 +1352,17 @@ export function UserManagement() {
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar>
-                          <AvatarFallback className="bg-green-100 text-green-700">
-                            {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
-                          </AvatarFallback>
+                          {user.profilePicture ? (
+                            <img
+                              src={user.profilePicture}
+                              alt={user.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <AvatarFallback className="bg-green-100 text-green-700">
+                              {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
+                            </AvatarFallback>
+                          )}
                         </Avatar>
                         <span>{user.name}</span>
                       </div>
@@ -1429,19 +1502,68 @@ export function UserManagement() {
               {/* User Header - Always Visible */}
               <div className="flex items-center justify-between gap-4 pb-4 border-b">
                 <div className="flex items-center gap-4">
-                  <Avatar className="w-16 h-16">
-                    <AvatarFallback className="bg-green-100 text-green-700 text-xl">
-                      {selectedUser.name?.split(' ').map((n: string) => n[0]).join('') || ''}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="w-16 h-16">
+                      {isEditMode ? (
+                        editUser.profilePicture ? (
+                          <img
+                            src={editUser.profilePicture}
+                            alt="Profile preview"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-green-100 text-green-700 text-xl">
+                            {editUser.fullName ? editUser.fullName.split(' ').map((n: string) => n[0]).join('') : '?'}
+                          </AvatarFallback>
+                        )
+                      ) : (
+                        selectedUser.profilePicture ? (
+                          <img
+                            src={selectedUser.profilePicture}
+                            alt="Profile"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-green-100 text-green-700 text-xl">
+                            {selectedUser.name?.split(' ').map((n: string) => n[0]).join('') || ''}
+                          </AvatarFallback>
+                        )
+                      )}
+                    </Avatar>
+                    {isEditMode && (
+                      <Label htmlFor="editProfilePicture" className="absolute -bottom-1 -right-1 cursor-pointer bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1.5 shadow-md transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                          <polyline points="17 8 12 3 7 8"></polyline>
+                          <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                      </Label>
+                    )}
+                    <input
+                      id="editProfilePicture"
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setEditUser({ ...editUser, profilePicture: reader.result as string });
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                    />
+                  </div>
                   <div>
                     <h3 className="text-xl">{isEditMode ? editUser.fullName : selectedUser.name}</h3>
                     <p className="text-gray-600">{isEditMode ? editUser.email : selectedUser.email}</p>
                   </div>
                 </div>
                 {!isEditMode && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     size="sm"
                     onClick={() => setIsEditMode(true)}
                     className="border-blue-500 text-blue-500 hover:bg-blue-50"

@@ -140,6 +140,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+
 // Rate limiting
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -155,7 +156,7 @@ const authLimiter = rateLimit({
 
 const formSubmissionLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 5,
+  max: 100,
   message: {
     success: false,
     message: "Too many form submissions, please try again later.",
@@ -4616,6 +4617,283 @@ app.use((error, req, res, next) => {
       errorId: errorId,
     });
   }
+});
+
+// ============================================================
+// SHARED RESPONSES ENDPOINTS
+// ============================================================
+
+// Share form responses with instructors
+app.post("/api/forms/:formId/share-responses", verifyToken, (req, res) => {
+  const formId = req.params.formId;
+  const userId = req.userId;
+  const { instructorIds } = req.body;
+
+  // Verify user is admin or form creator
+  const checkPermissionQuery = `
+    SELECT f.id, f.created_by
+    FROM Forms f
+    WHERE f.id = ? AND (f.created_by = ? OR ? IN (
+      SELECT id FROM Users WHERE role = 'admin'
+    ))
+  `;
+
+  db.query(
+    checkPermissionQuery,
+    [formId, userId, userId],
+    (err, permissionResults) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      if (permissionResults.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: "You don't have permission to share this form",
+        });
+      }
+
+      // Delete existing shares for this form
+      const deleteExistingQuery = `
+        DELETE FROM Shared_Responses WHERE form_id = ?
+      `;
+
+      db.query(deleteExistingQuery, [formId], (deleteErr) => {
+        if (deleteErr) {
+          console.error("Database error:", deleteErr);
+          return res.status(500).json({
+            success: false,
+            message: "Database error",
+          });
+        }
+
+        // Insert new shares
+        if (!instructorIds || instructorIds.length === 0) {
+          return res.json({
+            success: true,
+            message: "Form responses shared successfully",
+            sharedWith: 0,
+          });
+        }
+
+        const insertSharesQuery = `
+          INSERT INTO Shared_Responses (form_id, shared_with_instructor_id, shared_by)
+          VALUES ?
+        `;
+
+        const values = instructorIds.map((id) => `(${formId}, ${id}, ${userId})`).join(', ');
+
+        db.query(insertSharesQuery.replace('?', values), (insertErr) => {
+          if (insertErr) {
+            console.error("Database error:", insertErr);
+            return res.status(500).json({
+              success: false,
+              message: "Database error",
+            });
+          }
+
+          res.json({
+            success: true,
+            message: `Form responses shared with ${instructorIds.length} instructor(s)`,
+            sharedWith: instructorIds.length,
+          });
+        });
+      });
+    }
+  );
+});
+
+// Get shared responses for instructor
+app.get("/api/instructor/shared-responses", verifyToken, (req, res) => {
+  const userId = req.userId;
+
+  // Verify user is instructor
+  const checkRoleQuery = `
+    SELECT role FROM Users WHERE id = ?
+  `;
+
+  db.query(checkRoleQuery, [userId], (err, roleResults) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+
+    if (roleResults.length === 0 || roleResults[0].role !== 'instructor') {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only instructors can view shared responses.",
+      });
+    }
+
+    // Get shared forms with their responses
+    const query = `
+      SELECT 
+        sr.id,
+        sr.form_id,
+        f.title as form_title,
+        f.category,
+        f.target_audience,
+        sr.shared_by,
+        u.full_name as shared_by_name,
+        sr.shared_at,
+        COUNT(DISTINCT fr.id) as total_responses
+      FROM Shared_Responses sr
+      JOIN Forms f ON sr.form_id = f.id
+      JOIN Users u ON sr.shared_by = u.id
+      LEFT JOIN Form_Responses fr ON f.id = fr.form_id
+      WHERE sr.shared_with_instructor_id = ?
+      GROUP BY sr.id, sr.form_id, f.title, f.category, f.target_audience, sr.shared_by, u.full_name, sr.shared_at
+      ORDER BY sr.shared_at DESC
+    `;
+
+    db.query(query, [userId], (err, results) => {
+      if (err) {
+        console.error("Database error:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      // For each shared form, get the responses (anonymized)
+      const responsesWithDetails = results.map((sharedForm) => {
+        return {
+          id: sharedForm.id.toString(),
+          formId: sharedForm.form_id.toString(),
+          formTitle: sharedForm.form_title,
+          courseCode: sharedForm.category || '',
+          section: sharedForm.target_audience || '',
+          sharedBy: sharedForm.shared_by_name || 'Administrator',
+          sharedDate: new Date(sharedForm.shared_at).toLocaleDateString(),
+          totalResponses: sharedForm.total_responses || 0,
+          responses: [], // Will be loaded separately when viewing
+        };
+      });
+
+      res.json({
+        success: true,
+        responses: responsesWithDetails,
+      });
+    });
+  });
+});
+
+// Get responses for a specific shared form (anonymized)
+app.get("/api/instructor/shared-responses/:sharedId/responses", verifyToken, (req, res) => {
+  const userId = req.userId;
+  const sharedId = req.params.sharedId;
+
+  // Verify user is instructor and has access to this shared form
+  const checkAccessQuery = `
+    SELECT sr.form_id, f.title as form_title
+    FROM Shared_Responses sr
+    JOIN Forms f ON sr.form_id = f.id
+    WHERE sr.id = ? AND sr.shared_with_instructor_id = ?
+  `;
+
+  db.query(checkAccessQuery, [sharedId, userId], (err, accessResults) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+
+    if (accessResults.length === 0) {
+      return res.status(403).json({
+        success: false,
+        message: "You don't have access to these responses",
+      });
+    }
+
+    const formId = accessResults[0].form_id;
+
+    // Get questions for this form
+    const questionsQuery = `
+      SELECT id, question_text, question_type
+      FROM Questions
+      WHERE form_id = ?
+      ORDER BY order_index
+    `;
+
+    db.query(questionsQuery, [formId], (questionsErr, questionsResults) => {
+      if (questionsErr) {
+        console.error("Database error:", questionsErr);
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      // Get responses (anonymized - no user info)
+      const responsesQuery = `
+        SELECT 
+          fr.id,
+          fr.submitted_at,
+          fr.response_data
+        FROM Form_Responses fr
+        WHERE fr.form_id = ?
+        ORDER BY fr.submitted_at DESC
+      `;
+
+      db.query(responsesQuery, [formId], (responsesErr, responsesResults) => {
+        if (responsesErr) {
+          console.error("Database error:", responsesErr);
+          return res.status(500).json({
+            success: false,
+            message: "Database error",
+          });
+        }
+
+        // Map responses with questions (anonymized)
+        const mappedResponses = responsesResults.map((response) => {
+          const responseData = JSON.parse(response.response_data);
+          const answers = questionsResults.map((question) => {
+            const answer = responseData[question.id.toString()];
+            let answerText = '';
+            let rating = undefined;
+            
+            if (Array.isArray(answer)) {
+              // Checkbox question - join selected values
+              answerText = answer.join(', ');
+            } else if (typeof answer === 'object' && answer !== null) {
+              // Object with value/text or rating
+              answerText = answer.value || answer.text || '';
+              rating = answer.rating !== undefined ? parseInt(answer.rating) : undefined;
+            } else if (answer !== undefined && answer !== null) {
+              // Simple value
+              answerText = answer.toString();
+            }
+            
+            return {
+              question: question.question_text,
+              answer: answerText,
+              rating: rating,
+            };
+          });
+
+          return {
+            id: response.id.toString(),
+            answers: answers,
+            submittedDate: new Date(response.submitted_at).toLocaleDateString(),
+          };
+        });
+
+        res.json({
+          success: true,
+          responses: mappedResponses,
+        });
+      });
+    });
+  });
 });
 
 app.use((err, req, res, next) => {

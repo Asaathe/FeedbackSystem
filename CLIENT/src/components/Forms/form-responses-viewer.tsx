@@ -58,6 +58,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -196,6 +198,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       );
       setFilteredResponses(filtered);
     }
+    setCurrentPage(1); // Reset to first page when search changes
   }, [responses, searchQuery]);
 
   const loadFormAndResponses = async () => {
@@ -474,10 +477,10 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                 return (
                   <Card key={question.id} className="overflow-hidden">
                     <CardHeader>
-                      <CardTitle className="text-lg truncate" title={question.question}>
+                      <CardTitle className="text-lg leading-relaxed" title={question.question}>
                         Q{index + 1}: {question.question}
                       </CardTitle>
-                      <p className="text-sm text-gray-600 truncate">
+                      <p className="text-sm text-gray-600">
                         {(question.question_type || question.type).replace('-', ' ').toUpperCase()} • {analytics.count} responses
                       </p>
                     </CardHeader>
@@ -509,10 +512,10 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                 return (
                   <Card key={question.id} className="overflow-hidden">
                     <CardHeader>
-                      <CardTitle className="text-lg truncate" title={question.question}>
+                      <CardTitle className="text-lg leading-relaxed" title={question.question}>
                         Q{index + 1}: {question.question}
                       </CardTitle>
-                      <p className="text-sm text-gray-600 truncate">
+                      <p className="text-sm text-gray-600">
                         {(question.question_type || question.type).replace('-', ' ').toUpperCase()} • {analytics.totalAnswers} responses
                       </p>
                     </CardHeader>
@@ -631,44 +634,71 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[200px]">User</TableHead>
-                    <TableHead className="min-w-[120px]">Role</TableHead>
-                    <TableHead className="min-w-[150px]">Submitted</TableHead>
-                    <TableHead className="min-w-[100px]">Actions</TableHead>
+                    <TableHead className="min-w-[200px] px-6 py-4 text-center">User</TableHead>
+                    <TableHead className="min-w-[120px] px-6 py-4 text-center">Role</TableHead>
+                    <TableHead className="min-w-[150px] px-6 py-4 text-center">Submitted</TableHead>
+                    <TableHead className="min-w-[100px] px-6 py-4 text-center">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredResponses.map((response) => (
-                    <TableRow key={response.id}>
-                      <TableCell>
-                        <div className="min-w-0">
-                          <p className="font-medium truncate">{response.respondent_name || "Anonymous"}</p>
-                          <p className="text-sm text-gray-500 truncate">{response.respondent_email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="truncate max-w-[100px]">
-                          {response.respondent_role || "Unknown"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {new Date(response.submitted_at).toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleViewResponse(response)}
-                          className="w-full sm:w-auto"
-                        >
-                          View Response
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredResponses
+                    .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                    .map((response) => (
+                      <TableRow key={response.id}>
+                        <TableCell className="px-6 py-4 text-center">
+                          <div className="min-w-0">
+                            <p className="font-medium truncate">{response.respondent_name || "Anonymous"}</p>
+                            <p className="text-sm text-gray-500 truncate">{response.respondent_email}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-center">
+                          <Badge variant="outline" className="truncate max-w-[100px]">
+                            {response.respondent_role || "Unknown"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-center whitespace-nowrap">
+                          {new Date(response.submitted_at).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleViewResponse(response)}
+                            className="w-full sm:w-auto"
+                          >
+                            View Response
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                 </TableBody>
               </Table>
             </div>
+
+            {/* Pagination */}
+            {filteredResponses.length > itemsPerPage && (
+              <div className="flex items-center justify-center gap-4 px-6 py-4 border-t bg-gray-50">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                >
+                  &lt;
+                </Button>
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {Math.ceil(filteredResponses.length / itemsPerPage)}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.min(Math.ceil(filteredResponses.length / itemsPerPage), prev + 1))}
+                  disabled={currentPage === Math.ceil(filteredResponses.length / itemsPerPage)}
+                >
+                  &gt;
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -676,46 +706,44 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       {/* View Response Dialog */}
       <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col p-0 gap-0">
-          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />
               Response Details
             </DialogTitle>
           </DialogHeader>
-          
+
           {selectedResponse && form && (
             <div className="flex flex-col h-full overflow-hidden">
-              {/* User Info Card */}
-              <div className="px-6 py-4 bg-gray-50 border-b">
-                <div className="flex items-start gap-3">
-                  <div className="bg-blue-100 p-2 rounded-full flex-shrink-0">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-gray-900 truncate text-lg">
-                      {selectedResponse.respondent_name || "Anonymous"}
-                    </h3>
-                    <div className="flex flex-wrap items-center gap-2 mt-1">
-                      {selectedResponse.respondent_email && (
-                        <div className="flex items-center gap-1 text-sm text-gray-600">
-                          <Mail className="w-3 h-3" />
-                          <span className="truncate">{selectedResponse.respondent_email}</span>
-                        </div>
-                      )}
-                      {selectedResponse.respondent_role && (
-                        <>
-                          <span className="text-gray-400 hidden sm:inline">•</span>
-                          <Badge variant="secondary" className="text-xs flex-shrink-0">
+              {/* User Info Card - Fixed/Sticky */}
+              <div className="py-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b shrink-0">
+                <div className="px-6">
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-full flex-shrink-0 shadow-lg">
+                      <User className="w-7 h-7 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-center sm:text-left">
+                      <div className="flex flex-wrap items-center justify-start gap-2 mb-3">
+                        <h3 className="font-bold text-gray-900 text-xl">
+                          {selectedResponse.respondent_name || "Anonymous"}
+                        </h3>
+                        {selectedResponse.respondent_role && (
+                          <Badge variant="secondary" className="text-sm bg-blue-100 text-blue-700 border border-blue-200">
                             {selectedResponse.respondent_role}
                           </Badge>
-                        </>
-                      )}
-                      <span className="text-gray-400 hidden sm:inline">•</span>
-                      <div className="flex items-center gap-1 text-sm text-gray-600">
-                        <Calendar className="w-3 h-3" />
-                        <span className="whitespace-nowrap">
-                          {new Date(selectedResponse.submitted_at).toLocaleString()}
-                        </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center justify-start gap-4">
+                        {selectedResponse.respondent_email && (
+                          <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <Mail className="w-4 h-4 text-blue-500" />
+                            <span>{selectedResponse.respondent_email}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 text-sm text-gray-600">
+                          <Calendar className="w-4 h-4 text-indigo-500" />
+                          <span>{new Date(selectedResponse.submitted_at).toLocaleString()}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -725,27 +753,19 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
               {/* Scrollable Responses Area */}
               <div className="flex-1 overflow-hidden px-6 pb-6">
                 <h4 className="font-semibold mb-4 text-gray-800 pt-4">Question Responses</h4>
-                <div 
+                <div
                   className="overflow-y-auto pr-1 space-y-4"
-                  style={{ 
+                  style={{
                     maxHeight: 'calc(70vh - 180px)',
                   }}
                 >
                   {form.questions?.map((question, idx) => (
-                    <div key={question.id} className="bg-white rounded-lg p-4 border border-gray-200 hover:border-gray-300 transition-colors">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
-                        <p className="font-medium text-sm leading-relaxed flex-1">
-                          <span className="inline-block w-6 text-gray-500 font-bold">{idx + 1}.</span>
-                          {question.question}
-                        </p>
-                        <Badge 
-                          variant="secondary" 
-                          className="text-xs w-fit sm:w-auto flex-shrink-0 capitalize mt-1 sm:mt-0"
-                        >
-                          {(question.question_type || question.type).replace('-', ' ')}
-                        </Badge>
-                      </div>
-                      <div className="text-gray-800 bg-gray-50 rounded p-3 border border-gray-100">
+                    <div key={question.id} className="bg-white rounded-lg p-6 border border-gray-200 hover:border-gray-300 transition-colors">
+                      <p className="font-medium text-sm leading-relaxed mb-3">
+                        <span className="inline-block w-6 text-gray-500 font-bold">{idx + 1}.</span>
+                        {question.question}
+                      </p>
+                      <div className="text-gray-800 bg-gray-50 rounded p-4 border border-gray-100">
                         {renderResponseValue(question, selectedResponse.response_data[String(question.id)])}
                       </div>
                     </div>

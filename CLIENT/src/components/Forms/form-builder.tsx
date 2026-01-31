@@ -17,21 +17,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
-import { Switch } from "../ui/switch";
 import {
   Plus,
   Trash2,
-  GripVertical,
   Eye,
   Save,
   ArrowLeft,
   FileText,
   Target,
-  CheckSquare,
   Upload,
   X,
   Settings,
-  Copy,
   ChevronDown,
   ChevronUp,
   Star,
@@ -53,27 +49,8 @@ import {
   DialogTrigger,
 } from "../ui/dialog";
 import { toast } from "sonner";
-import {
-  getForms,
-  getForm,
-  createForm,
-  updateForm,
-  deleteForm,
-  duplicateForm,
-  getFormTemplates,
-  getFilteredUsers,
-  getFormCategories,
-  addFormCategory,
-  updateFormCategory,
-  deleteFormCategory,
-  assignFormToUsers,
-  deployForm,
-  getAlumniCompanies,
-  getEmployerCompanies,
-} from "../../services/formManagementService";
-import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { Checkbox } from "../ui/checkbox";
-import { EnhancedImage, validateImageFile } from "../../utils/imageUtils";
+import { EnhancedImage } from "../../utils/imageUtils";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import {
@@ -82,23 +59,22 @@ import {
   CollapsibleTrigger,
 } from "../ui/collapsible";
 
-interface FormQuestion {
-  id: string;
-  type:
-    | "multiple-choice"
-    | "rating"
-    | "text"
-    | "textarea"
-    | "checkbox"
-    | "dropdown"
-    | "linear-scale";
-  question: string;
-  description?: string;
-  required: boolean;
-  options?: string[];
-  min?: number;
-  max?: number;
-}
+// Custom hooks
+import { useFormSettings } from "./hooks/useFormSettings";
+import { useQuestions } from "./hooks/useQuestions";
+import { useRecipients } from "./hooks/useRecipients";
+import { usePublishWizard } from "./hooks/usePublishWizard";
+
+// Components
+import { QuestionCard } from "./components/QuestionCard";
+import { RecipientSelector } from "./components/RecipientSelector";
+import { CategoryManager } from "./components/CategoryManager";
+
+// Types
+import { QuestionTypeConfig, FormQuestion } from "./types/form";
+
+// Utils
+import { cleanQuestions, getDepartmentFromSection } from "./utils/formValidation";
 
 interface FormBuilderProps {
   onBack: () => void;
@@ -106,11 +82,11 @@ interface FormBuilderProps {
   isCustomFormTab?: boolean;
 }
 
-const questionTypes = [
+const questionTypes: QuestionTypeConfig[] = [
   { value: "text", label: "Short Text", icon: Type },
   { value: "textarea", label: "Long Text", icon: AlignLeft },
   { value: "multiple-choice", label: "Multiple Choice", icon: CheckCircle2 },
-  { value: "checkbox", label: "Checkboxes", icon: CheckSquare },
+  { value: "checkbox", label: "Checkboxes", icon: List },
   { value: "dropdown", label: "Dropdown", icon: List },
   { value: "rating", label: "Star Rating", icon: Star },
   { value: "linear-scale", label: "Linear Scale", icon: Sliders },
@@ -121,134 +97,114 @@ export function FormBuilder({
   formId,
   isCustomFormTab,
 }: FormBuilderProps) {
-  // Form Settings State
-  const [formTitle, setFormTitle] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formCategory, setFormCategory] = useState("");
-  const [formTarget, setFormTarget] = useState<string>("All Users");
-  const [formImage, setFormImage] = useState<string | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  // Form Settings Hook
+  const {
+    formTitle,
+    setFormTitle,
+    formDescription,
+    setFormDescription,
+    formCategory,
+    setFormCategory,
+    formTarget,
+    setFormTarget,
+    formImage,
+    setFormImage,
+    imageFile,
+    setImageFile,
+    isPublished,
+    setIsPublished,
+    customCategories,
+    databaseCategories,
+    loadingCategories,
+    loadingCategoryOperation,
+    submissionSchedule,
+    setSubmissionSchedule,
+    loading,
+    setLoading,
+    handleImageUpload,
+    removeImage,
+    addCategory,
+    removeCategory,
+    saveForm,
+    publishForm,
+  } = useFormSettings({ formId });
+
+  // Questions Hook
+  const {
+    questions,
+    activeQuestion,
+    setActiveQuestion,
+    addQuestion,
+    duplicateQuestion,
+    updateQuestion,
+    deleteQuestion,
+    moveQuestion,
+    addOption,
+    updateOption,
+    deleteOption,
+    loadQuestions,
+  } = useQuestions();
+
+  // Recipients Hook
+  const {
+    selectedAudienceType,
+    setSelectedAudienceType,
+    selectedDepartment,
+    setSelectedDepartment,
+    selectedCourseYearSection,
+    setSelectedCourseYearSection,
+    recipients,
+    filteredRecipients,
+    selectedRecipients,
+    selectAllRecipients,
+    searchTerm,
+    setSearchTerm,
+    alumniCompanies,
+    employerCompanies,
+    instructors,
+    filteredInstructors,
+    selectedInstructors,
+    instructorSearchTerm,
+    setInstructorSearchTerm,
+    courseYearSections,
+    instructorDepartments,
+    toggleRecipient,
+    toggleAllRecipients,
+    toggleInstructor,
+    assignToUsers,
+    deployToGroup,
+  } = useRecipients();
+
+  // Wizard Hook
+  const {
+    currentWizardStep,
+    totalWizardSteps,
+    nextWizardStep,
+    prevWizardStep,
+    resetWizard,
+  } = usePublishWizard(4);
+
+  // Dialog States
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
+  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
-  const [isPublished, setIsPublished] = useState(false);
-
-  // Dynamic Categories and Audiences State
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
-  const [databaseCategories, setDatabaseCategories] = useState<
-    { id: number; name: string; description?: string }[]
-  >([]);
-  const [loadingCategories, setLoadingCategories] = useState<boolean>(true);
-  const [loadingCategoryOperation, setLoadingCategoryOperation] =
-    useState<boolean>(false);
-  const [customAudiences, setCustomAudiences] = useState<string[]>([
-    "Students",
-    "Instructors",
-    "Alumni",
-    "Employers",
-  ]);
-
-  // Course Year Section options from signup page (Students)
-  const [courseYearSections, setCourseYearSections] = useState<string[]>([
-    "All Students",
-    // Grade 11
-    "ABM11-LOVE", "ABM11-HOPE", "ABM11-FAITH",
-    "HUMSS11-LOVE", "HUMSS11-HOPE", "HUMSS11-FAITH", "HUMSS11-JOY", "HUMSS11-GENEROSITY", "HUMSS11-HUMILITY", "HUMSS11-INTEGRITY", "HUMSS11-WISDOM",
-    "STEM11-HOPE", "STEM11-FAITH", "STEM11-JOY", "STEM11-GENEROSITY",
-    "ICT11-LOVE", "ICT11-HOPE",
-    // Grade 12
-    "ABM12-LOVE", "ABM12-HOPE", "ABM12-FAITH",
-    "HUMSS12-LOVE", "HUMSS12-HOPE", "HUMSS12-FAITH", "HUMSS12-JOY", "HUMSS12-GENEROSITY", "HUMSS12-HUMILITY",
-    "STEM12-LOVE", "STEM12-HOPE", "STEM12-FAITH", "STEM12-JOY", "STEM12-GENEROSITY",
-    "ICT12-LOVE", "ICT12-HOPE",
-    // College - BSIT
-    "BSIT-1A", "BSIT-1B", "BSIT-1C", "BSIT-2A", "BSIT-2B", "BSIT-2C", "BSIT-3A", "BSIT-3B", "BSIT-3C", "BSIT-4A", "BSIT-4B", "BSIT-4C",
-    // College - BSBA
-    "BSBA-1A", "BSBA-2A", "BSBA-3A", "BSBA-4A",
-    // College - BSCS
-    "BSCS-1A", "BSCS-2A", "BSCS-3A", "BSCS-4A",
-    // College - BSEN
-    "BSEN-1A", "BSEN-2A", "BSEN-3A", "BSEN-4A",
-    // College - BSOA
-    "BSOA-1A", "BSOA-2A", "BSOA-3A", "BSOA-4A",
-    // College - BSAIS
-    "BSAIS-1A", "BSAIS-2A", "BSAIS-3A", "BSAIS-4A",
-    // College - BTVTEd
-    "BTVTEd-1A", "BTVTEd-2A", "BTVTEd-3A", "BTVTEd-4A",
-  ]);
-
-  // Current selected audience type and course year section
-  const [selectedAudienceType, setSelectedAudienceType] =
-    useState<string>("All Users");
-  const [selectedDepartment, setSelectedDepartment] = useState<string>("");
-  const [selectedCourseYearSection, setSelectedCourseYearSection] = useState<string>("");
-
-  // Dynamic audience options based on user type
-  const [instructorDepartments, setInstructorDepartments] = useState<string[]>([
-    "Senior High Department",
-    "College Department",
-  ]);
-  const [alumniCompanies, setAlumniCompanies] = useState<string[]>([]);
-  const [employerCompanies, setEmployerCompanies] = useState<string[]>([]);
-
-  // Instructors for sharing responses
-  const [instructors, setInstructors] = useState<
-    Array<{ id: number; name: string; department: string }>
-  >([]);
-  const [selectedInstructors, setSelectedInstructors] = useState<Set<number>>(
-    new Set()
-  );
-  const [instructorSearchTerm, setInstructorSearchTerm] = useState<string>("");
-
-  // Recipients management
-  const [recipients, setRecipients] = useState<
-    Array<{ id: number; name: string; details: string }>
-  >([]);
-  const [filteredRecipients, setFilteredRecipients] = useState<
-    Array<{ id: number; name: string; details: string }>
-  >([]);
-  const [selectedRecipients, setSelectedRecipients] = useState<Set<number>>(
-    new Set()
-  );
-  const [selectAllRecipients, setSelectAllRecipients] = useState<boolean>(true);
-  const [searchTerm, setSearchTerm] = useState<string>("");
-
-  // Submission Schedule State
-  const [submissionSchedule, setSubmissionSchedule] = useState({
-    startDate: "",
-    endDate: "",
-    startTime: "",
-    endTime: "",
-  });
-
-  // Questions State
-  const [questions, setQuestions] = useState<FormQuestion[]>([]);
-  const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
 
   // Load existing form data when formId is provided
   useEffect(() => {
     const loadExistingForm = async () => {
       if (formId) {
-        console.log("🔄 Loading existing form with ID:", formId);
         try {
           // First check localStorage for unsaved changes
           const savedFormData = localStorage.getItem(`form_${formId}`);
-          console.log("📦 LocalStorage data found:", !!savedFormData);
           if (savedFormData) {
-            console.log("📦 Loading from localStorage");
             const formData = JSON.parse(savedFormData);
             setFormTitle(formData.title || "");
             setFormDescription(formData.description || "");
             setFormCategory(formData.category || "Academic");
             setFormTarget(formData.target || "All Users");
             setFormImage(formData.image || null);
-            setCustomCategories(formData.customCategories || []);
-            setCustomAudiences(
-              formData.customAudiences || [
-                "All Users",
-                "Students",
-                "Alumni",
-                "Instructors",
-              ]
-            );
             setSubmissionSchedule(
               formData.submissionSchedule || {
                 startDate: "",
@@ -257,17 +213,13 @@ export function FormBuilder({
                 endTime: "",
               }
             );
-            setQuestions(formData.questions || []);
-            setActiveQuestion(formData.questions?.[0]?.id || null);
-            console.log("✅ Form loaded from localStorage");
+            loadQuestions(formData.questions || []);
           } else {
             // Load from API if no localStorage data
-            console.log("🌐 Loading from API");
+            const { getForm } = await import("../../services/formManagementService");
             const result = await getForm(formId);
-            console.log("📡 API result:", result);
             if (result.success && result.form) {
               const form = result.form;
-              console.log("📋 Form data:", form);
               setFormTitle(form.title || "");
               setFormDescription(form.description || "");
               setFormCategory(form.category || "Academic");
@@ -284,22 +236,12 @@ export function FormBuilder({
               } else if (target.includes(" - ")) {
                 const parts = target.split(" - ");
                 const audienceType = parts[0];
-                const courseYearSection = parts[parts.length - 1]; // Last part is the section
+                const courseYearSection = parts[parts.length - 1];
                 setSelectedAudienceType(audienceType);
                 setSelectedCourseYearSection(courseYearSection);
                 if (audienceType === "Students") {
-                  // Determine department based on section
-                  if (courseYearSection.startsWith("ABM") ||
-                      courseYearSection.startsWith("HUMSS") ||
-                      courseYearSection.startsWith("STEM") ||
-                      courseYearSection.startsWith("ICT")) {
-                    setSelectedDepartment("Senior High Department");
-                  } else if (courseYearSection.startsWith("BS") ||
-                             courseYearSection.startsWith("BTVTEd")) {
-                    setSelectedDepartment("College Department");
-                  } else {
-                    setSelectedDepartment("");
-                  }
+                  const department = getDepartmentFromSection(courseYearSection);
+                  setSelectedDepartment(department);
                 } else {
                   setSelectedDepartment("");
                 }
@@ -310,53 +252,20 @@ export function FormBuilder({
               }
 
               // Load submission schedule if available
-              console.log("Loading schedule from form:", {
-                start_date: form.start_date,
-                end_date: form.end_date,
-                status: form.status
-              });
               setSubmissionSchedule({
                 startDate: form.start_date || "",
                 endDate: form.end_date || "",
                 startTime: "",
                 endTime: "",
               });
-              console.log("Set submissionSchedule to:", {
-                startDate: form.start_date || "",
-                endDate: form.end_date || "",
-              });
 
-              // Convert API questions to FormQuestion format
-              if (form.questions && form.questions.length > 0) {
-                const apiQuestions = form.questions.map(
-                  (q: any, index: number) => ({
-                    id: q.id?.toString() || `q_${index + 1}`,
-                    type: q.question_type || q.type || "text",
-                    question: q.question_text || q.question || "",
-                    description: q.description || "",
-                    required: q.required || false,
-                    options: q.options
-                      ? q.options.map((opt: any) => opt.option_text).filter((opt: string) => opt && opt.trim() !== '')
-                      : undefined,
-                    min: q.min_value,
-                    max: q.max_value,
-                  })
-                );
-                setQuestions(apiQuestions);
-                setActiveQuestion(apiQuestions[0]?.id || null);
-              } else {
-                // No questions found
-                setQuestions([]);
-                setActiveQuestion(null);
-              }
-              console.log("✅ Form loaded from API");
+              // Load questions
+              loadQuestions(form.questions || []);
             } else {
-              console.error("❌ API call failed:", result.message);
               toast.error("Failed to load form data");
             }
           }
         } catch (error) {
-          console.error("💥 Exception loading form data:", error);
           toast.error("Failed to load form data");
         }
       }
@@ -364,637 +273,6 @@ export function FormBuilder({
 
     loadExistingForm();
   }, [formId]);
-
-  // Load categories from database
-  useEffect(() => {
-    const loadCategories = async () => {
-      try {
-        setLoadingCategories(true);
-        const result = await getFormCategories();
-
-        if (result.success && result.categories.length > 0) {
-          setDatabaseCategories(result.categories);
-          setCustomCategories(result.categories.map((cat) => cat.name));
-
-          // Set default category if not already set
-          if (!formCategory && result.categories.length > 0) {
-            setFormCategory(result.categories[0].name);
-          }
-        } else {
-          // No categories in database
-          setCustomCategories([]);
-          setDatabaseCategories([]);
-        }
-      } catch (error) {
-        console.error("Error loading categories:", error);
-        toast.error("Failed to load categories");
-
-        // No fallback categories on error
-        setCustomCategories([]);
-        setDatabaseCategories([]);
-      } finally {
-        setLoadingCategories(false);
-      }
-    };
-
-    loadCategories();
-  }, []);
-  // Load companies for alumni and employers
-  useEffect(() => {
-    const loadCompanies = async () => {
-      try {
-        const alumniResult = await getAlumniCompanies();
-        if (alumniResult.success) {
-          setAlumniCompanies(alumniResult.companies || []);
-        }
-        const employerResult = await getEmployerCompanies();
-        if (employerResult.success) {
-          setEmployerCompanies(employerResult.companies || []);
-        }
-      } catch (error) {
-        console.error("Error loading companies:", error);
-      }
-    };
-    loadCompanies();
-  }, []);
-
-  // Load instructors for sharing responses
-  useEffect(() => {
-    const loadInstructors = async () => {
-      try {
-        const result = await getFilteredUsers({ role: "instructor" });
-        if (result.success && result.users) {
-          setInstructors(result.users.map(user => ({
-            id: user.id,
-            name: user.name,
-            department: user.department || "No department"
-          })));
-        }
-      } catch (error) {
-        console.error("Error loading instructors:", error);
-      }
-    };
-    loadInstructors();
-  }, []);
-
-  // Dialog States
-  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
-  const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
-  const [publishDialogOpen, setPublishDialogOpen] = useState(false);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-
-  // Wizard States
-  const [currentWizardStep, setCurrentWizardStep] = useState(1);
-  const totalWizardSteps = 4;
-
-  // Wizard Navigation Functions
-  const nextWizardStep = () => {
-    if (currentWizardStep < totalWizardSteps) {
-      setCurrentWizardStep(currentWizardStep + 1);
-    }
-  };
-
-  const prevWizardStep = () => {
-    if (currentWizardStep > 1) {
-      setCurrentWizardStep(currentWizardStep - 1);
-    }
-  };
-
-  const resetWizard = () => {
-    setCurrentWizardStep(1);
-  };
-
-  // Loading State
-  const [loading, setLoading] = useState(false);
-
-  // Image Upload Handler
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const { isValid, error } = validateImageFile(file);
-      if (!isValid) {
-        toast.error("Image upload failed", {
-          description: error,
-        });
-        return;
-      }
-
-      setImageFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormImage(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      toast.success("Image uploaded successfully");
-    }
-  };
-
-  const removeImage = () => {
-    setFormImage(null);
-    setImageFile(null);
-    toast.success("Image removed");
-  };
-
-  // Category and Audience Management
-  const addCategory = async (category: string) => {
-    if (category.trim() && !customCategories.includes(category.trim())) {
-      try {
-        setLoadingCategoryOperation(true);
-        const result = await addFormCategory(category.trim(), "");
-        if (result.success && result.category) {
-          setDatabaseCategories([...databaseCategories, result.category]);
-          setCustomCategories([...customCategories, result.category.name]);
-          toast.success(`Category "${category.trim()}" added`);
-        } else {
-          toast.error(result.message || "Failed to add category");
-        }
-      } catch (error) {
-        console.error("Error adding category:", error);
-        toast.error("Failed to add category");
-      } finally {
-        setLoadingCategoryOperation(false);
-      }
-    }
-  };
-
-  const removeCategory = async (category: string) => {
-    const categoryToDelete = databaseCategories.find(
-      (cat) => cat.name === category
-    );
-    if (categoryToDelete) {
-      try {
-        setLoadingCategoryOperation(true);
-        const result = await deleteFormCategory(categoryToDelete.id);
-        if (result.success) {
-          setDatabaseCategories(
-            databaseCategories.filter((cat) => cat.id !== categoryToDelete.id)
-          );
-          setCustomCategories(customCategories.filter((c) => c !== category));
-          if (formCategory === category) {
-            const remaining = customCategories.filter((c) => c !== category);
-            setFormCategory(remaining.length > 0 ? remaining[0] : "");
-          }
-          toast.success(`Category "${category}" removed`);
-        } else {
-          toast.error(result.message || "Failed to remove category");
-        }
-      } catch (error) {
-        console.error("Error removing category:", error);
-        toast.error("Failed to remove category");
-      } finally {
-        setLoadingCategoryOperation(false);
-      }
-    } else {
-      toast.error("Category not found");
-    }
-  };
-
-  // Question Management
-  const addQuestion = (type: FormQuestion["type"] = "text") => {
-    const newQuestion: FormQuestion = {
-      id: Date.now().toString(),
-      type: type,
-      question: "",
-      required: false,
-      ...(type === "multiple-choice" ||
-      type === "checkbox" ||
-      type === "dropdown"
-        ? { options: [""] }
-        : {}),
-    };
-    setQuestions([...questions, newQuestion]);
-    setActiveQuestion(newQuestion.id);
-    toast.success(`Added ${type} question`);
-  };
-
-  const duplicateQuestion = (id: string) => {
-    const question = questions.find((q) => q.id === id);
-    if (question) {
-      const newQuestion = {
-        ...question,
-        id: Date.now().toString(),
-        question: question.question + " (Copy)",
-        options: question.options ? [...question.options] : undefined,
-      };
-      const index = questions.findIndex((q) => q.id === id);
-      const newQuestions = [...questions];
-      newQuestions.splice(index + 1, 0, newQuestion);
-      setQuestions(newQuestions);
-      setActiveQuestion(newQuestion.id);
-      toast.success("Question duplicated");
-    }
-  };
-
-  const updateQuestion = (id: string, updates: Partial<FormQuestion>) => {
-    setQuestions(
-      questions.map((q) => (q.id === id ? { ...q, ...updates } : q))
-    );
-  };
-
-  const deleteQuestion = (id: string) => {
-    setQuestions(questions.filter((q) => q.id !== id));
-    setActiveQuestion(null);
-    toast.success("Question deleted");
-  };
-
-  const moveQuestion = (id: string, direction: "up" | "down") => {
-    const index = questions.findIndex((q) => q.id === id);
-    if (
-      (direction === "up" && index === 0) ||
-      (direction === "down" && index === questions.length - 1)
-    ) {
-      return;
-    }
-    const newQuestions = [...questions];
-    const newIndex = direction === "up" ? index - 1 : index + 1;
-    [newQuestions[index], newQuestions[newIndex]] = [
-      newQuestions[newIndex],
-      newQuestions[index],
-    ];
-    setQuestions(newQuestions);
-  };
-
-  const addOption = (questionId: string) => {
-    const question = questions.find((q) => q.id === questionId);
-    if (question) {
-      const optionNumber = (question.options?.length || 0) + 1;
-      const newOptions = [
-        ...(question.options || []),
-        `Option ${optionNumber}`,
-      ];
-      updateQuestion(questionId, { options: newOptions });
-    }
-  };
-
-  const updateOption = (
-    questionId: string,
-    optionIndex: number,
-    value: string
-  ) => {
-    const question = questions.find((q) => q.id === questionId);
-    if (question && question.options) {
-      const newOptions = [...question.options];
-      newOptions[optionIndex] = value;
-      updateQuestion(questionId, { options: newOptions });
-    }
-  };
-
-  const deleteOption = (questionId: string, optionIndex: number) => {
-    const question = questions.find((q) => q.id === questionId);
-    if (question && question.options && question.options.length > 1) {
-      const newOptions = question.options.filter((_, i) => i !== optionIndex);
-      updateQuestion(questionId, { options: newOptions });
-    }
-  };
-
-  const saveForm = async () => {
-    // Validate required fields
-    if (!formTitle.trim()) {
-      toast.error("Please enter a form title");
-      return;
-    }
-    if (!formCategory) {
-      toast.error("Please select a category");
-      return;
-    }
-    if (!formTarget || formTarget === "") {
-      toast.error("Please select a target audience");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      // Clean questions data before sending
-      const cleanedQuestions = questions.map(q => ({
-        ...q,
-        options: q.options && q.options.filter(opt => opt && opt.trim() !== '') || undefined
-      }));
-
-      const formData = {
-        title: formTitle,
-        description: formDescription,
-        category: formCategory,
-        targetAudience: formTarget,
-        questions: cleanedQuestions,
-        question_count: cleanedQuestions.length,
-        total_questions: cleanedQuestions.length,
-        questions_count: cleanedQuestions.length,
-        imageUrl: formImage || undefined,
-        isTemplate: false,
-        status: "draft",
-      };
-
-      console.log("Saving form with data:", formData);
-      console.log("Image URL being saved:", formData.imageUrl);
-      const result = formId
-        ? await updateForm(formId, formData)
-        : await createForm(formData);
-
-      if (result.success) {
-        toast.success(formId ? "Form saved as draft" : "Form saved as draft");
-        setTimeout(() => {
-          onBack();
-        }, 1000);
-      } else {
-        toast.error(result.message || "Failed to save form");
-      }
-    } catch (err) {
-      console.error("Error saving form:", err);
-      toast.error("Failed to save form");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Publish Form Function
-  const publishForm = async () => {
-    // Validate required fields
-    if (!formTitle.trim()) {
-      toast.error("Please enter a form title");
-      return;
-    }
-    if (!formCategory) {
-      toast.error("Please select a category");
-      return;
-    }
-    if (!formTarget || formTarget === "") {
-      toast.error("Please select a target audience");
-      return;
-    }
-
-    if (questions.length === 0) {
-      toast.error("Please add at least one question to your form");
-      return;
-    }
-
-    // Validate questions
-    for (const q of questions) {
-      if (!q.question.trim()) {
-        toast.error("All questions must have text");
-        return;
-      }
-      if (!q.type) {
-        toast.error("All questions must have a type");
-        return;
-      }
-    }
-
-    try {
-      setLoading(true);
-
-     // ALWAYS include questions when publishing
-const formData = {
-  title: formTitle,
-  description: formDescription,
-  category: formCategory,
-  targetAudience: formTarget,
-  startDate: submissionSchedule.startDate || undefined,
-  endDate: submissionSchedule.endDate || undefined,
-  questions: questions,
-  question_count: questions.length,
-  total_questions: questions.length,
-  questions_count: questions.length,
-  imageUrl: formImage || undefined,
-  isTemplate: false,
-  status: "active", // Set to active when publishing
-};
-
-      const saveResult = formId
-        ? await updateForm(formId, formData)
-        : await createForm(formData);
-
-      if (!saveResult.success) {
-        toast.error(saveResult.message || "Failed to save form");
-        return;
-      }
-
-      const currentFormId = formId || (saveResult as any).formId;
-
-      if (!currentFormId) {
-        toast.error("Failed to get form ID");
-        return;
-      }
-
-      // Check if specific recipients are selected (not all recipients)
-      const hasSpecificRecipients = selectedRecipients.size > 0 && selectedRecipients.size < recipients.length;
-
-      let result;
-      if (hasSpecificRecipients) {
-        // Assign to specific users
-        const selectedUserIds = Array.from(selectedRecipients).map(id => parseInt(id.toString()));
-        result = await assignFormToUsers(currentFormId, selectedUserIds, formTarget);
-      } else {
-        // Deploy to group
-        result = await deployForm(currentFormId, {
-          startDate: submissionSchedule.startDate || new Date().toISOString().split('T')[0],
-          endDate: submissionSchedule.endDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-          targetFilters: {
-            roles: formTarget === 'All Users' ? ['all'] : [formTarget.toLowerCase().replace(' ', '')],
-            target_audience: formTarget
-          }
-        });
-      }
-
-      if (result.success) {
-        // Share responses with selected instructors if any
-        if (selectedInstructors.size > 0) {
-          try {
-            const instructorIds = Array.from(selectedInstructors);
-            // Here you would call an API to share the form responses with instructors
-            // For now, we'll just log it and show a success message
-            console.log("Sharing form responses with instructors:", instructorIds);
-            toast.success(`${result.message} Responses will be shared with ${selectedInstructors.size} instructor${selectedInstructors.size !== 1 ? 's' : ''}.`);
-          } catch (shareError) {
-            console.error("Error sharing responses:", shareError);
-            toast.warning("Form published but failed to share responses with instructors.");
-          }
-        } else {
-          toast.success(result.message);
-        }
-
-        setPublishDialogOpen(false);
-        setTimeout(() => {
-          onBack();
-        }, 1500);
-      } else {
-        toast.error(result.message || 'Failed to deploy form');
-      }
-    } catch (err) {
-      console.error("Error publishing form:", err);
-      toast.error("Failed to publish form");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Function to fetch recipients based on selection
-  const fetchRecipients = async (
-    audienceType: string,
-    courseYearSection: string,
-    department?: string
-  ) => {
-    try {
-      // Map audience type to the correct role format for the backend
-      const roleMap: Record<string, string> = {
-        "Students": "student",
-        "Instructors": "instructor",
-        "Alumni": "alumni",
-        "All Users": "all"
-      };
-
-      let filters: any = { role: roleMap[audienceType] || audienceType.toLowerCase() };
-
-      if (audienceType === "Students") {
-        if (courseYearSection === "All Students" && department) {
-          // When "All Students" is selected with a department, fetch all students and filter on frontend
-          // Backend doesn't support filtering by department, so we fetch all and filter client-side
-          console.log("Fetching all students for department filtering:", department);
-        } else if (courseYearSection && courseYearSection !== "All Students") {
-          filters.course_year_section = courseYearSection;
-        }
-      } else if (audienceType === "Instructors") {
-        if (courseYearSection) {
-          filters.department = courseYearSection;
-        }
-      } else if (audienceType === "Alumni") {
-        if (courseYearSection) {
-          filters.company = courseYearSection;
-        }
-      }
-
-      // Update formTarget based on the selection
-      if (audienceType === "All Users") {
-        setFormTarget("All Users");
-      } else if (courseYearSection === "All Students" && department) {
-        // When "All Students" is selected with a department
-        setFormTarget(`Students - ${department}`);
-      } else if (courseYearSection) {
-        setFormTarget(`${audienceType} - ${courseYearSection}`);
-      } else {
-        setFormTarget(audienceType);
-      }
-
-      console.log("Fetching recipients with filters:", filters);
-      const result = await getFilteredUsers(filters);
-      console.log("API response:", result);
-      if (result.success && result.users && result.users.length > 0) {
-        let formattedUsers = result.users.map((user) => ({
-          id: user.id,
-          name: user.name,
-          details:
-            user.role === "student"
-              ? user.course_yr_section || "No section"
-              : user.role === "instructor"
-              ? user.department || "No department"
-              : user.role === "alumni"
-              ? user.company || "No company"
-              : "N/A",
-        }));
-
-        // Filter students by department if "All Students" is selected with a department
-        if (audienceType === "Students" && courseYearSection === "All Students" && department) {
-          console.log("Filtering students by department:", department);
-          if (department === "Senior High Department") {
-            // Filter for Senior High students (ABM, HUMSS, STEM, ICT)
-            formattedUsers = formattedUsers.filter((user) => {
-              const section = user.details || "";
-              return (
-                section.startsWith("ABM") ||
-                section.startsWith("HUMSS") ||
-                section.startsWith("STEM") ||
-                section.startsWith("ICT")
-              );
-            });
-          } else if (department === "College Department") {
-            // Filter for College students (BSIT, BSBA, BSCS, BSEN, BSOA, BSAIS, BTVTEd)
-            formattedUsers = formattedUsers.filter((user) => {
-              const section = user.details || "";
-              return (
-                section.startsWith("BSIT") ||
-                section.startsWith("BSBA") ||
-                section.startsWith("BSCS") ||
-                section.startsWith("BSEN") ||
-                section.startsWith("BSOA") ||
-                section.startsWith("BSAIS") ||
-                section.startsWith("BTVTEd")
-              );
-            });
-          }
-          console.log("Filtered students count:", formattedUsers.length);
-        }
-
-        console.log("Formatted users:", formattedUsers);
-        setRecipients(formattedUsers);
-        setFilteredRecipients(formattedUsers);
-        setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));
-        setSelectAllRecipients(true);
-      } else {
-        console.warn(
-          "No users found matching the criteria:",
-          filters,
-          "Response:",
-          result
-        );
-        console.warn(
-          "Note: Ensure the backend API is querying the correct table based on the user role."
-        );
-        console.warn(
-          "For students, it should query the 'students' table and join with the 'users' table."
-        );
-
-        // Clear recipients when no users are found
-        setRecipients([]);
-        setFilteredRecipients([]);
-        setSelectedRecipients(new Set());
-        setSelectAllRecipients(true);
-      }
-    } catch (error) {
-      console.error("Error fetching recipients:", error);
-      setRecipients([]);
-      setFilteredRecipients([]);
-      setSelectedRecipients(new Set());
-      setSelectAllRecipients(true);
-    }
-  };
-
-  // Effect to fetch recipients when selection changes
-  useEffect(() => {
-    if (selectedAudienceType === "Students") {
-      if (selectedDepartment && selectedCourseYearSection) {
-        fetchRecipients(selectedAudienceType, selectedCourseYearSection, selectedDepartment);
-      } else {
-        // Clear recipients when department or section is not selected
-        setRecipients([]);
-        setFilteredRecipients([]);
-        setSelectedRecipients(new Set());
-        setSelectAllRecipients(true);
-      }
-    } else if (selectedAudienceType !== "All Users" && selectedCourseYearSection) {
-      fetchRecipients(selectedAudienceType, selectedCourseYearSection);
-    } else if (selectedAudienceType !== "All Users" && !selectedCourseYearSection) {
-      // Clear recipients when course/year/section is not selected
-      setRecipients([]);
-      setFilteredRecipients([]);
-      setSelectedRecipients(new Set());
-      setSelectAllRecipients(true);
-    } else if (selectedAudienceType === "All Users") {
-      setFormTarget("All Users");
-    }
-  }, [selectedAudienceType, selectedDepartment, selectedCourseYearSection]);
-
-  // Effect to filter recipients based on search term
-  useEffect(() => {
-    if (searchTerm.trim() === "") {
-      setFilteredRecipients(recipients);
-    } else {
-      const filtered = recipients.filter((recipient) =>
-        recipient.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredRecipients(filtered);
-    }
-  }, [searchTerm, recipients]);
-
 
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
@@ -1072,8 +350,63 @@ const formData = {
     }
   };
 
+  // Handle save form
+  const handleSaveForm = async () => {
+    const cleanedQuestions = cleanQuestions(questions);
+    const success = await saveForm(cleanedQuestions);
+    if (success) {
+      setTimeout(() => {
+        onBack();
+      }, 1000);
+    }
+  };
+
+  // Handle publish form
+  const handlePublishForm = async () => {
+    const cleanedQuestions = cleanQuestions(questions);
+    const result = await publishForm(
+      cleanedQuestions,
+      selectedRecipients,
+      recipients,
+      selectedInstructors
+    );
+
+    if (result && result.success) {
+      const currentFormId = result.formId;
+
+      // Check if specific recipients are selected (not all recipients)
+      const hasSpecificRecipients =
+        selectedRecipients.size > 0 &&
+        selectedRecipients.size < recipients.length;
+
+      let deployResult;
+      if (hasSpecificRecipients) {
+        // Assign to specific users
+        deployResult = await assignToUsers(currentFormId, formTarget);
+      } else {
+        // Deploy to group
+        deployResult = await deployToGroup(
+          currentFormId,
+          formTarget,
+          submissionSchedule.startDate,
+          submissionSchedule.endDate
+        );
+      }
+
+      if (deployResult.success) {
+        setPublishDialogOpen(false);
+        setTimeout(() => {
+          onBack();
+        }, 1500);
+      } else {
+        toast.error(deployResult.message || "Failed to deploy form");
+      }
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-50">
+    //Form Builder Container background u 500
+    <div className="min-h-screen bg-gradient-to-br from-green-500 to-lime-500">
       {/* Top Navigation Bar */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10 shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
@@ -1123,7 +456,8 @@ const formData = {
                       <DialogHeader>
                         <DialogTitle>Save as Draft</DialogTitle>
                         <DialogDescription>
-                          Your form will be saved as a draft and you can continue editing it later.
+                          Your form will be saved as a draft and you can continue
+                          editing it later.
                         </DialogDescription>
                       </DialogHeader>
                       <div className="flex justify-end gap-3 pt-4">
@@ -1136,7 +470,7 @@ const formData = {
                         <Button
                           onClick={() => {
                             setSaveDialogOpen(false);
-                            saveForm();
+                            handleSaveForm();
                           }}
                           disabled={loading}
                         >
@@ -1281,16 +615,16 @@ const formData = {
                                               1
                                             </span>
                                             <div className="flex gap-2">
-                                              {[
-                                                1, 2, 3, 4, 5, 6, 7, 8, 9, 10,
-                                              ].map((num) => (
-                                                <button
-                                                  key={num}
-                                                  className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
-                                                >
-                                                  {num}
-                                                </button>
-                                              ))}
+                                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
+                                                (num) => (
+                                                  <button
+                                                    key={num}
+                                                    className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
+                                                  >
+                                                    {num}
+                                                  </button>
+                                                )
+                                              )}
                                             </div>
                                             <span className="text-sm text-gray-500 shrink-0">
                                               10
@@ -1349,18 +683,29 @@ const formData = {
                       disabled={!formTitle.trim() || questions.length === 0}
                     >
                       <SendHorizontal className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">{isPublished ? "Update" : "Publish"}</span>
+                      <span className="hidden sm:inline">
+                        {isPublished ? "Update" : "Publish"}
+                      </span>
                     </Button>
                   </DialogTrigger>
                   <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>{isPublished ? "Update Feedback Form" : "Publish Feedback Form"}</DialogTitle>
+                      <DialogTitle>
+                        {isPublished
+                          ? "Update Feedback Form"
+                          : "Publish Feedback Form"}
+                      </DialogTitle>
                       <DialogDescription>
-                        {isPublished ? "Review your changes before updating the form" : "Configure your form settings before publishing"}
+                        {isPublished
+                          ? "Review your changes before updating the form"
+                          : "Configure your form settings before publishing"}
                       </DialogDescription>
                       {/* Wizard Progress */}
                       <div className="flex items-center justify-center space-x-4 py-4">
-                        {Array.from({ length: totalWizardSteps }, (_, i) => i + 1).map((step) => (
+                        {Array.from(
+                          { length: totalWizardSteps },
+                          (_, i) => i + 1
+                        ).map((step) => (
                           <div key={step} className="flex items-center">
                             <div
                               className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
@@ -1376,7 +721,9 @@ const formData = {
                             {step < totalWizardSteps && (
                               <div
                                 className={`w-12 h-0.5 mx-2 ${
-                                  step < currentWizardStep ? "bg-green-500" : "bg-gray-200"
+                                  step < currentWizardStep
+                                    ? "bg-green-500"
+                                    : "bg-gray-200"
                                 }`}
                               />
                             )}
@@ -1392,10 +739,14 @@ const formData = {
                           {currentWizardStep === 4 && "Summary & Publish"}
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
-                          {currentWizardStep === 1 && "Select who will receive this feedback form"}
-                          {currentWizardStep === 2 && "Set when respondents can submit their feedback"}
-                          {currentWizardStep === 3 && "Select instructors to share responses with"}
-                          {currentWizardStep === 4 && "Review your settings and publish the form"}
+                          {currentWizardStep === 1 &&
+                            "Select who will receive this feedback form"}
+                          {currentWizardStep === 2 &&
+                            "Set when respondents can submit their feedback"}
+                          {currentWizardStep === 3 &&
+                            "Select instructors to share responses with"}
+                          {currentWizardStep === 4 &&
+                            "Review your settings and publish the form"}
                         </p>
                       </div>
                     </DialogHeader>
@@ -1430,14 +781,14 @@ const formData = {
                                   <SelectValue placeholder="Select audience" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="Students">
-                                    Students
-                                  </SelectItem>
+                                  <SelectItem value="Students">Students</SelectItem>
                                   <SelectItem value="Instructors">
                                     Instructors
                                   </SelectItem>
                                   <SelectItem value="Alumni">Alumni</SelectItem>
-                                  <SelectItem value="Employers">Employers</SelectItem>
+                                  <SelectItem value="Employers">
+                                    Employers
+                                  </SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -1471,74 +822,89 @@ const formData = {
                             )}
 
                             {/* Course Year Section Selection */}
-                            {selectedAudienceType !== "All Users" && (selectedAudienceType !== "Students" || selectedDepartment) && (
+                            {selectedAudienceType !== "All Users" &&
+                              (selectedAudienceType !== "Students" ||
+                                selectedDepartment) && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium">
-                                  {selectedAudienceType === "Students" && "Course Year Section"}
-                                  {selectedAudienceType === "Instructors" && "Department"}
+                                  {selectedAudienceType === "Students" &&
+                                    "Course Year Section"}
+                                  {selectedAudienceType === "Instructors" &&
+                                    "Department"}
                                   {selectedAudienceType === "Alumni" && "Company"}
-                                  {selectedAudienceType === "Employers" && "Company"}
+                                  {selectedAudienceType === "Employers" &&
+                                    "Company"}
                                 </Label>
                                 <Select
                                   value={selectedCourseYearSection}
                                   onValueChange={(value) => {
                                     setSelectedCourseYearSection(value);
-                                    setFormTarget(`${selectedAudienceType} - ${value}`);
+                                    setFormTarget(
+                                      `${selectedAudienceType} - ${value}`
+                                    );
                                   }}
                                 >
                                   <SelectTrigger className="h-10">
-                                    <SelectValue placeholder={
-                                      selectedAudienceType === "Students" 
-                                        ? "Select course year section"
-                                        : selectedAudienceType === "Instructors"
-                                        ? "Select department"
-                                        : "Select company"
-                                    } />
+                                    <SelectValue
+                                      placeholder={
+                                        selectedAudienceType === "Students"
+                                          ? "Select course year section"
+                                          : selectedAudienceType === "Instructors"
+                                          ? "Select department"
+                                          : "Select company"
+                                      }
+                                    />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    {selectedAudienceType === "Students" && (
+                                    {selectedAudienceType === "Students" &&
                                       courseYearSections
                                         .filter((section) => {
-                                          if (selectedDepartment === "Senior High Department") {
-                                            return section === "All Students" ||
-                                                   section.startsWith("ABM") ||
-                                                   section.startsWith("HUMSS") ||
-                                                   section.startsWith("STEM") ||
-                                                   section.startsWith("ICT");
-                                          } else if (selectedDepartment === "College Department") {
-                                            return section === "All Students" ||
-                                                   section.startsWith("BS") ||
-                                                   section.startsWith("BTVTEd");
+                                          if (
+                                            selectedDepartment ===
+                                            "Senior High Department"
+                                          ) {
+                                            return (
+                                              section === "All Students" ||
+                                              section.startsWith("ABM") ||
+                                              section.startsWith("HUMSS") ||
+                                              section.startsWith("STEM") ||
+                                              section.startsWith("ICT")
+                                            );
+                                          } else if (
+                                            selectedDepartment ===
+                                            "College Department"
+                                          ) {
+                                            return (
+                                              section === "All Students" ||
+                                              section.startsWith("BS") ||
+                                              section.startsWith("BTVTEd")
+                                            );
                                           }
-                                          return false; // If no department selected, show none
+                                          return false;
                                         })
                                         .map((section) => (
                                           <SelectItem key={section} value={section}>
                                             {section}
                                           </SelectItem>
-                                        ))
-                                    )}
-                                    {selectedAudienceType === "Instructors" && (
+                                        ))}
+                                    {selectedAudienceType === "Instructors" &&
                                       instructorDepartments.map((dept) => (
                                         <SelectItem key={dept} value={dept}>
                                           {dept}
                                         </SelectItem>
-                                      ))
-                                    )}
-                                    {selectedAudienceType === "Alumni" && (
+                                      ))}
+                                    {selectedAudienceType === "Alumni" &&
                                       alumniCompanies.map((company) => (
                                         <SelectItem key={company} value={company}>
                                           {company}
                                         </SelectItem>
-                                      ))
-                                    )}
-                                    {selectedAudienceType === "Employers" && (
+                                      ))}
+                                    {selectedAudienceType === "Employers" &&
                                       employerCompanies.map((company) => (
                                         <SelectItem key={company} value={company}>
                                           {company}
                                         </SelectItem>
-                                      ))
-                                    )}
+                                      ))}
                                   </SelectContent>
                                 </Select>
                               </div>
@@ -1555,159 +921,23 @@ const formData = {
                             </div>
 
                             {/* Recipients Preview with Search */}
-                            {selectedAudienceType !== "All Users" && ((selectedAudienceType === "Students" && selectedDepartment && selectedCourseYearSection) || (selectedAudienceType !== "Students" && selectedCourseYearSection)) && (
-                              <Collapsible>
-                                <CollapsibleTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="w-full justify-between p-3 h-auto border rounded-lg hover:bg-gray-50"
-                                  >
-                                    <span className="text-sm">
-                                      Preview Recipients ({filteredRecipients.length} of {recipients.length})
-                                    </span>
-                                    <ChevronDown className="w-4 h-4" />
-                                  </Button>
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="space-y-3 pt-3">
-                                  <div className="text-sm text-gray-600">
-                                    <p>
-                                      Recipients for{" "}
-                                      <strong>{formTarget}</strong>.
-                                    </p>
-                                    <p className="mt-2">
-                                      Use the search bar below to exclude specific users.
-                                    </p>
-                                  </div>
-
-                                  {/* Search Bar */}
-                                  <div className="space-y-2">
-                                    <Label className="text-sm font-medium">
-                                      Search and Exclude Users
-                                    </Label>
-                                    <Input
-                                      placeholder="Search users by name..."
-                                      className="h-9"
-                                      value={searchTerm}
-                                      onChange={(e) => setSearchTerm(e.target.value)}
-                                    />
-                                  </div>
-
-                                  <div className="flex items-center gap-2">
-                                    <Checkbox
-                                      id="select-all-recipients"
-                                      checked={selectAllRecipients}
-                                      onCheckedChange={(checked) => {
-                                        setSelectAllRecipients(!!checked);
-                                        if (checked) {
-                                          setSelectedRecipients(
-                                            new Set(
-                                              recipients.map((r) => r.id)
-                                            )
-                                          );
-                                        } else {
-                                          setSelectedRecipients(new Set());
-                                        }
-                                      }}
-                                    />
-                                    <Label
-                                      htmlFor="select-all-recipients"
-                                      className="text-sm"
-                                    >
-                                      Send to all users in this group
-                                    </Label>
-                                  </div>
-
-                                  {/* Recipients list with checkboxes */}
-                                  {filteredRecipients.length > 5 ? (
-                                    <ScrollArea className="border rounded-lg p-3 bg-gray-50 max-h-24">
-                                      {recipients.length > 0 ? (
-                                        <div className="space-y-2">
-                                          {filteredRecipients.map((recipient) => (
-                                            <div
-                                              key={recipient.id}
-                                              className="flex items-center gap-2"
-                                            >
-                                              <Checkbox
-                                                id={`recipient-${recipient.id}`}
-                                                checked={selectedRecipients.has(recipient.id)}
-                                                onCheckedChange={(checked) => {
-                                                  const newSelected = new Set(selectedRecipients);
-                                                  if (checked) {
-                                                    newSelected.add(recipient.id);
-                                                  } else {
-                                                    newSelected.delete(recipient.id);
-                                                  }
-                                                  setSelectedRecipients(newSelected);
-                                                  setSelectAllRecipients(
-                                                    newSelected.size === recipients.length
-                                                  );
-                                                }}
-                                              />
-                                              <Label
-                                                htmlFor={`recipient-${recipient.id}`}
-                                                className="text-sm flex-1"
-                                              >
-                                                {recipient.name}{" "}
-                                                <span className="text-gray-500">
-                                                  ({recipient.details})
-                                                </span>
-                                              </Label>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-gray-500">
-                                          {searchTerm ? `No users found matching "${searchTerm}"` : "No users found in this group."}
-                                        </p>
-                                      )}
-                                    </ScrollArea>
-                                  ) : (
-                                    <div className="border rounded-lg p-3 bg-gray-50">
-                                      {recipients.length > 0 ? (
-                                        <div className="space-y-2">
-                                          {filteredRecipients.map((recipient) => (
-                                            <div
-                                              key={recipient.id}
-                                              className="flex items-center gap-2"
-                                            >
-                                              <Checkbox
-                                                id={`recipient-${recipient.id}`}
-                                                checked={selectedRecipients.has(recipient.id)}
-                                                onCheckedChange={(checked) => {
-                                                  const newSelected = new Set(selectedRecipients);
-                                                  if (checked) {
-                                                    newSelected.add(recipient.id);
-                                                  } else {
-                                                    newSelected.delete(recipient.id);
-                                                  }
-                                                  setSelectedRecipients(newSelected);
-                                                  setSelectAllRecipients(
-                                                    newSelected.size === recipients.length
-                                                  );
-                                                }}
-                                              />
-                                              <Label
-                                                htmlFor={`recipient-${recipient.id}`}
-                                                className="text-sm flex-1"
-                                              >
-                                                {recipient.name}{" "}
-                                                <span className="text-gray-500">
-                                                  ({recipient.details})
-                                                </span>
-                                              </Label>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <p className="text-xs text-gray-500">
-                                          {searchTerm ? `No users found matching "${searchTerm}"` : "No users found in this group."}
-                                        </p>
-                                      )}
-                                    </div>
-                                  )}
-                                </CollapsibleContent>
-                              </Collapsible>
+                            {selectedAudienceType !== "All Users" &&
+                              ((selectedAudienceType === "Students" &&
+                                selectedDepartment &&
+                                selectedCourseYearSection) ||
+                                (selectedAudienceType !== "Students" &&
+                                  selectedCourseYearSection)) && (
+                              <RecipientSelector
+                                recipients={recipients}
+                                filteredRecipients={filteredRecipients}
+                                selectedRecipients={selectedRecipients}
+                                selectAllRecipients={selectAllRecipients}
+                                searchTerm={searchTerm}
+                                onToggleRecipient={toggleRecipient}
+                                onToggleAllRecipients={toggleAllRecipients}
+                                onSearchTermChange={setSearchTerm}
+                                formTarget={formTarget}
+                              />
                             )}
                           </CardContent>
                         </Card>
@@ -1865,8 +1095,10 @@ const formData = {
                                 Select Instructors to Share Responses With
                               </Label>
                               <p className="text-xs text-gray-600">
-                                Choose instructors who will receive access to view the responses for this feedback form.
-                                This is particularly useful for forms about subjects or instructors.
+                                Choose instructors who will receive access to view
+                                the responses for this feedback form. This is
+                                particularly useful for forms about subjects or
+                                instructors.
                               </p>
 
                               {/* Search Bar */}
@@ -1875,7 +1107,9 @@ const formData = {
                                   placeholder="Search instructors by name..."
                                   className="h-9"
                                   value={instructorSearchTerm}
-                                  onChange={(e) => setInstructorSearchTerm(e.target.value)}
+                                  onChange={(e) =>
+                                    setInstructorSearchTerm(e.target.value)
+                                  }
                                 />
                               </div>
 
@@ -1883,39 +1117,31 @@ const formData = {
                               <div className="border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto">
                                 {instructors.length > 0 ? (
                                   <div className="space-y-2">
-                                    {instructors
-                                      .filter(instructor =>
-                                        instructor.name.toLowerCase().includes(instructorSearchTerm.toLowerCase())
-                                      )
-                                      .map((instructor) => (
-                                        <div
-                                          key={instructor.id}
-                                          className="flex items-center gap-2"
+                                    {filteredInstructors.map((instructor) => (
+                                      <div
+                                        key={instructor.id}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <Checkbox
+                                          id={`instructor-${instructor.id}`}
+                                          checked={selectedInstructors.has(
+                                            instructor.id
+                                          )}
+                                          onCheckedChange={() =>
+                                            toggleInstructor(instructor.id)
+                                          }
+                                        />
+                                        <Label
+                                          htmlFor={`instructor-${instructor.id}`}
+                                          className="text-sm flex-1"
                                         >
-                                          <Checkbox
-                                            id={`instructor-${instructor.id}`}
-                                            checked={selectedInstructors.has(instructor.id)}
-                                            onCheckedChange={(checked) => {
-                                              const newSelected = new Set(selectedInstructors);
-                                              if (checked) {
-                                                newSelected.add(instructor.id);
-                                              } else {
-                                                newSelected.delete(instructor.id);
-                                              }
-                                              setSelectedInstructors(newSelected);
-                                            }}
-                                          />
-                                          <Label
-                                            htmlFor={`instructor-${instructor.id}`}
-                                            className="text-sm flex-1"
-                                          >
-                                            {instructor.name}{" "}
-                                            <span className="text-gray-500">
-                                              ({instructor.department})
-                                            </span>
-                                          </Label>
-                                        </div>
-                                      ))}
+                                          {instructor.name}{" "}
+                                          <span className="text-gray-500">
+                                            ({instructor.department})
+                                          </span>
+                                        </Label>
+                                      </div>
+                                    ))}
                                   </div>
                                 ) : (
                                   <p className="text-xs text-gray-500">
@@ -1931,7 +1157,8 @@ const formData = {
                                     Selected Instructors:
                                   </span>
                                   <span className="text-sm font-semibold text-orange-900">
-                                    {selectedInstructors.size} instructor{selectedInstructors.size !== 1 ? 's' : ''}
+                                    {selectedInstructors.size} instructor
+                                    {selectedInstructors.size !== 1 ? "s" : ""}
                                   </span>
                                 </div>
                               )}
@@ -1951,81 +1178,104 @@ const formData = {
                               </span>
                             </div>
                           </CardHeader>
-                        <CardContent className="space-y-3">
-                          <div>
-                            <h3 className="text-base font-semibold">
-                              {formTitle}
-                            </h3>
-                            {formDescription && (
-                              <p className="text-sm text-gray-600">
-                                {formDescription}
-                              </p>
-                            )}
-                          </div>
-                          <div className="flex items-center justify-between text-sm">
-                            <div className="flex items-center gap-4">
-                              <span>
-                                <span className="text-gray-500">Category:</span>{" "}
-                                <span className="font-medium">
-                                  {formCategory}
-                                </span>
-                              </span>
-                              <span>
-                                <span className="text-gray-500">
-                                  Questions:
-                                </span>{" "}
-                                <span className="font-medium">
-                                  {questions.length}
-                                </span>
-                              </span>
-                              <span>
-                                <span className="text-gray-500">Target:</span>{" "}
-                                <span className="font-medium">
-                                  {formTarget}
-                                </span>
-                              </span>
-                              {selectedInstructors.size > 0 && (
-                                <span>
-                                  <span className="text-gray-500">Shared with:</span>{" "}
-                                  <span className="font-medium">
-                                    {selectedInstructors.size} instructor{selectedInstructors.size !== 1 ? 's' : ''}
-                                  </span>
-                                </span>
+                          <CardContent className="space-y-3">
+                            <div>
+                              <h3 className="text-base font-semibold">
+                                {formTitle}
+                              </h3>
+                              {formDescription && (
+                                <p className="text-sm text-gray-600">
+                                  {formDescription}
+                                </p>
                               )}
                             </div>
-                          </div>
-                        </CardContent>
-                      </Card>
+                            <div className="flex items-center justify-between text-sm">
+                              <div className="flex items-center gap-4">
+                                <span>
+                                  <span className="text-gray-500">Category:</span>{" "}
+                                  <span className="font-medium">
+                                    {formCategory}
+                                  </span>
+                                </span>
+                                <span>
+                                  <span className="text-gray-500">
+                                    Questions:
+                                  </span>{" "}
+                                  <span className="font-medium">
+                                    {questions.length}
+                                  </span>
+                                </span>
+                                <span>
+                                  <span className="text-gray-500">Target:</span>{" "}
+                                  <span className="font-medium">
+                                    {formTarget}
+                                  </span>
+                                </span>
+                                {selectedInstructors.size > 0 && (
+                                  <span>
+                                    <span className="text-gray-500">
+                                      Shared with:
+                                    </span>{" "}
+                                    <span className="font-medium">
+                                      {selectedInstructors.size} instructor
+                                      {selectedInstructors.size !== 1 ? "s" : ""}
+                                    </span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       )}
 
                       {/* Wizard Navigation */}
                       <div className="flex items-center justify-between pt-4 border-t">
                         <div className="flex-1">
-                          {currentWizardStep === 1 && (!formTarget || !formTitle.trim() || questions.length === 0) && (
-                            <div className="text-sm text-red-600 space-y-1">
-                              {!formTitle.trim() && <p>• Please enter a form title</p>}
-                              {questions.length === 0 && <p>• Please add at least one question</p>}
-                              {!formTarget && <p>• Please select a target audience</p>}
-                            </div>
-                          )}
-                          {currentWizardStep === 1 && formTarget && formTitle.trim() && questions.length > 0 && (
-                            <p className="text-sm text-blue-900">
-                              <strong>Ready to proceed!</strong> Target audience configured.
-                            </p>
-                          )}
+                          {currentWizardStep === 1 &&
+                            (!formTarget ||
+                              !formTitle.trim() ||
+                              questions.length === 0) && (
+                              <div className="text-sm text-red-600 space-y-1">
+                                {!formTitle.trim() && (
+                                  <p>• Please enter a form title</p>
+                                )}
+                                {questions.length === 0 && (
+                                  <p>• Please add at least one question</p>
+                                )}
+                                {!formTarget && (
+                                  <p>• Please select a target audience</p>
+                                )}
+                              </div>
+                            )}
+                          {currentWizardStep === 1 &&
+                            formTarget &&
+                            formTitle.trim() &&
+                            questions.length > 0 && (
+                              <p className="text-sm text-blue-900">
+                                <strong>Ready to proceed!</strong> Target
+                                audience configured.
+                              </p>
+                            )}
                           {currentWizardStep === 2 && (
                             <p className="text-sm text-purple-900">
-                              <strong>Optional:</strong> Set submission schedule or proceed to summary.
+                              <strong>Optional:</strong> Set submission
+                              schedule or proceed to summary.
                             </p>
                           )}
                           {currentWizardStep === 3 && (
                             <p className="text-sm text-orange-900">
-                              <strong>Optional:</strong> Select instructors to share responses with or proceed to summary.
+                              <strong>Optional:</strong> Select instructors
+                              to share responses with or proceed to summary.
                             </p>
                           )}
                           {currentWizardStep === 4 && (
                             <p className="text-sm text-green-900">
-                              <strong>{isPublished ? "Ready to update!" : "Ready to publish!"}</strong> Review your settings and publish the form.
+                              <strong>
+                                {isPublished
+                                  ? "Ready to update!"
+                                  : "Ready to publish!"}
+                              </strong>{" "}
+                              Review your settings and publish the form.
                             </p>
                           )}
                         </div>
@@ -2042,17 +1292,31 @@ const formData = {
                             <Button
                               className="bg-green-600 hover:bg-green-700"
                               onClick={nextWizardStep}
-                              disabled={currentWizardStep === 1 && (!formTarget || !formTitle.trim() || questions.length === 0)}
+                              disabled={
+                                currentWizardStep === 1 &&
+                                (!formTarget ||
+                                  !formTitle.trim() ||
+                                  questions.length === 0)
+                              }
                             >
                               Next
                             </Button>
                           ) : (
                             <Button
                               className="bg-green-600 hover:bg-green-700"
-                              onClick={publishForm}
-                              disabled={loading || !formTarget || !formTitle.trim() || questions.length === 0}
+                              onClick={handlePublishForm}
+                              disabled={
+                                loading ||
+                                !formTarget ||
+                                !formTitle.trim() ||
+                                questions.length === 0
+                              }
                             >
-                              {loading ? "Saving..." : (isPublished ? "Update Now" : "Publish Now")}
+                              {loading
+                                ? "Saving..."
+                                : isPublished
+                                ? "Update Now"
+                                : "Publish Now"}
                             </Button>
                           )}
                         </div>
@@ -2168,38 +1432,61 @@ const formData = {
                     )}
                   </div>
 
-                   {/* Category */}
-                   <div className="space-y-3">
-                     <div className="flex items-center justify-between">
-                       <Label className="text-sm font-medium">Category</Label>
-                       <Dialog>
-                         <DialogTrigger asChild>
-                           <Button
-                             variant="ghost"
-                             size="sm"
-                             className="h-6 px-2 text-xs"
-                           >
-                             <Settings className="w-3 h-3 mr-1" />
-                             Manage
-                           </Button>
-                         </DialogTrigger>
-                         <DialogContent className="max-w-md">
-                           <DialogHeader>
-                             <DialogTitle className="text-lg">
-                               Manage Categories
-                             </DialogTitle>
-                             <DialogDescription>
-                               Add or remove form categories
-                             </DialogDescription>
-                           </DialogHeader>
-                         </DialogContent>
-                       </Dialog>
-                     </div>
-                   </div>
-                 </CardContent>
-               </CollapsibleContent>
-              </Card>
-            </Collapsible>
+                  {/* Category */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-medium">Category</Label>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-xs"
+                          >
+                            <Settings className="w-3 h-3 mr-1" />
+                            Manage
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-md">
+                          <DialogHeader>
+                            <DialogTitle className="text-lg">
+                              Manage Categories
+                            </DialogTitle>
+                            <DialogDescription>
+                              Add or remove form categories
+                            </DialogDescription>
+                          </DialogHeader>
+                          <CategoryManager
+                            categories={databaseCategories}
+                            customCategories={customCategories}
+                            loadingCategoryOperation={loadingCategoryOperation}
+                            onAddCategory={addCategory}
+                            onRemoveCategory={removeCategory}
+                          />
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                    <Select
+                      value={formCategory}
+                      onValueChange={setFormCategory}
+                      disabled={loadingCategories}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {customCategories.map((category) => (
+                          <SelectItem key={category} value={category}>
+                            {category}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
 
           {/* Form Header Preview */}
           <Card className="border-green-200 shadow-sm">
@@ -2226,14 +1513,16 @@ const formData = {
           </Card>
 
           {/* Questions */}
-           {questions.length === 0 && (
-             <Card className="border-blue-200 bg-blue-50">
-               <CardContent className="pt-6 text-center">
-                 <p className="text-gray-600">No questions yet. Add your first question below.</p>
-               </CardContent>
-             </Card>
-           )}
-           {questions.map((question, index) => (
+          {questions.length === 0 && (
+            <Card className="border-blue-200 bg-blue-50">
+              <CardContent className="pt-6 text-center">
+                <p className="text-gray-600">
+                  No questions yet. Add your first question below.
+                </p>
+              </CardContent>
+            </Card>
+          )}
+          {questions.map((question, index) => (
             <Card
               key={question.id}
               className={`transition-all ${
@@ -2243,211 +1532,20 @@ const formData = {
               }`}
               onClick={() => setActiveQuestion(question.id)}
             >
-              <CardContent className="pt-4 sm:pt-6">
-                <div className="space-y-4">
-                  {/* Question Header */}
-                  <div className="flex items-start gap-2 sm:gap-3">
-                    <div className="flex items-center gap-1 sm:gap-2 mt-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="cursor-move h-6 w-6 sm:h-8 sm:w-8 shrink-0"
-                      >
-                        <GripVertical className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                      </Button>
-                      <span className="text-xs sm:text-sm text-gray-500 min-w-[1.5rem] sm:min-w-[2rem]">
-                        Q{index + 1}
-                      </span>
-                    </div>
-                    <div className="flex-1 space-y-3 min-w-0">
-                      <div className="flex flex-col sm:flex-row gap-2">
-                        <Input
-                          value={question.question}
-                          onChange={(e) =>
-                            updateQuestion(question.id, {
-                              question: e.target.value,
-                            })
-                          }
-                          placeholder="Enter your question"
-                          className="flex-1 text-sm sm:text-base"
-                        />
-                        <Select
-                          value={question.type}
-                          onValueChange={(value) => {
-                            const newType = value as FormQuestion["type"];
-                            const updates: Partial<FormQuestion> = {
-                              type: newType,
-                            };
-                            if (
-                              newType === "multiple-choice" ||
-                              newType === "checkbox" ||
-                              newType === "dropdown"
-                            ) {
-                              updates.options = ["Option 1"];
-                            } else {
-                              updates.options = undefined;
-                            }
-                            updateQuestion(question.id, updates);
-                          }}
-                        >
-                          <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {questionTypes.map((type) => {
-                              const Icon = type.icon;
-                              return (
-                                <SelectItem key={type.value} value={type.value}>
-                                  <div className="flex items-center gap-2">
-                                    <Icon className="w-4 h-4" />
-                                    {type.label}
-                                  </div>
-                                </SelectItem>
-                              );
-                            })}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Description */}
-                      {activeQuestion === question.id && (
-                        <Input
-                          value={question.description || ""}
-                          onChange={(e) =>
-                            updateQuestion(question.id, {
-                              description: e.target.value,
-                            })
-                          }
-                          placeholder="Add a description (optional)"
-                          className="text-sm"
-                        />
-                      )}
-
-                      {/* Options for choice-based questions */}
-                      {(question.type === "multiple-choice" ||
-                        question.type === "checkbox" ||
-                        question.type === "dropdown") && (
-                        <div className="space-y-2 pl-0 sm:pl-4">
-                          {question.options?.map((option, optIdx) => (
-                            <div
-                              key={optIdx}
-                              className="flex items-center gap-2"
-                            >
-                              <div
-                                className={`w-4 h-4 shrink-0 ${
-                                  question.type === "multiple-choice"
-                                    ? "rounded-full"
-                                    : "rounded"
-                                } border-2 border-gray-300`}
-                              />
-                              <Input
-                                value={option}
-                                onChange={(e) =>
-                                  updateOption(
-                                    question.id,
-                                    optIdx,
-                                    e.target.value
-                                  )
-                                }
-                                placeholder={`Enter option ${optIdx + 1}`}
-                                className="flex-1 text-sm"
-                              />
-                              {question.options &&
-                                question.options.length > 1 && (
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-7 w-7 sm:h-8 sm:w-8 shrink-0"
-                                    onClick={() =>
-                                      deleteOption(question.id, optIdx)
-                                    }
-                                  >
-                                    <X className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-                                  </Button>
-                                )}
-                            </div>
-                          ))}
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => addOption(question.id)}
-                            className="text-green-600 hover:text-green-700 hover:bg-green-50 text-xs sm:text-sm"
-                          >
-                            <Plus className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                            Add Option
-                          </Button>
-                        </div>
-                      )}
-
-                      {/* Preview for non-editable types */}
-                      {question.type !== "multiple-choice" &&
-                        question.type !== "checkbox" &&
-                        question.type !== "dropdown" && (
-                          <div className="pl-0 sm:pl-4">
-                            {renderQuestionPreview(question)}
-                          </div>
-                        )}
-                    </div>
-                  </div>
-
-                  {/* Question Actions */}
-                  {activeQuestion === question.id && (
-                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pt-3 border-t">
-                      <div className="flex items-center gap-1 sm:gap-2 overflow-x-auto pb-2 sm:pb-0">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => moveQuestion(question.id, "up")}
-                          disabled={index === 0}
-                          className="shrink-0"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => moveQuestion(question.id, "down")}
-                          disabled={index === questions.length - 1}
-                          className="shrink-0"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                        <Separator
-                          orientation="vertical"
-                          className="h-6 mx-1 sm:mx-2"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => duplicateQuestion(question.id)}
-                          className="shrink-0"
-                        >
-                          <Copy className="w-4 h-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Duplicate</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteQuestion(question.id)}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50 shrink-0"
-                        >
-                          <Trash2 className="w-4 h-4 sm:mr-2" />
-                          <span className="hidden sm:inline">Delete</span>
-                        </Button>
-                      </div>
-                      <div className="flex items-center justify-between sm:justify-end gap-2">
-                        <Label className="text-sm">Required</Label>
-                        <Switch
-                          checked={question.required}
-                          onCheckedChange={(checked) =>
-                            updateQuestion(question.id, { required: checked })
-                          }
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
+              <QuestionCard
+                question={question}
+                index={index}
+                isActive={activeQuestion === question.id}
+                questionTypes={questionTypes}
+                onUpdate={updateQuestion}
+                onDelete={deleteQuestion}
+                onDuplicate={duplicateQuestion}
+                onMove={moveQuestion}
+                onAddOption={addOption}
+                onUpdateOption={updateOption}
+                onDeleteOption={deleteOption}
+                onSetActive={setActiveQuestion}
+              />
             </Card>
           ))}
 
@@ -2462,9 +1560,7 @@ const formData = {
                       <Button
                         key={type.value}
                         variant="outline"
-                        onClick={() =>
-                          addQuestion(type.value as FormQuestion["type"])
-                        }
+                        onClick={() => addQuestion(type.value)}
                         className="hover:bg-green-50 hover:border-green-400"
                       >
                         <Icon className="w-4 h-4 mr-2" />

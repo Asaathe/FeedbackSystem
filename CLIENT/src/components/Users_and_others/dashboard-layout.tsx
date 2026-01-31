@@ -103,7 +103,6 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'my-feedback', label: 'My Feedback', icon: FileText },
         { id: 'submit-feedback', label: 'Submit Feedback', icon: FileText },
-        { id: 'analytics', label: 'My Analytics', icon: BarChart3 },
       ]
     : role === 'staff'
     ? [

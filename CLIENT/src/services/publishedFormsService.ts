@@ -218,13 +218,122 @@ const generateDueDate = (category: string): string => {
 export const getFormStatsForUser = async (userRole: string) => {
   const pendingForms = await getPendingFormsForUser(userRole);
   const completedForms = await getCompletedFormsForUser(userRole);
-  
+
   return {
     pending: pendingForms.length,
     completed: completedForms.length,
     total: pendingForms.length + completedForms.length,
-    completionRate: pendingForms.length + completedForms.length > 0 
+    completionRate: pendingForms.length + completedForms.length > 0
       ? Math.round((completedForms.length / (pendingForms.length + completedForms.length)) * 100)
       : 0
   };
+};
+
+// Interface for shared responses
+export interface SharedResponse {
+  id: string;
+  formId: string;
+  formTitle: string;
+  courseCode: string;
+  section: string;
+  sharedBy: string;
+  sharedDate: string;
+  totalResponses: number;
+  responses: Response[];
+}
+
+export interface Response {
+  id: string;
+  answers: Answer[];
+  submittedDate: string;
+}
+
+export interface Answer {
+  question: string;
+  answer: string;
+  rating?: number;
+}
+
+// Get shared responses for instructor
+export const getSharedResponsesForInstructor = async (): Promise<SharedResponse[]> => {
+  try {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+    if (!token) {
+      console.warn('No authentication token found');
+      return [];
+    }
+
+    const response = await fetch('http://localhost:5000/api/instructor/shared-responses', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch shared responses:', response.statusText);
+      return [];
+    }
+
+    const result = await response.json();
+    if (result.success && result.responses) {
+      return result.responses.map((item: any) => ({
+        id: item.id?.toString() || '',
+        formId: item.form_id?.toString() || '',
+        formTitle: item.form_title || '',
+        courseCode: item.course_code || '',
+        section: item.section || '',
+        sharedBy: item.shared_by || 'Administrator',
+        sharedDate: item.shared_date ? new Date(item.shared_date).toLocaleDateString() : '',
+        totalResponses: item.total_responses || 0,
+        responses: item.responses?.map((resp: any) => ({
+          id: resp.id?.toString() || '',
+          answers: resp.answers || [],
+          submittedDate: resp.submitted_date ? new Date(resp.submitted_date).toLocaleDateString() : '',
+        })) || [],
+      }));
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error fetching shared responses:', error);
+    return [];
+  }
+};
+
+// Get detailed responses for a specific shared form
+export const getSharedResponsesDetails = async (sharedId: string): Promise<Response[]> => {
+  try {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+    if (!token) {
+      console.warn('No authentication token found');
+      return [];
+    }
+
+    const response = await fetch(`http://localhost:5000/api/instructor/shared-responses/${sharedId}/responses`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Failed to fetch shared response details:', response.statusText);
+      return [];
+    }
+
+    const result = await response.json();
+    if (result.success && result.responses) {
+      return result.responses.map((resp: any) => ({
+        id: resp.id.toString(),
+        answers: resp.answers || [],
+        submittedDate: new Date(resp.submittedDate).toLocaleDateString(),
+      }));
+    }
+
+    return [];
+  } catch (error) {
+    console.error('Error fetching shared response details:', error);
+    return [];
+  }
 };
