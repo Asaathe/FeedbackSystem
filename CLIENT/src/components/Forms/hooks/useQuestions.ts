@@ -7,22 +7,28 @@ export function useQuestions() {
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
 
   // Add a new question
-  const addQuestion = useCallback((type: QuestionType = "text") => {
+  const addQuestion = useCallback((type: QuestionType = "text", data?: Partial<FormQuestion>) => {
     const newQuestion: FormQuestion = {
-      id: Date.now().toString(),
+      id: data?.id || Date.now().toString(),
       type: type,
-      question: "",
-      required: false,
+      question: data?.question || "",
+      description: data?.description,
+      required: data?.required ?? false,
+      options: data?.options,
+      min: data?.min,
+      max: data?.max,
       ...(type === "multiple-choice" ||
       type === "checkbox" ||
       type === "dropdown"
-        ? { options: [""] }
+        ? { options: data?.options || [""] }
         : {}),
     };
-    setQuestions([...questions, newQuestion]);
+    setQuestions(prevQuestions => [...prevQuestions, newQuestion]);
     setActiveQuestion(newQuestion.id);
-    toast.success(`Added ${type} question`);
-  }, [questions]);
+    if (!data) {
+      toast.success(`Added ${type} question`);
+    }
+  }, []);
 
   // Duplicate a question
   const duplicateQuestion = useCallback(

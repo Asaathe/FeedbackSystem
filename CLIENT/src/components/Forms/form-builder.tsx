@@ -39,6 +39,8 @@ import {
   SendHorizontal,
   Calendar,
   Clock,
+  Sparkles,
+  Loader2,
 } from "lucide-react";
 import {
   Dialog,
@@ -75,6 +77,9 @@ import { QuestionTypeConfig, FormQuestion } from "./types/form";
 
 // Utils
 import { cleanQuestions, getDepartmentFromSection } from "./utils/formValidation";
+
+// AI Service
+import { generateQuestionsWithAI, GeneratedQuestion } from "../../services/aiQuestionService";
 
 interface FormBuilderProps {
   onBack: () => void;
@@ -190,6 +195,10 @@ export function FormBuilder({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
+
+  // AI Question Generation States
+  const [aiDescription, setAiDescription] = useState("");
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
   // Load existing form data when formId is provided
   useEffect(() => {
@@ -401,6 +410,52 @@ export function FormBuilder({
       } else {
         toast.error(deployResult.message || "Failed to deploy form");
       }
+    }
+  };
+
+  // Handle AI question generation
+  const handleGenerateQuestions = async () => {
+    if (!aiDescription.trim()) {
+      toast.error("Please enter a description for the form's purpose");
+      return;
+    }
+
+    setIsGeneratingQuestions(true);
+    try {
+      const response = await generateQuestionsWithAI(
+        aiDescription,
+        formCategory,
+        formTarget
+      );
+
+      if (response.success && response.questions) {
+        // Convert generated questions to FormQuestion format and add directly to form
+        const newQuestions: FormQuestion[] = response.questions.map(
+          (q, index) => ({
+            id: `question-${Date.now()}-${index}`,
+            type: q.type as any,
+            question: q.question,
+            description: q.description,
+            required: q.required ?? true,
+            options: q.options,
+          })
+        );
+
+        // Add questions to the form
+        newQuestions.forEach((q) => {
+          addQuestion(q.type, q);
+        });
+
+        setAiDescription("");
+        toast.success(`Added ${newQuestions.length} questions to your form`);
+      } else {
+        toast.error(response.error || "Failed to generate questions");
+      }
+    } catch (error) {
+      toast.error("An error occurred while generating questions");
+      console.error(error);
+    } finally {
+      setIsGeneratingQuestions(false);
     }
   };
 
@@ -1373,6 +1428,42 @@ export function FormBuilder({
                       rows={3}
                       className="resize-none"
                     />
+                  </div>
+
+                  {/* AI Question Generation */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-purple-500" />
+                      AI Question Generation
+                    </Label>
+                    <p className="text-xs text-gray-500">
+                      Describe the purpose of your form and let AI generate relevant questions
+                    </p>
+                    <div className="flex gap-2">
+                      <Textarea
+                        value={aiDescription}
+                        onChange={(e) => setAiDescription(e.target.value)}
+                        placeholder="e.g., Create a feedback form for students to evaluate their course instructor's teaching methods, communication skills, and overall effectiveness..."
+                        rows={3}
+                        className="resize-none flex-1"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleGenerateQuestions}
+                      disabled={isGeneratingQuestions || !aiDescription.trim()}
+                    >
+                      {isGeneratingQuestions ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Generating Questions...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="w-4 h-4 mr-2" />
+                          Generate Questions with AI
+                        </>
+                      )}
+                    </Button>
                   </div>
 
                   {/* Form Image */}
