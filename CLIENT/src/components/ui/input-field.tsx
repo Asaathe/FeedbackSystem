@@ -9,6 +9,7 @@ interface InputFieldProps {
   error?: string;
   showPassword?: boolean;
   onTogglePassword?: () => void;
+  required?: boolean;
 }
 
 export function InputField({
@@ -20,11 +21,13 @@ export function InputField({
   error,
   showPassword,
   onTogglePassword,
+  required = false,
 }: InputFieldProps) {
   return (
     <div className="flex-1">
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       <div className="relative">
         <input
@@ -32,6 +35,7 @@ export function InputField({
           placeholder={placeholder}
           value={value}
           onChange={onChange}
+          required={required}
           className={`border rounded-lg w-full p-2 placeholder-gray-400 focus:ring-2 focus:outline-none text-base ${
             onTogglePassword ? "pr-12" : ""
           } ${

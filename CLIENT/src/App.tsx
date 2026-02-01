@@ -31,6 +31,11 @@ const UserManagement = lazy(() =>
     default: m.UserManagement,
   }))
 );
+const CourseManagement = lazy(() =>
+  import("./components/Admin/course-management").then((m) => ({
+    default: m.CourseManagement,
+  }))
+);
 const AnalyticsPage = lazy(() =>
   import("./components/Users_and_others/analytics-page").then((m) => ({
     default: m.AnalyticsPage,
@@ -278,6 +283,8 @@ export default function App() {
           );
         case "users":
           return <UserManagement />;
+        case "courses":
+          return <CourseManagement />;
         case "analytics":
           return <AnalyticsPage />;
         default:

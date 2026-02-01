@@ -1433,8 +1433,8 @@ export function FormBuilder({
                   {/* AI Question Generation */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-purple-500" />
-                      AI Question Generation
+                      
+                    Detailed Description
                     </Label>
                     <p className="text-xs text-gray-500">
                       Describe the purpose of your form and let AI generate relevant questions
@@ -1459,8 +1459,8 @@ export function FormBuilder({
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4 mr-2" />
-                          Generate Questions with AI
+                        
+                          Save
                         </>
                       )}
                     </Button>

@@ -25,6 +25,7 @@ import {
   getFormsForUserRole,
   FormQuestion as ServiceFormQuestion,
   PublishedForm,
+  checkFormSubmissionStatus,
 } from "../../services/publishedFormsService";
 import { getForm } from "../../services/formManagementService";
 import { getAuthToken } from "../../utils/auth";
@@ -180,6 +181,17 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
         return;
       }
 
+      // Check form submission status before attempting to submit
+      const statusCheck = await checkFormSubmissionStatus(selectedForm.id);
+      if (statusCheck && !statusCheck.canSubmit) {
+        let errorMessage = "Cannot submit this form:\n\n";
+        statusCheck.issues.forEach((issue) => {
+          errorMessage += `• ${issue.message}\n`;
+        });
+        alert(errorMessage);
+        return;
+      }
+
       // Submit the form response
       const response = await fetch(
         `http://localhost:5000/api/forms/${selectedForm.id}/submit`,
@@ -201,7 +213,21 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
         alert("Feedback submitted successfully! Thank you for your response.");
         handleBack();
       } else {
-        alert(result.message || "Failed to submit feedback. Please try again.");
+        // Show detailed error message
+        let errorMessage = result.message || "Failed to submit feedback. Please try again.";
+        
+        // If there are validation errors, show them
+        if (result.errors && Array.isArray(result.errors)) {
+          errorMessage += "\n\nValidation errors:\n" + result.errors.join("\n");
+        }
+        
+        // If form status is provided, include it
+        if (result.formStatus) {
+          errorMessage += `\n\nForm status: ${result.formStatus}`;
+        }
+        
+        console.error("Submission failed:", result);
+        alert(errorMessage);
       }
     } catch (error) {
       console.error("Submission error:", error);

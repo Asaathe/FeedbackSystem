@@ -337,3 +337,52 @@ export const getSharedResponsesDetails = async (sharedId: string): Promise<Respo
     return [];
   }
 };
+
+// Check form submission status - helps diagnose why a form can't be submitted
+export interface FormSubmissionStatus {
+  success: boolean;
+  canSubmit: boolean;
+  form: {
+    id: string;
+    title: string;
+    status: string;
+    startDate?: string;
+    endDate?: string;
+  };
+  issues: Array<{
+    type: string;
+    message: string;
+    currentStatus?: string;
+    submittedAt?: string;
+    startDate?: string;
+    endDate?: string;
+  }>;
+}
+
+export const checkFormSubmissionStatus = async (formId: string): Promise<FormSubmissionStatus | null> => {
+  try {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+    if (!token) {
+      console.warn('No authentication token found');
+      return null;
+    }
+
+    const response = await fetch(`http://localhost:5000/api/forms/${formId}/submission-status`, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      console.error('Failed to check form submission status:', response.statusText);
+      return null;
+    }
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error checking form submission status:', error);
+    return null;
+  }
+};

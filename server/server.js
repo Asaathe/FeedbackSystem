@@ -4030,8 +4030,10 @@ app.post(
     const { responses } = req.body;
 
     console.log(`📤 Submitting form ${formId} for user ${userId}`);
+    console.log(`📤 Request body:`, JSON.stringify(req.body, null, 2));
 
     if (!responses || typeof responses !== "object") {
+      console.log(`❌ Validation failed: responses is missing or not an object`);
       return res.status(400).json({
         success: false,
         message: "Responses data is required",
@@ -4057,10 +4059,18 @@ app.post(
 
       const form = formResults[0];
 
+      console.log(`📋 Form ${formId} details:`, {
+        id: form.id,
+        title: form.title,
+        status: form.status,
+      });
+
       if (form.status !== "active") {
+        console.log(`❌ Form ${formId} is not active. Current status: ${form.status}`);
         return res.status(400).json({
           success: false,
           message: "This form is not currently accepting responses",
+          formStatus: form.status,
         });
       }
 
@@ -4079,6 +4089,7 @@ app.post(
           }
 
           if (checkResults.length > 0) {
+            console.log(`❌ User ${userId} has already submitted form ${formId}`);
             return res.status(400).json({
               success: false,
               message: "You have already submitted this form",
@@ -4121,9 +4132,17 @@ app.post(
                 }
               });
 
+              console.log(`📝 Form ${formId} has ${questions.size} questions`);
+              console.log(`📝 Responses received:`, JSON.stringify(responses, null, 2));
+
               const validationErrors = [];
               questions.forEach((question) => {
                 const response = responses[question.id];
+                console.log(`📝 Question ${question.id} (${question.question_text}):`, {
+                  required: question.required,
+                  response: response,
+                  responseType: typeof response,
+                });
 
                 if (
                   question.required &&
@@ -4158,6 +4177,7 @@ app.post(
               });
 
               if (validationErrors.length > 0) {
+                console.log(`❌ Validation failed for form ${formId}:`, validationErrors);
                 return res.status(400).json({
                   success: false,
                   message: "Validation failed",
@@ -4223,6 +4243,100 @@ app.post(
     });
   },
 );
+
+// Check form submission status - helps diagnose why a form can't be submitted
+app.get("/api/forms/:formId/submission-status", verifyToken, (req, res) => {
+  const formId = req.params.formId;
+  const userId = req.userId;
+
+  console.log(`🔍 Checking submission status for form ${formId}, user ${userId}`);
+
+  const checkFormQuery = "SELECT id, title, status, start_date, end_date FROM Forms WHERE id = ?";
+  db.query(checkFormQuery, [formId], (err, formResults) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+
+    if (formResults.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Form not found",
+      });
+    }
+
+    const form = formResults[0];
+    const issues = [];
+
+    // Check form status
+    if (form.status !== "active") {
+      issues.push({
+        type: "form_status",
+        message: `Form is not active. Current status: ${form.status}`,
+        currentStatus: form.status,
+      });
+    }
+
+    // Check if user has already submitted
+    const checkSubmissionQuery =
+      "SELECT id, submitted_at FROM Form_Responses WHERE form_id = ? AND user_id = ?";
+    db.query(
+      checkSubmissionQuery,
+      [formId, userId],
+      (checkErr, checkResults) => {
+        if (checkErr) {
+          console.error("Database error:", checkErr);
+          return res.status(500).json({
+            success: false,
+            message: "Database error",
+          });
+        }
+
+        if (checkResults.length > 0) {
+          issues.push({
+            type: "already_submitted",
+            message: "You have already submitted this form",
+            submittedAt: checkResults[0].submitted_at,
+          });
+        }
+
+        // Check form dates
+        const now = new Date();
+        if (form.start_date && new Date(form.start_date) > now) {
+          issues.push({
+            type: "not_started",
+            message: `Form is not yet open. Opens on: ${form.start_date}`,
+            startDate: form.start_date,
+          });
+        }
+
+        if (form.end_date && new Date(form.end_date) < now) {
+          issues.push({
+            type: "expired",
+            message: `Form has expired. Closed on: ${form.end_date}`,
+            endDate: form.end_date,
+          });
+        }
+
+        res.json({
+          success: true,
+          canSubmit: issues.length === 0,
+          form: {
+            id: form.id,
+            title: form.title,
+            status: form.status,
+            startDate: form.start_date,
+            endDate: form.end_date,
+          },
+          issues,
+        });
+      }
+    );
+  });
+});
 
 app.get("/api/forms/my-responses", verifyToken, (req, res) => {
   const userId = req.userId;
@@ -4891,6 +5005,355 @@ app.get("/api/instructor/shared-responses/:sharedId/responses", verifyToken, (re
           success: true,
           responses: mappedResponses,
         });
+      });
+    });
+  });
+});
+
+// ============================================
+// Course Sections Management API Endpoints
+// ============================================
+
+// Helper function to check if user is admin
+const isAdmin = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "No token provided",
+    });
+  }
+
+  const token = authHeader.substring(7);
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.userId = decoded.userId;
+
+    // Check if user is admin
+    const checkAdminQuery = "SELECT role FROM Users WHERE id = ?";
+    db.query(checkAdminQuery, [req.userId], (err, results) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Database error",
+        });
+      }
+
+      if (results.length === 0 || results[0].role !== 'admin') {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied. Admin privileges required.",
+        });
+      }
+
+      next();
+    });
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
+  }
+};
+
+// GET all course sections (public endpoint for signup form)
+app.get("/api/courses/sections", (req, res) => {
+  const query = `
+    SELECT id, value, label, category, subcategory, is_active
+    FROM course_sections
+    WHERE is_active = TRUE
+    ORDER BY category, subcategory, label
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching course sections:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch course sections",
+      });
+    }
+
+    // Group by category for better frontend organization
+    const grouped = results.reduce((acc, course) => {
+      if (!acc[course.category]) {
+        acc[course.category] = [];
+      }
+      acc[course.category].push({
+        value: course.value,
+        label: course.label,
+        subcategory: course.subcategory,
+      });
+      return acc;
+    }, {});
+
+    res.json({
+      success: true,
+      courses: results,
+      grouped: grouped,
+    });
+  });
+});
+
+// GET all course sections (admin endpoint - includes inactive)
+app.get("/api/admin/courses/sections", isAdmin, (req, res) => {
+  const query = `
+    SELECT id, value, label, category, subcategory, is_active, created_at, updated_at
+    FROM course_sections
+    ORDER BY category, subcategory, label
+  `;
+
+  db.query(query, (err, results) => {
+    if (err) {
+      console.error("Error fetching course sections:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to fetch course sections",
+      });
+    }
+
+    res.json({
+      success: true,
+      courses: results,
+    });
+  });
+});
+
+// POST - Add new course section (admin only)
+app.post("/api/admin/courses/sections", isAdmin, [
+  body("value").trim().notEmpty().withMessage("Value is required"),
+  body("label").trim().notEmpty().withMessage("Label is required"),
+  body("category").trim().notEmpty().withMessage("Category is required"),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+
+  const { value, label, category, subcategory, is_active } = req.body;
+
+  // Check if value already exists
+  const checkQuery = "SELECT id FROM course_sections WHERE value = ?";
+  db.query(checkQuery, [value], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+
+    if (results.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Course section with this value already exists",
+      });
+    }
+
+    const insertQuery = `
+      INSERT INTO course_sections (value, label, category, subcategory, is_active)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    db.query(
+      insertQuery,
+      [value, label, category, subcategory || null, is_active !== false],
+      (err, result) => {
+        if (err) {
+          console.error("Error creating course section:", err);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to create course section",
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Course section created successfully",
+          course: {
+            id: result.insertId,
+            value,
+            label,
+            category,
+            subcategory,
+            is_active: is_active !== false,
+          },
+        });
+      }
+    );
+  });
+});
+
+// PUT - Update course section (admin only)
+app.put("/api/admin/courses/sections/:id", isAdmin, [
+  body("value").trim().notEmpty().withMessage("Value is required"),
+  body("label").trim().notEmpty().withMessage("Label is required"),
+  body("category").trim().notEmpty().withMessage("Category is required"),
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({
+      success: false,
+      message: "Validation failed",
+      errors: errors.array(),
+    });
+  }
+
+  const { id } = req.params;
+  const { value, label, category, subcategory, is_active } = req.body;
+
+  // Check if value already exists (excluding current record)
+  const checkQuery = "SELECT id FROM course_sections WHERE value = ? AND id != ?";
+  db.query(checkQuery, [value, id], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+
+    if (results.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Course section with this value already exists",
+      });
+    }
+
+    const updateQuery = `
+      UPDATE course_sections
+      SET value = ?, label = ?, category = ?, subcategory = ?, is_active = ?
+      WHERE id = ?
+    `;
+
+    db.query(
+      updateQuery,
+      [value, label, category, subcategory || null, is_active !== false, id],
+      (err, result) => {
+        if (err) {
+          console.error("Error updating course section:", err);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to update course section",
+          });
+        }
+
+        if (result.affectedRows === 0) {
+          return res.status(404).json({
+            success: false,
+            message: "Course section not found",
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Course section updated successfully",
+          course: {
+            id: parseInt(id),
+            value,
+            label,
+            category,
+            subcategory,
+            is_active: is_active !== false,
+          },
+        });
+      }
+    );
+  });
+});
+
+// DELETE - Remove course section (admin only)
+app.delete("/api/admin/courses/sections/:id", isAdmin, (req, res) => {
+  const { id } = req.params;
+
+  // Check if course section is being used by any students
+  const checkUsageQuery = "SELECT COUNT(*) as count FROM students WHERE course_yr_section = (SELECT value FROM course_sections WHERE id = ?)";
+  
+  db.query(checkUsageQuery, [id], (err, results) => {
+    if (err) {
+      console.error("Database error:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Database error",
+      });
+    }
+
+    if (results[0].count > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot delete course section. It is currently assigned to students.",
+      });
+    }
+
+    const deleteQuery = "DELETE FROM course_sections WHERE id = ?";
+    db.query(deleteQuery, [id], (err, result) => {
+      if (err) {
+        console.error("Error deleting course section:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to delete course section",
+        });
+      }
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Course section not found",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Course section deleted successfully",
+      });
+    });
+  });
+});
+
+// PATCH - Toggle course section active status (admin only)
+app.patch("/api/admin/courses/sections/:id/toggle", isAdmin, (req, res) => {
+  const { id } = req.params;
+
+  const toggleQuery = `
+    UPDATE course_sections
+    SET is_active = NOT is_active
+    WHERE id = ?
+  `;
+
+  db.query(toggleQuery, [id], (err, result) => {
+    if (err) {
+      console.error("Error toggling course section:", err);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to toggle course section status",
+      });
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Course section not found",
+      });
+    }
+
+    // Get updated record
+    const selectQuery = "SELECT * FROM course_sections WHERE id = ?";
+    db.query(selectQuery, [id], (err, results) => {
+      if (err) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to fetch updated course section",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Course section status toggled successfully",
+        course: results[0],
       });
     });
   });

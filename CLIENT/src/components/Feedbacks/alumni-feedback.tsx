@@ -243,7 +243,21 @@ export function AlumniFeedback({ onBack }: AlumniFeedbackProps = {}) {
         handleBackToList();
         onBack?.();
       } else {
-        alert(result.message || 'Failed to submit feedback. Please try again.');
+        // Show detailed error message
+        let errorMessage = result.message || 'Failed to submit feedback. Please try again.';
+        
+        // If there are validation errors, show them
+        if (result.errors && Array.isArray(result.errors)) {
+          errorMessage += '\n\nValidation errors:\n' + result.errors.join('\n');
+        }
+        
+        // If form status is provided, include it
+        if (result.formStatus) {
+          errorMessage += `\n\nForm status: ${result.formStatus}`;
+        }
+        
+        console.error('Submission failed:', result);
+        alert(errorMessage);
       }
     } catch (error) {
       console.error('Submission error:', error);

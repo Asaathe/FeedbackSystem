@@ -1,11 +1,11 @@
 import { ReactNode, useState, useEffect } from "react";
 import { Button } from "../ui/button";
-import { 
-  LayoutDashboard, 
-  FileText, 
-  Users, 
-  BarChart3, 
-  Settings, 
+import {
+  LayoutDashboard,
+  FileText,
+  Users,
+  BarChart3,
+  Settings,
   LogOut,
   Menu,
   X,
@@ -15,7 +15,8 @@ import {
   ChevronDown,
   Lock,
   HelpCircle,
-  Shield
+  Shield,
+  BookOpen
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 
@@ -91,6 +92,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'forms', label: 'Feedback Forms', icon: FileText },
         { id: 'users', label: 'User Management', icon: Users },
+        { id: 'courses', label: 'Course Management', icon: BookOpen },
       ]
     : role === 'employer'
     ? [
