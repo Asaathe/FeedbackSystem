@@ -3,6 +3,7 @@ import { Button } from "../ui/button";
 import { InputField } from "../ui/input-field";
 import { SelectField } from "../ui/select-field";
 import { toast } from "sonner";
+import { ChevronLeft, ChevronRight } from "lucide-react";  
 
 interface CourseSection {
   id: number;
@@ -489,43 +490,46 @@ export function CourseManagement() {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
-                <div className="text-sm text-gray-600">
-                  Showing {startIndex + 1} to {Math.min(endIndex, filteredCourses.length)} of {filteredCourses.length} courses
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                  >
-                    Previous
-                  </Button>
-                  <div className="flex items-center gap-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                      <button
+              <div className="flex items-center justify-center gap-2 mt-4 px-6 py-4 border-t border-gray-200">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Previous
+                </Button>
+
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter(page => {
+                      const start = Math.max(1, currentPage - 2);
+                      const end = Math.min(totalPages, currentPage + 2);
+                      return page >= start && page <= end;
+                    })
+                    .map((page) => (
+                      <Button
                         key={page}
+                        variant={currentPage === page ? "default" : "outline"}
+                        size="sm"
                         onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                          currentPage === page
-                            ? "bg-blue-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                        }`}
+                        className={currentPage === page ? "bg-green-500 hover:bg-green-600" : ""}
                       >
                         {page}
-                      </button>
+                      </Button>
                     ))}
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                  >
-                    Next
-                  </Button>
                 </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
               </div>
             )}
           </>

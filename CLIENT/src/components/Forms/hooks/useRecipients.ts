@@ -4,94 +4,12 @@ import {
   getFilteredUsers,
   getAlumniCompanies,
   getEmployerCompanies,
+  getActiveCourseSections,
   assignFormToUsers,
   deployForm,
 } from "../../../services/formManagementService";
 import { Recipient, Instructor, FormFilters } from "../types/form";
 import { formatUserDetails, filterStudentsByDepartment } from "../utils/formValidation";
-
-// Course Year Section options from signup page (Students)
-const COURSE_YEAR_SECTIONS = [
-  "All Students",
-  // Grade 11
-  "ABM11-LOVE",
-  "ABM11-HOPE",
-  "ABM11-FAITH",
-  "HUMSS11-LOVE",
-  "HUMSS11-HOPE",
-  "HUMSS11-FAITH",
-  "HUMSS11-JOY",
-  "HUMSS11-GENEROSITY",
-  "HUMSS11-HUMILITY",
-  "HUMSS11-INTEGRITY",
-  "HUMSS11-WISDOM",
-  "STEM11-HOPE",
-  "STEM11-FAITH",
-  "STEM11-JOY",
-  "STEM11-GENEROSITY",
-  "ICT11-LOVE",
-  "ICT11-HOPE",
-  // Grade 12
-  "ABM12-LOVE",
-  "ABM12-HOPE",
-  "ABM12-FAITH",
-  "HUMSS12-LOVE",
-  "HUMSS12-HOPE",
-  "HUMSS12-FAITH",
-  "HUMSS12-JOY",
-  "HUMSS12-GENEROSITY",
-  "HUMSS12-HUMILITY",
-  "STEM12-LOVE",
-  "STEM12-HOPE",
-  "STEM12-FAITH",
-  "STEM12-JOY",
-  "STEM12-GENEROSITY",
-  "ICT12-LOVE",
-  "ICT12-HOPE",
-  // College - BSIT
-  "BSIT-1A",
-  "BSIT-1B",
-  "BSIT-1C",
-  "BSIT-2A",
-  "BSIT-2B",
-  "BSIT-2C",
-  "BSIT-3A",
-  "BSIT-3B",
-  "BSIT-3C",
-  "BSIT-4A",
-  "BSIT-4B",
-  "BSIT-4C",
-  // College - BSBA
-  "BSBA-1A",
-  "BSBA-2A",
-  "BSBA-3A",
-  "BSBA-4A",
-  // College - BSCS
-  "BSCS-1A",
-  "BSCS-2A",
-  "BSCS-3A",
-  "BSCS-4A",
-  // College - BSEN
-  "BSEN-1A",
-  "BSEN-2A",
-  "BSEN-3A",
-  "BSEN-4A",
-  // College - BSOA
-  "BSOA-1A",
-  "BSOA-2A",
-  "BSOA-3A",
-  "BSOA-4A",
-  // College - BSAIS
-  "BSAIS-1A",
-  "BSAIS-2A",
-  "BSAIS-3A",
-  "BSAIS-4A",
-  // College - BTVTEd
-  "BTVTEd-1A",
-  "BTVTEd-2A",
-  "BTVTEd-3A",
-  "BTVTEd-4A",
-];
 
 const INSTRUCTOR_DEPARTMENTS = [
   "Senior High Department",
@@ -117,6 +35,8 @@ export function useRecipients() {
   // Dynamic audience options
   const [alumniCompanies, setAlumniCompanies] = useState<string[]>([]);
   const [employerCompanies, setEmployerCompanies] = useState<string[]>([]);
+  const [courseYearSections, setCourseYearSections] = useState<string[]>(["All Students"]);
+  const [loadingCourseSections, setLoadingCourseSections] = useState<boolean>(false);
 
   // Instructors for sharing responses
   const [instructors, setInstructors] = useState<Instructor[]>([]);
@@ -159,6 +79,29 @@ export function useRecipients() {
       }
     };
     loadCompanies();
+  }, []);
+
+  // Load course year sections from API
+  useEffect(() => {
+    const loadCourseSections = async () => {
+      setLoadingCourseSections(true);
+      try {
+        const result = await getActiveCourseSections();
+        if (result.success && result.sections && result.sections.length > 0) {
+          // Prepend "All Students" to the list
+          setCourseYearSections(["All Students", ...result.sections]);
+        } else {
+          // Fallback to empty array with "All Students" if API fails
+          setCourseYearSections(["All Students"]);
+        }
+      } catch (error) {
+        console.error("Failed to load course sections:", error);
+        setCourseYearSections(["All Students"]);
+      } finally {
+        setLoadingCourseSections(false);
+      }
+    };
+    loadCourseSections();
   }, []);
 
   // Load instructors for sharing responses
@@ -394,7 +337,8 @@ export function useRecipients() {
     instructorSearchTerm,
     setInstructorSearchTerm,
     // Constants
-    courseYearSections: COURSE_YEAR_SECTIONS,
+    courseYearSections,
+    loadingCourseSections,
     instructorDepartments: INSTRUCTOR_DEPARTMENTS,
     // Actions
     toggleRecipient,

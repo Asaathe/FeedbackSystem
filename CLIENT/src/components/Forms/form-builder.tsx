@@ -1443,7 +1443,7 @@ export function FormBuilder({
                       <Textarea
                         value={aiDescription}
                         onChange={(e) => setAiDescription(e.target.value)}
-                        placeholder="e.g., Create a feedback form for students to evaluate their course instructor's teaching methods, communication skills, and overall effectiveness..."
+                        placeholder=" Describe the purpose of your form"
                         rows={3}
                         className="resize-none flex-1"
                       />

@@ -1045,7 +1045,7 @@ export const getInstructorDepartments = async (): Promise<{ success: boolean; de
 // Get student sections for filtering
 export const getStudentSections = async (): Promise<{ success: boolean; sections: string[]; message?: string }> => {
   logDebug('getStudentSections called');
-  
+
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
     if (!token) {
@@ -1071,11 +1071,50 @@ export const getStudentSections = async (): Promise<{ success: boolean; sections
       logDebug(`Successfully loaded ${result.sections.length} sections`);
       return { success: true, sections: result.sections, message: 'Sections fetched successfully' };
     }
-    
+
     return { success: false, sections: [], message: result.message || 'Failed to fetch sections' };
   } catch (error) {
     logError('Exception in getStudentSections:', error);
     return { success: false, sections: [], message: 'An error occurred while fetching sections' };
+  }
+};
+
+// Get active course sections from course_sections table
+export const getActiveCourseSections = async (): Promise<{ success: boolean; sections: string[]; message?: string }> => {
+  logDebug('getActiveCourseSections called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, sections: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/courses/sections';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, sections: [], message: 'Failed to fetch course sections' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.courses) {
+      // Extract the value field from course section objects
+      const sectionValues = result.courses.map((course: any) => course.value);
+      logDebug(`Successfully loaded ${sectionValues.length} course sections`);
+      return { success: true, sections: sectionValues, message: 'Course sections fetched successfully' };
+    }
+
+    return { success: false, sections: [], message: result.message || 'Failed to fetch course sections' };
+  } catch (error) {
+    logError('Exception in getActiveCourseSections:', error);
+    return { success: false, sections: [], message: 'An error occurred while fetching course sections' };
   }
 };
 
