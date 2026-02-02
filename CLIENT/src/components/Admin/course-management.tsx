@@ -252,6 +252,28 @@ export function CourseManagement() {
         </p>
       </div>
 
+      {/* Stats */}
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-sm text-gray-600">Total Courses</div>
+          <div className="text-2xl font-bold text-gray-900">
+            {courses.length}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-sm text-gray-600">Active Courses</div>
+          <div className="text-2xl font-bold text-green-600">
+            {courses.filter((c) => c.is_active).length}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-sm text-gray-600">Inactive Courses</div>
+          <div className="text-2xl font-bold text-red-600">
+            {courses.filter((c) => !c.is_active).length}
+          </div>
+        </div>
+      </div>
+
       {/* Add/Edit Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">
@@ -510,27 +532,6 @@ export function CourseManagement() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Total Courses</div>
-          <div className="text-2xl font-bold text-gray-900">
-            {courses.length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Active Courses</div>
-          <div className="text-2xl font-bold text-green-600">
-            {courses.filter((c) => c.is_active).length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Inactive Courses</div>
-          <div className="text-2xl font-bold text-red-600">
-            {courses.filter((c) => !c.is_active).length}
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
