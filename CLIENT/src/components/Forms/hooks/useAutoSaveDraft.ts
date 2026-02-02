@@ -16,7 +16,6 @@ interface AutoSaveDraftOptions {
     endTime: string;
   };
   questions: any[];
-  autoSaveInterval?: number; // Default: 30 seconds
   enabled?: boolean;
 }
 
@@ -47,10 +46,8 @@ export function useAutoSaveDraft({
   formImage,
   submissionSchedule,
   questions,
-  autoSaveInterval = 30000, // 30 seconds default
   enabled = true,
 }: AutoSaveDraftOptions) {
-  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedDataRef = useRef<string>("");
   const isOnlineRef = useRef<boolean>(true);
   const isSavingRef = useRef<boolean>(false);
@@ -187,14 +184,6 @@ export function useAutoSaveDraft({
     localStorage.removeItem(key);
   }, [getStorageKey]);
 
-  // Main save draft function - saves to database and localStorage
-  const saveDraft = useCallback(() => {
-    if (!enabled) return;
-    
-    // Save to database as draft
-    saveDraftToDatabase();
-  }, [enabled, saveDraftToDatabase]);
-
   // Handle beforeunload event (browser close/refresh)
   useEffect(() => {
     if (!enabled) return;
@@ -268,60 +257,11 @@ export function useAutoSaveDraft({
     };
   }, [saveDraftToDatabase]);
 
-  // Set up periodic auto-save
-  useEffect(() => {
-    if (!enabled) return;
-
-    // Clear any existing timer
-    if (autoSaveTimerRef.current) {
-      clearInterval(autoSaveTimerRef.current);
-    }
-
-    // Set up new timer
-    autoSaveTimerRef.current = setInterval(() => {
-      saveDraft();
-    }, autoSaveInterval);
-
-    return () => {
-      if (autoSaveTimerRef.current) {
-        clearInterval(autoSaveTimerRef.current);
-      }
-    };
-  }, [enabled, autoSaveInterval, saveDraft]);
-
-  // Show draft restoration notification on mount
-  useEffect(() => {
-    if (!enabled) return;
-
-    const draft = getDraft();
-    if (draft && draft.isDirty) {
-      const timeSinceSave = Date.now() - draft.savedAt;
-      const minutesAgo = Math.floor(timeSinceSave / 60000);
-      
-      let timeText = "just now";
-      if (minutesAgo > 0) {
-        timeText = minutesAgo === 1 ? "1 minute ago" : `${minutesAgo} minutes ago`;
-      }
-
-      toast.info("Draft restored", {
-        description: `Your unsaved changes from ${timeText} have been restored`,
-        duration: 5000,
-        action: {
-          label: "Discard",
-          onClick: () => {
-            clearDraft();
-            toast.success("Draft discarded");
-          },
-        },
-      });
-    }
-  }, [enabled, getDraft, clearDraft]);
-
   return {
     hasDraft,
     getDraft,
     clearDraft,
-    saveDraft,
+    saveDraftToDatabase,
     isOnline: isOnlineRef.current,
   };
 }

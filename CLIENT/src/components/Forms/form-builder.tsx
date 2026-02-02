@@ -195,7 +195,7 @@ export function FormBuilder({
     hasDraft,
     getDraft,
     clearDraft,
-    saveDraft,
+    saveDraftToDatabase,
     isOnline,
   } = useAutoSaveDraft({
     formId,
@@ -206,7 +206,6 @@ export function FormBuilder({
     formImage,
     submissionSchedule,
     questions,
-    autoSaveInterval: 30000, // 30 seconds
     enabled: true,
   });
 
@@ -513,7 +512,7 @@ export function FormBuilder({
                   </Badge>
                 )}
                 
-                {hasDraft() && isOnline && (
+                {hasDraft() && isOnline && formId && (
                   <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 shrink-0">
                     <Save className="w-3 h-3 mr-1" />
                     Draft
