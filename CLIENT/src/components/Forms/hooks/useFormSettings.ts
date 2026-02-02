@@ -12,6 +12,11 @@ import { validateImageFile } from "../../../utils/imageUtils";
 import { FormState, DatabaseCategory, SubmissionSchedule } from "../types/form";
 import { parseTargetAudience } from "../utils/formValidation";
 
+// Helper function to get draft storage key
+const getDraftStorageKey = (formId?: string) => {
+  return formId ? `form_draft_${formId}` : `form_draft_new`;
+};
+
 interface UseFormSettingsProps {
   formId?: string;
 }
@@ -261,6 +266,10 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           : await createForm(formData);
 
         if (result.success) {
+          // Clear draft after successful save
+          const draftKey = getDraftStorageKey(formId);
+          localStorage.removeItem(draftKey);
+          
           toast.success(formId ? "Form saved as draft" : "Form saved as draft");
           return true;
         } else {
@@ -350,6 +359,10 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           toast.error("Failed to get form ID");
           return false;
         }
+
+        // Clear draft after successful publish
+        const draftKey = getDraftStorageKey(currentFormId);
+        localStorage.removeItem(draftKey);
 
         // Note: Recipient assignment and deployment logic should be handled by caller
         // This hook returns the formId for the caller to use

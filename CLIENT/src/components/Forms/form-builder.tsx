@@ -66,6 +66,7 @@ import { useFormSettings } from "./hooks/useFormSettings";
 import { useQuestions } from "./hooks/useQuestions";
 import { useRecipients } from "./hooks/useRecipients";
 import { usePublishWizard } from "./hooks/usePublishWizard";
+import { useAutoSaveDraft } from "./hooks/useAutoSaveDraft";
 
 // Components
 import { QuestionCard } from "./components/QuestionCard";
@@ -189,6 +190,26 @@ export function FormBuilder({
     resetWizard,
   } = usePublishWizard(4);
 
+  // Auto-Save Draft Hook
+  const {
+    hasDraft,
+    getDraft,
+    clearDraft,
+    saveDraft,
+    isOnline,
+  } = useAutoSaveDraft({
+    formId,
+    formTitle,
+    formDescription,
+    formCategory,
+    formTarget,
+    formImage,
+    submissionSchedule,
+    questions,
+    autoSaveInterval: 30000, // 30 seconds
+    enabled: true,
+  });
+
   // Dialog States
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -205,26 +226,26 @@ export function FormBuilder({
     const loadExistingForm = async () => {
       if (formId) {
         try {
-          // First check localStorage for unsaved changes
-          const savedFormData = localStorage.getItem(`form_${formId}`);
-          if (savedFormData) {
-            const formData = JSON.parse(savedFormData);
-            setFormTitle(formData.title || "");
-            setFormDescription(formData.description || "");
-            setFormCategory(formData.category || "Academic");
-            setFormTarget(formData.target || "All Users");
-            setFormImage(formData.image || null);
+          // Check for draft first using the new draft system
+          const draft = getDraft();
+          if (draft && draft.isDirty) {
+            // Load from draft
+            setFormTitle(draft.title || "");
+            setFormDescription(draft.description || "");
+            setFormCategory(draft.category || "Academic");
+            setFormTarget(draft.target || "All Users");
+            setFormImage(draft.image || null);
             setSubmissionSchedule(
-              formData.submissionSchedule || {
+              draft.submissionSchedule || {
                 startDate: "",
                 endDate: "",
                 startTime: "",
                 endTime: "",
               }
             );
-            loadQuestions(formData.questions || []);
+            loadQuestions(draft.questions || []);
           } else {
-            // Load from API if no localStorage data
+            // Load from API if no draft data
             const { getForm } = await import("../../services/formManagementService");
             const result = await getForm(formId);
             if (result.success && result.form) {
@@ -281,7 +302,7 @@ export function FormBuilder({
     };
 
     loadExistingForm();
-  }, [formId]);
+  }, [formId, getDraft]);
 
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
@@ -483,6 +504,21 @@ export function FormBuilder({
                 <h1 className="text-sm sm:text-lg truncate text-gray-700">
                   {loading ? "Saving..." : formTitle || "New Form"}
                 </h1>
+                
+                {/* Auto-save indicators */}
+                {!isOnline && (
+                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 shrink-0">
+                    <Clock className="w-3 h-3 mr-1" />
+                    Offline
+                  </Badge>
+                )}
+                
+                {hasDraft() && isOnline && (
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 shrink-0">
+                    <Save className="w-3 h-3 mr-1" />
+                    Draft
+                  </Badge>
+                )}
               </div>
             </div>
 
