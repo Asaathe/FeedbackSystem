@@ -354,7 +354,9 @@ export function FeedbackFormsManagement({
       const getResult = await getForm(formId);
       if (!getResult.success || !getResult.form) {
         console.error(`[DEBUG] Failed to load form data:`, getResult.message);
-        toast.error("Failed to load form data");
+        // Refresh the forms list in case the form was deleted
+        await loadForms();
+        toast.error("Form not found. The form may have been deleted.");
         return;
       }
       const originalForm = getResult.form;

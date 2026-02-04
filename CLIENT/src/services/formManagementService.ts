@@ -1090,7 +1090,7 @@ export const getActiveCourseSections = async (): Promise<{ success: boolean; sec
       return { success: false, sections: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/courses/sections';
+    const apiUrl = '/api/admin/courses/sections';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1216,9 +1216,19 @@ export const getFormResponses = async (formId: string): Promise<{ success: boole
 
     if (result.success && result.responses) {
       logDebug(`Successfully loaded ${result.responses.length} responses`);
+      // Transform answers to response_data for compatibility with FormResponse interface
+      const transformedResponses = result.responses.map((r: any) => ({
+        id: r.id?.toString() || '',
+        user_id: r.user_id || 0,
+        submitted_at: r.submitted_at || new Date().toISOString(),
+        response_data: r.answers || {},
+        respondent_name: r.full_name || r.respondent_name || '',
+        respondent_email: r.email || r.respondent_email || '',
+        respondent_role: r.role || r.respondent_role || '',
+      }));
       return {
         success: true,
-        responses: result.responses,
+        responses: transformedResponses,
         form: result.form,
         pagination: result.pagination,
         message: 'Form responses fetched successfully'

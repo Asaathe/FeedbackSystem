@@ -207,10 +207,10 @@ export function UserManagement() {
 
   
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          user.email.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role.toLowerCase() === roleFilter.toLowerCase();
-    const matchesStatus = statusFilter === 'all' || user.status.toLowerCase() === statusFilter.toLowerCase();
+    const matchesSearch = (user.fullName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                          (user.email?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === 'all' || (user.role?.toLowerCase() || '') === roleFilter.toLowerCase();
+    const matchesStatus = statusFilter === 'all' || (user.status?.toLowerCase() || '') === statusFilter.toLowerCase();
     return matchesSearch && matchesRole && matchesStatus;
   });
 
@@ -1241,18 +1241,18 @@ export function UserManagement() {
                         {user.profilePicture ? (
                           <img
                             src={user.profilePicture}
-                            alt={user.name}
+                            alt={user.fullName || user.name}
                             className="w-full h-full object-cover"
                           />
                         ) : (
                           <AvatarFallback className="bg-yellow-100 text-yellow-700 text-xs sm:text-sm">
-                            {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
+                            {(user.fullName || user.name)?.split(' ').map((n: string) => n[0]).join('') || ''}
                           </AvatarFallback>
                         )}
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <p className="font-medium text-gray-900 truncate text-sm sm:text-base">{user.name}</p>
+                          <p className="font-medium text-gray-900 truncate text-sm sm:text-base">{user.fullName || user.name}</p>
                           <Badge variant="secondary" className={`${getRoleBadgeColor(user.role)} text-xs`}>
                             {user.role}
                           </Badge>
@@ -1355,16 +1355,16 @@ export function UserManagement() {
                           {user.profilePicture ? (
                             <img
                               src={user.profilePicture}
-                              alt={user.name}
+                              alt={user.fullName || user.name}
                               className="w-full h-full object-cover"
                             />
                           ) : (
                             <AvatarFallback className="bg-green-100 text-green-700">
-                              {user.name?.split(' ').map((n: string) => n[0]).join('') || ''}
+                              {(user.fullName || user.name)?.split(' ').map((n: string) => n[0]).join('') || ''}
                             </AvatarFallback>
                           )}
                         </Avatar>
-                        <span>{user.name}</span>
+                        <span>{user.fullName || user.name}</span>
                       </div>
                     </TableCell>
                     <TableCell>{user.email}</TableCell>

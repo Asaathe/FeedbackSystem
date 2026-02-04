@@ -82,7 +82,7 @@ async function setupDatabase() {
     }
 
     // Read and execute the schema file
-    const schemaPath = path.join(__dirname, "forms-schema.sql");
+    const schemaPath = path.join(__dirname, "schema/feedback_system.sql");
     console.log("📋 Reading schema file...");
     
     if (!fs.existsSync(schemaPath)) {

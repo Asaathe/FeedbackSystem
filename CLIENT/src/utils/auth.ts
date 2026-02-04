@@ -5,8 +5,8 @@ export interface AuthUser {
   id: string;
   email: string;
   role: string;
-  firstName?: string;
-  lastName?: string;
+  fullName?: string;
+  status?: string;
 }
 
 export interface AuthToken {

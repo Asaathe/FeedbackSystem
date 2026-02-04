@@ -2,17 +2,7 @@
 // This file contains middleware functions for JWT authentication and authorization
 
 const jwt = require("jsonwebtoken");
-const mysql = require("mysql");
-
-// Database connection (same as in server.js)
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "feedback_system",
-  port: process.env.DB_PORT || 3306,
-});
-
+const db = require("../config/database");
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
 
 // JWT Verification Middleware
@@ -99,7 +89,7 @@ const requireRole = (allowedRoles) => {
   return (req, res, next) => {
     // Get user role from database with additional security checks
     const query = `
-      SELECT u.role, u.status, u.email_verified, u.last_login
+      SELECT u.role, u.status, u.email_verified
       FROM Users u
       WHERE u.id = ? AND u.status = 'active'
     `;
@@ -145,8 +135,7 @@ const requireRole = (allowedRoles) => {
       req.user = {
         id: req.userId,
         role: userRole,
-        email: user.email,
-        lastLogin: user.last_login
+        email: user.email
       };
 
       next();

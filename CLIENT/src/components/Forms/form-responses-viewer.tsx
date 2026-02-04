@@ -114,8 +114,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       const answerCounts: Record<string, number> = {};
 
       responses.forEach(response => {
+        console.log('Response ID:', response.id, 'response_data keys:', Object.keys(response.response_data), 'full:', JSON.stringify(response.response_data));
         const answer = response.response_data[questionId] || response.response_data[questionIdStr];
-        console.log('Response:', response.id, 'Question ID:', questionId, 'Answer:', JSON.stringify(answer));
         if (answer !== undefined && answer !== null && answer !== '') {
           if (Array.isArray(answer)) {
             // For checkboxes
@@ -213,10 +213,12 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       // Load responses
       const responsesResult = await getFormResponses(formId);
       if (responsesResult.success) {
+        console.log("Responses loaded:", responsesResult.responses.length);
         setResponses(responsesResult.responses);
         setFilteredResponses(responsesResult.responses);
       } else {
-        toast.error(responsesResult.message);
+        console.error("Failed to load responses:", responsesResult.message);
+        toast.error(responsesResult.message || "Failed to load responses");
       }
     } catch (error) {
       console.error("Error loading form responses:", error);

@@ -51,14 +51,14 @@ export function useRecipients() {
       return recipients;
     }
     return recipients.filter((recipient) =>
-      recipient.name.toLowerCase().includes(searchTerm.toLowerCase())
+      (recipient.fullName || '').toLowerCase().includes((searchTerm || '').toLowerCase())
     );
   }, [recipients, searchTerm]);
 
   // Filtered instructors (memoized)
   const filteredInstructors = useMemo(() => {
     return instructors.filter((instructor) =>
-      instructor.name.toLowerCase().includes(instructorSearchTerm.toLowerCase())
+      (instructor.fullName || '').toLowerCase().includes((instructorSearchTerm || '').toLowerCase())
     );
   }, [instructors, instructorSearchTerm]);
 
@@ -113,7 +113,7 @@ export function useRecipients() {
           setInstructors(
             result.users.map((user) => ({
               id: user.id,
-              name: user.name,
+              fullName: user.fullName || user.name,
               department: user.department || "No department",
             }))
           );
@@ -163,7 +163,7 @@ export function useRecipients() {
         if (result.success && result.users && result.users.length > 0) {
           let formattedUsers = result.users.map((user) => ({
             id: user.id,
-            name: user.name,
+            fullName: user.fullName || user.name,
             details: formatUserDetails(user),
           }));
 

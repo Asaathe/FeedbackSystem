@@ -66,7 +66,7 @@ export function CourseManagement() {
     setIsLoading(true);
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch("/api/admin/courses/sections", {
+      const response = await fetch("/api/courses/sections", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -101,8 +101,8 @@ export function CourseManagement() {
     try {
       const token = sessionStorage.getItem("authToken");
       const url = editingCourse
-        ? `/api/admin/courses/sections/${editingCourse.id}`
-        : "/api/admin/courses/sections";
+        ? `/api/courses/sections/${editingCourse.id}`
+        : "/api/courses/sections";
       const method = editingCourse ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -154,7 +154,7 @@ export function CourseManagement() {
 
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch(`/api/admin/courses/sections/${id}`, {
+      const response = await fetch(`/api/courses/sections/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -181,7 +181,7 @@ export function CourseManagement() {
     try {
       const token = sessionStorage.getItem("authToken");
       const response = await fetch(
-        `/api/admin/courses/sections/${id}/toggle`,
+        `/api/courses/sections/${id}/toggle`,
         {
           method: "PATCH",
           headers: {

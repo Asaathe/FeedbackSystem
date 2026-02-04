@@ -1,7 +1,7 @@
-// Database connection module
+// Database Configuration
 const mysql = require("mysql");
 
-const db = mysql.createConnection({
+const dbConfig = {
   host: process.env.DB_HOST || "localhost",
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
@@ -9,7 +9,10 @@ const db = mysql.createConnection({
   port: process.env.DB_PORT || 3306,
   charset: "utf8mb4",
   maxAllowedPacket: 16777216,
-});
+};
+
+// Create database connection
+const db = mysql.createConnection(dbConfig);
 
 // Connect to database
 db.connect((err) => {
@@ -20,6 +23,15 @@ db.connect((err) => {
     );
   } else {
     console.log("Connected to MySQL database 'feedback_system'");
+  }
+});
+
+// Handle connection errors
+db.on("error", (err) => {
+  console.error("Database error:", err);
+  if (err.code === "PROTOCOL_CONNECTION_LOST") {
+    console.log("Database connection lost. Attempting to reconnect...");
+    db.connect();
   }
 });
 

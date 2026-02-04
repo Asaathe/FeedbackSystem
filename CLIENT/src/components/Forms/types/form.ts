@@ -29,13 +29,13 @@ export interface SubmissionSchedule {
 
 export interface Recipient {
   id: number;
-  name: string;
+  fullName: string;
   details: string;
 }
 
 export interface Instructor {
   id: number;
-  name: string;
+  fullName: string;
   department: string;
 }
 

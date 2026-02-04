@@ -23,8 +23,7 @@ export interface AIQuestionGenerationResponse {
 
 // CORRECT MODELS THAT WORK (Updated 2024)
 const GEMINI_MODELS = [
-  'gemini-3-pro',
-  'gemini-3-pro-preview',
+ 
   'gemini-3-flash-preview',
   
              
@@ -219,7 +218,7 @@ async function tryGeminiModels(
             options: q.options && Array.isArray(q.options) 
               ? q.options.map((opt: any) => String(opt))
               : undefined,
-            required: typeof q.required === 'boolean' ? q.required : index < 3, // First 3 are required
+            required: typeof q.required === 'boolean' ? q.required : index < 2,
           };
         })
         .filter((q: GeneratedQuestion) => q.question.trim().length > 0);
@@ -252,121 +251,6 @@ async function tryGeminiModels(
 }
 
 /**
- * Generate mock questions as fallback
- */
-async function generateMockQuestions(
-  description: string,
-  category?: string,
-  targetAudience?: string
-): Promise<AIQuestionGenerationResponse> {
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const descLower = description.toLowerCase();
-  const categoryLower = category?.toLowerCase() || '';
-  
-  // Base questions
-  const baseQuestions: GeneratedQuestion[] = [
-    {
-      question: "How would you rate your overall experience?",
-      type: "rating",
-      description: "Rate from 1 to 5 stars",
-      required: true,
-    },
-    {
-      question: "What did you like most about your experience?",
-      type: "textarea",
-      required: true,
-    },
-    {
-      question: "What areas could be improved?",
-      type: "textarea",
-      required: false,
-    },
-    {
-      question: "How satisfied are you with the quality?",
-      type: "multiple-choice",
-      options: ["Very Satisfied", "Satisfied", "Neutral", "Dissatisfied", "Very Dissatisfied"],
-      required: true,
-    },
-  ];
-
-  
-  // Context-specific questions
-  let contextQuestions: GeneratedQuestion[] = [];
-  
-  if (descLower.includes('product') || descLower.includes('service')) {
-    contextQuestions = [
-      {
-        question: "How likely are you to recommend this to others?",
-        type: "linear-scale",
-        description: "0 = Not likely, 10 = Very likely",
-        required: true,
-      },
-      {
-        question: "Which features did you find most useful?",
-        type: "checkbox",
-        options: ["Feature A", "Feature B", "Feature C", "Feature D"],
-        required: false,
-      },
-    ];
-  }
-  
-  if (descLower.includes('event') || descLower.includes('meeting')) {
-    contextQuestions = [
-      {
-        question: "How well organized was the event?",
-        type: "rating",
-        required: true,
-      },
-      {
-        question: "What was your favorite part of the event?",
-        type: "text",
-        required: false,
-      },
-    ];
-  }
-  
-  if (descLower.includes('app') || descLower.includes('website')) {
-    contextQuestions = [
-      {
-        question: "How easy was it to use?",
-        type: "multiple-choice",
-        options: ["Very Easy", "Easy", "Average", "Difficult", "Very Difficult"],
-        required: true,
-      },
-      {
-        question: "Did you encounter any technical issues?",
-        type: "text",
-        description: "Please describe any problems",
-        required: false,
-      },
-    ];
-  }
-  
-  // Add demographic question if audience specified
-  if (targetAudience) {
-    contextQuestions.push({
-      question: "How would you describe yourself?",
-      type: "dropdown",
-      options: ["Student", "Professional", "Manager", "Business Owner", "Other"],
-      required: false,
-    });
-  }
-  
-  const allQuestions = [...baseQuestions, ...contextQuestions].slice(0, 7);
-  
-  return {
-    success: true,
-    questions: allQuestions,
-    metadata: {
-      provider: 'mock',
-      model: 'mock-1.0',
-      duration: 1000,
-    },
-  };
-}
-
-/**
  * Main function to generate questions
  */
 export async function generateQuestionsWithAI(
@@ -384,15 +268,16 @@ export async function generateQuestionsWithAI(
     };
   }
   
-  const startTime = Date.now();
-  
   try {
     // Get API key
     const apiKey = getApiKey();
     
     if (!apiKey) {
-      console.log('No API key found, using mock data');
-      return await generateMockQuestions(description, category, targetAudience);
+      console.log('No API key found');
+      return {
+        success: false,
+        error: 'No Gemini API key configured. Please add your API key in settings.',
+      };
     }
     
     // Build prompt
@@ -405,7 +290,6 @@ export async function generateQuestionsWithAI(
     if (geminiResult.success) {
       return geminiResult;
     } else {
-      // Return error without fallback
       return {
         success: false,
         error: geminiResult.error || 'Failed to generate questions with Gemini API',
@@ -415,9 +299,6 @@ export async function generateQuestionsWithAI(
   } catch (error) {
     console.error('Error in generateQuestionsWithAI:', error);
     
-    const duration = Date.now() - startTime;
-    
-    // Return error without fallback
     return {
       success: false,
       error: `AI generation failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
