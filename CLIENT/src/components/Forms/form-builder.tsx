@@ -66,7 +66,6 @@ import { useFormSettings } from "./hooks/useFormSettings";
 import { useQuestions } from "./hooks/useQuestions";
 import { useRecipients } from "./hooks/useRecipients";
 import { usePublishWizard } from "./hooks/usePublishWizard";
-import { useAutoSaveDraft } from "./hooks/useAutoSaveDraft";
 
 // Components
 import { QuestionCard } from "./components/QuestionCard";
@@ -190,25 +189,6 @@ export function FormBuilder({
     resetWizard,
   } = usePublishWizard(4);
 
-  // Auto-Save Draft Hook
-  const {
-    hasDraft,
-    getDraft,
-    clearDraft,
-    saveDraftToDatabase,
-    isOnline,
-  } = useAutoSaveDraft({
-    formId,
-    formTitle,
-    formDescription,
-    formCategory,
-    formTarget,
-    formImage,
-    submissionSchedule,
-    questions,
-    enabled: true,
-  });
-
   // Dialog States
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
@@ -225,74 +205,54 @@ export function FormBuilder({
     const loadExistingForm = async () => {
       if (formId) {
         try {
-          // Check for draft first using the new draft system
-          const draft = getDraft();
-          if (draft && draft.isDirty) {
-            // Load from draft
-            setFormTitle(draft.title || "");
-            setFormDescription(draft.description || "");
-            setFormCategory(draft.category || "Academic");
-            setFormTarget(draft.target || "All Users");
-            setFormImage(draft.image || null);
-            setSubmissionSchedule(
-              draft.submissionSchedule || {
-                startDate: "",
-                endDate: "",
-                startTime: "",
-                endTime: "",
-              }
-            );
-            loadQuestions(draft.questions || []);
-          } else {
-            // Load from API if no draft data
-            const { getForm } = await import("../../services/formManagementService");
-            const result = await getForm(formId);
-            if (result.success && result.form) {
-              const form = result.form;
-              setFormTitle(form.title || "");
-              setFormDescription(form.description || "");
-              setFormCategory(form.category || "Academic");
-              setFormTarget(form.target_audience || "All Users");
-              setFormImage(form.image_url || null);
-              setIsPublished(form.status === "active");
+          // Load from API
+          const { getForm } = await import("../../services/formManagementService");
+          const result = await getForm(formId);
+          if (result.success && result.form) {
+            const form = result.form;
+            setFormTitle(form.title || "");
+            setFormDescription(form.description || "");
+            setFormCategory(form.category || "Academic");
+            setFormTarget(form.target_audience || "All Users");
+            setFormImage(form.image_url || null);
+            setIsPublished(form.status === "active");
 
-              // Parse target_audience to set audience selection fields
-              const target = form.target_audience || "All Users";
-              if (target === "All Users") {
-                setSelectedAudienceType("All Users");
-                setSelectedDepartment("");
-                setSelectedCourseYearSection("");
-              } else if (target.includes(" - ")) {
-                const parts = target.split(" - ");
-                const audienceType = parts[0];
-                const courseYearSection = parts[parts.length - 1];
-                setSelectedAudienceType(audienceType);
-                setSelectedCourseYearSection(courseYearSection);
-                if (audienceType === "Students") {
-                  const department = getDepartmentFromSection(courseYearSection);
-                  setSelectedDepartment(department);
-                } else {
-                  setSelectedDepartment("");
-                }
+            // Parse target_audience to set audience selection fields
+            const target = form.target_audience || "All Users";
+            if (target === "All Users") {
+              setSelectedAudienceType("All Users");
+              setSelectedDepartment("");
+              setSelectedCourseYearSection("");
+            } else if (target.includes(" - ")) {
+              const parts = target.split(" - ");
+              const audienceType = parts[0];
+              const courseYearSection = parts[parts.length - 1];
+              setSelectedAudienceType(audienceType);
+              setSelectedCourseYearSection(courseYearSection);
+              if (audienceType === "Students") {
+                const department = getDepartmentFromSection(courseYearSection);
+                setSelectedDepartment(department);
               } else {
-                setSelectedAudienceType(target);
                 setSelectedDepartment("");
-                setSelectedCourseYearSection("");
               }
-
-              // Load submission schedule if available
-              setSubmissionSchedule({
-                startDate: form.start_date || "",
-                endDate: form.end_date || "",
-                startTime: "",
-                endTime: "",
-              });
-
-              // Load questions
-              loadQuestions(form.questions || []);
             } else {
-              toast.error("Failed to load form data");
+              setSelectedAudienceType(target);
+              setSelectedDepartment("");
+              setSelectedCourseYearSection("");
             }
+
+            // Load submission schedule if available
+            setSubmissionSchedule({
+              startDate: form.start_date || "",
+              endDate: form.end_date || "",
+              startTime: "",
+              endTime: "",
+            });
+
+            // Load questions
+            loadQuestions(form.questions || []);
+          } else {
+            toast.error("Failed to load form data");
           }
         } catch (error) {
           toast.error("Failed to load form data");
@@ -301,7 +261,7 @@ export function FormBuilder({
     };
 
     loadExistingForm();
-  }, [formId, getDraft]);
+  }, [formId]);
 
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
@@ -503,21 +463,6 @@ export function FormBuilder({
                 <h1 className="text-sm sm:text-lg truncate text-gray-700">
                   {loading ? "Saving..." : formTitle || "New Form"}
                 </h1>
-                
-                {/* Auto-save indicators */}
-                {!isOnline && (
-                  <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-300 shrink-0">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Offline
-                  </Badge>
-                )}
-                
-                {hasDraft() && isOnline && formId && (
-                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-300 shrink-0">
-                    <Save className="w-3 h-3 mr-1" />
-                    Draft
-                  </Badge>
-                )}
               </div>
             </div>
 
