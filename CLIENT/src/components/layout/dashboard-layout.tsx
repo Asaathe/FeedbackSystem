@@ -98,7 +98,6 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
     ? [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'submit-feedback', label: 'Feedback Forms', icon: FileText },
-        { id: 'employee-directory', label: 'Our Alumni', icon: Users },
       ]
     : role === 'instructor'
     ? [

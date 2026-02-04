@@ -1,13 +1,13 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { autoRefreshToken } from "./utils/auth";
-import { LoginPage } from "./components/Users_and_others/login-page";
-import { SignupPage } from "./components/Users_and_others/signup-page";
-import { DashboardLayout } from "./components/Users_and_others/dashboard-layout";
+import { LoginPage } from "./components/auth/login-page";
+import { SignupPage } from "./components/auth/signup-page";
+import { DashboardLayout } from "./components/layout/dashboard-layout";
 import { Toaster } from "./components/ui/sonner";
 
 // Lazy load components
 const AdminDashboard = lazy(() =>
-  import("./components/Dashboards/admin-dashboard").then((m) => ({
+  import("./components/Admin/admin-dashboard").then((m) => ({
     default: m.AdminDashboard,
   }))
 );
@@ -27,7 +27,7 @@ const FormResponsesViewer = lazy(() =>
   }))
 );
 const UserManagement = lazy(() =>
-  import("./components/Users_and_others/user-management").then((m) => ({
+  import("./components/Admin/user-management").then((m) => ({
     default: m.UserManagement,
   }))
 );
@@ -36,11 +36,7 @@ const CourseManagement = lazy(() =>
     default: m.CourseManagement,
   }))
 );
-const AnalyticsPage = lazy(() =>
-  import("./components/Users_and_others/analytics-page").then((m) => ({
-    default: m.AnalyticsPage,
-  }))
-);
+
 const StudentDashboard = lazy(() =>
   import("./components/Dashboards/student-dashboard").then((m) => ({
     default: m.StudentDashboard,
@@ -52,7 +48,7 @@ const AlumniDashboard = lazy(() =>
   }))
 );
 const AlumniFeedback = lazy(() =>
-  import("./components/Feedbacks/alumni-feedback").then((m) => ({
+  import("./components/feedback/alumni-feedback").then((m) => ({
     default: m.AlumniFeedback,
   }))
 );
@@ -62,7 +58,7 @@ const InstructorDashboard = lazy(() =>
   }))
 );
 const InstructorFeedback = lazy(() =>
-  import("./components/Feedbacks/instructor-feedback").then((m) => ({
+  import("./components/feedback/instructor-feedback").then((m) => ({
     default: m.InstructorFeedback,
   }))
 );
@@ -72,24 +68,15 @@ const EmployerDashboard = lazy(() =>
     default: m.EmployerDashboard,
   }))
 );
-const EmployeeDirectory = lazy(() =>
-  import("./components/Users_and_others/employee-directory").then((m) => ({
-    default: m.EmployeeDirectory,
-  }))
-);
-const EmployeePerformance = lazy(() =>
-  import("./components/Users_and_others/employee-performance").then((m) => ({
-    default: m.EmployeePerformance,
-  }))
-);
+
 const FeedbackSubmission = lazy(() =>
-  import("./components/Feedbacks/feedback-submission").then((m) => ({
+  import("./components/feedback/feedback-submission").then((m) => ({
     default: m.FeedbackSubmission,
   }))
 );
 
 const UserProfile = lazy(() =>
-  import("./components/Users_and_others/user-profile").then((m) => ({
+  import("./components/users/user-profile").then((m) => ({
     default: m.UserProfile,
   }))
 );
@@ -285,8 +272,7 @@ export default function App() {
           return <UserManagement />;
         case "courses":
           return <CourseManagement />;
-        case "analytics":
-          return <AnalyticsPage />;
+       
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;
       }
@@ -297,24 +283,8 @@ export default function App() {
       switch (currentPage) {
         case "dashboard":
           return <EmployerDashboard onNavigate={setCurrentPage} />;
-        case "employee-directory":
-          return (
-            <EmployeeDirectory
-              onViewEmployee={(id: string) =>
-                setCurrentPage("employee-performance")
-              }
-            />
-          );
-        case "employee-performance":
-          return (
-            <EmployeePerformance
-              onBack={() => setCurrentPage("employee-directory")}
-            />
-          );
         case "submit-feedback":
           return <FeedbackSubmission />;
-        case "analytics":
-          return <AnalyticsPage />;
         case "settings":
           return (
             <div className="text-center py-12">

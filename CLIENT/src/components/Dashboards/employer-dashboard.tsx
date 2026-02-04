@@ -170,22 +170,11 @@ export function EmployerDashboard({ onNavigate }: EmployerDashboardProps = {}) {
       {/* Our Alumni Employees */}
       <Card className="border-green-100">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Our Alumni Employees</CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                University graduates working at your company
-              </p>
-            </div>
-            <Button 
-              variant="outline"
-              size="sm"
-              className="border-green-200 hover:bg-green-50"
-              onClick={() => onNavigate?.('employee-directory')}
-            >
-              View All
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
+          <div>
+            <CardTitle>Our Alumni Employees</CardTitle>
+            <p className="text-sm text-gray-600 mt-1">
+              University graduates working at your company
+            </p>
           </div>
         </CardHeader>
         <CardContent>
