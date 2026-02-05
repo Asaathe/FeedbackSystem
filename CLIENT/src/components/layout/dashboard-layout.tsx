@@ -53,7 +53,8 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
           });
           const data = await response.json();
           if (data.success && data.user) {
-            setUserName(data.user.fullName);
+            // Handle both snake_case and camelCase field names
+            setUserName(data.user.full_name || data.user.fullName || '');
           }
         } catch (error) {
           console.error('Failed to fetch user name:', error);
@@ -98,6 +99,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
     ? [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'submit-feedback', label: 'Feedback Forms', icon: FileText },
+        { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
       ]
     : role === 'instructor'
     ? [

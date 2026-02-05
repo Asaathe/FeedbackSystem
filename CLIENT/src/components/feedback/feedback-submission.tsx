@@ -19,8 +19,16 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Progress } from "../ui/progress";
-import { ArrowLeft, Send, ClipboardList, Clock } from "lucide-react";
+import { ArrowLeft, Send, ClipboardList, Clock, Check } from "lucide-react";
 import { Badge } from "../ui/badge";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import {
   getFormsForUserRole,
   FormQuestion as ServiceFormQuestion,
@@ -55,6 +63,13 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [availableForms, setAvailableForms] = useState<FeedbackForm[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
+
+  // Clear any stale localStorage data from previous sessions
+  useEffect(() => {
+    localStorage.removeItem('submittedFormIds');
+  }, []);
 
   // Mobile swipe gesture handling
   const touchStartX = useRef<number>(0);
@@ -210,8 +225,10 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
       const result = await response.json();
 
       if (response.ok && result.success) {
-        alert("Feedback submitted successfully! Thank you for your response.");
-        handleBack();
+        // Add form ID to submitted forms (session-only, not persisted)
+        setSubmittedFormIds(prev => new Set([...prev, selectedForm.id]));
+        // Show success modal
+        setShowSuccessModal(true);
       } else {
         // Show detailed error message
         let errorMessage = result.message || "Failed to submit feedback. Please try again.";
@@ -450,38 +467,52 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                     <img
                       src={form.imageUrl}
                       alt={form.title}
-                      className="w-full h-full object-cover"
+                      className={`w-full h-full object-cover ${submittedFormIds.has(form.id) ? 'opacity-60' : ''}`}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
                     <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 z-10">
                       <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
                         <Badge
                           variant="outline"
-                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
+                          className={`${submittedFormIds.has(form.id) ? 'bg-gray-100 border-gray-300 text-gray-600' : 'bg-white border-green-200 text-green-700'} text-xs shadow-md`}
                         >
                           {form.category}
                         </Badge>
-                        <div className="flex items-center gap-1 text-white bg-orange-600 px-2 py-1 rounded text-xs shadow-md">
-                          <Clock className="w-3 h-3" />
-                          <span>Due {form.dueDate}</span>
-                        </div>
+                        {submittedFormIds.has(form.id) ? (
+                          <div className="flex items-center gap-1 text-white bg-green-600 px-2 py-1 rounded text-xs shadow-md">
+                            <Check className="w-3 h-3" />
+                            <span>Submitted</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-white bg-orange-600 px-2 py-1 rounded text-xs shadow-md">
+                            <Clock className="w-3 h-3" />
+                            <span>Due {form.dueDate}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="relative h-32 sm:h-48 w-full overflow-hidden bg-gradient-to-br from-green-50 to-lime-50 flex items-center justify-center">
+                  <div className={`relative h-32 sm:h-48 w-full overflow-hidden flex items-center justify-center ${submittedFormIds.has(form.id) ? 'bg-gradient-to-br from-gray-50 to-gray-100' : 'bg-gradient-to-br from-green-50 to-lime-50'}`}>
                     <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
                       <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                         <Badge
                           variant="outline"
-                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
+                          className={`${submittedFormIds.has(form.id) ? 'bg-gray-100 border-gray-300 text-gray-600' : 'bg-white border-green-200 text-green-700'} text-xs shadow-md`}
                         >
                           {form.category}
                         </Badge>
-                        <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
-                          <Clock className="w-3 h-3" />
-                          <span>Due {form.dueDate}</span>
-                        </div>
+                        {submittedFormIds.has(form.id) ? (
+                          <div className="flex items-center gap-1 text-white bg-green-600 px-2 py-1 rounded text-xs shadow-md">
+                            <Check className="w-3 h-3" />
+                            <span>Submitted</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
+                            <Clock className="w-3 h-3" />
+                            <span>Due {form.dueDate}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -505,11 +536,11 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                       <span>{form.questionCount || form.questions.length} questions</span>
                     </div>
                     <Button
-                      className="bg-green-500 hover:bg-green-600 h-7 px-1.5 sm:px-2 text-xs whitespace-nowrap"
+                      className="h-10 px-4 sm:px-6 text-sm whitespace-nowrap bg-green-500 hover:bg-green-600"
                       onClick={() => handleSelectForm(form)}
+                      disabled={submittedFormIds.has(form.id)}
                     >
-                      <span className="hidden sm:inline">Start Feedback</span>
-                      <span className="sm:hidden">Start</span>
+                      {submittedFormIds.has(form.id) ? "Submitted" : "Start Feedback"}
                     </Button>
                   </div>
                 </CardContent>
@@ -550,7 +581,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               <Button
                 variant="ghost"
                 onClick={handleBack}
-                className="text-white hover:bg-white/20 border border-white/30 h-10 px-3 sm:px-4 text-sm whitespace-nowrap"
+                className="text-white hover:bg-white/20 border border-white/30 h-10 px-4 sm:px-6 text-sm whitespace-nowrap"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Exit Form
@@ -721,6 +752,47 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
           </div>
         </div>
       </div>
+
+      {/* Success Modal */}
+      <Dialog open={showSuccessModal} onOpenChange={(open) => !open && setShowSuccessModal(false)}>
+        <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
+          <DialogHeader className="text-center">
+            <div className="flex flex-col items-center">
+              {/* Animated checkmark circle */}
+              <div className="mb-2 relative">
+                <div className="absolute inset-0 bg-green-400 rounded-full animate-ping opacity-20"></div>
+                <div className="relative flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-gradient-to-br from-green-400 to-lime-500 shadow-lg">
+                  <Check className="h-10 w-10 sm:h-12 sm:w-12 text-white" />
+                </div>
+              </div>
+              
+              {/* Thank you message */}
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">
+                Thank You!
+              </h2>
+              <p className="text-base text-gray-700 mt-1 font-medium">
+                Your feedback has been submitted successfully
+              </p>
+              <p className="text-sm text-gray-500 mt-0.5">
+                We appreciate your time and valuable input
+              </p>
+            </div>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col items-center justify-center mt-6 gap-3 sm:flex-col">
+            <Button
+              onClick={() => {
+                setShowSuccessModal(false);
+                // Navigate back to form list
+                handleBack();
+              }}
+              className="bg-gradient-to-r from-green-500 to-lime-500 hover:from-green-600 hover:to-lime-600 text-white px-8 sm:px-12 py-3 sm:py-4 text-sm font-medium shadow-lg transition-all min-w-[180px] sm:min-w-[200px]"
+            >
+              Back to Forms
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+

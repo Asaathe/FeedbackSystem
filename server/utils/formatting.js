@@ -109,9 +109,11 @@ const formatUserResponse = (user) => {
   // Add role-specific fields for students
   if (user.role === 'student') {
     if (user.studentID !== undefined) formatted.studentId = user.studentID;
-    if (user.course_yr_section !== undefined) formatted.courseYrSection = user.course_yr_section;
-    if (user.department !== undefined) formatted.department = user.department;
+    if (user.program_id !== undefined) formatted.programId = user.program_id;
+    if (user.course_section !== undefined) formatted.courseYrSection = user.course_section;
+    if (user.course_department !== undefined) formatted.department = user.course_department;
     if (user.contact_number !== undefined) formatted.contactNumber = user.contact_number;
+    if (user.course_section !== undefined) formatted.display_label = user.course_section;
   }
 
   // Add role-specific fields for instructors

@@ -7,16 +7,24 @@ const { verifyToken } = require("../middleware/auth");
 
 // Public routes
 router.get("/", verifyToken, formController.getAllForms);
-router.get("/:id", verifyToken, formController.getFormById);
 
-// Response routes
+// Response routes - must be before /:id to avoid route conflicts
+router.get("/my-responses", verifyToken, responseController.getMyResponses);
 router.get("/:id/responses", verifyToken, responseController.getFormResponses);
 router.get("/:id/submission-status", verifyToken, responseController.getFormSubmissionStatus);
 router.post("/:id/submit", verifyToken, responseController.submitFormResponse);
-router.get("/my-responses", verifyToken, responseController.getMyResponses);
 
 // Deploy route
 router.post("/:id/deploy", verifyToken, formController.deployForm);
+
+// Assign form to users route
+router.post("/:id/assign", verifyToken, formController.assignFormToUsers);
+
+// Form by ID - must be after more specific routes
+router.get("/:id", verifyToken, formController.getFormById);
+
+// Assign form to users route
+router.post("/:id/assign", verifyToken, formController.assignFormToUsers);
 
 // Protected routes
 router.post("/", verifyToken, formController.validateFormCreation, formController.createForm);

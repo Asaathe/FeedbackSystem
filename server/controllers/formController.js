@@ -179,8 +179,9 @@ const deployForm = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId;
+    const deploymentData = req.body;
 
-    const result = await formService.deployForm(id, userId);
+    const result = await formService.deployForm(id, userId, deploymentData);
 
     if (result.success) {
       return res.status(200).json(result);
@@ -300,6 +301,66 @@ const deleteFormCategory = async (req, res) => {
   }
 };
 
+/**
+ * Assign form to specific users
+ */
+const assignFormToUsers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userIds } = req.body;
+    
+    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "User IDs are required",
+      });
+    }
+
+    const db = require("../config/database");
+    
+    // Check if form exists
+    const formCheck = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM Forms WHERE id = ?", [id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!formCheck || formCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Form not found",
+      });
+    }
+
+    // Insert form assignments (only form_id, user_id, assigned_at)
+    const assignments = userIds.map(userId => [id, userId, new Date()]);
+    
+    await new Promise((resolve, reject) => {
+      db.query(
+        "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
+        [assignments],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Form assigned to ${userIds.length} users`,
+      assignedCount: userIds.length,
+    });
+  } catch (error) {
+    console.error("Assign form to users error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to assign form to users",
+    });
+  }
+};
+
 module.exports = {
   getAllForms,
   getFormById,
@@ -309,6 +370,7 @@ module.exports = {
   duplicateForm,
   saveAsTemplate,
   deployForm,
+  assignFormToUsers,
   validateFormCreation,
   validateFormUpdate,
   getFormCategories,

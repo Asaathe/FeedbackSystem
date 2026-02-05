@@ -23,9 +23,7 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-interface UserProfileProps {
-  role: string;
-}
+interface UserProfileProps {}
 
 interface UserData {
   id: number;
@@ -55,7 +53,38 @@ interface UserData {
   employerContactNumber?: string;
 }
 
-export function UserProfile({ role }: UserProfileProps) {
+// Field mapping from API snake_case to component camelCase
+const mapApiToUserData = (apiUser: Record<string, any>): UserData => {
+  return {
+    id: apiUser.id,
+    email: apiUser.email,
+    fullName: apiUser.full_name || apiUser.fullName,
+    role: apiUser.role,
+    status: apiUser.status,
+    // Student fields
+    studentId: apiUser.studentID || apiUser.studentId,
+    courseYrSection: apiUser.course_yr_section || apiUser.courseYrSection,
+    contactNumber: apiUser.contact_number || apiUser.contactNumber,
+    // Instructor fields
+    instructorId: apiUser.instructor_id || apiUser.instructorId,
+    department: apiUser.department,
+    specialization: apiUser.subject_taught || apiUser.specialization,
+    // Alumni fields
+    gradYear: apiUser.grad_year || apiUser.gradYear,
+    degree: apiUser.degree,
+    jobTitle: apiUser.jobtitle || apiUser.jobTitle,
+    company: apiUser.company || apiUser.company,
+    industry: apiUser.industry,
+    location: apiUser.location,
+    graduationDate: apiUser.graduation_date || apiUser.graduationDate,
+    // Employer fields
+    companyName: apiUser.companyname || apiUser.companyName,
+    position: apiUser.position,
+    employerContactNumber: apiUser.employer_contact_number || apiUser.employerContactNumber,
+  };
+};
+
+export function UserProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -81,8 +110,9 @@ export function UserProfile({ role }: UserProfileProps) {
         const data = await response.json();
 
         if (data.success && data.user) {
-          setUserData(data.user);
-          setFormData(data.user);
+          const mappedUser = mapApiToUserData(data.user);
+          setUserData(mappedUser);
+          setFormData(mappedUser);
         } else {
           toast.error('Failed to load profile data');
         }
@@ -111,14 +141,14 @@ export function UserProfile({ role }: UserProfileProps) {
       }
 
       // For now, we'll just update basic user info
-      // In a full implementation, you'd have separate endpoints for each role
+      // Use snake_case field names to match backend expectations
       const updateData = {
-        fullName: formData.fullName,
+        full_name: formData.fullName,
         // Add other updatable fields as needed
       };
 
-      const response = await fetch('http://localhost:5000/api/users/me/profile', {
-        method: 'PATCH',
+      const response = await fetch('http://localhost:5000/api/auth/profile', {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
@@ -129,7 +159,7 @@ export function UserProfile({ role }: UserProfileProps) {
       const data = await response.json();
 
       if (data.success) {
-        setUserData(prev => prev ? { ...prev, fullName: updateData.fullName! } : null);
+        setUserData(prev => prev ? { ...prev, fullName: formData.fullName! } : null);
         setIsEditing(false);
         toast.success('Profile updated successfully');
       } else {

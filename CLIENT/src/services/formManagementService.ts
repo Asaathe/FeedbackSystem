@@ -1079,9 +1079,9 @@ export const getStudentSections = async (): Promise<{ success: boolean; sections
   }
 };
 
-// Get active course sections from course_sections table
-export const getActiveCourseSections = async (): Promise<{ success: boolean; sections: string[]; message?: string }> => {
-  logDebug('getActiveCourseSections called');
+// Get active course sections from course_management table
+export const getActiveCourseSections = async (department?: string): Promise<{ success: boolean; sections: string[]; message?: string }> => {
+  logDebug('getActiveCourseSections called with department:', department);
 
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
@@ -1090,7 +1090,12 @@ export const getActiveCourseSections = async (): Promise<{ success: boolean; sec
       return { success: false, sections: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/admin/courses/sections';
+    // Build URL with optional department parameter
+    let apiUrl = '/api/programs/sections';
+    if (department) {
+      apiUrl += `?department=${encodeURIComponent(department)}`;
+    }
+    
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1115,6 +1120,43 @@ export const getActiveCourseSections = async (): Promise<{ success: boolean; sec
   } catch (error) {
     logError('Exception in getActiveCourseSections:', error);
     return { success: false, sections: [], message: 'An error occurred while fetching course sections' };
+  }
+};
+
+// Get departments from course_management table
+export const getDepartmentsFromPrograms = async (): Promise<{ success: boolean; departments: string[]; message?: string }> => {
+  logDebug('getDepartmentsFromPrograms called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, departments: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/programs/departments';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, departments: [], message: 'Failed to fetch departments' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.departments) {
+      logDebug(`Successfully loaded ${result.departments.length} departments`);
+      return { success: true, departments: result.departments, message: 'Departments fetched successfully' };
+    }
+
+    return { success: false, departments: [], message: result.message || 'Failed to fetch departments' };
+  } catch (error) {
+    logError('Exception in getDepartmentsFromPrograms:', error);
+    return { success: false, departments: [], message: 'An error occurred while fetching departments' };
   }
 };
 

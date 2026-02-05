@@ -133,14 +133,13 @@ function RecipientList({
             checked={selectedRecipients.has(recipient.id)}
             onChange={() => onToggleRecipient(recipient.id)}
             className="w-4 h-4"
-            aria-label={`Select ${recipient.name}`}
+            aria-label={`Select ${recipient.fullName}`}
           />
           <Label
             htmlFor={`recipient-${recipient.id}`}
             className="text-sm flex-1"
           >
-            {recipient.name}{" "}
-            <span className="text-gray-500">({recipient.details})</span>
+            {recipient.fullName}
           </Label>
         </div>
       ))}

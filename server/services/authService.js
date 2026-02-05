@@ -18,7 +18,7 @@ const registerUser = async (userData) => {
       fullName,
       role,
       student_id,
-      course_year_section,
+      program_id,
       instructor_id,
       department,
       company_name,
@@ -71,13 +71,12 @@ const registerUser = async (userData) => {
       case "student":
         await queryDatabase(
           db,
-          `INSERT INTO students (user_id, studentID, course_yr_section, department, contact_number, subjects)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO students (user_id, studentID, program_id, contact_number, subjects)
+           VALUES (?, ?, ?, ?, ?)`,
           [
             userId,
             student_id,
-            course_year_section,
-            department,
+            program_id,
             userData.contactNumber || "",
             userData.subjects || "",
           ]

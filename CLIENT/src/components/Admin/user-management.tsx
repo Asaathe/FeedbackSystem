@@ -59,7 +59,14 @@ interface User {
   status: string;
   createdAt?: string;
   studentId?: string;
+  // Program-related fields (from students table + course_management join)
+  program_id?: number;
+  program_name?: string;
+  program_code?: string;
+  year_level?: number;
+  section?: string;
   courseYrSection?: string;
+  display_label?: string;
   instructorId?: string;
   degree?: string;
   alumniCompany?: string;
@@ -86,6 +93,35 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   
+  // Programs list for dropdown
+  const [programs, setPrograms] = useState<Array<{ value: string; label: string }>>([]);
+  const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
+
+  // Fetch programs from API
+  useEffect(() => {
+    const fetchPrograms = async () => {
+      setIsLoadingPrograms(true);
+      try {
+        const response = await fetch('/api/programs');
+        const data = await response.json();
+        
+        if (data.success && data.programs) {
+          const options = data.programs.map((program: any) => ({
+            value: String(program.id),
+            label: program.course_section,
+          }));
+          setPrograms(options);
+        }
+      } catch (error) {
+        console.error('Error fetching programs:', error);
+      } finally {
+        setIsLoadingPrograms(false);
+      }
+    };
+
+    fetchPrograms();
+  }, []);
+  
   // Form state for adding new user
   const [newUser, setNewUser] = useState({
     fullName: '',
@@ -98,7 +134,7 @@ export function UserManagement() {
     profilePicture: '',
     // Role-specific fields
     studentId: '',
-    course_year_section: '',
+    program_id: '',
     employeeId: '',
     companyName: '',
     graduationYear: ''
@@ -116,7 +152,7 @@ export function UserManagement() {
     profilePicture: '',
     // Role-specific fields
     studentId: '',
-    course_year_section: '',
+    program_id: '',
     employeeId: '',
     companyName: '',
     graduationYear: ''
@@ -249,29 +285,8 @@ export function UserManagement() {
 
   const getDisplayDepartment = (user: any) => {
     if (user.role?.toLowerCase() === 'student') {
-      // Check if courseYrSection indicates senior high or college
-      const courseYrSection = user.courseYrSection || user.year || '';
-      
-      // Check for Senior High strands (ABM, HUMSS, STEM, ICT) with grade levels
-      const seniorHighStrands = ['ABM', 'HUMSS', 'STEM', 'ICT'];
-      const isSeniorHigh = seniorHighStrands.some(strand =>
-        courseYrSection.includes(strand) &&
-        (courseYrSection.includes('11') || courseYrSection.includes('12'))
-      );
-      
-      // Check for College courses (BSIT, BSBA, BSCS, BSEN, BSOA, BSAIS, BTVTEd)
-      const collegeCourses = ['BSIT', 'BSBA', 'BSCS', 'BSEN', 'BSOA', 'BSAIS', 'BTVTEd'];
-      const isCollege = collegeCourses.some(course =>
-        courseYrSection.includes(course)
-      );
-
-      if (isSeniorHigh) {
-        return 'Senior High';
-      } else if (isCollege) {
-        return 'College';
-      } else {
-        return user.department || 'N/A';
-      }
+      // Use the department from course_management join
+      return user.department || 'Not Assigned';
     } else if (user.role?.toLowerCase() === 'instructor') {
       return user.department || 'Not Assigned';
     } else {
@@ -282,7 +297,8 @@ export function UserManagement() {
   const getPendingInfo = (user: any) => {
     const role = user.role?.toLowerCase();
     if (role === 'student') {
-      return user.courseYrSection || user.year || 'N/A';
+      // Use course_section from course_management join
+      return user.courseYrSection || 'Not Assigned';
     } else if (role === 'instructor') {
       return user.department || 'Not Assigned';
     } else if (role === 'alumni') {
@@ -297,7 +313,7 @@ export function UserManagement() {
   const getPendingLabel = (user: any) => {
     const role = user.role?.toLowerCase();
     if (role === 'student') {
-      return 'Course Year and Section';
+      return 'Course and Section';
     } else if (role === 'instructor') {
       return 'Department';
     } else if (role === 'alumni') {
@@ -318,8 +334,8 @@ export function UserManagement() {
 
     // Validate role-specific fields
     if (newUser.role.toLowerCase() === 'student') {
-      if (!newUser.course_year_section) {
-        toast.error('Please select a course year and section');
+      if (!newUser.program_id) {
+        toast.error('Please select a program');
         return;
       }
       if (!newUser.department) {
@@ -351,7 +367,7 @@ export function UserManagement() {
         // Role-specific fields
         ...(newUser.role.toLowerCase() === 'student' && {
           studentId: newUser.studentId,
-          course_year_section: newUser.course_year_section
+          program_id: newUser.program_id ? parseInt(newUser.program_id) : null
         }),
         ...(newUser.role.toLowerCase() === 'instructor' && {
           employeeId: newUser.employeeId
@@ -397,7 +413,7 @@ export function UserManagement() {
         address: '',
         profilePicture: '',
         studentId: '',
-        course_year_section: '',
+        program_id: '',
         employeeId: '',
         companyName: '',
         graduationYear: ''
@@ -498,7 +514,7 @@ export function UserManagement() {
       address: user.address || '',
       profilePicture: user.profilePicture || '',
       studentId: user.studentId || '',
-      course_year_section: user.courseYrSection || '',
+      program_id: user.program_id ? String(user.program_id) : '',
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
       graduationYear: user.graduationYear || ''
@@ -520,7 +536,7 @@ export function UserManagement() {
       address: user.address || '',
       profilePicture: user.profilePicture || '',
       studentId: user.studentId || '',
-      course_year_section: user.courseYrSection || '',
+      program_id: user.program_id ? String(user.program_id) : '',
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
       graduationYear: user.graduationYear || ''
@@ -549,7 +565,7 @@ export function UserManagement() {
         // Role-specific fields
         ...(editUser.role.toLowerCase() === 'student' && {
           studentId: editUser.studentId,
-          course_year_section: editUser.course_year_section
+          program_id: editUser.program_id ? parseInt(editUser.program_id) : null
         }),
         ...(editUser.role.toLowerCase() === 'instructor' && {
           instructorId: editUser.employeeId
@@ -602,7 +618,7 @@ export function UserManagement() {
         address: selectedUser.address || '',
         profilePicture: selectedUser.profilePicture || '',
         studentId: selectedUser.studentId || '',
-        course_year_section: selectedUser.courseYrSection || '',
+        program_id: selectedUser.program_id ? String(selectedUser.program_id) : '',
         employeeId: selectedUser.employeeId || '',
         companyName: selectedUser.companyName || '',
         graduationYear: selectedUser.graduationYear || ''
@@ -665,67 +681,20 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="course_year_section">Course-Year and Section *</Label>
-              <Select value={newUser.course_year_section} onValueChange={(value) => setNewUser({ ...newUser, course_year_section: value })}>
+              <Label htmlFor="course_year_section">Program *</Label>
+              <Select 
+                value={newUser.program_id} 
+                onValueChange={(value) => setNewUser({ ...newUser, program_id: value })}
+              >
                 <SelectTrigger id="course_year_section">
-                  <SelectValue placeholder="Select course-year and section" />
+                  <SelectValue placeholder={isLoadingPrograms ? "Loading programs..." : "Select program"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Grade 11 */}
-                  <SelectItem value="ABM11-LOVE">ABM11-LOVE</SelectItem>
-                  <SelectItem value="ABM11-HOPE">ABM11-HOPE</SelectItem>
-                  <SelectItem value="ABM11-FAITH">ABM11-FAITH</SelectItem>
-                  <SelectItem value="HUMSS11-LOVE">HUMSS11-LOVE</SelectItem>
-                  <SelectItem value="HUMSS11-HOPE">HUMSS11-HOPE</SelectItem>
-                  <SelectItem value="HUMSS11-FAITH">HUMSS11-FAITH</SelectItem>
-                  <SelectItem value="HUMSS11-JOY">HUMSS11-JOY</SelectItem>
-                  <SelectItem value="HUMSS11-GENEROSITY">HUMSS11-GENEROSITY</SelectItem>
-                  <SelectItem value="HUMSS11-HUMILITY">HUMSS11-HUMILITY</SelectItem>
-                  <SelectItem value="HUMSS11-INTEGRITY">HUMSS11-INTEGRITY</SelectItem>
-                  <SelectItem value="HUMSS11-WISDOM">HUMSS11-WISDOM</SelectItem>
-                  <SelectItem value="STEM11-HOPE">STEM11-HOPE</SelectItem>
-                  <SelectItem value="STEM11-FAITH">STEM11-FAITH</SelectItem>
-                  <SelectItem value="STEM11-JOY">STEM11-JOY</SelectItem>
-                  <SelectItem value="STEM11-GENEROSITY">STEM11-GENEROSITY</SelectItem>
-                  <SelectItem value="ICT11-LOVE">ICT11-LOVE</SelectItem>
-                  <SelectItem value="ICT11-HOPE">ICT11-HOPE</SelectItem>
-                  {/* Grade 12 */}
-                  <SelectItem value="ABM12-LOVE">ABM12-LOVE</SelectItem>
-                  <SelectItem value="ABM12-HOPE">ABM12-HOPE</SelectItem>
-                  <SelectItem value="ABM12-FAITH">ABM12-FAITH</SelectItem>
-                  <SelectItem value="HUMSS12-LOVE">HUMSS12-LOVE</SelectItem>
-                  <SelectItem value="HUMSS12-HOPE">HUMSS12-HOPE</SelectItem>
-                  <SelectItem value="HUMSS12-FAITH">HUMSS12-FAITH</SelectItem>
-                  <SelectItem value="HUMSS12-JOY">HUMSS12-JOY</SelectItem>
-                  <SelectItem value="HUMSS12-GENEROSITY">HUMSS12-GENEROSITY</SelectItem>
-                  <SelectItem value="HUMSS12-HUMILITY">HUMSS12-HUMILITY</SelectItem>
-                  <SelectItem value="STEM12-LOVE">STEM12-LOVE</SelectItem>
-                  <SelectItem value="STEM12-HOPE">STEM12-HOPE</SelectItem>
-                  <SelectItem value="STEM12-FAITH">STEM12-FAITH</SelectItem>
-                  <SelectItem value="STEM12-JOY">STEM12-JOY</SelectItem>
-                  <SelectItem value="STEM12-GENEROSITY">STEM12-GENEROSITY</SelectItem>
-                  <SelectItem value="ICT12-LOVE">ICT12-LOVE</SelectItem>
-                  <SelectItem value="ICT12-HOPE">ICT12-HOPE</SelectItem>
-                  {/* College - BSIT */}
-                  <SelectItem value="BSIT-1A">BSIT-1A</SelectItem>
-                  <SelectItem value="BSIT-1B">BSIT-1B</SelectItem>
-                  <SelectItem value="BSIT-1C">BSIT-1C</SelectItem>
-                  <SelectItem value="BSIT-2A">BSIT-2A</SelectItem>
-                  <SelectItem value="BSIT-2B">BSIT-2B</SelectItem>
-                  <SelectItem value="BSIT-2C">BSIT-2C</SelectItem>
-                  <SelectItem value="BSIT-3A">BSIT-3A</SelectItem>
-                  <SelectItem value="BSIT-3B">BSIT-3B</SelectItem>
-                  <SelectItem value="BSIT-3C">BSIT-3C</SelectItem>
-                  <SelectItem value="BSIT-4A">BSIT-4A</SelectItem>
-                  <SelectItem value="BSIT-4B">BSIT-4B</SelectItem>
-                  <SelectItem value="BSIT-4C">BSIT-4C</SelectItem>
-                  {/* College - BSBA */}
-                  <SelectItem value="BSBA-1A">BSBA-1A</SelectItem>
-                  <SelectItem value="BSBA-2A">BSBA-2A</SelectItem>
-                  <SelectItem value="BSBA-3A">BSBA-3A</SelectItem>
-                  <SelectItem value="BSBA-4A">BSBA-4A</SelectItem>
-                  {/* College - BSCS */}
-                  <SelectItem value="BSCS-1A">BSCS-1A</SelectItem>
+                  {programs.map((program) => (
+                    <SelectItem key={program.value} value={program.value}>
+                      {program.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -815,67 +784,20 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="course_year_section">Course-Year and Section *</Label>
-              <Select value={editUser.course_year_section} onValueChange={(value) => setEditUser({ ...editUser, course_year_section: value })}>
+              <Label htmlFor="course_year_section">Program *</Label>
+              <Select 
+                value={editUser.program_id} 
+                onValueChange={(value) => setEditUser({ ...editUser, program_id: value })}
+              >
                 <SelectTrigger id="course_year_section">
-                  <SelectValue placeholder="Select course-year and section" />
+                  <SelectValue placeholder={isLoadingPrograms ? "Loading programs..." : "Select program"} />
                 </SelectTrigger>
                 <SelectContent>
-                  {/* Grade 11 */}
-                  <SelectItem value="ABM11-LOVE">ABM11-LOVE</SelectItem>
-                  <SelectItem value="ABM11-HOPE">ABM11-HOPE</SelectItem>
-                  <SelectItem value="ABM11-FAITH">ABM11-FAITH</SelectItem>
-                  <SelectItem value="HUMSS11-LOVE">HUMSS11-LOVE</SelectItem>
-                  <SelectItem value="HUMSS11-HOPE">HUMSS11-HOPE</SelectItem>
-                  <SelectItem value="HUMSS11-FAITH">HUMSS11-FAITH</SelectItem>
-                  <SelectItem value="HUMSS11-JOY">HUMSS11-JOY</SelectItem>
-                  <SelectItem value="HUMSS11-GENEROSITY">HUMSS11-GENEROSITY</SelectItem>
-                  <SelectItem value="HUMSS11-HUMILITY">HUMSS11-HUMILITY</SelectItem>
-                  <SelectItem value="HUMSS11-INTEGRITY">HUMSS11-INTEGRITY</SelectItem>
-                  <SelectItem value="HUMSS11-WISDOM">HUMSS11-WISDOM</SelectItem>
-                  <SelectItem value="STEM11-HOPE">STEM11-HOPE</SelectItem>
-                  <SelectItem value="STEM11-FAITH">STEM11-FAITH</SelectItem>
-                  <SelectItem value="STEM11-JOY">STEM11-JOY</SelectItem>
-                  <SelectItem value="STEM11-GENEROSITY">STEM11-GENEROSITY</SelectItem>
-                  <SelectItem value="ICT11-LOVE">ICT11-LOVE</SelectItem>
-                  <SelectItem value="ICT11-HOPE">ICT11-HOPE</SelectItem>
-                  {/* Grade 12 */}
-                  <SelectItem value="ABM12-LOVE">ABM12-LOVE</SelectItem>
-                  <SelectItem value="ABM12-HOPE">ABM12-HOPE</SelectItem>
-                  <SelectItem value="ABM12-FAITH">ABM12-FAITH</SelectItem>
-                  <SelectItem value="HUMSS12-LOVE">HUMSS12-LOVE</SelectItem>
-                  <SelectItem value="HUMSS12-HOPE">HUMSS12-HOPE</SelectItem>
-                  <SelectItem value="HUMSS12-FAITH">HUMSS12-FAITH</SelectItem>
-                  <SelectItem value="HUMSS12-JOY">HUMSS12-JOY</SelectItem>
-                  <SelectItem value="HUMSS12-GENEROSITY">HUMSS12-GENEROSITY</SelectItem>
-                  <SelectItem value="HUMSS12-HUMILITY">HUMSS12-HUMILITY</SelectItem>
-                  <SelectItem value="STEM12-LOVE">STEM12-LOVE</SelectItem>
-                  <SelectItem value="STEM12-HOPE">STEM12-HOPE</SelectItem>
-                  <SelectItem value="STEM12-FAITH">STEM12-FAITH</SelectItem>
-                  <SelectItem value="STEM12-JOY">STEM12-JOY</SelectItem>
-                  <SelectItem value="STEM12-GENEROSITY">STEM12-GENEROSITY</SelectItem>
-                  <SelectItem value="ICT12-LOVE">ICT12-LOVE</SelectItem>
-                  <SelectItem value="ICT12-HOPE">ICT12-HOPE</SelectItem>
-                  {/* College - BSIT */}
-                  <SelectItem value="BSIT-1A">BSIT-1A</SelectItem>
-                  <SelectItem value="BSIT-1B">BSIT-1B</SelectItem>
-                  <SelectItem value="BSIT-1C">BSIT-1C</SelectItem>
-                  <SelectItem value="BSIT-2A">BSIT-2A</SelectItem>
-                  <SelectItem value="BSIT-2B">BSIT-2B</SelectItem>
-                  <SelectItem value="BSIT-2C">BSIT-2C</SelectItem>
-                  <SelectItem value="BSIT-3A">BSIT-3A</SelectItem>
-                  <SelectItem value="BSIT-3B">BSIT-3B</SelectItem>
-                  <SelectItem value="BSIT-3C">BSIT-3C</SelectItem>
-                  <SelectItem value="BSIT-4A">BSIT-4A</SelectItem>
-                  <SelectItem value="BSIT-4B">BSIT-4B</SelectItem>
-                  <SelectItem value="BSIT-4C">BSIT-4C</SelectItem>
-                  {/* College - BSBA */}
-                  <SelectItem value="BSBA-1A">BSBA-1A</SelectItem>
-                  <SelectItem value="BSBA-2A">BSBA-2A</SelectItem>
-                  <SelectItem value="BSBA-3A">BSBA-3A</SelectItem>
-                  <SelectItem value="BSBA-4A">BSBA-4A</SelectItem>
-                  {/* College - BSCS */}
-                  <SelectItem value="BSCS-1A">BSCS-1A</SelectItem>
+                  {programs.map((program) => (
+                    <SelectItem key={program.value} value={program.value}>
+                      {program.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -1609,12 +1531,6 @@ export function UserManagement() {
                     <div>
                       <p className="text-sm text-gray-600">Student ID</p>
                       <p>{selectedUser.studentId}</p>
-                    </div>
-                  )}
-                  {selectedUser.year && (
-                    <div>
-                      <p className="text-sm text-gray-600">Course-Year and Section</p>
-                      <p>{selectedUser.courseYrSection}</p>
                     </div>
                   )}
                   {selectedUser.employeeId && (

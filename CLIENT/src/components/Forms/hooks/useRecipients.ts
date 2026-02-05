@@ -5,6 +5,7 @@ import {
   getAlumniCompanies,
   getEmployerCompanies,
   getActiveCourseSections,
+  getDepartmentsFromPrograms,
   assignFormToUsers,
   deployForm,
 } from "../../../services/formManagementService";
@@ -37,6 +38,9 @@ export function useRecipients() {
   const [employerCompanies, setEmployerCompanies] = useState<string[]>([]);
   const [courseYearSections, setCourseYearSections] = useState<string[]>(["All Students"]);
   const [loadingCourseSections, setLoadingCourseSections] = useState<boolean>(false);
+  // Departments from course_management table for student filtering
+  const [studentDepartments, setStudentDepartments] = useState<string[]>([]);
+  const [loadingStudentDepartments, setLoadingStudentDepartments] = useState<boolean>(false);
 
   // Instructors for sharing responses
   const [instructors, setInstructors] = useState<Instructor[]>([]);
@@ -81,12 +85,13 @@ export function useRecipients() {
     loadCompanies();
   }, []);
 
-  // Load course year sections from API
+  // Load course sections from course_management table
   useEffect(() => {
     const loadCourseSections = async () => {
       setLoadingCourseSections(true);
       try {
-        const result = await getActiveCourseSections();
+        // Pass department filter if selected
+        const result = await getActiveCourseSections(selectedDepartment || undefined);
         if (result.success && result.sections && result.sections.length > 0) {
           // Prepend "All Students" to the list
           setCourseYearSections(["All Students", ...result.sections]);
@@ -102,6 +107,27 @@ export function useRecipients() {
       }
     };
     loadCourseSections();
+  }, [selectedDepartment]);
+
+  // Load departments from course_management table
+  useEffect(() => {
+    const loadStudentDepartments = async () => {
+      setLoadingStudentDepartments(true);
+      try {
+        const result = await getDepartmentsFromPrograms();
+        if (result.success && result.departments && result.departments.length > 0) {
+          setStudentDepartments(result.departments);
+        } else {
+          setStudentDepartments([]);
+        }
+      } catch (error) {
+        console.error("Failed to load student departments:", error);
+        setStudentDepartments([]);
+      } finally {
+        setLoadingStudentDepartments(false);
+      }
+    };
+    loadStudentDepartments();
   }, []);
 
   // Load instructors for sharing responses
@@ -146,6 +172,10 @@ export function useRecipients() {
         };
 
         if (audienceType === "Students") {
+          // Pass both department and course_section for filtering students
+          if (department) {
+            filters.department = department;
+          }
           if (courseYearSection && courseYearSection !== "All Students") {
             filters.course_year_section = courseYearSection;
           }
@@ -200,16 +230,16 @@ export function useRecipients() {
   // Effect to fetch recipients when selection changes
   useEffect(() => {
     if (selectedAudienceType === "Students") {
-      if (selectedDepartment && selectedCourseYearSection) {
+      // Allow filtering by department only, course_section only, or both
+      if (selectedDepartment || (selectedCourseYearSection && selectedCourseYearSection !== "All Students")) {
         fetchRecipients(
           selectedAudienceType,
-          selectedCourseYearSection,
+          selectedCourseYearSection || "All Students",
           selectedDepartment
         );
       } else {
-        setRecipients([]);
-        setSelectedRecipients(new Set());
-        setSelectAllRecipients(true);
+        // If nothing selected, show all students
+        fetchRecipients(selectedAudienceType, "All Students", "");
       }
     } else if (
       selectedAudienceType !== "All Users" &&
@@ -224,7 +254,7 @@ export function useRecipients() {
       setSelectedRecipients(new Set());
       setSelectAllRecipients(true);
     }
-  }, [
+  },  [
     selectedAudienceType,
     selectedDepartment,
     selectedCourseYearSection,
@@ -340,6 +370,9 @@ export function useRecipients() {
     courseYearSections,
     loadingCourseSections,
     instructorDepartments: INSTRUCTOR_DEPARTMENTS,
+    // Departments from course_management for student filtering
+    studentDepartments,
+    loadingStudentDepartments,
     // Actions
     toggleRecipient,
     toggleAllRecipients,

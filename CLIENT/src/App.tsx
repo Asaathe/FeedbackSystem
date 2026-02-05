@@ -81,6 +81,12 @@ const UserProfile = lazy(() =>
   }))
 );
 
+const MySubmissions = lazy(() =>
+  import("./components/feedback/my-submissions").then((m) => ({
+    default: m.MySubmissions,
+  }))
+);
+
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -285,6 +291,8 @@ export default function App() {
           return <EmployerDashboard onNavigate={setCurrentPage} />;
         case "submit-feedback":
           return <FeedbackSubmission />;
+        case "my-submissions":
+          return <MySubmissions />;
         case "settings":
           return (
             <div className="text-center py-12">
@@ -309,9 +317,7 @@ export default function App() {
         case "submit-feedback":
           return <FeedbackSubmission userRole={userRole} />;
         case "profile":
-          return <UserProfile role={userRole} />;
-        default:
-          return <InstructorDashboard onNavigate={setCurrentPage} />;
+          return <UserProfile />;
       }
     }
 
@@ -323,18 +329,9 @@ export default function App() {
         case "submit-feedback":
           return <AlumniFeedback onBack={() => setCurrentPage("dashboard")} />;
         case "my-submissions":
-          return (
-            <div className="text-center py-12">
-              <h2 className="text-2xl text-gray-400">My Submissions</h2>
-              <p className="text-gray-500 mt-2">
-                Your feedback history will appear here
-              </p>
-            </div>
-          );
+          return <MySubmissions />;
         case "profile":
-          return <UserProfile role={userRole} />;
-        default:
-          return <AlumniDashboard onNavigate={setCurrentPage} />;
+          return <UserProfile />;
       }
     }
 
@@ -345,16 +342,9 @@ export default function App() {
       case "submit-feedback":
         return <FeedbackSubmission userRole={userRole} />;
       case "my-submissions":
-        return (
-          <div className="text-center py-12">
-            <h2 className="text-2xl text-gray-400">My Submissions</h2>
-            <p className="text-gray-500 mt-2">
-              Your feedback history will appear here
-            </p>
-          </div>
-        );
+        return <MySubmissions />;
       case "profile":
-        return <UserProfile role={userRole} />;
+        return <UserProfile />;
       default:
         return <StudentDashboard onNavigate={setCurrentPage} />;
     }

@@ -456,9 +456,9 @@ const saveAsTemplate = async (formId, userId) => {
 };
 
 /**
- * Deploy form (change status to active)
+ * Deploy form (change status to active and create assignments)
  */
-const deployForm = async (formId, userId) => {
+const deployForm = async (formId, userId, deploymentData = {}) => {
   try {
     // Check if form exists and user owns it
     const forms = await queryDatabase(
@@ -475,17 +475,110 @@ const deployForm = async (formId, userId) => {
       return { success: false, message: "Access denied" };
     }
 
-    // Update form status to active
+    const form = forms[0];
+    const { targetFilters, startDate, endDate } = deploymentData;
+
+    // Update form status to active and set dates
     await queryDatabase(
       db,
-      "UPDATE Forms SET status = 'active', updated_at = NOW() WHERE id = ?",
-      [formId]
+      "UPDATE Forms SET status = 'active', start_date = ?, end_date = ?, updated_at = NOW() WHERE id = ?",
+      [startDate || form.start_date, endDate || form.end_date, formId]
     );
+
+    // Create assignment records for all matching users
+    let assignedCount = 0;
+
+    if (targetFilters && targetFilters.target_audience) {
+      const targetAudience = targetFilters.target_audience;
+
+      // Build query to get users matching target audience
+      let userQuery = "";
+      let queryParams = [];
+
+      if (targetAudience === "All Users") {
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          WHERE u.status = 'active'
+        `;
+      } else if (targetAudience === "Students") {
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          LEFT JOIN students s ON u.id = s.user_id
+          LEFT JOIN course_management cm ON s.program_id = cm.id
+          WHERE u.role = 'student' AND u.status = 'active'
+        `;
+      } else if (targetAudience === "Instructors") {
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          LEFT JOIN instructors i ON u.id = i.user_id
+          WHERE u.role = 'instructor' AND u.status = 'active'
+        `;
+      } else if (targetAudience === "Alumni") {
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          LEFT JOIN alumni a ON u.id = a.user_id
+          WHERE u.role = 'alumni' AND u.status = 'active'
+        `;
+      } else if (targetAudience.startsWith("Students - ")) {
+        // Specific course/year/section
+        const courseSection = targetAudience.replace("Students - ", "");
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          LEFT JOIN students s ON u.id = s.user_id
+          LEFT JOIN course_management cm ON s.program_id = cm.id
+          WHERE u.role = 'student' AND u.status = 'active' AND cm.course_section = ?
+        `;
+        queryParams.push(courseSection);
+      } else if (targetAudience.startsWith("Instructors - ")) {
+        // Specific department
+        const department = targetAudience.replace("Instructors - ", "");
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          LEFT JOIN instructors i ON u.id = i.user_id
+          WHERE u.role = 'instructor' AND u.status = 'active' AND i.department = ?
+        `;
+        queryParams.push(department);
+      } else if (targetAudience.startsWith("Alumni - ")) {
+        // Specific company
+        const company = targetAudience.replace("Alumni - ", "");
+        userQuery = `
+          SELECT u.id
+          FROM Users u
+          LEFT JOIN alumni a ON u.id = a.user_id
+          WHERE u.role = 'alumni' AND u.status = 'active' AND a.company = ?
+        `;
+        queryParams.push(company);
+      }
+
+      if (userQuery) {
+        const users = await queryDatabase(db, userQuery, queryParams);
+
+        // Create assignment records for each user
+        if (users.length > 0) {
+          const assignments = users.map(user => [formId, user.id, new Date()]);
+          
+          await queryDatabase(
+            db,
+            "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
+            [assignments]
+          );
+          
+          assignedCount = users.length;
+        }
+      }
+    }
 
     return {
       success: true,
-      message: "Form deployed successfully",
+      message: `Form deployed successfully and assigned to ${assignedCount} users`,
       formId,
+      assignedCount,
     };
   } catch (error) {
     console.error("Deploy form error:", error);

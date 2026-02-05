@@ -33,7 +33,7 @@ export function SignupPage({
     confirmPassword: "",
     role: "",
     student_id: "",
-    course_year_section: "",
+    program_id: "",
     instructor_id: "",
     department: "",
     company_name: "",
@@ -49,36 +49,34 @@ export function SignupPage({
   const [passwordStrength, setPasswordStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [courseSections, setCourseSections] = useState<Array<{ value: string; label: string }>>([]);
-  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [programs, setPrograms] = useState<Array<{ value: string; label: string }>>([]);
+  const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
 
-  // Fetch course sections from API
+  // Fetch programs from API
   useEffect(() => {
-    const fetchCourseSections = async () => {
-      setIsLoadingCourses(true);
+    const fetchPrograms = async () => {
+      setIsLoadingPrograms(true);
       try {
-        const response = await fetch(`${API_BASE_URL}/courses/sections`);
+        const response = await fetch(`${API_BASE_URL}/programs`);
         const data = await response.json();
         
-        if (data.success && data.courses) {
-          // Transform the courses array to match SelectField options format
-          const options = data.courses.map((course: any) => ({
-            value: course.value,
-            label: course.label,
+        if (data.success && data.programs) {
+          // Transform to select options format
+          const options = data.programs.map((program: any) => ({
+            value: String(program.id),
+            label: program.course_section,
           }));
-          setCourseSections(options);
+          setPrograms(options);
         }
       } catch (error) {
-        console.error("Error fetching course sections:", error);
-        toast.error("Failed to load course sections", {
-          description: "Please refresh the page and try again.",
-        });
+        console.error("Error fetching programs:", error);
+        toast.error("Failed to load programs");
       } finally {
-        setIsLoadingCourses(false);
+        setIsLoadingPrograms(false);
       }
     };
 
-    fetchCourseSections();
+    fetchPrograms();
   }, [API_BASE_URL]);
 
   // Name formatting function to enforce proper capitalization
@@ -182,8 +180,8 @@ export function SignupPage({
       } else if (!/^\d{5}$/.test(formData.student_id.trim())) {
         newErrors.student_id = "Student ID must be exactly 5 digits.";
       }
-      if (!formData.course_year_section.trim()) {
-        newErrors.course_year_section = "Course Year Section is required.";
+      if (!formData.program_id) {
+        newErrors.program_id = "Program is required.";
       }
     } else if (formData.role === "instructor") {
       if (!formData.instructor_id.trim()) {
@@ -243,7 +241,7 @@ export function SignupPage({
           fullName: formData.name.trim(),
           role: formData.role,
           student_id: formData.student_id.trim(),
-          course_year_section: formData.course_year_section.trim(),
+          program_id: formData.program_id ? parseInt(formData.program_id) : null,
           instructor_id: formData.instructor_id.trim(),
           department: formData.department.trim(),
           company_name: formData.company_name.trim(),
@@ -264,12 +262,6 @@ export function SignupPage({
       }
 
       if (data.token && data.user) {
-        // Do not store token for pending users - they need admin approval first
-        // sessionStorage.setItem("authToken", data.token);
-        // sessionStorage.setItem("userData", JSON.stringify(data.user));
-        // const expirationTime = new Date().getTime() + 24 * 60 * 60 * 1000; // 24 hours
-        // sessionStorage.setItem("tokenExpiration", expirationTime.toString());
-
         setSuccessMessage(
           "Account created successfully! Please wait for admin approval before logging in."
         );
@@ -277,10 +269,6 @@ export function SignupPage({
           description: "Please wait for admin approval before logging in.",
         });
         setShowSuccessDialog(true);
-
-        // Do not call onSignupSuccess to avoid logging in pending users
-        // onSignupSuccess(data.user.role);
-
       } else {
         setErrors({ general: "Registration failed - no token received" });
         toast.error("Registration failed", {
@@ -349,7 +337,6 @@ export function SignupPage({
         options={[
           { value: "student", label: "Student" },
           { value: "instructor", label: "Instructor" },
-
           { value: "alumni", label: "Alumni" },
           { value: "employer", label: "Employer" },
         ]}
@@ -368,17 +355,17 @@ export function SignupPage({
             error={errors.student_id}
           />
           <SelectField
-            label="Course-Year and Section"
-            value={formData.course_year_section}
-            onChange={(value) => handleChange("course_year_section", value)}
-            options={courseSections}
+            label="Course and Section"
+            value={formData.program_id}
+            onChange={(value) => handleChange("program_id", value)}
+            options={programs}
             placeholder={
-              isLoadingCourses
-                ? "Loading courses..."
-                : "Select your course-year and section"
+              isLoadingPrograms
+                ? "Loading programs..."
+                : "Select your program"
             }
-            error={errors.course_year_section}
-            disabled={isLoadingCourses}
+            error={errors.program_id}
+            disabled={isLoadingPrograms}
           />
         </div>
       )}
@@ -456,19 +443,36 @@ export function SignupPage({
             value={formData.password}
             onChange={(e) => handleChange("password", e.target.value)}
             label="Password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             placeholder="Enter your password"
             error={errors.password}
             showPassword={showPassword}
             onTogglePassword={togglePasswordVisibility}
           />
+          {formData.password && (
+            <div className="mt-1">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((level) => (
+                  <div
+                    key={level}
+                    className={`h-1 flex-1 rounded ${
+                      level <= passwordStrength ? strengthColors[passwordStrength - 1] : "bg-gray-200"
+                    }`}
+                  />
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Strength: {strengthLabels[passwordStrength - 1] || "Very Weak"}
+              </p>
+            </div>
+          )}
         </div>
         <div className="flex-1">
           <InputField
             value={formData.confirmPassword}
             onChange={(e) => handleChange("confirmPassword", e.target.value)}
             label="Confirm Password"
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             placeholder="Confirm password"
             error={errors.confirmPassword}
             showPassword={showConfirmPassword}
@@ -482,7 +486,6 @@ export function SignupPage({
           {errors.general}
         </div>
       )}
-
 
     </FormContainer>
 

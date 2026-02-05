@@ -73,7 +73,7 @@ import { RecipientSelector } from "./components/RecipientSelector";
 import { CategoryManager } from "./components/CategoryManager";
 
 // Types
-import { QuestionTypeConfig, FormQuestion } from "./types/form";
+import { QuestionTypeConfig, FormQuestion, Instructor } from "./types/form";
 
 // Utils
 import { cleanQuestions, getDepartmentFromSection } from "./utils/formValidation";
@@ -173,6 +173,8 @@ export function FormBuilder({
     setInstructorSearchTerm,
     courseYearSections,
     instructorDepartments,
+    studentDepartments,
+    loadingStudentDepartments,
     toggleRecipient,
     toggleAllRecipients,
     toggleInstructor,
@@ -226,7 +228,8 @@ export function FormBuilder({
             } else if (target.includes(" - ")) {
               const parts = target.split(" - ");
               const audienceType = parts[0];
-              const courseYearSection = parts[parts.length - 1];
+              // Get all parts after the audience type to form the full course/year/section
+              const courseYearSection = parts.slice(1).join(" - ");
               setSelectedAudienceType(audienceType);
               setSelectedCourseYearSection(courseYearSection);
               if (audienceType === "Students") {
@@ -845,25 +848,37 @@ export function FormBuilder({
                                     <SelectValue placeholder="Select department" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="Senior High Department">
-                                      Senior High Department
-                                    </SelectItem>
-                                    <SelectItem value="College Department">
-                                      College Department
-                                    </SelectItem>
+                                    {loadingStudentDepartments ? (
+                                      <SelectItem value="loading" disabled>
+                                        Loading departments...
+                                      </SelectItem>
+                                    ) : studentDepartments.length > 0 ? (
+                                      studentDepartments.map((dept) => (
+                                        <SelectItem key={dept} value={dept}>
+                                          {dept}
+                                        </SelectItem>
+                                      ))
+                                    ) : (
+                                      <>
+                                        <SelectItem value="Senior High Department">
+                                          Senior High Department
+                                        </SelectItem>
+                                        <SelectItem value="College Department">
+                                          College Department
+                                        </SelectItem>
+                                      </>
+                                    )}
                                   </SelectContent>
                                 </Select>
                               </div>
                             )}
 
-                            {/* Course Year Section Selection */}
-                            {selectedAudienceType !== "All Users" &&
-                              (selectedAudienceType !== "Students" ||
-                                selectedDepartment) && (
+                            {/* Course and Section Selection */}
+                            {selectedAudienceType !== "All Users" && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium">
                                   {selectedAudienceType === "Students" &&
-                                    "Course Year Section"}
+                                    "Course and Section"}
                                   {selectedAudienceType === "Instructors" &&
                                     "Department"}
                                   {selectedAudienceType === "Alumni" && "Company"}
@@ -893,30 +908,6 @@ export function FormBuilder({
                                   <SelectContent>
                                     {selectedAudienceType === "Students" &&
                                       courseYearSections
-                                        .filter((section) => {
-                                          if (
-                                            selectedDepartment ===
-                                            "Senior High Department"
-                                          ) {
-                                            return (
-                                              section === "All Students" ||
-                                              section.startsWith("ABM") ||
-                                              section.startsWith("HUMSS") ||
-                                              section.startsWith("STEM") ||
-                                              section.startsWith("ICT")
-                                            );
-                                          } else if (
-                                            selectedDepartment ===
-                                            "College Department"
-                                          ) {
-                                            return (
-                                              section === "All Students" ||
-                                              section.startsWith("BS") ||
-                                              section.startsWith("BTVTEd")
-                                            );
-                                          }
-                                          return false;
-                                        })
                                         .map((section) => (
                                           <SelectItem key={section} value={section}>
                                             {section}
@@ -1170,7 +1161,7 @@ export function FormBuilder({
                                           htmlFor={`instructor-${instructor.id}`}
                                           className="text-sm flex-1"
                                         >
-                                          {instructor.name}{" "}
+                                          {instructor.fullName}{" "}
                                           <span className="text-gray-500">
                                             ({instructor.department})
                                           </span>

@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 04, 2026 at 03:17 PM
+-- Generation Time: Feb 05, 2026 at 05:14 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -41,16 +41,18 @@ CREATE TABLE `alumni` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `course_sections`
+-- Table structure for table `course_management`
 --
 
-CREATE TABLE `course_sections` (
+CREATE TABLE `course_management` (
   `id` int(11) NOT NULL,
-  `value` varchar(50) NOT NULL COMMENT 'Unique identifier (e.g., BSIT-1A)',
-  `label` varchar(100) NOT NULL COMMENT 'Display label for dropdown',
-  `category` varchar(50) NOT NULL COMMENT 'Category: Grade 11, Grade 12, College',
-  `subcategory` varchar(50) DEFAULT NULL COMMENT 'Subcategory: ABM, HUMSS, STEM, BSIT, etc.',
-  `is_active` tinyint(1) DEFAULT 1 COMMENT 'Whether this course is currently available',
+  `department` enum('College','Senior High') NOT NULL,
+  `program_name` varchar(255) NOT NULL,
+  `program_code` varchar(50) NOT NULL,
+  `year_level` int(11) NOT NULL COMMENT '1, 2, 3, 4 for College; 11, 12 for Senior High',
+  `section` varchar(10) NOT NULL COMMENT 'A, B, C, etc.',
+  `course_section` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci GENERATED ALWAYS AS (concat(`program_code`,' - ',`year_level`,`section`)) STORED,
+  `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -287,11 +289,10 @@ CREATE TABLE `students` (
   `id` int(11) NOT NULL,
   `user_id` int(11) NOT NULL,
   `studentID` varchar(50) DEFAULT NULL,
-  `course_yr_section` varchar(50) DEFAULT NULL,
   `contact_number` varchar(20) DEFAULT NULL,
   `subjects` text DEFAULT NULL,
   `image` varchar(500) DEFAULT NULL,
-  `department` varchar(255) DEFAULT NULL
+  `program_id` int(11) DEFAULT NULL COMMENT 'References course_management.id'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -340,14 +341,16 @@ ALTER TABLE `alumni`
   ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
--- Indexes for table `course_sections`
+-- Indexes for table `course_management`
 --
-ALTER TABLE `course_sections`
+ALTER TABLE `course_management`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `value` (`value`),
-  ADD KEY `idx_category` (`category`),
-  ADD KEY `idx_subcategory` (`subcategory`),
-  ADD KEY `idx_is_active` (`is_active`);
+  ADD UNIQUE KEY `idx_unique_program` (`department`,`program_code`,`year_level`,`section`),
+  ADD KEY `idx_department` (`department`),
+  ADD KEY `idx_program_code` (`program_code`),
+  ADD KEY `idx_year_level` (`year_level`),
+  ADD KEY `idx_section` (`section`),
+  ADD KEY `idx_status` (`status`);
 
 --
 -- Indexes for table `employers`
@@ -480,9 +483,9 @@ ALTER TABLE `alumni`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `course_sections`
+-- AUTO_INCREMENT for table `course_management`
 --
-ALTER TABLE `course_sections`
+ALTER TABLE `course_management`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --

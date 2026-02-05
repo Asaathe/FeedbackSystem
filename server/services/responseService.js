@@ -55,6 +55,13 @@ const submitFormResponse = async (formId, userId, answers) => {
       [formId, userId, JSON.stringify(answers)]
     );
 
+    // Update assignment status to completed
+    await queryDatabase(
+      db,
+      "UPDATE form_assignments SET status = 'completed' WHERE form_id = ? AND user_id = ?",
+      [formId, userId]
+    );
+
     return {
       success: true,
       message: "Response submitted successfully",

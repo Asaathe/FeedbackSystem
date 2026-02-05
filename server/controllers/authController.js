@@ -129,10 +129,10 @@ const validateRegistration = [
     .if(body("role").equals("student"))
     .notEmpty()
     .withMessage("Student ID is required"),
-  body("course_year_section")
+  body("program_id")
     .if(body("role").equals("student"))
-    .notEmpty()
-    .withMessage("Course Year Section is required"),
+    .isInt()
+    .withMessage("Program is required"),
   body("instructor_id")
     .if(body("role").equals("instructor"))
     .notEmpty()

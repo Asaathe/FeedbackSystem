@@ -208,10 +208,86 @@ const deleteProgram = async (req, res) => {
   }
 };
 
+/**
+ * Get unique departments from course management
+ */
+const getDepartments = async (req, res) => {
+  try {
+    const query = "SELECT DISTINCT department FROM course_management WHERE status = 'active' ORDER BY department";
+    db.query(query, (err, results) => {
+      if (err) {
+        console.error("Error fetching departments:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to fetch departments",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        departments: results.map(row => row.department),
+      });
+    });
+  } catch (error) {
+    console.error("Get departments error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
+ * Get course sections (display_label) from course_management for student selection
+ */
+const getCourseSections = async (req, res) => {
+  try {
+    const { department } = req.query;
+    let query = "SELECT DISTINCT course_section, department, program_code, year_level, section FROM course_management WHERE status = 'active'";
+    const params = [];
+    
+    if (department) {
+      query += " AND department = ?";
+      params.push(department);
+    }
+    
+    query += " ORDER BY department, program_code, year_level, section";
+    
+    db.query(query, params, (err, results) => {
+      if (err) {
+        console.error("Error fetching course sections:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to fetch course sections",
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        courses: results.map(row => ({
+          value: row.course_section,
+          department: row.department,
+          program_code: row.program_code,
+          year_level: row.year_level,
+          section: row.section
+        })),
+      });
+    });
+  } catch (error) {
+    console.error("Get course sections error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 module.exports = {
   getAllPrograms,
   createProgram,
   updateProgram,
   deleteProgram,
   toggleProgramStatus,
+  getDepartments,
+  getCourseSections,
 };

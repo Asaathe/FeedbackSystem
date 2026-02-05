@@ -12,7 +12,7 @@ interface Program {
   program_code: string;
   year_level: number;
   section: string;
-  display_label: string;
+  course_section: string;
   status: string;
   created_at: string;
   updated_at: string;
@@ -222,7 +222,7 @@ export function CourseManagement() {
   const filteredPrograms = programs.filter((program) => {
     const matchesSearch =
       program.program_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      program.display_label.toLowerCase().includes(searchTerm.toLowerCase());
+      program.course_section.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesDepartment = filterDepartment
       ? program.department === filterDepartment
       : true;
@@ -434,7 +434,7 @@ export function CourseManagement() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Display Label
+                      Course and Section
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Program Name
@@ -454,7 +454,7 @@ export function CourseManagement() {
                   {paginatedPrograms.map((program) => (
                     <tr key={program.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {program.display_label}
+                        {program.course_section}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                         {program.program_name}

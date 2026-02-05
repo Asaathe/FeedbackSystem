@@ -33,24 +33,28 @@ const getFilteredUsers = async (filters) => {
     // Role-specific filters
     if (role === "student") {
       if (course_year_section) {
-        conditions.push("s.course_yr_section = ?");
+        conditions.push("cm.course_section = ?");
         params.push(course_year_section);
       }
       if (course) {
-        conditions.push("s.course_yr_section LIKE ?");
+        conditions.push("cm.course_section LIKE ?");
         params.push(`%${course}%`);
       }
       if (year) {
-        conditions.push("s.course_yr_section LIKE ?");
+        conditions.push("cm.course_section LIKE ?");
         params.push(`%${year}%`);
       }
       if (section) {
-        conditions.push("s.course_yr_section LIKE ?");
+        conditions.push("cm.course_section LIKE ?");
         params.push(`%${section}%`);
       }
       if (grade) {
-        conditions.push("s.course_yr_section LIKE ?");
+        conditions.push("cm.course_section LIKE ?");
         params.push(`%${grade}%`);
+      }
+      if (department) {
+        conditions.push("cm.department = ?");
+        params.push(department);
       }
     }
 
@@ -76,9 +80,11 @@ const getFilteredUsers = async (filters) => {
       query = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status,
-          s.studentID, s.course_yr_section, s.department, s.contact_number
+          s.studentID, s.program_id, s.contact_number,
+          cm.course_section, cm.department as course_department
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN course_management cm ON s.program_id = cm.id
         WHERE ${whereClause}
       `;
     } else if (role === "instructor") {
@@ -102,7 +108,7 @@ const getFilteredUsers = async (filters) => {
     } else if (role === "alumni") {
       query = `
         SELECT 
-          u.id, u.email, u.full_name, u.role, u.status,
+          u.id, u_name, u.role.email, u.full, u.status,
           a.grad_year, a.degree, a.jobtitle, a.contact, a.company
         FROM Users u
         LEFT JOIN alumni a ON u.id = a.user_id
@@ -161,7 +167,7 @@ const getAssignedForms = async (userId) => {
 
     const targetAudience = roleMapping[userRole] || "All Users";
 
-    // Get forms matching target audience
+    // Get forms from form_assignments table
     const forms = await queryDatabase(
       db,
       `
@@ -169,14 +175,17 @@ const getAssignedForms = async (userId) => {
         f.*,
         u.full_name as creator_name,
         (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
-        (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id AND user_id = ?) as submission_count
-      FROM Forms f
+        (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id AND user_id = ?) as submission_count,
+        fa.status as assignment_status,
+        fa.assigned_at
+      FROM form_assignments fa
+      LEFT JOIN Forms f ON fa.form_id = f.id
       LEFT JOIN Users u ON f.created_by = u.id
-      WHERE f.status = 'active'
-        AND (f.target_audience = ? OR f.target_audience = 'All Users' OR f.target_audience LIKE ?)
-      ORDER BY f.created_at DESC
+      WHERE fa.user_id = ?
+        AND f.status = 'active'
+      ORDER BY fa.assigned_at DESC
     `,
-      [userId, targetAudience, `${targetAudience}%`]
+      [userId, userId]
     );
 
     return {
@@ -193,7 +202,8 @@ const getAssignedForms = async (userId) => {
         question_count: form.question_count || 0,
         created_at: form.created_at,
         creator_name: form.creator_name,
-        assignment_status: form.submission_count > 0 ? "completed" : "pending",
+        assignment_status: form.assignment_status || "pending",
+        assigned_at: form.assigned_at,
       })),
     };
   } catch (error) {
@@ -293,9 +303,11 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          s.studentID, s.course_yr_section, s.department, s.contact_number
+          s.studentID, s.program_id, s.contact_number,
+          cm.course_section, cm.department as course_department
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN course_management cm ON s.program_id = cm.id
         ${whereClause}
         ORDER BY u.registration_date DESC
         LIMIT ? OFFSET ?
@@ -346,9 +358,11 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          s.studentID, s.course_yr_section, s.department, s.contact_number
+          s.studentID, s.program_id, s.contact_number,
+          cm.course_section, cm.department as course_department
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN course_management cm ON s.program_id = cm.id
         ${whereClause}
         ORDER BY u.registration_date DESC
         LIMIT ? OFFSET ?
