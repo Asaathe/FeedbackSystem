@@ -47,6 +47,9 @@ const createSection = async (req, res) => {
   try {
     const { value, label, category, subcategory } = req.body;
 
+    // DEBUG: Log incoming request body
+    console.log("[DEBUG] Create Section - Request body:", JSON.stringify(req.body, null, 2));
+
     if (!value || !label || !category) {
       return res.status(400).json({
         success: false,

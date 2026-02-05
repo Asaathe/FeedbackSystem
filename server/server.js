@@ -12,6 +12,7 @@ const formRoutes = require("./routes/forms");
 const formCategoriesRoutes = require("./routes/formCategories");
 const userRoutes = require("./routes/users");
 const courseRoutes = require("./routes/courses");
+const courseManagementRoutes = require("./routes/courseManagement");
 const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
 
@@ -105,6 +106,7 @@ app.use("/api/forms", formLimiter, formRoutes);
 app.use("/api/form-categories", formCategoriesRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/courses", courseRoutes);
+app.use("/api/programs", courseManagementRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
 

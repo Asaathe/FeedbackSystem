@@ -3,90 +3,85 @@ import { Button } from "../ui/button";
 import { InputField } from "../ui/input-field";
 import { SelectField } from "../ui/select-field";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";  
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-interface CourseSection {
+interface Program {
   id: number;
-  value: string;
-  label: string;
-  category: string;
-  subcategory: string | null;
-  is_active: boolean;
+  department: string;
+  program_name: string;
+  program_code: string;
+  year_level: number;
+  section: string;
+  display_label: string;
+  status: string;
   created_at: string;
   updated_at: string;
 }
 
-interface CourseFormData {
-  value: string;
-  label: string;
-  category: string;
-  subcategory: string;
-  is_active: boolean;
+interface ProgramFormData {
+  department: string;
+  program_name: string;
+  program_code: string;
+  year_level: string;
+  section: string;
+  status: string;
 }
 
 export function CourseManagement() {
-  const [courses, setCourses] = useState<CourseSection[]>([]);
-  const [editingCourse, setEditingCourse] = useState<CourseSection | null>(null);
-  const [formData, setFormData] = useState<CourseFormData>({
-    value: "",
-    label: "",
-    category: "",
-    subcategory: "",
-    is_active: true,
+  const [programs, setPrograms] = useState<Program[]>([]);
+  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+  const [formData, setFormData] = useState<ProgramFormData>({
+    department: "",
+    program_name: "",
+    program_code: "",
+    year_level: "",
+    section: "",
+    status: "active",
   });
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("");
+  const [filterDepartment, setFilterDepartment] = useState("");
   const [filterStatus, setFilterStatus] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  const categories = ["Grade 11", "Grade 12", "College"];
-  const subcategories = [
-    "ABM",
-    "HUMSS",
-    "STEM",
-    "ICT",
-    "BSIT",
-    "BSBA",
-    "BSCS",
-    "BSEN",
-    "BSOA",
-    "BSAIS",
-    "BTVTEd",
-  ];
+  const departments = ["College", "Senior High"];
+  const yearLevels = ["1", "2", "3", "4", "11", "12"];
 
-  // Fetch courses
+  // Fetch programs
   useEffect(() => {
-    fetchCourses();
+    fetchPrograms();
   }, []);
 
-  const fetchCourses = async () => {
+  const fetchPrograms = async () => {
     setIsLoading(true);
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch("/api/courses/sections", {
+      const response = await fetch("/api/programs", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch courses");
+        throw new Error("Failed to fetch programs");
       }
 
       const data = await response.json();
+      // DEBUG: Log the API response structure
+      console.log("[DEBUG] API Response:", JSON.stringify(data, null, 2));
+      console.log("[DEBUG] First program structure:", data.programs?.[0] ? JSON.stringify(data.programs[0], null, 2) : "No programs");
       if (data.success) {
-        setCourses(data.courses);
+        setPrograms(data.programs);
       } else {
-        toast.error("Failed to load courses", {
+        toast.error("Failed to load programs", {
           description: data.message || "Please try again later.",
         });
       }
     } catch (error) {
-      console.error("Error fetching courses:", error);
-      toast.error("Error loading courses", {
+      console.error("Error fetching programs:", error);
+      toast.error("Error loading programs", {
         description: "Please check your connection and try again.",
       });
     } finally {
@@ -98,12 +93,16 @@ export function CourseManagement() {
     e.preventDefault();
     setIsSubmitting(true);
 
+    // DEBUG: Log form data being submitted
+    console.log("[DEBUG] Submitting form data:", JSON.stringify(formData, null, 2));
+    console.log("[DEBUG] Editing program:", editingProgram ? `ID ${editingProgram.id}` : "NEW");
+
     try {
       const token = sessionStorage.getItem("authToken");
-      const url = editingCourse
-        ? `/api/courses/sections/${editingCourse.id}`
-        : "/api/courses/sections";
-      const method = editingCourse ? "PUT" : "POST";
+      const url = editingProgram
+        ? `/api/programs/${editingProgram.id}`
+        : "/api/programs";
+      const method = editingProgram ? "PUT" : "POST";
 
       const response = await fetch(url, {
         method,
@@ -117,17 +116,17 @@ export function CourseManagement() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to save course");
+        throw new Error(data.message || "Failed to save program");
       }
 
       toast.success(
-        editingCourse ? "Course updated successfully!" : "Course added successfully!"
+        editingProgram ? "Program updated successfully!" : "Program added successfully!"
       );
-      fetchCourses();
+      fetchPrograms();
       resetForm();
     } catch (error: any) {
-      console.error("Error saving course:", error);
-      toast.error("Failed to save course", {
+      console.error("Error saving program:", error);
+      toast.error("Failed to save program", {
         description: error.message || "Please try again.",
       });
     } finally {
@@ -135,26 +134,27 @@ export function CourseManagement() {
     }
   };
 
-  const handleEdit = (course: CourseSection) => {
-    setEditingCourse(course);
+  const handleEdit = (program: Program) => {
+    setEditingProgram(program);
     setFormData({
-      value: course.value,
-      label: course.label,
-      category: course.category,
-      subcategory: course.subcategory || "",
-      is_active: course.is_active,
+      department: program.department,
+      program_name: program.program_name,
+      program_code: program.program_code,
+      year_level: String(program.year_level),
+      section: program.section,
+      status: program.status,
     });
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this course?")) {
+    if (!confirm("Are you sure you want to delete this program?")) {
       return;
     }
 
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch(`/api/courses/sections/${id}`, {
+      const response = await fetch(`/api/programs/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -164,14 +164,14 @@ export function CourseManagement() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "Failed to delete course");
+        throw new Error(data.message || "Failed to delete program");
       }
 
-      toast.success("Course deleted successfully!");
-      fetchCourses();
+      toast.success("Program deleted successfully!");
+      fetchPrograms();
     } catch (error: any) {
-      console.error("Error deleting course:", error);
-      toast.error("Failed to delete course", {
+      console.error("Error deleting program:", error);
+      toast.error("Failed to delete program", {
         description: error.message || "Please try again.",
       });
     }
@@ -181,7 +181,7 @@ export function CourseManagement() {
     try {
       const token = sessionStorage.getItem("authToken");
       const response = await fetch(
-        `/api/courses/sections/${id}/toggle`,
+        `/api/programs/${id}/toggle`,
         {
           method: "PATCH",
           headers: {
@@ -196,8 +196,8 @@ export function CourseManagement() {
         throw new Error(data.message || "Failed to toggle status");
       }
 
-      toast.success("Course status updated successfully!");
-      fetchCourses();
+      toast.success("Program status updated successfully!");
+      fetchPrograms();
     } catch (error: any) {
       console.error("Error toggling status:", error);
       toast.error("Failed to update status", {
@@ -207,70 +207,77 @@ export function CourseManagement() {
   };
 
   const resetForm = () => {
-    setEditingCourse(null);
+    setEditingProgram(null);
     setFormData({
-      value: "",
-      label: "",
-      category: "",
-      subcategory: "",
-      is_active: true,
+      department: "",
+      program_name: "",
+      program_code: "",
+      year_level: "",
+      section: "",
+      status: "active",
     });
   };
 
-  // Filter courses
-  const filteredCourses = courses.filter((course) => {
+  // Filter programs
+  const filteredPrograms = programs.filter((program) => {
     const matchesSearch =
-      course.value.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      course.label.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = filterCategory
-      ? course.category === filterCategory
+      program.program_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      program.display_label.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDepartment = filterDepartment
+      ? program.department === filterDepartment
       : true;
     const matchesStatus = filterStatus
-      ? (filterStatus === "active" && course.is_active) ||
-        (filterStatus === "inactive" && !course.is_active)
+      ? program.status === filterStatus
       : true;
 
-    return matchesSearch && matchesCategory && matchesStatus;
+    return matchesSearch && matchesDepartment && matchesStatus;
   });
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filterCategory, filterStatus]);
+  }, [searchTerm, filterDepartment, filterStatus]);
 
   // Pagination logic
-  const totalPages = Math.ceil(filteredCourses.length / itemsPerPage);
+  const totalPages = Math.ceil(filteredPrograms.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedCourses = filteredCourses.slice(startIndex, endIndex);
+  const paginatedPrograms = filteredPrograms.slice(startIndex, endIndex);
 
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Course Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Program Management</h1>
         <p className="text-gray-600 mt-1">
-          Manage course-year and section combinations for student registration
+          Manage programs, year levels, and sections for student registration
         </p>
       </div>
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Total Courses</div>
+          <div className="text-sm text-gray-600">Total Programs</div>
           <div className="text-2xl font-bold text-gray-900">
-            {courses.length}
+            {/* Count distinct program names */}
+            {new Set(programs.map((p) => p.program_name)).size}
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Active Courses</div>
+          <div className="text-sm text-gray-600">Total Sections</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {programs.length}
+          </div>
+        </div>
+        <div className="bg-white rounded-lg shadow-md p-4">
+          <div className="text-sm text-gray-600">Active Sections</div>
           <div className="text-2xl font-bold text-green-600">
-            {courses.filter((c) => c.is_active).length}
+            {programs.filter((p) => p.status === "active").length}
           </div>
         </div>
         <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Inactive Courses</div>
+          <div className="text-sm text-gray-600">Inactive Sections</div>
           <div className="text-2xl font-bold text-red-600">
-            {courses.filter((c) => !c.is_active).length}
+            {programs.filter((p) => p.status === "inactive").length}
           </div>
         </div>
       </div>
@@ -278,73 +285,83 @@ export function CourseManagement() {
       {/* Add/Edit Form */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h2 className="text-lg font-semibold mb-4">
-          {editingCourse ? "Edit Course Section" : "Add New Course Section"}
+          {editingProgram ? "Edit Program" : "Add New Program"}
         </h2>
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField
-              label="Value (e.g., BSIT-1A)"
-              value={formData.value}
-              onChange={(e) =>
-                setFormData({ ...formData, value: e.target.value })
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <SelectField
+              label="Department"
+              value={formData.department}
+              onChange={(value) =>
+                setFormData({ ...formData, department: value })
               }
-              type="text"
-              placeholder="Enter unique identifier"
+              options={departments.map((d) => ({ value: d, label: d }))}
+              placeholder="Select department"
               required
             />
             <InputField
-              label="Display Label"
-              value={formData.label}
+              label="Program Name"
+              value={formData.program_name}
               onChange={(e) =>
-                setFormData({ ...formData, label: e.target.value })
+                setFormData({ ...formData, program_name: e.target.value })
               }
               type="text"
-              placeholder="Enter display label"
+              placeholder="e.g., Bachelor of Science in Information Technology"
+              required
+            />
+            <InputField
+              label="Program Code"
+              value={formData.program_code}
+              onChange={(e) =>
+                setFormData({ ...formData, program_code: e.target.value.toUpperCase() })
+              }
+              type="text"
+              placeholder="e.g., BSIT"
               required
             />
             <SelectField
-              label="Category"
-              value={formData.category}
+              label="Year Level"
+              value={formData.year_level}
               onChange={(value) =>
-                setFormData({ ...formData, category: value })
+                setFormData({ ...formData, year_level: value })
               }
-              options={categories.map((c) => ({ value: c, label: c }))}
-              placeholder="Select category"
+              options={yearLevels.map((y) => ({ value: y, label: y }))}
+              placeholder="Select year level"
+              required
+            />
+            <InputField
+              label="Section"
+              value={formData.section}
+              onChange={(e) =>
+                setFormData({ ...formData, section: e.target.value.toUpperCase() })
+              }
+              type="text"
+              placeholder="e.g., A"
               required
             />
             <SelectField
-              label="Subcategory"
-              value={formData.subcategory}
+              label="Status"
+              value={formData.status}
               onChange={(value) =>
-                setFormData({ ...formData, subcategory: value })
+                setFormData({ ...formData, status: value })
               }
-              options={subcategories.map((s) => ({ value: s, label: s }))}
-              placeholder="Select subcategory (optional)"
+              options={[
+                { value: "active", label: "Active" },
+                { value: "inactive", label: "Inactive" },
+              ]}
+              placeholder="Select status"
+              required
             />
-          </div>
-          <div className="flex items-center gap-2 mt-4">
-            <input
-              type="checkbox"
-              id="isActive"
-              checked={formData.is_active}
-              onChange={(e) =>
-                setFormData({ ...formData, is_active: e.target.checked })
-              }
-              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-            />
-            <label htmlFor="isActive" className="text-sm text-gray-700">
-              Active (visible in signup form)
-            </label>
           </div>
           <div className="flex gap-2 mt-4">
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting
                 ? "Saving..."
-                : editingCourse
-                ? "Update Course"
-                : "Add Course"}
+                : editingProgram
+                ? "Update Program"
+                : "Add Program"}
             </Button>
-            {editingCourse && (
+            {editingProgram && (
               <Button type="button" variant="outline" onClick={resetForm}>
                 Cancel
               </Button>
@@ -364,23 +381,23 @@ export function CourseManagement() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by value or label..."
+              placeholder="Search by program name or label..."
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Category
+              Department
             </label>
             <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
+              value={filterDepartment}
+              onChange={(e) => setFilterDepartment(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="">All Categories</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
+              <option value="">All Departments</option>
+              {departments.map((dept) => (
+                <option key={dept} value={dept}>
+                  {dept}
                 </option>
               ))}
             </select>
@@ -402,13 +419,13 @@ export function CourseManagement() {
         </div>
       </div>
 
-      {/* Courses Table */}
+      {/* Programs Table */}
       <div className="bg-white rounded-lg shadow-md overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading courses...</div>
-        ) : filteredCourses.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">Loading programs...</div>
+        ) : filteredPrograms.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
-            No courses found. Add your first course section above.
+            No programs found. Add your first program above.
           </div>
         ) : (
           <>
@@ -417,16 +434,13 @@ export function CourseManagement() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Value
+                      Display Label
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Label
+                      Program Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Category
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Subcategory
+                      Department
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Status
@@ -437,37 +451,34 @@ export function CourseManagement() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {paginatedCourses.map((course) => (
-                    <tr key={course.id} className="hover:bg-gray-50">
+                  {paginatedPrograms.map((program) => (
+                    <tr key={program.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {course.value}
+                        {program.display_label}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {course.label}
+                        {program.program_name}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {course.category}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
-                        {course.subcategory || "-"}
+                        {program.department}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <button
-                          onClick={() => handleToggleStatus(course.id)}
+                          onClick={() => handleToggleStatus(program.id)}
                           className={`px-2 py-1 rounded-full text-xs font-medium transition-colors ${
-                            course.is_active
+                            program.status === "active"
                               ? "bg-green-100 text-green-800 hover:bg-green-200"
                               : "bg-red-100 text-red-800 hover:bg-red-200"
                           }`}
                         >
-                          {course.is_active ? "Active" : "Inactive"}
+                          {program.status === "active" ? "Active" : "Inactive"}
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <div className="flex gap-2">
                           <Button
                             size="sm"
-                            onClick={() => handleEdit(course)}
+                            onClick={() => handleEdit(program)}
                             className="text-xs"
                           >
                             Edit
@@ -475,7 +486,7 @@ export function CourseManagement() {
                           <Button
                             size="sm"
                             variant="destructive"
-                            onClick={() => handleDelete(course.id)}
+                            onClick={() => handleDelete(program.id)}
                             className="text-xs"
                           >
                             Delete
@@ -498,36 +509,18 @@ export function CourseManagement() {
                   disabled={currentPage === 1}
                 >
                   <ChevronLeft className="w-4 h-4" />
-                  Previous
                 </Button>
-
-                <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1)
-                    .filter(page => {
-                      const start = Math.max(1, currentPage - 2);
-                      const end = Math.min(totalPages, currentPage + 2);
-                      return page >= start && page <= end;
-                    })
-                    .map((page) => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setCurrentPage(page)}
-                        className={currentPage === page ? "bg-green-500 hover:bg-green-600" : ""}
-                      >
-                        {page}
-                      </Button>
-                    ))}
-                </div>
-
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages}
                 >
-                  Next
                   <ChevronRight className="w-4 h-4" />
                 </Button>
               </div>
@@ -535,7 +528,6 @@ export function CourseManagement() {
           </>
         )}
       </div>
-
     </div>
   );
 }
