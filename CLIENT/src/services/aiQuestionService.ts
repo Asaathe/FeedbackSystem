@@ -89,15 +89,15 @@ function buildPrompt(
   category?: string,
   targetAudience?: string
 ): string {
-  return `Generate 10 form questions for a feedback form evaluation.
+  return `Generate a clear and well-organized Frequently Asked Questions (FAQ) section with up to 10 questions based on the given description.
 
 CONTEXT:
-Purpose: ${description}
+You are a school administrator at a private school who wants to gather feedback. The purpose of this feedback is: ${description}
 ${category ? `Category: ${category}` : ''}
 ${targetAudience ? `Audience: ${targetAudience}` : ''}
 
 INSTRUCTIONS:
-1. Create relevant questions for this context
+1. Include common questions from students covering topics such as participation in activities, attendance requirements, grading systems, assessments, evaluations, deadlines, appeals, and academic policies. Provide accurate, concise, and student-friendly answers in simple language appropriate for a university setting. Maintain a formal yet approachable tone, ensuring all answers follow general university policies and best academic practices
 2. Use appropriate question types:
    - text: Short answers
    - textarea: Long responses
