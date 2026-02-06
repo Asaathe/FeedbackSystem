@@ -520,6 +520,80 @@ export const getFilteredUsers = async (filters: {
   }
 };
 
+// Get shared instructors for a form
+export const getSharedInstructors = async (formId: string): Promise<{ success: boolean; instructors: { id: number; fullName: string; department: string }[]; message?: string }> => {
+  logDebug('getSharedInstructors called with formId:', formId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, instructors: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = `/api/forms/${formId}/shared-instructors`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, instructors: [], message: 'Failed to fetch shared instructors' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.instructors) {
+      logDebug(`Successfully loaded ${result.instructors.length} shared instructors`);
+      return { success: true, instructors: result.instructors };
+    }
+
+    return { success: false, instructors: [], message: result.message || 'Failed to fetch shared instructors' };
+  } catch (error) {
+    logError('Exception in getSharedInstructors:', error);
+    return { success: false, instructors: [], message: 'An error occurred while fetching shared instructors' };
+  }
+};
+
+// Get form assignments (assigned users)
+export const getFormAssignments = async (formId: string): Promise<{ success: boolean; assignments: { id: number; fullName: string; role: string; department: string }[]; message?: string }> => {
+  logDebug('getFormAssignments called with formId:', formId);
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, assignments: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = `/api/forms/${formId}/assignments`;
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, assignments: [], message: 'Failed to fetch form assignments' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.assignments) {
+      logDebug(`Successfully loaded ${result.assignments.length} assignments`);
+      return { success: true, assignments: result.assignments };
+    }
+
+    return { success: false, assignments: [], message: result.message || 'Failed to fetch form assignments' };
+  } catch (error) {
+    logError('Exception in getFormAssignments:', error);
+    return { success: false, assignments: [], message: 'An error occurred while fetching form assignments' };
+  }
+};
+
 // Get form templates
 export const getFormTemplates = async (): Promise<FormData[]> => {
   logDebug('getFormTemplates called');

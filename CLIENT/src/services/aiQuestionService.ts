@@ -92,7 +92,7 @@ function buildPrompt(
   return `Generate 10 form questions for a feedback form evaluation.
 
 CONTEXT:
-Based/Related: ${description}
+Purpose: ${description}
 ${category ? `Category: ${category}` : ''}
 ${targetAudience ? `Audience: ${targetAudience}` : ''}
 

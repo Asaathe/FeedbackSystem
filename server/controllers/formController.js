@@ -338,7 +338,7 @@ const assignFormToUsers = async (req, res) => {
     
     await new Promise((resolve, reject) => {
       db.query(
-        "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
+        "INSERT IGNORE INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
         [assignments],
         (err, result) => {
           if (err) reject(err);

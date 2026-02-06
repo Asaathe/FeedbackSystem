@@ -56,7 +56,7 @@ const generalLimiter = rateLimit({
  */
 const apiLimiter = rateLimit({
   windowMs: RATE_LIMIT_WINDOW_MS,
-  max: 200,
+  max: 500,
   standardHeaders: true,
   legacyHeaders: false,
   skipSuccessfulRequests: true,

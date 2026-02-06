@@ -485,6 +485,13 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       [startDate || form.start_date, endDate || form.end_date, formId]
     );
 
+    // Remove all existing assignments for this form before creating new ones
+    await queryDatabase(
+      db,
+      "DELETE FROM form_assignments WHERE form_id = ?",
+      [formId]
+    );
+
     // Create assignment records for all matching users
     let assignedCount = 0;
 
@@ -565,7 +572,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           
           await queryDatabase(
             db,
-            "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
+            "INSERT IGNORE INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
             [assignments]
           );
           
@@ -582,7 +589,18 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     };
   } catch (error) {
     console.error("Deploy form error:", error);
-    return { success: false, message: "Failed to deploy form" };
+    console.error("Error details:", {
+      formId,
+      userId,
+      deploymentData,
+      errorMessage: error.message,
+      errorCode: error.code,
+      sqlMessage: error.sqlMessage
+    });
+    return { 
+      success: false, 
+      message: error.sqlMessage || error.message || "Failed to deploy form" 
+    };
   }
 };
 
