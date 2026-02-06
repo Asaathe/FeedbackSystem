@@ -75,10 +75,6 @@ const validateFormData = (formData) => {
     errors.push("Title must be at least 3 characters long");
   }
 
-  if (!formData.description || formData.description.trim().length < 10) {
-    errors.push("Description must be at least 10 characters long");
-  }
-
   if (!formData.category) {
     errors.push("Category is required");
   }

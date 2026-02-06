@@ -205,10 +205,6 @@ const validateFormCreation = [
     .trim()
     .isLength({ min: 3 })
     .withMessage("Title must be at least 3 characters"),
-  body("description")
-    .trim()
-    .isLength({ min: 10 })
-    .withMessage("Description must be at least 10 characters"),
   body("category").notEmpty().withMessage("Category is required"),
   body("targetAudience")
     .notEmpty()
@@ -224,11 +220,6 @@ const validateFormUpdate = [
     .trim()
     .isLength({ min: 3 })
     .withMessage("Title must be at least 3 characters"),
-  body("description")
-    .optional()
-    .trim()
-    .isLength({ min: 10 })
-    .withMessage("Description must be at least 10 characters"),
   body("category").optional().notEmpty().withMessage("Category is required"),
   body("targetAudience")
     .optional()
