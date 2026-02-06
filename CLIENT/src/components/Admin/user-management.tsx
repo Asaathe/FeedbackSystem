@@ -577,7 +577,7 @@ export function UserManagement() {
           companyName: editUser.companyName
         }),
         ...(editUser.role.toLowerCase() === 'alumni' && {
-          degree: editUser.graduationYear // Note: API expects 'degree' but we're using graduationYear
+          graduationYear: editUser.graduationYear
         })
       };
 

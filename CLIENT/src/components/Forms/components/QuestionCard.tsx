@@ -1,6 +1,7 @@
 import { FormQuestion, QuestionTypeConfig } from "../types/form";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
+import { Textarea } from "../../ui/textarea";
 import { Label } from "../../ui/label";
 import {
   Select,
@@ -75,13 +76,14 @@ export function QuestionCard({
             </div>
             <div className="flex-1 space-y-3 min-w-0">
               <div className="flex flex-col sm:flex-row gap-2">
-                <Input
+                <Textarea
                   value={question.question}
                   onChange={(e) =>
                     onUpdate(question.id, { question: e.target.value })
                   }
                   placeholder="Enter your question"
-                  className="flex-1 text-sm sm:text-base"
+                  className="text-sm sm:text-base min-h-[unset] resize-y"
+                  rows={1}
                   aria-label={`Question ${index + 1} text`}
                 />
                 <Select

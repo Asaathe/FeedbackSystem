@@ -52,7 +52,7 @@ import {
 } from "../ui/dialog";
 import { toast } from "sonner";
 import { Checkbox } from "../ui/checkbox";
-import { EnhancedImage } from "../../utils/imageUtils";
+import { EnhancedImage, getImageRecommendations } from "../../utils/imageUtils";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import {
@@ -533,7 +533,7 @@ export function FormBuilder({
                       <span className="hidden sm:inline">View</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                       <DialogTitle>Form View</DialogTitle>
                       <DialogDescription>
@@ -726,9 +726,9 @@ export function FormBuilder({
                       </span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>
+                      <DialogTitle className="text-lg">
                         {isPublished
                           ? "Update Feedback Form"
                           : "Publish Feedback Form"}
@@ -1404,24 +1404,23 @@ export function FormBuilder({
                   {/* AI Question Generation */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
-                      
+                       
                     Detailed Description
                     </Label>
                     <p className="text-xs text-gray-500">
                       Describe the purpose of your form and let AI generate relevant questions
                     </p>
-                    <div className="flex gap-2">
-                      <Textarea
-                        value={aiDescription}
-                        onChange={(e) => setAiDescription(e.target.value)}
-                        placeholder=" Describe the purpose of your form"
-                        rows={3}
-                        className="resize-none flex-1"
-                      />
-                    </div>
+                    <Textarea
+                      value={aiDescription}
+                      onChange={(e) => setAiDescription(e.target.value)}
+                      placeholder="Describe the purpose of your form"
+                      rows={3}
+                      className="resize-none"
+                    />
                     <Button
                       onClick={handleGenerateQuestions}
                       disabled={isGeneratingQuestions || !aiDescription.trim()}
+                      className="px-8"
                     >
                       {isGeneratingQuestions ? (
                         <>
@@ -1430,7 +1429,7 @@ export function FormBuilder({
                         </>
                       ) : (
                         <>
-                        
+                         
                           Save
                         </>
                       )}
@@ -1462,7 +1461,10 @@ export function FormBuilder({
                               or drag and drop
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                              JPEG, PNG, GIF, WebP • Max 5MB
+                              JPEG, PNG, GIF, WebP • Max 500KB
+                            </p>
+                            <p className="text-xs text-gray-400 mt-1">
+                              Recommended: 800×200px for best display
                             </p>
                           </div>
                           <input

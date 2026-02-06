@@ -200,17 +200,18 @@ const updateUser = async (req, res) => {
       address,
       profilePicture,
       studentId,
-      course_year_section,
+      program_id,
       instructorId,
       employeeId,
       companyName,
       graduationYear,
+      status,
     } = req.body;
 
     // First check if user exists
     const existingUsers = await queryDatabase(
       db,
-      "SELECT * FROM Users WHERE id = ?",
+      "SELECT * FROM users WHERE id = ?",
       [id]
     );
 
@@ -224,7 +225,7 @@ const updateUser = async (req, res) => {
     const currentUser = existingUsers[0];
 
     // Update users table
-    if (fullName || email) {
+    if (fullName || email || status) {
       const updateFields = [];
       const updateValues = [];
 
@@ -236,12 +237,16 @@ const updateUser = async (req, res) => {
         updateFields.push("email = ?");
         updateValues.push(email);
       }
+      if (status) {
+        updateFields.push("status = ?");
+        updateValues.push(status);
+      }
 
       if (updateFields.length > 0) {
         updateValues.push(id);
         await queryDatabase(
           db,
-          `UPDATE Users SET ${updateFields.join(", ")} WHERE id = ?`,
+          `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`,
           updateValues
         );
       }
@@ -258,29 +263,37 @@ const updateUser = async (req, res) => {
 
       if (studentRecords.length > 0) {
         // Update existing student record
-        await queryDatabase(
-          db,
-          `UPDATE students SET 
-            studentID = ?, 
-            course_yr_section = ?, 
-            department = ?,
-            contact_number = ?
-          WHERE user_id = ?`,
-          [
-            studentId || studentRecords[0].studentID,
-            course_year_section || studentRecords[0].course_yr_section,
-            department || studentRecords[0].department,
-            phoneNumber || studentRecords[0].contact_number,
-            id
-          ]
-        );
+        const studentUpdateFields = [];
+        const studentUpdateValues = [];
+
+        if (studentId) {
+          studentUpdateFields.push("studentID = ?");
+          studentUpdateValues.push(studentId);
+        }
+        if (program_id) {
+          studentUpdateFields.push("program_id = ?");
+          studentUpdateValues.push(program_id);
+        }
+        if (phoneNumber) {
+          studentUpdateFields.push("contact_number = ?");
+          studentUpdateValues.push(phoneNumber);
+        }
+
+        if (studentUpdateFields.length > 0) {
+          studentUpdateValues.push(id);
+          await queryDatabase(
+            db,
+            `UPDATE students SET ${studentUpdateFields.join(", ")} WHERE user_id = ?`,
+            studentUpdateValues
+          );
+        }
       } else {
         // Create new student record
         await queryDatabase(
           db,
-          `INSERT INTO students (user_id, studentID, course_yr_section, department, contact_number)
-           VALUES (?, ?, ?, ?, ?)`,
-          [id, studentId, course_year_section, department, phoneNumber]
+          `INSERT INTO students (user_id, studentID, program_id, contact_number)
+           VALUES (?, ?, ?, ?)`,
+          [id, studentId || null, program_id || null, phoneNumber || null]
         );
       }
     } else if (role === 'instructor') {
@@ -293,21 +306,111 @@ const updateUser = async (req, res) => {
 
       if (instructorRecords.length > 0) {
         // Update existing instructor record
-        await queryDatabase(
-          db,
-          `UPDATE instructors SET 
-            instructor_id = ?, 
-            department = ?
-          WHERE user_id = ?`,
-          [instructorId || employeeId || instructorRecords[0].instructor_id, department || instructorRecords[0].department, id]
-        );
+        const instructorUpdateFields = [];
+        const instructorUpdateValues = [];
+
+        if (instructorId || employeeId) {
+          instructorUpdateFields.push("instructor_id = ?");
+          instructorUpdateValues.push(instructorId || employeeId);
+        }
+        if (department) {
+          instructorUpdateFields.push("department = ?");
+          instructorUpdateValues.push(department);
+        }
+
+        if (instructorUpdateFields.length > 0) {
+          instructorUpdateValues.push(id);
+          await queryDatabase(
+            db,
+            `UPDATE instructors SET ${instructorUpdateFields.join(", ")} WHERE user_id = ?`,
+            instructorUpdateValues
+          );
+        }
       } else {
         // Create new instructor record
         await queryDatabase(
           db,
           `INSERT INTO instructors (user_id, instructor_id, department)
            VALUES (?, ?, ?)`,
-          [id, instructorId || employeeId, department]
+          [id, instructorId || employeeId || null, department || null]
+        );
+      }
+    } else if (role === 'alumni') {
+      // Check if alumni record exists
+      const alumniRecords = await queryDatabase(
+        db,
+        "SELECT * FROM alumni WHERE user_id = ?",
+        [id]
+      );
+
+      if (alumniRecords.length > 0) {
+        // Update existing alumni record
+        const alumniUpdateFields = [];
+        const alumniUpdateValues = [];
+
+        if (graduationYear) {
+          alumniUpdateFields.push("grad_year = ?");
+          alumniUpdateValues.push(graduationYear);
+        }
+        if (phoneNumber) {
+          alumniUpdateFields.push("contact = ?");
+          alumniUpdateValues.push(phoneNumber);
+        }
+
+        if (alumniUpdateFields.length > 0) {
+          alumniUpdateValues.push(id);
+          await queryDatabase(
+            db,
+            `UPDATE alumni SET ${alumniUpdateFields.join(", ")} WHERE user_id = ?`,
+            alumniUpdateValues
+          );
+        }
+      } else {
+        // Create new alumni record
+        await queryDatabase(
+          db,
+          `INSERT INTO alumni (user_id, grad_year, contact)
+           VALUES (?, ?, ?)`,
+          [id, graduationYear || null, phoneNumber || null]
+        );
+      }
+    } else if (role === 'employer') {
+      // Check if employer record exists
+      const employerRecords = await queryDatabase(
+        db,
+        "SELECT * FROM employers WHERE user_id = ?",
+        [id]
+      );
+
+      if (employerRecords.length > 0) {
+        // Update existing employer record
+        const employerUpdateFields = [];
+        const employerUpdateValues = [];
+
+        if (companyName) {
+          employerUpdateFields.push("companyname = ?");
+          employerUpdateValues.push(companyName);
+        }
+        if (phoneNumber) {
+          employerUpdateFields.push("contact = ?");
+          employerUpdateValues.push(phoneNumber);
+        }
+
+        if (employerUpdateFields.length > 0) {
+          employerUpdateValues.push(id);
+          await queryDatabase(
+            db,
+            `UPDATE employers SET ${employerUpdateFields.join(", ")} WHERE user_id = ?`,
+            employerUpdateValues
+          );
+        }
+      } else {
+        // Create new employer record
+        await queryDatabase(
+          db,
+          `INSERT INTO employers (user_id, companyname, contact)
+           VALUES (?, ?, ?)`,
+          [id, companyName || null, phoneNumber || null]
         );
       }
     }

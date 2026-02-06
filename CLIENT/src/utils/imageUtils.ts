@@ -61,11 +61,27 @@ export const getDefaultFallbackImage = (): string => {
 };
 
 /**
- * Image type validation
+ * Image validation constants
  */
-export const validateImageFile = (file: File): { isValid: boolean; error?: string } => {
-  const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-  const maxSize = 5 * 1024 * 1024; // 5MB
+export const IMAGE_VALIDATION = {
+  // Allowed file types
+  allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
+  // Maximum file size (500KB for optimal performance)
+  maxFileSize: 500 * 1024, // 500KB
+  // Maximum base64 string length (approximately 500KB when encoded)
+  maxBase64Length: 700000, // ~700K characters
+  // Recommended dimensions for form headers
+  recommendedWidth: 800,
+  recommendedHeight: 200,
+  maxWidth: 1920,
+  maxHeight: 600,
+};
+
+/**
+ * Image type and size validation
+ */
+export const validateImageFile = (file: File): { isValid: boolean; error?: string; warning?: string } => {
+  const { allowedTypes, maxFileSize } = IMAGE_VALIDATION;
 
   if (!allowedTypes.includes(file.type)) {
     return {
@@ -74,14 +90,68 @@ export const validateImageFile = (file: File): { isValid: boolean; error?: strin
     };
   }
 
-  if (file.size > maxSize) {
+  if (file.size > maxFileSize) {
     return {
       isValid: false,
-      error: 'Image too large. Please upload an image smaller than 5MB.'
+      error: `Image too large (${formatFileSize(file.size)}). Maximum size is ${formatFileSize(maxFileSize)}.`
     };
   }
 
   return { isValid: true };
+};
+
+/**
+ * Validate base64 image data
+ */
+export const validateBase64Image = (base64Data: string): { isValid: boolean; error?: string; warning?: string } => {
+  const { maxBase64Length } = IMAGE_VALIDATION;
+
+  // Check if it's a valid base64 data URL
+  if (!base64Data.startsWith('data:image/')) {
+    return { isValid: false, error: 'Invalid image format.' };
+  }
+
+  // Extract the base64 portion (after the comma)
+  const base64Content = base64Data.split(',')[1];
+  if (!base64Content) {
+    return { isValid: false, error: 'Invalid base64 data.' };
+  }
+
+  // Check size
+  if (base64Data.length > maxBase64Length) {
+    return {
+      isValid: false,
+      error: `Image too large. Maximum size is ${formatFileSize(maxBase64Length)}. Please compress your image or use a smaller one.`
+    };
+  }
+
+  // Warn if file is large but still acceptable
+  const sizeKB = Math.round(base64Data.length / 1024);
+  if (sizeKB > 300) {
+    return {
+      isValid: true,
+      warning: `Image size is ${sizeKB}KB. For best performance, aim for under 200KB.`
+    };
+  }
+
+  return { isValid: true };
+};
+
+/**
+ * Format file size for display
+ */
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + 'B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + 'KB';
+  return (bytes / (1024 * 1024)).toFixed(1) + 'MB';
+};
+
+/**
+ * Get recommended image dimensions info
+ */
+export const getImageRecommendations = (): string => {
+  const { recommendedWidth, recommendedHeight, maxFileSize } = IMAGE_VALIDATION;
+  return `Recommended: ${recommendedWidth}×${recommendedHeight}px, max ${formatFileSize(maxFileSize)}`;
 };
 
 /**
