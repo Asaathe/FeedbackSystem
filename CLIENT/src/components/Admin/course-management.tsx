@@ -47,7 +47,29 @@ export function CourseManagement() {
   const itemsPerPage = 5;
 
   const departments = ["College", "Senior High"];
-  const yearLevels = ["1", "2", "3", "4", "11", "12"];
+  const collegeYearLevels = ["1", "2", "3", "4"];
+  const seniorHighYearLevels = ["11", "12"];
+
+  // Get year levels based on selected department
+  const getYearLevels = (department: string) => {
+    return department === "College" ? collegeYearLevels : seniorHighYearLevels;
+  };
+
+  const currentYearLevels = getYearLevels(formData.department);
+
+  // Get label for year level based on department
+  const getYearLevelLabel = (department: string) => {
+    return department === "College" ? "Year Level" : "Grade Level";
+  };
+
+  const yearLevelLabel = getYearLevelLabel(formData.department);
+
+  // Reset year level when department changes if current value is not valid
+  useEffect(() => {
+    if (formData.year_level && !currentYearLevels.includes(formData.year_level)) {
+      setFormData({ ...formData, year_level: "" });
+    }
+  }, [formData.department]);
 
   // Fetch programs
   useEffect(() => {
@@ -293,7 +315,7 @@ export function CourseManagement() {
               label="Department"
               value={formData.department}
               onChange={(value) =>
-                setFormData({ ...formData, department: value })
+                setFormData({ ...formData, department: value, year_level: "" })
               }
               options={departments.map((d) => ({ value: d, label: d }))}
               placeholder="Select department"
@@ -320,13 +342,13 @@ export function CourseManagement() {
               required
             />
             <SelectField
-              label="Year Level"
+              label={yearLevelLabel}
               value={formData.year_level}
               onChange={(value) =>
                 setFormData({ ...formData, year_level: value })
               }
-              options={yearLevels.map((y) => ({ value: y, label: y }))}
-              placeholder="Select year level"
+              options={currentYearLevels.map((y) => ({ value: y, label: y }))}
+              placeholder={`Select ${yearLevelLabel.toLowerCase()}`}
               required
             />
             <InputField
