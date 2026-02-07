@@ -163,6 +163,7 @@ const createForm = async (formData, userId) => {
     const {
       title,
       description,
+      ai_description,
       category,
       targetAudience,
       startDate,
@@ -194,14 +195,15 @@ const createForm = async (formData, userId) => {
       db,
       `
       INSERT INTO Forms (
-        title, description, category, target_audience, 
+        title, description, ai_description, category, target_audience, 
         start_date, end_date, image_url, is_template, 
         status, created_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW(), NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW(), NOW())
     `,
       [
         title,
         description,
+        ai_description || null,
         category,
         targetAudience,
         startDate || null,
@@ -298,6 +300,7 @@ const updateForm = async (formId, updates, userId) => {
     const allowedFields = [
       "title",
       "description",
+      "ai_description",
       "category",
       "target_audience",
       "start_date",
@@ -309,7 +312,10 @@ const updateForm = async (formId, updates, userId) => {
     const updateValues = [];
 
     for (const field of allowedFields) {
-      if (updates[field] !== undefined) {
+      if (field === "ai_description" && updates[field] !== undefined) {
+        updateFields.push(`${field} = ?`);
+        updateValues.push(updates[field]);
+      } else if (field !== "ai_description" && updates[field] !== undefined) {
         updateFields.push(`${field} = ?`);
         updateValues.push(updates[field]);
       }
@@ -476,7 +482,10 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     }
 
     const form = forms[0];
-    const { targetFilters, startDate, endDate } = deploymentData;
+    const { targetFilters, startDate, endDate, targetAudience } = deploymentData;
+    
+    // Support both targetFilters.target_audience and direct targetAudience
+    const effectiveTargetAudience = targetFilters?.target_audience || targetAudience;
 
     // Update form status to active and set dates
     await queryDatabase(
@@ -495,8 +504,19 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     // Create assignment records for all matching users
     let assignedCount = 0;
 
-    if (targetFilters && targetFilters.target_audience) {
-      const targetAudience = targetFilters.target_audience;
+    // Handle direct user IDs if provided
+    if (deploymentData.userIds && Array.isArray(deploymentData.userIds) && deploymentData.userIds.length > 0) {
+      const assignments = deploymentData.userIds.map(userId => [formId, userId, new Date()]);
+      
+      await queryDatabase(
+        db,
+        "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ? ON DUPLICATE KEY UPDATE assigned_at = VALUES(assigned_at)",
+        [assignments]
+      );
+      
+      assignedCount = deploymentData.userIds.length;
+    } else if (effectiveTargetAudience) {
+      const targetAudience = effectiveTargetAudience;
 
       // Build query to get users matching target audience
       let userQuery = "";
@@ -570,9 +590,10 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         if (users.length > 0) {
           const assignments = users.map(user => [formId, user.id, new Date()]);
           
+          // Use INSERT ... ON DUPLICATE KEY UPDATE to handle duplicates gracefully
           await queryDatabase(
             db,
-            "INSERT IGNORE INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
+            "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ? ON DUPLICATE KEY UPDATE assigned_at = VALUES(assigned_at)",
             [assignments]
           );
           
@@ -597,9 +618,60 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       errorCode: error.code,
       sqlMessage: error.sqlMessage
     });
-    return { 
-      success: false, 
-      message: error.sqlMessage || error.message || "Failed to deploy form" 
+    return {
+      success: false,
+      message: error.sqlMessage || error.message || "Failed to deploy form"
+    };
+  }
+};
+
+/**
+ * Share form responses with instructors
+ * @param {number} formId - Form ID
+ * @param {number} userId - User ID making the request
+ * @param {array} instructorIds - Array of instructor IDs to share with
+ * @returns {Promise<object>} Result with success status and message
+ */
+const shareResponsesWithInstructors = async (formId, userId, instructorIds = []) => {
+  try {
+    // Check if form exists and user owns it
+    const forms = await queryDatabase(
+      db,
+      "SELECT * FROM Forms WHERE id = ?",
+      [formId]
+    );
+
+    if (forms.length === 0) {
+      return { success: false, message: "Form not found" };
+    }
+
+    if (forms[0].created_by !== userId) {
+      return { success: false, message: "Access denied" };
+    }
+
+    // Insert shared_responses records
+    const shares = instructorIds.map(instructorId => [formId, instructorId, userId, new Date()]);
+
+    await new Promise((resolve, reject) => {
+      db.query(
+        "INSERT IGNORE INTO shared_responses (form_id, shared_with_instructor_id, shared_by, shared_at) VALUES ?",
+        [shares],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+    });
+
+    return {
+      success: true,
+      message: `Responses shared with ${instructorIds.length} instructor${instructorIds.length !== 1 ? "s" : ""}`,
+    };
+  } catch (error) {
+    console.error("Share responses error:", error);
+    return {
+      success: false,
+      message: "Failed to share responses",
     };
   }
 };
@@ -679,4 +751,5 @@ module.exports = {
   getFormCategories,
   addFormCategory,
   deleteFormCategory,
+  shareResponsesWithInstructors,
 };

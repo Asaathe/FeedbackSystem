@@ -25,8 +25,7 @@ export interface AIQuestionGenerationResponse {
 const GEMINI_MODELS = [
  
   'gemini-3-flash-preview',
-  
-             
+
 ];
 
 // Get environment variables (works with both Vite and Create React App)

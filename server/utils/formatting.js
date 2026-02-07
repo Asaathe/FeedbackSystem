@@ -51,6 +51,7 @@ const formatFormResponse = (form) => {
     id: form.id,
     title: form.title,
     description: form.description,
+    ai_description: form.ai_description || "",
     category: form.category,
     target_audience: form.target_audience,
     status: form.status,

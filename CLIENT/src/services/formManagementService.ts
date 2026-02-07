@@ -28,6 +28,7 @@ export interface FormData {
   creator_name?: string;
   is_template?: boolean;
   questions?: any[];
+  ai_description?: string;
 }
 
 export interface CreateFormData {
@@ -41,6 +42,7 @@ export interface CreateFormData {
   imageUrl?: string;
   isTemplate?: boolean;
   status?: string;
+  aiDescription?: string;
 }
 
 export interface FormsResponse {
@@ -227,6 +229,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
     const requestData = {
       title: formData.title,
       description: formData.description,
+      aiDescription: formData.aiDescription,
       category: formData.category,
       targetAudience: formData.targetAudience,
       startDate: formData.startDate,
@@ -238,7 +241,15 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
 
     logDebug('Making POST request to: /api/forms');
     logDebug('Request data:', requestData);
-    console.log('🔍 CLIENT: Form creation request data:', JSON.stringify(requestData, null, 2));
+
+    // Map camelCase to snake_case for API
+    const mappedRequestData: any = { ...requestData };
+    if (mappedRequestData.aiDescription !== undefined) {
+      mappedRequestData.ai_description = mappedRequestData.aiDescription;
+      delete mappedRequestData.aiDescription;
+    }
+    logDebug('Mapped request data:', mappedRequestData);
+    console.log('🔍 CLIENT: Form creation request data:', JSON.stringify(mappedRequestData, null, 2));
     if (requestData.questions && requestData.questions.length > 0) {
       console.log('🔍 CLIENT: Questions being sent:', requestData.questions.map((q, i) => ({
         index: i + 1,
@@ -294,13 +305,20 @@ export const updateForm = async (
 
     logDebug(`Making PATCH request to: /api/forms/${formId}`);
 
+    // Map camelCase to snake_case for API
+    const mappedUpdates: any = { ...updates };
+    if (mappedUpdates.aiDescription !== undefined) {
+      mappedUpdates.ai_description = mappedUpdates.aiDescription;
+      delete mappedUpdates.aiDescription;
+    }
+
     const response = await fetch(`/api/forms/${formId}`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(updates),
+      body: JSON.stringify(mappedUpdates),
     });
 
     logDebug('Response status:', response.status, response.statusText);
@@ -830,7 +848,7 @@ export async function assignFormToUsers(
     console.log('👥 User IDs:', userIds);
     console.log('🎯 Target audience:', targetAudience);
 
-    const apiUrl = `/api/forms/${formId}/assign`;
+    const apiUrl = `/api/forms/${formId}/deploy`;
     logDebug(`Making POST request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {

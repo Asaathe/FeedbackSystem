@@ -352,6 +352,74 @@ const assignFormToUsers = async (req, res) => {
   }
 };
 
+/**
+ * Share form responses with instructors
+ */
+const shareResponsesWithInstructors = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { instructorIds } = req.body;
+    const userId = req.userId;
+
+    if (!instructorIds || !Array.isArray(instructorIds) || instructorIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Instructor IDs are required",
+      });
+    }
+
+    const db = require("../config/database");
+
+    // Check if form exists
+    const formCheck = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM Forms WHERE id = ?", [id], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!formCheck || formCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Form not found",
+      });
+    }
+
+    // Check if user owns the form
+    if (formCheck[0].created_by !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied",
+      });
+    }
+
+    // Insert shared_responses records
+    const shares = instructorIds.map(instructorId => [id, instructorId, userId, new Date()]);
+
+    await new Promise((resolve, reject) => {
+      db.query(
+        "INSERT IGNORE INTO shared_responses (form_id, shared_with_instructor_id, shared_by, shared_at) VALUES ?",
+        [shares],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `Responses shared with ${instructorIds.length} instructor${instructorIds.length !== 1 ? "s" : ""}`,
+    });
+  } catch (error) {
+    console.error("Share responses controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
 module.exports = {
   getAllForms,
   getFormById,
@@ -361,10 +429,8 @@ module.exports = {
   duplicateForm,
   saveAsTemplate,
   deployForm,
-  assignFormToUsers,
-  validateFormCreation,
-  validateFormUpdate,
   getFormCategories,
   addFormCategory,
   deleteFormCategory,
+  shareResponsesWithInstructors,
 };

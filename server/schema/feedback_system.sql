@@ -96,7 +96,8 @@ CREATE TABLE `forms` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `submission_count` int(11) DEFAULT 0,
   `is_anonymous` tinyint(1) DEFAULT 0,
-  `deadline` datetime DEFAULT NULL
+  `deadline` datetime DEFAULT NULL,
+  `ai_description` text DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------

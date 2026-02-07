@@ -52,6 +52,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
   const [formImage, setFormImage] = useState<string | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isPublished, setIsPublished] = useState(false);
+  const [aiDescription, setAiDescription] = useState("");
 
   // Categories State
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -89,6 +90,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
             setFormTarget(formData.target || "All Users");
             setFormImage(formData.image || null);
             setCustomCategories(formData.customCategories || []);
+            setAiDescription(formData.aiDescription || "");
             setSubmissionSchedule(
               formData.submissionSchedule || {
                 startDate: "",
@@ -108,6 +110,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
               setFormTarget(form.target_audience || "All Users");
               setFormImage(form.image_url || null);
               setIsPublished(form.status === "active");
+              setAiDescription(form.ai_description || "");
 
               // Load submission schedule if available
               setSubmissionSchedule({
@@ -296,6 +299,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           imageUrl: formImage || undefined,
           isTemplate: false,
           status: "draft",
+          aiDescription: aiDescription,
         };
 
         const result = formId
@@ -320,7 +324,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
         setLoading(false);
       }
     },
-    [formTitle, formDescription, formCategory, formTarget, formImage, formId]
+    [formTitle, formDescription, formCategory, formTarget, formImage, formId, aiDescription]
   );
 
   // Publish Form
@@ -379,6 +383,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           imageUrl: limitImageForStorage(formImage),
           isTemplate: false,
           status: "active",
+          aiDescription: aiDescription,
         };
 
         const saveResult = formId
@@ -460,6 +465,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
       formImage,
       submissionSchedule,
       formId,
+      aiDescription,
     ]
   );
 
@@ -488,6 +494,8 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
     setSubmissionSchedule,
     loading,
     setLoading,
+    aiDescription,
+    setAiDescription,
     // Actions
     handleImageUpload,
     removeImage,

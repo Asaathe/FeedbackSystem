@@ -132,6 +132,8 @@ export function FormBuilder({
     removeCategory,
     saveForm,
     publishForm,
+    aiDescription,
+    setAiDescription,
   } = useFormSettings({ formId });
 
   // Questions Hook
@@ -199,7 +201,6 @@ export function FormBuilder({
   const [settingsOpen, setSettingsOpen] = useState(true);
 
   // AI Question Generation States
-  const [aiDescription, setAiDescription] = useState("");
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
   // Load existing form data when formId is provided
@@ -218,6 +219,7 @@ export function FormBuilder({
             setFormTarget(form.target_audience || "All Users");
             setFormImage(form.image_url || null);
             setIsPublished(form.status === "active");
+            setAiDescription(form.ai_description || "");
 
             // Parse target_audience to set audience selection fields
             const target = form.target_audience || "All Users";
@@ -429,7 +431,7 @@ export function FormBuilder({
           addQuestion(q.type, q);
         });
 
-        setAiDescription("");
+        // Keep the AI description for reference
         toast.success(`Added ${newQuestions.length} questions to your form`);
       } else {
         toast.error(response.error || "Failed to generate questions");
