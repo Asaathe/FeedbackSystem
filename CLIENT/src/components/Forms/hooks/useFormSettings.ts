@@ -91,11 +91,20 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
               setAiDescription(form.ai_description || "");
 
               // Load submission schedule if available
+              // First check deployment data for time information
+              // Format time values from HH:MM:SS to HH:MM for HTML time input
+              const deploymentStartTime = form.deployment?.start_time
+                ? form.deployment.start_time.substring(0, 5) // Extract HH:MM from HH:MM:SS
+                : "";
+              const deploymentEndTime = form.deployment?.end_time
+                ? form.deployment.end_time.substring(0, 5) // Extract HH:MM from HH:MM:SS
+                : "";
+
               setSubmissionSchedule({
                 startDate: form.start_date || "",
                 endDate: form.end_date || "",
-                startTime: "",
-                endTime: "",
+                startTime: deploymentStartTime,
+                endTime: deploymentEndTime,
               });
             } else {
               toast.error("Failed to load form data");
@@ -281,6 +290,10 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           description: formDescription,
           category: formCategory,
           targetAudience: formTarget,
+          startDate: submissionSchedule.startDate || undefined,
+          endDate: submissionSchedule.endDate || undefined,
+          startTime: submissionSchedule.startTime || undefined,
+          endTime: submissionSchedule.endTime || undefined,
           questions: questions,
           question_count: questions.length,
           total_questions: questions.length,
@@ -299,7 +312,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           // Clear draft after successful save
           const draftKey = getDraftStorageKey(formId);
           localStorage.removeItem(draftKey);
-          
+
           toast.success(formId ? "Form saved as draft" : "Form saved as draft");
           return true;
         } else {
@@ -313,7 +326,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
         setLoading(false);
       }
     },
-    [formTitle, formDescription, formCategory, formTarget, formImage, formId, aiDescription]
+    [formTitle, formDescription, formCategory, formTarget, formImage, formId, aiDescription, submissionSchedule]
   );
 
   // Publish Form

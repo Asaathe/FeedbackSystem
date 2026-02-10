@@ -45,6 +45,8 @@ const DialogOverlay = React.forwardRef<
         "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
         className,
       )}
+      // Fix: Explicitly set aria-hidden to false to prevent screen readers from ignoring content
+      aria-hidden="false"
       {...props}
     />
   );
@@ -55,7 +57,7 @@ DialogOverlay.displayName = "DialogOverlay";
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentProps<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => {
+>(({ className, children, onOpenAutoFocus, ...props }, ref) => {
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -66,6 +68,15 @@ const DialogContent = React.forwardRef<
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-md",
           className,
         )}
+        onOpenAutoFocus={(event) => {
+          // Prevent default focus trapping to avoid aria-hidden issues
+          event.preventDefault();
+          onOpenAutoFocus?.(event);
+        }}
+        onCloseAutoFocus={(event) => {
+          // Ensure focus is properly restored when dialog closes
+          event.preventDefault();
+        }}
         {...props}
       >
         {children}

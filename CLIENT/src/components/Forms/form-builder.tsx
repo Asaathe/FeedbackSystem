@@ -309,6 +309,8 @@ export function FormBuilder({
               end_date: form.end_date,
               deployment_start_date: form.deployment?.start_date,
               deployment_end_date: form.deployment?.end_date,
+              deployment_start_time: form.deployment?.start_time,
+              deployment_end_time: form.deployment?.end_time,
             });
 
             if (form.deployment) {
@@ -319,15 +321,25 @@ export function FormBuilder({
               if (form.deployment.end_date) {
                 scheduleEndDate = form.deployment.end_date;
               }
+              // Use deployment time values directly (format: HH:MM:SS)
+              if (form.deployment.start_time) {
+                // Format from HH:MM:SS to HH:MM for HTML time input
+                scheduleStartTime = form.deployment.start_time.substring(0, 5);
+              }
+              if (form.deployment.end_time) {
+                // Format from HH:MM:SS to HH:MM for HTML time input
+                scheduleEndTime = form.deployment.end_time.substring(0, 5);
+              }
             }
 
             console.log("📋 Schedule dates before formatting:", {
               scheduleStartDate,
               scheduleEndDate,
+              scheduleStartTime,
+              scheduleEndTime,
             });
 
             // Format dates to YYYY-MM-DD format (remove time component)
-            // Extract time directly from the string to avoid timezone conversion
             // Handle both ISO format with timezone (2026-02-10T16:00:00.000Z) and without (2026-02-10T16:00:00)
             if (scheduleStartDate && scheduleStartDate.includes('T')) {
               // Parse the date as UTC and convert to local time
@@ -336,10 +348,7 @@ export function FormBuilder({
               const year = dateObj.getFullYear();
               const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
               const day = dateObj.getDate().toString().padStart(2, '0');
-              const hours = dateObj.getHours().toString().padStart(2, '0');
-              const minutes = dateObj.getMinutes().toString().padStart(2, '0');
               scheduleStartDate = `${year}-${month}-${day}`;
-              scheduleStartTime = `${hours}:${minutes}`;
             }
             if (scheduleEndDate && scheduleEndDate.includes('T')) {
               // Parse the date as UTC and convert to local time
@@ -348,20 +357,9 @@ export function FormBuilder({
               const year = dateObj.getFullYear();
               const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
               const day = dateObj.getDate().toString().padStart(2, '0');
-              const hours = dateObj.getHours().toString().padStart(2, '0');
-              const minutes = dateObj.getMinutes().toString().padStart(2, '0');
               scheduleEndDate = `${year}-${month}-${day}`;
-              scheduleEndTime = `${hours}:${minutes}`;
             }
 
-            // Extract time from deadline if available (fallback)
-            if (!scheduleEndTime && form.deadline) {
-              const deadlineDate = new Date(form.deadline);
-              // Format time as HH:MM
-              const hours = deadlineDate.getHours().toString().padStart(2, '0');
-              const minutes = deadlineDate.getMinutes().toString().padStart(2, '0');
-              scheduleEndTime = `${hours}:${minutes}`;
-            }
             const scheduleData = {
               startDate: scheduleStartDate,
               endDate: scheduleEndDate,
@@ -554,8 +552,10 @@ export function FormBuilder({
           currentFormId,
           Array.from(selectedRecipients),
           formTarget,
-          startDateTime,
-          endDateTime,
+          submissionSchedule.startDate,
+          submissionSchedule.endDate,
+          submissionSchedule.startTime,
+          submissionSchedule.endTime,
           selectedDepartment,
           selectedCourseYearSection
         );
@@ -586,8 +586,10 @@ export function FormBuilder({
         deployResult = await deployToGroup(
           currentFormId,
           formTarget,
-          startDateTime,
-          endDateTime,
+          submissionSchedule.startDate,
+          submissionSchedule.endDate,
+          submissionSchedule.startTime,
+          submissionSchedule.endTime,
           selectedDepartment,
           selectedCourseYearSection
         );
@@ -988,7 +990,12 @@ export function FormBuilder({
                   open={publishDialogOpen}
                   onOpenChange={(open) => {
                     setPublishDialogOpen(open);
-                    if (!open) resetWizard();
+                    if (!open) {
+                      // Delay reset to allow focus to be properly restored
+                      setTimeout(() => {
+                        resetWizard();
+                      }, 100);
+                    }
                   }}
                 >
                   <DialogTrigger asChild>

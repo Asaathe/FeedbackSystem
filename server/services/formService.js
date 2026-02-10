@@ -202,10 +202,12 @@ const getFormById = async (formId) => {
     const deployments = await queryDatabase(
       db,
       `
-      SELECT 
+      SELECT
         id,
         start_date,
         end_date,
+        start_time,
+        end_time,
         target_filters,
         deployment_status
       FROM form_deployments
@@ -441,6 +443,53 @@ const updateForm = async (formId, updates, userId) => {
       updateValues
     );
 
+    // Also update the form_deployments table with the new time values
+    if (updates.startDate !== undefined || updates.startTime !== undefined || updates.endDate !== undefined || updates.endTime !== undefined) {
+      // Format time values to HH:MM:SS format for MySQL TIME type
+      const deploymentStartTime = updates.startTime ? (updates.startTime.includes(':') ? (updates.startTime.split(':').length === 2 ? `${updates.startTime}:00` : updates.startTime) : null) : null;
+      const deploymentEndTime = updates.endTime ? (updates.endTime.includes(':') ? (updates.endTime.split(':').length === 2 ? `${updates.endTime}:00` : updates.endTime) : null) : null;
+
+      // Get the current deployment data to preserve other fields
+      const currentDeployment = await queryDatabase(
+        db,
+        "SELECT * FROM form_deployments WHERE form_id = ?",
+        [formId]
+      );
+
+      if (currentDeployment.length > 0) {
+        // Update existing deployment
+        const deploymentUpdateFields = [];
+        const deploymentUpdateValues = [];
+
+        if (updates.startDate !== undefined) {
+          deploymentUpdateFields.push("start_date = ?");
+          deploymentUpdateValues.push(updates.startDate);
+        }
+        if (updates.endDate !== undefined) {
+          deploymentUpdateFields.push("end_date = ?");
+          deploymentUpdateValues.push(updates.endDate);
+        }
+        if (updates.startTime !== undefined) {
+          deploymentUpdateFields.push("start_time = ?");
+          deploymentUpdateValues.push(deploymentStartTime);
+        }
+        if (updates.endTime !== undefined) {
+          deploymentUpdateFields.push("end_time = ?");
+          deploymentUpdateValues.push(deploymentEndTime);
+        }
+
+        if (deploymentUpdateFields.length > 0) {
+          deploymentUpdateValues.push(formId);
+
+          await queryDatabase(
+            db,
+            `UPDATE form_deployments SET ${deploymentUpdateFields.join(", ")} WHERE form_id = ?`,
+            deploymentUpdateValues
+          );
+        }
+      }
+    }
+
     return { success: true, message: "Form updated successfully" };
   } catch (error) {
     console.error("Update form error:", error);
@@ -589,10 +638,14 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     }
 
     const form = forms[0];
-    const { targetFilters, startDate, endDate, targetAudience } = deploymentData;
-    
+    const { targetFilters, startDate, endDate, startTime, endTime, targetAudience } = deploymentData;
+
     // Support both targetFilters.target_audience and direct targetAudience
     const effectiveTargetAudience = targetFilters?.target_audience || targetAudience;
+
+    // Format time values to HH:MM:SS format for MySQL TIME type
+    const deploymentStartTime = startTime ? (startTime.includes(':') ? (startTime.split(':').length === 2 ? `${startTime}:00` : startTime) : null) : null;
+    const deploymentEndTime = endTime ? (endTime.includes(':') ? (endTime.split(':').length === 2 ? `${endTime}:00` : endTime) : null) : null;
 
     // Update form status to active and set dates
     await queryDatabase(
@@ -750,26 +803,52 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       company: deploymentCompany,
     };
 
-    await queryDatabase(
+    // Check if deployment already exists for this form
+    const existingDeployment = await queryDatabase(
       db,
-      `
-      INSERT INTO form_deployments (
-        form_id, deployed_by, start_date, end_date, target_filters, deployment_status
-      ) VALUES (?, ?, ?, ?, ?, 'active')
-      ON DUPLICATE KEY UPDATE
-        start_date = VALUES(start_date),
-        end_date = VALUES(end_date),
-        target_filters = VALUES(target_filters),
-        deployment_status = VALUES(deployment_status)
-      `,
-      [
-        formId,
-        userId,
-        startDate || form.start_date,
-        endDate || form.end_date,
-        JSON.stringify(deploymentFilters)
-      ]
+      "SELECT id FROM form_deployments WHERE form_id = ?",
+      [formId]
     );
+
+    if (existingDeployment.length > 0) {
+      // Update existing deployment
+      await queryDatabase(
+        db,
+        `UPDATE form_deployments SET
+          start_date = ?,
+          end_date = ?,
+          start_time = ?,
+          end_time = ?,
+          target_filters = ?,
+          deployment_status = 'active'
+        WHERE form_id = ?`,
+        [
+          startDate || form.start_date,
+          endDate || form.end_date,
+          deploymentStartTime,
+          deploymentEndTime,
+          JSON.stringify(deploymentFilters),
+          formId
+        ]
+      );
+    } else {
+      // Insert new deployment
+      await queryDatabase(
+        db,
+        `INSERT INTO form_deployments (
+          form_id, deployed_by, start_date, end_date, start_time, end_time, target_filters, deployment_status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+        [
+          formId,
+          userId,
+          startDate || form.start_date,
+          endDate || form.end_date,
+          deploymentStartTime,
+          deploymentEndTime,
+          JSON.stringify(deploymentFilters)
+        ]
+      );
+    }
 
     return {
       success: true,

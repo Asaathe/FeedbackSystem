@@ -308,6 +308,8 @@ export function useRecipients() {
       targetAudience: string,
       startDate?: string,
       endDate?: string,
+      startTime?: string,
+      endTime?: string,
       department?: string,
       courseYearSection?: string
     ) => {
@@ -317,6 +319,8 @@ export function useRecipients() {
         targetAudience,
         startDate,
         endDate,
+        startTime,
+        endTime,
         department,
         courseYearSection
       );
@@ -332,6 +336,8 @@ export function useRecipients() {
       targetAudience: string,
       startDate?: string,
       endDate?: string,
+      startTime?: string,
+      endTime?: string,
       department?: string,
       courseYearSection?: string,
       company?: string
@@ -344,6 +350,8 @@ export function useRecipients() {
           new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
             .toISOString()
             .split("T")[0],
+        startTime: startTime || undefined,
+        endTime: endTime || undefined,
         targetFilters: {
           roles:
             targetAudience === "All Users"

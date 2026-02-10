@@ -838,15 +838,17 @@ export async function assignFormToUsers(
   targetAudience: string,
   startDate?: string,
   endDate?: string,
+  startTime?: string,
+  endTime?: string,
   department?: string,
   courseYearSection?: string
 ) {
-  logDebug('assignFormToUsers called with:', { formId, userIds, targetAudience, startDate, endDate, department, courseYearSection });
+  logDebug('assignFormToUsers called with:', { formId, userIds, targetAudience, startDate, endDate, startTime, endTime, department, courseYearSection });
 
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
     logDebug('Auth token found:', token ? `${token.substring(0, 20)}...` : 'null');
-    
+
     if (!token) {
       logError('No authentication token found');
       throw new Error('No authentication token found');
@@ -870,6 +872,8 @@ export async function assignFormToUsers(
         targetAudience,
         startDate,
         endDate,
+        startTime,
+        endTime,
         department,
         courseYearSection,
       }),
@@ -1268,6 +1272,8 @@ export const getDepartmentsFromPrograms = async (): Promise<{ success: boolean; 
 export const deployForm = async (formId: string, deploymentData: {
   startDate: string;
   endDate: string;
+  startTime?: string;
+  endTime?: string;
   targetFilters: {
     roles: string[];
     target_audience: string;

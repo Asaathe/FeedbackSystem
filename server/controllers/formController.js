@@ -295,30 +295,26 @@ const deleteFormCategory = async (req, res) => {
 /**
  * Assign form to specific users
  */
-const assignFormToUsers = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userIds, targetAudience, startDate, endDate, department, courseYearSection } = req.body;
+  const assignFormToUsers = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { userIds, targetAudience, startDate, endDate, startTime, endTime, department, courseYearSection, targetFilters } = req.body;
 
-    console.log('📋 Server: assignFormToUsers called with:', {
-      id,
-      userIds,
-      targetAudience,
-      startDate,
-      endDate,
-      department,
-      courseYearSection,
-    });
-    
-    if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "User IDs are required",
+      console.log('📋 Server: assignFormToUsers called with:', {
+        id,
+        userIds,
+        targetAudience,
+        startDate,
+        endDate,
+        startTime,
+        endTime,
+        department,
+        courseYearSection,
+        targetFilters,
       });
-    }
 
     const db = require("../config/database");
-    
+
     // Check if form exists
     const formCheck = await new Promise((resolve, reject) => {
       db.query("SELECT * FROM Forms WHERE id = ?", [id], (err, results) => {
@@ -336,68 +332,128 @@ const assignFormToUsers = async (req, res) => {
 
     const form = formCheck[0];
 
-    // Insert form assignments (only form_id, user_id, assigned_at)
-    const assignments = userIds.map(userId => [id, userId, new Date()]);
-    
-    await new Promise((resolve, reject) => {
-      db.query(
-        "INSERT IGNORE INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
-        [assignments],
-        (err, result) => {
-          if (err) reject(err);
-          else resolve(result);
-        }
-      );
-    });
+    // Handle two cases: specific users (userIds) or group deployment (targetFilters)
+    let deploymentFilters;
+    let assignedCount = 0;
 
-    // Create deployment record to store deployment data
-    const deploymentFilters = {
-      target_audience: targetAudience,
-      department: department || null,
-      course_year_section: courseYearSection || null,
-      company: null,
-    };
+    if (userIds && Array.isArray(userIds) && userIds.length > 0) {
+      // Case 1: Assign to specific users
+      const assignments = userIds.map(userId => [id, userId, new Date()]);
+
+      await new Promise((resolve, reject) => {
+        db.query(
+          "INSERT IGNORE INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
+          [assignments],
+          (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+          }
+        );
+      });
+
+      assignedCount = userIds.length;
+
+      // Create deployment filters from request parameters
+      deploymentFilters = {
+        target_audience: targetAudience,
+        department: department || null,
+        course_year_section: courseYearSection || null,
+        company: null,
+      };
+    } else if (targetFilters) {
+      // Case 2: Group deployment (no specific users)
+      deploymentFilters = targetFilters;
+      assignedCount = 0; // No specific users assigned
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Either userIds or targetFilters is required",
+      });
+    }
 
     const deploymentStartDate = startDate || form.start_date;
     const deploymentEndDate = endDate || form.end_date;
+    // Format time values to HH:MM:SS format for MySQL TIME type
+    const deploymentStartTime = startTime ? (startTime.includes(':') ? (startTime.split(':').length === 2 ? `${startTime}:00` : startTime) : null) : null;
+    const deploymentEndTime = endTime ? (endTime.includes(':') ? (endTime.split(':').length === 2 ? `${endTime}:00` : endTime) : null) : null;
 
     console.log('📋 Server: Deployment values to store:', {
       deploymentStartDate,
       deploymentEndDate,
+      deploymentStartTime,
+      deploymentEndTime,
       formStartDate: form.start_date,
       formEndDate: form.end_date,
     });
 
-    await new Promise((resolve, reject) => {
+    // Check if deployment already exists for this form
+    const existingDeployment = await new Promise((resolve, reject) => {
       db.query(
-        `
-        INSERT INTO form_deployments (
-          form_id, deployed_by, start_date, end_date, target_filters, deployment_status
-        ) VALUES (?, ?, ?, ?, ?, 'active')
-        ON DUPLICATE KEY UPDATE
-          start_date = VALUES(start_date),
-          end_date = VALUES(end_date),
-          target_filters = VALUES(target_filters),
-          deployment_status = VALUES(deployment_status)
-        `,
-        [
-          id,
-          req.userId,
-          deploymentStartDate,
-          deploymentEndDate,
-          JSON.stringify(deploymentFilters)
-        ],
-        (err, result) => {
+        "SELECT id FROM form_deployments WHERE form_id = ?",
+        [id],
+        (err, results) => {
           if (err) reject(err);
-          else resolve(result);
+          else resolve(results);
         }
       );
     });
 
+    if (existingDeployment.length > 0) {
+      // Update existing deployment
+      await new Promise((resolve, reject) => {
+        db.query(
+          `UPDATE form_deployments SET
+            start_date = ?,
+            end_date = ?,
+            start_time = ?,
+            end_time = ?,
+            target_filters = ?,
+            deployment_status = 'active'
+          WHERE form_id = ?`,
+          [
+            deploymentStartDate,
+            deploymentEndDate,
+            deploymentStartTime,
+            deploymentEndTime,
+            JSON.stringify(deploymentFilters),
+            id
+          ],
+          (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+          }
+        );
+      });
+    } else {
+      // Insert new deployment
+      await new Promise((resolve, reject) => {
+        db.query(
+          `INSERT INTO form_deployments (
+            form_id, deployed_by, start_date, end_date, start_time, end_time, target_filters, deployment_status
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, 'active')`,
+          [
+            id,
+            req.userId,
+            deploymentStartDate,
+            deploymentEndDate,
+            deploymentStartTime,
+            deploymentEndTime,
+            JSON.stringify(deploymentFilters)
+          ],
+          (err, result) => {
+            if (err) reject(err);
+            else resolve(result);
+          }
+        );
+      });
+    }
+
     return res.status(200).json({
       success: true,
-      message: `Form assigned to ${userIds.length} users`,
-      assignedCount: userIds.length,
+      message: assignedCount > 0
+        ? `Form assigned to ${assignedCount} users`
+        : "Form deployed successfully",
+      assignedCount,
     });
   } catch (error) {
     console.error("Assign form to users error:", error);
