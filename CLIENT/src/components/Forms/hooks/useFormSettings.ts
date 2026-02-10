@@ -365,6 +365,8 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           targetAudience: formTarget,
           startDate: submissionSchedule.startDate || undefined,
           endDate: submissionSchedule.endDate || undefined,
+          startTime: submissionSchedule.startTime || undefined,
+          endTime: submissionSchedule.endTime || undefined,
           questions: questions,
           question_count: questions.length,
           total_questions: questions.length,

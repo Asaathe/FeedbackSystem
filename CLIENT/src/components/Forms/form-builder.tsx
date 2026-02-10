@@ -77,7 +77,7 @@ import { CategoryManager } from "./components/CategoryManager";
 import { QuestionTypeConfig, FormQuestion, Instructor } from "./types/form";
 
 // Utils
-import { cleanQuestions, getDepartmentFromSection } from "./utils/formValidation";
+import { cleanQuestions, getDepartmentFromSection, formatUserDetails } from "./utils/formValidation";
 
 // AI Service
 import { generateQuestionsWithAI, GeneratedQuestion } from "../../services/aiQuestionService";
@@ -164,6 +164,7 @@ export function FormBuilder({
     recipients,
     filteredRecipients,
     selectedRecipients,
+    setSelectedRecipients,
     selectAllRecipients,
     searchTerm,
     setSearchTerm,
@@ -172,6 +173,7 @@ export function FormBuilder({
     instructors,
     filteredInstructors,
     selectedInstructors,
+    setSelectedInstructors,
     instructorSearchTerm,
     setInstructorSearchTerm,
     courseYearSections,
@@ -206,6 +208,10 @@ export function FormBuilder({
   // AI Question Generation States
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
+  // State to track loaded recipients and instructors from existing form
+  const [loadedRecipientIds, setLoadedRecipientIds] = useState<Set<number>>(new Set());
+  const [loadedInstructorIds, setLoadedInstructorIds] = useState<Set<number>>(new Set());
+
   // Load existing form data when formId is provided
   useEffect(() => {
     const loadExistingForm = async () => {
@@ -216,6 +222,9 @@ export function FormBuilder({
           const result = await getForm(formId);
           if (result.success && result.form) {
             const form = result.form;
+            console.log("📋 Loaded form data:", form);
+            console.log("📋 Deployment data:", form.deployment);
+            console.log("📋 Target filters:", form.deployment?.target_filters);
             setFormTitle(form.title || "");
             setFormDescription(form.description || "");
             setFormCategory(form.category || "Academic");
@@ -225,7 +234,36 @@ export function FormBuilder({
             setAiDescription(form.ai_description || "");
 
             // Parse target_audience to set audience selection fields
-            const target = form.target_audience || "All Users";
+            // First, check if there's deployment data with target_filters
+            let target = form.target_audience || "All Users";
+            let targetDepartment = "";
+            let targetCourseYearSection = "";
+
+            if (form.deployment && form.deployment.target_filters) {
+              const filters = form.deployment.target_filters;
+              // Use deployment data if available
+              if (filters.target_audience) {
+                target = filters.target_audience;
+              }
+              if (filters.department) {
+                targetDepartment = filters.department;
+              }
+              if (filters.course_year_section) {
+                targetCourseYearSection = filters.course_year_section;
+              }
+            } else {
+              // If no deployment data, extract from target_audience field
+              if (target.includes(" - ")) {
+                const parts = target.split(" - ");
+                const audienceType = parts[0];
+                const courseYearSection = parts.slice(1).join(" - ");
+                targetCourseYearSection = courseYearSection;
+                if (audienceType === "Students") {
+                  targetDepartment = getDepartmentFromSection(courseYearSection);
+                }
+              }
+            }
+
             if (target === "All Users") {
               setSelectedAudienceType("All Users");
               setSelectedDepartment("");
@@ -238,27 +276,116 @@ export function FormBuilder({
               setSelectedAudienceType(audienceType);
               setSelectedCourseYearSection(courseYearSection);
               if (audienceType === "Students") {
-                const department = getDepartmentFromSection(courseYearSection);
+                // Use department from deployment data if available, otherwise extract from courseYearSection
+                const department = targetDepartment || getDepartmentFromSection(courseYearSection);
                 setSelectedDepartment(department);
               } else {
                 setSelectedDepartment("");
               }
             } else {
               setSelectedAudienceType(target);
-              setSelectedDepartment("");
-              setSelectedCourseYearSection("");
+              setSelectedDepartment(targetDepartment);
+              setSelectedCourseYearSection(targetCourseYearSection);
             }
 
-            // Load submission schedule if available
-            setSubmissionSchedule({
-              startDate: form.start_date || "",
-              endDate: form.end_date || "",
-              startTime: "",
-              endTime: "",
+            console.log("📋 Setting audience values:", {
+              target,
+              targetDepartment,
+              targetCourseYearSection,
+              selectedAudienceType: target,
+              selectedDepartment: targetDepartment,
+              selectedCourseYearSection: targetCourseYearSection
             });
+
+            // Load submission schedule if available
+            // Use deployment data if available, otherwise use form data
+            let scheduleStartDate = form.start_date || "";
+            let scheduleEndDate = form.end_date || "";
+            let scheduleStartTime = "";
+            let scheduleEndTime = "";
+
+            console.log("📋 Raw schedule dates:", {
+              start_date: form.start_date,
+              end_date: form.end_date,
+              deployment_start_date: form.deployment?.start_date,
+              deployment_end_date: form.deployment?.end_date,
+            });
+
+            if (form.deployment) {
+              // Use deployment dates if available
+              if (form.deployment.start_date) {
+                scheduleStartDate = form.deployment.start_date;
+              }
+              if (form.deployment.end_date) {
+                scheduleEndDate = form.deployment.end_date;
+              }
+            }
+
+            console.log("📋 Schedule dates before formatting:", {
+              scheduleStartDate,
+              scheduleEndDate,
+            });
+
+            // Format dates to YYYY-MM-DD format (remove time component)
+            // Extract time directly from the string to avoid timezone conversion
+            // Handle both ISO format with timezone (2026-02-10T16:00:00.000Z) and without (2026-02-10T16:00:00)
+            if (scheduleStartDate && scheduleStartDate.includes('T')) {
+              // Parse the date as UTC and convert to local time
+              const dateObj = new Date(scheduleStartDate);
+              // Get local date components
+              const year = dateObj.getFullYear();
+              const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+              const day = dateObj.getDate().toString().padStart(2, '0');
+              const hours = dateObj.getHours().toString().padStart(2, '0');
+              const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+              scheduleStartDate = `${year}-${month}-${day}`;
+              scheduleStartTime = `${hours}:${minutes}`;
+            }
+            if (scheduleEndDate && scheduleEndDate.includes('T')) {
+              // Parse the date as UTC and convert to local time
+              const dateObj = new Date(scheduleEndDate);
+              // Get local date components
+              const year = dateObj.getFullYear();
+              const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+              const day = dateObj.getDate().toString().padStart(2, '0');
+              const hours = dateObj.getHours().toString().padStart(2, '0');
+              const minutes = dateObj.getMinutes().toString().padStart(2, '0');
+              scheduleEndDate = `${year}-${month}-${day}`;
+              scheduleEndTime = `${hours}:${minutes}`;
+            }
+
+            // Extract time from deadline if available (fallback)
+            if (!scheduleEndTime && form.deadline) {
+              const deadlineDate = new Date(form.deadline);
+              // Format time as HH:MM
+              const hours = deadlineDate.getHours().toString().padStart(2, '0');
+              const minutes = deadlineDate.getMinutes().toString().padStart(2, '0');
+              scheduleEndTime = `${hours}:${minutes}`;
+            }
+            const scheduleData = {
+              startDate: scheduleStartDate,
+              endDate: scheduleEndDate,
+              startTime: scheduleStartTime,
+              endTime: scheduleEndTime,
+            };
+            console.log("📋 Setting schedule:", scheduleData);
+            setSubmissionSchedule(scheduleData);
 
             // Load questions
             loadQuestions(form.questions || []);
+
+            // Load assigned recipients and restore selection
+            if (form.assigned_recipients && form.assigned_recipients.length > 0) {
+              // Store the loaded recipient IDs to be used after recipients list is loaded
+              const assignedUserIds = new Set<number>(form.assigned_recipients.map((r: any) => r.user_id));
+              setLoadedRecipientIds(assignedUserIds);
+            }
+
+            // Load shared instructors and restore selection
+            if (form.shared_instructors && form.shared_instructors.length > 0) {
+              const sharedInstructorIds = new Set<number>(form.shared_instructors.map((i: any) => i.user_id));
+              setLoadedInstructorIds(sharedInstructorIds);
+            }
           } else {
             toast.error("Failed to load form data");
           }
@@ -270,6 +397,36 @@ export function FormBuilder({
 
     loadExistingForm();
   }, [formId]);
+
+  // Restore selected recipients after recipients list is loaded
+  useEffect(() => {
+    if (loadedRecipientIds.size > 0 && recipients.length > 0) {
+      // Filter the loaded recipient IDs to only include IDs that are in the current recipients list
+      const validRecipientIds = new Set(
+        Array.from(loadedRecipientIds).filter(id => 
+          recipients.some(r => r.id === id)
+        )
+      );
+      setSelectedRecipients(validRecipientIds);
+      // Clear the loaded recipient IDs after setting
+      setLoadedRecipientIds(new Set());
+    }
+  }, [recipients, loadedRecipientIds]);
+
+  // Restore selected instructors after instructors list is loaded
+  useEffect(() => {
+    if (loadedInstructorIds.size > 0 && instructors.length > 0) {
+      // Filter the loaded instructor IDs to only include IDs that are in the current instructors list
+      const validInstructorIds = new Set(
+        Array.from(loadedInstructorIds).filter(id => 
+          instructors.some(i => i.id === id)
+        )
+      );
+      setSelectedInstructors(validInstructorIds);
+      // Clear the loaded instructor IDs after setting
+      setLoadedInstructorIds(new Set());
+    }
+  }, [instructors, loadedInstructorIds]);
 
   // Render Question Preview
   const renderQuestionPreview = (question: FormQuestion) => {
@@ -379,14 +536,60 @@ export function FormBuilder({
       let deployResult;
       if (hasSpecificRecipients) {
         // Assign to specific users
-        deployResult = await assignToUsers(currentFormId, formTarget);
+        // Combine date and time for start and end dates
+        const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
+          ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
+          : submissionSchedule.startDate;
+        const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
+          ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
+          : submissionSchedule.endDate;
+
+        console.log("📋 Assigning to specific users with schedule:", {
+          submissionSchedule,
+          startDateTime,
+          endDateTime,
+        });
+
+        deployResult = await assignToUsers(
+          currentFormId,
+          Array.from(selectedRecipients),
+          formTarget,
+          startDateTime,
+          endDateTime,
+          selectedDepartment,
+          selectedCourseYearSection
+        );
       } else {
         // Deploy to group
+        // Combine date and time for start and end dates
+        console.log("📋 Before combining dates:", {
+          submissionSchedule,
+          hasStartDate: !!submissionSchedule.startDate,
+          hasStartTime: !!submissionSchedule.startTime,
+          hasEndDate: !!submissionSchedule.endDate,
+          hasEndTime: !!submissionSchedule.endTime,
+        });
+
+        const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
+          ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
+          : submissionSchedule.startDate;
+        const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
+          ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
+          : submissionSchedule.endDate;
+
+        console.log("📋 Publishing form with schedule:", {
+          submissionSchedule,
+          startDateTime,
+          endDateTime,
+        });
+
         deployResult = await deployToGroup(
           currentFormId,
           formTarget,
-          submissionSchedule.startDate,
-          submissionSchedule.endDate
+          startDateTime,
+          endDateTime,
+          selectedDepartment,
+          selectedCourseYearSection
         );
       }
 

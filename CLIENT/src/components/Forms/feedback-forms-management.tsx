@@ -972,11 +972,11 @@ export function FeedbackFormsManagement({
                     className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden"
                   >
                     {/* Image or Placeholder */}
-                    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100">
+                    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100 flex items-center justify-center">
                       <EnhancedImage
                         src={form.image_url}
                         alt={form.title || "Form image"}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     </div>
 
@@ -1116,11 +1116,11 @@ export function FeedbackFormsManagement({
                     className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden"
                   >
                     {/* Add image display here */}
-                    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100">
+                    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
                       <EnhancedImage
                         src={template.image_url}
                         alt={template.title || "Template image"}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-contain"
                       />
                     </div>
 

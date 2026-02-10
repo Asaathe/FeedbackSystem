@@ -302,18 +302,27 @@ export function useRecipients() {
 
   // Assign form to specific users
   const assignToUsers = useCallback(
-    async (formId: string, targetAudience: string) => {
-      const selectedUserIds = Array.from(selectedRecipients).map((id) =>
-        parseInt(id.toString())
-      );
+    async (
+      formId: string,
+      userIds: number[],
+      targetAudience: string,
+      startDate?: string,
+      endDate?: string,
+      department?: string,
+      courseYearSection?: string
+    ) => {
       const result = await assignFormToUsers(
         formId,
-        selectedUserIds,
-        targetAudience
+        userIds,
+        targetAudience,
+        startDate,
+        endDate,
+        department,
+        courseYearSection
       );
       return result;
     },
-    [selectedRecipients]
+    []
   );
 
   // Deploy form to group
@@ -322,7 +331,10 @@ export function useRecipients() {
       formId: string,
       targetAudience: string,
       startDate?: string,
-      endDate?: string
+      endDate?: string,
+      department?: string,
+      courseYearSection?: string,
+      company?: string
     ) => {
       const result = await deployForm(formId, {
         startDate:
@@ -338,6 +350,9 @@ export function useRecipients() {
               ? ["all"]
               : [targetAudience.toLowerCase().replace(" ", "")],
           target_audience: targetAudience,
+          department: department || null,
+          course_year_section: courseYearSection || null,
+          company: company || null,
         },
       });
       return result;
@@ -356,6 +371,7 @@ export function useRecipients() {
     recipients,
     filteredRecipients,
     selectedRecipients,
+    setSelectedRecipients,
     selectAllRecipients,
     searchTerm,
     setSearchTerm,
@@ -364,6 +380,7 @@ export function useRecipients() {
     instructors,
     filteredInstructors,
     selectedInstructors,
+    setSelectedInstructors,
     instructorSearchTerm,
     setInstructorSearchTerm,
     // Constants

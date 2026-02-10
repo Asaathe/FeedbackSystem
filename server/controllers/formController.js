@@ -298,7 +298,17 @@ const deleteFormCategory = async (req, res) => {
 const assignFormToUsers = async (req, res) => {
   try {
     const { id } = req.params;
-    const { userIds } = req.body;
+    const { userIds, targetAudience, startDate, endDate, department, courseYearSection } = req.body;
+
+    console.log('📋 Server: assignFormToUsers called with:', {
+      id,
+      userIds,
+      targetAudience,
+      startDate,
+      endDate,
+      department,
+      courseYearSection,
+    });
     
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return res.status(400).json({
@@ -324,6 +334,8 @@ const assignFormToUsers = async (req, res) => {
       });
     }
 
+    const form = formCheck[0];
+
     // Insert form assignments (only form_id, user_id, assigned_at)
     const assignments = userIds.map(userId => [id, userId, new Date()]);
     
@@ -331,6 +343,50 @@ const assignFormToUsers = async (req, res) => {
       db.query(
         "INSERT IGNORE INTO form_assignments (form_id, user_id, assigned_at) VALUES ?",
         [assignments],
+        (err, result) => {
+          if (err) reject(err);
+          else resolve(result);
+        }
+      );
+    });
+
+    // Create deployment record to store deployment data
+    const deploymentFilters = {
+      target_audience: targetAudience,
+      department: department || null,
+      course_year_section: courseYearSection || null,
+      company: null,
+    };
+
+    const deploymentStartDate = startDate || form.start_date;
+    const deploymentEndDate = endDate || form.end_date;
+
+    console.log('📋 Server: Deployment values to store:', {
+      deploymentStartDate,
+      deploymentEndDate,
+      formStartDate: form.start_date,
+      formEndDate: form.end_date,
+    });
+
+    await new Promise((resolve, reject) => {
+      db.query(
+        `
+        INSERT INTO form_deployments (
+          form_id, deployed_by, start_date, end_date, target_filters, deployment_status
+        ) VALUES (?, ?, ?, ?, ?, 'active')
+        ON DUPLICATE KEY UPDATE
+          start_date = VALUES(start_date),
+          end_date = VALUES(end_date),
+          target_filters = VALUES(target_filters),
+          deployment_status = VALUES(deployment_status)
+        `,
+        [
+          id,
+          req.userId,
+          deploymentStartDate,
+          deploymentEndDate,
+          JSON.stringify(deploymentFilters)
+        ],
         (err, result) => {
           if (err) reject(err);
           else resolve(result);

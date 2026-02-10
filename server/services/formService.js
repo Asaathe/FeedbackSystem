@@ -145,6 +145,90 @@ const getFormById = async (formId) => {
 
     form.questions = questions.map(formatQuestionResponse);
 
+    // Get assigned recipients (users assigned to this form)
+    const assignedRecipients = await queryDatabase(
+      db,
+      `
+      SELECT 
+        fa.user_id,
+        u.email,
+        u.full_name,
+        u.role,
+        s.studentID,
+        s.program_id,
+        cm.course_section,
+        cm.department,
+        cm.program_name,
+        cm.year_level,
+        cm.section,
+        a.company as alumni_company,
+        e.companyname as employer_company
+      FROM form_assignments fa
+      LEFT JOIN Users u ON fa.user_id = u.id
+      LEFT JOIN students s ON u.id = s.user_id
+      LEFT JOIN course_management cm ON s.program_id = cm.id
+      LEFT JOIN alumni a ON u.id = a.user_id
+      LEFT JOIN employers e ON u.id = e.user_id
+      WHERE fa.form_id = ?
+    `,
+      [formId]
+    );
+
+    form.assigned_recipients = assignedRecipients;
+
+    // Get instructors with shared responses access
+    const sharedInstructors = await queryDatabase(
+      db,
+      `
+      SELECT 
+        sr.shared_with_instructor_id as user_id,
+        u.email,
+        u.full_name,
+        u.role,
+        i.instructor_id,
+        i.department,
+        i.subject_taught
+      FROM shared_responses sr
+      LEFT JOIN Users u ON sr.shared_with_instructor_id = u.id
+      LEFT JOIN instructors i ON u.id = i.user_id
+      WHERE sr.form_id = ?
+    `,
+      [formId]
+    );
+
+    form.shared_instructors = sharedInstructors;
+
+    // Get deployment data (if any)
+    const deployments = await queryDatabase(
+      db,
+      `
+      SELECT 
+        id,
+        start_date,
+        end_date,
+        target_filters,
+        deployment_status
+      FROM form_deployments
+      WHERE form_id = ?
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+      [formId]
+    );
+
+    if (deployments.length > 0) {
+      form.deployment = deployments[0];
+      // Parse target_filters JSON if available
+      if (deployments[0].target_filters) {
+        try {
+          form.deployment.target_filters = JSON.parse(deployments[0].target_filters);
+        } catch (e) {
+          console.error("Failed to parse target_filters JSON:", e);
+          form.deployment.target_filters = null;
+        }
+      }
+    }
+
     return { success: true, form };
   } catch (error) {
     console.error("Get form error:", error);
@@ -168,6 +252,8 @@ const createForm = async (formData, userId) => {
       targetAudience,
       startDate,
       endDate,
+      startTime,
+      endTime,
       questions = [],
       imageUrl,
       isTemplate = false,
@@ -190,6 +276,10 @@ const createForm = async (formData, userId) => {
       }
     }
 
+    // Combine date and time for start_date and end_date
+    const combinedStartDate = (startDate && startTime) ? `${startDate}T${startTime}` : (startDate || null);
+    const combinedEndDate = (endDate && endTime) ? `${endDate}T${endTime}` : (endDate || null);
+
     // Insert form
     const insertResult = await queryDatabase(
       db,
@@ -206,8 +296,8 @@ const createForm = async (formData, userId) => {
         ai_description || null,
         category,
         targetAudience,
-        startDate || null,
-        endDate || null,
+        combinedStartDate,
+        combinedEndDate,
         imageUrl || null,
         isTemplate,
         userId,
@@ -319,6 +409,23 @@ const updateForm = async (formId, updates, userId) => {
         updateFields.push(`${field} = ?`);
         updateValues.push(updates[field]);
       }
+    }
+
+    // Handle date and time combination
+    if (updates.startDate !== undefined || updates.startTime !== undefined) {
+      const startDate = updates.startDate || "";
+      const startTime = updates.startTime || "";
+      const combinedStartDate = (startDate && startTime) ? `${startDate}T${startTime}` : (startDate || null);
+      updateFields.push("start_date = ?");
+      updateValues.push(combinedStartDate);
+    }
+
+    if (updates.endDate !== undefined || updates.endTime !== undefined) {
+      const endDate = updates.endDate || "";
+      const endTime = updates.endTime || "";
+      const combinedEndDate = (endDate && endTime) ? `${endDate}T${endTime}` : (endDate || null);
+      updateFields.push("end_date = ?");
+      updateValues.push(combinedEndDate);
     }
 
     if (updateFields.length === 0) {
@@ -601,6 +708,68 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         }
       }
     }
+
+    // Create deployment record to store deployment data
+    // Extract department and course_year_section from target_audience if not provided
+    let deploymentDepartment = targetFilters?.department || null;
+    let deploymentCourseYearSection = targetFilters?.course_year_section || null;
+    let deploymentCompany = targetFilters?.company || null;
+
+    // If target_audience contains " - ", extract the parts
+    if (effectiveTargetAudience && effectiveTargetAudience.includes(" - ")) {
+      const parts = effectiveTargetAudience.split(" - ");
+      const audienceType = parts[0];
+      const courseYearSection = parts.slice(1).join(" - ");
+
+      if (audienceType === "Students") {
+        deploymentCourseYearSection = courseYearSection;
+        // Get department from course_management table
+        try {
+          const courseData = await queryDatabase(
+            db,
+            "SELECT department FROM course_management WHERE course_section = ?",
+            [courseYearSection]
+          );
+          if (courseData.length > 0) {
+            deploymentDepartment = courseData[0].department;
+          }
+        } catch (e) {
+          console.error("Failed to get department from course_management:", e);
+        }
+      } else if (audienceType === "Instructors") {
+        deploymentDepartment = courseYearSection;
+      } else if (audienceType === "Alumni") {
+        deploymentCompany = courseYearSection;
+      }
+    }
+
+    const deploymentFilters = {
+      target_audience: effectiveTargetAudience,
+      department: deploymentDepartment,
+      course_year_section: deploymentCourseYearSection,
+      company: deploymentCompany,
+    };
+
+    await queryDatabase(
+      db,
+      `
+      INSERT INTO form_deployments (
+        form_id, deployed_by, start_date, end_date, target_filters, deployment_status
+      ) VALUES (?, ?, ?, ?, ?, 'active')
+      ON DUPLICATE KEY UPDATE
+        start_date = VALUES(start_date),
+        end_date = VALUES(end_date),
+        target_filters = VALUES(target_filters),
+        deployment_status = VALUES(deployment_status)
+      `,
+      [
+        formId,
+        userId,
+        startDate || form.start_date,
+        endDate || form.end_date,
+        JSON.stringify(deploymentFilters)
+      ]
+    );
 
     return {
       success: true,

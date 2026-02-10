@@ -38,6 +38,8 @@ export interface CreateFormData {
   targetAudience: string;
   startDate?: string;
   endDate?: string;
+  startTime?: string;
+  endTime?: string;
   questions?: any[];
   imageUrl?: string;
   isTemplate?: boolean;
@@ -234,6 +236,8 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       targetAudience: formData.targetAudience,
       startDate: formData.startDate,
       endDate: formData.endDate,
+      startTime: formData.startTime,
+      endTime: formData.endTime,
       questions: questionsToSend,
       imageUrl: formData.imageUrl,
       isTemplate: formData.isTemplate,
@@ -831,9 +835,13 @@ export const deleteFormCategory = async (categoryId: number): Promise<{ success:
 export async function assignFormToUsers(
   formId: string,
   userIds: number[],
-  targetAudience: string
+  targetAudience: string,
+  startDate?: string,
+  endDate?: string,
+  department?: string,
+  courseYearSection?: string
 ) {
-  logDebug('assignFormToUsers called with:', { formId, userIds, targetAudience });
+  logDebug('assignFormToUsers called with:', { formId, userIds, targetAudience, startDate, endDate, department, courseYearSection });
 
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
@@ -860,6 +868,10 @@ export async function assignFormToUsers(
       body: JSON.stringify({
         userIds,
         targetAudience,
+        startDate,
+        endDate,
+        department,
+        courseYearSection,
       }),
     });
 
@@ -1259,6 +1271,9 @@ export const deployForm = async (formId: string, deploymentData: {
   targetFilters: {
     roles: string[];
     target_audience: string;
+    department?: string | null;
+    course_year_section?: string | null;
+    company?: string | null;
   };
 }): Promise<{ success: boolean; message: string }> => {
   logDebug('deployForm called with formId:', formId, 'deploymentData:', deploymentData);
