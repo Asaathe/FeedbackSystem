@@ -25,6 +25,8 @@ export interface AIQuestionGenerationResponse {
 const GEMINI_MODELS = [
  
   'gemini-3-flash-preview',
+  
+  
 
 ];
 
@@ -53,30 +55,27 @@ function getApiKey(): string | null {
   // Check localStorage first (user might have saved it)
   const storedKeys = [
     localStorage.getItem('gemini_api_key'),
-    localStorage.getItem('openai_api_key'),
     localStorage.getItem('ai_api_key'),
   ];
-  
+
   for (const key of storedKeys) {
     if (key && key.trim().length > 20 && !key.includes('your_api_key')) {
       return key.trim();
     }
   }
-  
+
   // Check environment variables
   const envKeys = [
     getEnvVar('VITE_GEMINI_API_KEY'),
     getEnvVar('REACT_APP_GEMINI_API_KEY'),
-    getEnvVar('VITE_OPENAI_API_KEY'),
-    getEnvVar('REACT_APP_OPENAI_API_KEY'),
   ];
-  
+
   for (const key of envKeys) {
     if (key && key.trim().length > 20) {
       return key.trim();
     }
   }
-  
+
   return null;
 }
 
@@ -88,16 +87,11 @@ function buildPrompt(
   category?: string,
   targetAudience?: string
 ): string {
-  return `Generate a clear and well-organized Frequently Asked Questions (FAQ) section with up to 10 questions based on the given description.
+  return `You are a school administrator at a private school who wants to gather feedback. 
+  Generate a clear and well-organized questions up to 10 questions based on the ${description} with a ${category ? `Category: ${category}` : ''}.
 
-CONTEXT:
-You are a school administrator at a private school who wants to gather feedback. The purpose of this feedback is: ${description}
-${category ? `Category: ${category}` : ''}
-${targetAudience ? `Audience: ${targetAudience}` : ''}
-
-INSTRUCTIONS:
-1. Include common questions from students covering topics such as participation in activities, attendance requirements, grading systems, assessments, evaluations, deadlines, appeals, and academic policies. Provide accurate, concise, and student-friendly answers in simple language appropriate for a university setting. Maintain a formal yet approachable tone, ensuring all answers follow general university policies and best academic practices
-2. Use appropriate question types:
+  INSTRUCTIONS:
+1. Use appropriate question types based on category:
    - text: Short answers
    - textarea: Long responses
    - multiple-choice: Single select
@@ -105,9 +99,8 @@ INSTRUCTIONS:
    - dropdown: Select from list
    - rating: 1-5 stars
    - linear-scale: 1-10 scale
-3. For choice questions: Provide 3-5 options
-4. Mark 2-3 key questions as required=true
-5. Keep questions clear and concise
+2. For choice questions: Provide 3-5 options
+3. Keep questions clear and concise
 
 OUTPUT FORMAT (JSON array):
 [

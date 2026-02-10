@@ -153,6 +153,8 @@ const registerUser = async (userData) => {
  */
 const loginUser = async (email, password) => {
   try {
+    console.log('[LOGIN DEBUG] Attempting login for email:', email);
+
     // Find user
     const users = await queryDatabase(
       db,
@@ -160,26 +162,34 @@ const loginUser = async (email, password) => {
       [email]
     );
 
+    console.log('[LOGIN DEBUG] Users found:', users.length);
+
     if (users.length === 0) {
+      console.log('[LOGIN DEBUG] User not found in database');
       return { success: false, message: "Invalid email or password" };
     }
 
     const user = users[0];
+    console.log('[LOGIN DEBUG] User found:', { id: user.id, email: user.email, role: user.role, status: user.status });
 
     // Check password
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
+    console.log('[LOGIN DEBUG] Password valid:', isPasswordValid);
 
     if (!isPasswordValid) {
+      console.log('[LOGIN DEBUG] Password comparison failed');
       return { success: false, message: "Invalid email or password" };
     }
 
     // Check account status
     if (user.status !== "active") {
+      console.log('[LOGIN DEBUG] Account not active. Current status:', user.status);
       return { success: false, message: "Account is not active" };
     }
 
     // Generate token
     const token = generateToken(user.id);
+    console.log('[LOGIN DEBUG] Login successful for user:', user.id);
 
     return {
       success: true,
@@ -195,7 +205,7 @@ const loginUser = async (email, password) => {
       },
     };
   } catch (error) {
-    console.error("Login error:", error);
+    console.error('[LOGIN DEBUG] Login error:', error);
     return { success: false, message: "Login failed" };
   }
 };

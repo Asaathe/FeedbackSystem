@@ -268,11 +268,12 @@ const getSharedResponses = async (userId) => {
         f.title as form_title,
         f.category,
         COUNT(fr.id) as total_responses,
-        GROUP_CONCAT(DISTINCT s.course_yr_section) as sections
+        GROUP_CONCAT(DISTINCT cm.course_section) as sections
       FROM Forms f
       LEFT JOIN Form_Responses fr ON f.id = fr.form_id
       LEFT JOIN Users u ON fr.user_id = u.id
       LEFT JOIN students s ON u.id = s.user_id
+      LEFT JOIN course_management cm ON s.program_id = cm.id
       WHERE f.status = 'active'
         AND f.target_audience IN ('Students', 'All Users')
       GROUP BY f.id
@@ -330,15 +331,16 @@ const getSharedResponsesDetails = async (sharedId, userId) => {
       `
       SELECT 
         fr.id,
-        fr.answers,
+        fr.response_data,
         fr.submitted_at,
         u.email,
         u.full_name,
-        s.course_yr_section,
-        s.department
+        cm.course_section,
+        cm.department
       FROM Form_Responses fr
       LEFT JOIN Users u ON fr.user_id = u.id
       LEFT JOIN students s ON u.id = s.user_id
+      LEFT JOIN course_management cm ON s.program_id = cm.id
       WHERE fr.form_id = ?
       ORDER BY fr.submitted_at DESC
     `,
@@ -353,7 +355,7 @@ const getSharedResponsesDetails = async (sharedId, userId) => {
         submittedDate: r.submitted_at,
         email: r.email,
         fullName: r.full_name,
-        courseSection: r.course_yr_section,
+        courseSection: r.course_section,
         department: r.department,
       })),
     };

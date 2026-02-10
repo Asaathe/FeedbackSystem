@@ -4,6 +4,28 @@ const router = express.Router();
 const formController = require("../controllers/formController");
 const responseController = require("../controllers/responseController");
 const { verifyToken } = require("../middleware/auth");
+const { uploadSingleImage, handleUploadError, getFileUrl } = require("../middleware/uploadMiddleware");
+
+// Image upload route
+router.post("/upload-image", verifyToken, uploadSingleImage('image'), handleUploadError, (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({
+      success: false,
+      message: "No file uploaded"
+    });
+  }
+
+  const imageUrl = getFileUrl(req.file, 'forms');
+
+  res.status(200).json({
+    success: true,
+    message: "Image uploaded successfully",
+    imageUrl: imageUrl,
+    filename: req.file.filename,
+    originalName: req.file.originalname,
+    size: req.file.size
+  });
+});
 
 // Share responses with instructors route
 router.post("/:id/share-responses", verifyToken, formController.shareResponsesWithInstructors);

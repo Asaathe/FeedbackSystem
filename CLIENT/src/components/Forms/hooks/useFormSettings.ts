@@ -8,35 +8,13 @@ import {
   addFormCategory,
   deleteFormCategory,
 } from "../../../services/formManagementService";
-import { validateImageFile, validateBase64Image, getImageRecommendations, IMAGE_VALIDATION } from "../../../utils/imageUtils";
+import { validateImageFile, getImageRecommendations, IMAGE_VALIDATION } from "../../../utils/imageUtils";
 import { FormState, DatabaseCategory, SubmissionSchedule } from "../types/form";
 import { parseTargetAudience } from "../utils/formValidation";
 
 // Helper function to get draft storage key
 const getDraftStorageKey = (formId?: string) => {
   return formId ? `form_draft_${formId}` : `form_draft_new`;
-};
-
-// Helper function to limit image size for database storage
-// Strips base64 data if it's too large, returns undefined instead
-const limitImageForStorage = (imageData: string | null | undefined): string | undefined => {
-  if (!imageData) return undefined;
-  
-  // If it's a URL (not base64), return as is
-  if (!imageData.startsWith('data:')) {
-    return imageData;
-  }
-  
-  // For base64 images, check size and strip if too large
-  // MySQL max_allowed_packet is typically 64MB, but we should keep images smaller
-  const maxBase64Size = 500000; // ~500KB base64
-  
-  if (imageData.length > maxBase64Size) {
-    console.warn('Image too large for database storage, stripping base64 data');
-    return undefined;
-  }
-  
-  return imageData;
 };
 
 interface UseFormSettingsProps {
@@ -163,12 +141,12 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
     loadCategories();
   }, [formCategory]);
 
-  // Image Upload Handler
+  // Image Upload Handler - Now uses FormData for file upload
   const handleImageUpload = useCallback(
-    (event: React.ChangeEvent<HTMLInputElement>) => {
+    async (event: React.ChangeEvent<HTMLInputElement>) => {
       const file = event.target.files?.[0];
       if (file) {
-        const { isValid, error, warning } = validateImageFile(file);
+        const { isValid, error } = validateImageFile(file);
         if (!isValid) {
           toast.error("Image upload failed", {
             description: error,
@@ -177,27 +155,38 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
         }
 
         setImageFile(file);
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64 = reader.result as string;
-          // Validate the base64 data
-          const base64Validation = validateBase64Image(base64);
-          if (!base64Validation.isValid) {
-            toast.error("Image too large", {
-              description: base64Validation.error,
-            });
-            return;
-          }
-          setFormImage(base64);
-          if (base64Validation.warning) {
-            toast.warning("Large image", {
-              description: base64Validation.warning,
-            });
-          } else {
+        
+        // Upload file to server using FormData
+        const formData = new FormData();
+        formData.append('image', file);
+        formData.append('uploadType', 'forms');
+
+        try {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+          const response = await fetch('http://localhost:5000/api/forms/upload-image', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+            body: formData,
+          });
+
+          const result = await response.json();
+
+          if (result.success) {
+            setFormImage(result.imageUrl);
             toast.success("Image uploaded successfully");
+          } else {
+            toast.error("Image upload failed", {
+              description: result.message || "Unknown error",
+            });
           }
-        };
-        reader.readAsDataURL(file);
+        } catch (error) {
+          console.error('Error uploading image:', error);
+          toast.error("Image upload failed", {
+            description: "Network error occurred",
+          });
+        }
       }
     },
     []
@@ -380,7 +369,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           question_count: questions.length,
           total_questions: questions.length,
           questions_count: questions.length,
-          imageUrl: limitImageForStorage(formImage),
+          imageUrl: formImage || undefined,
           isTemplate: false,
           status: "active",
           aiDescription: aiDescription,

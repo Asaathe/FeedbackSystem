@@ -39,8 +39,8 @@ app.use(helmet({
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
-      connectSrc: ["'self'", "http://localhost:5000"],
+      imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
+      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:5173"],
     },
   },
   hsts: { maxAge: 31536000, includeSubDomains: true },
@@ -109,6 +109,9 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/programs", courseManagementRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
+
+// Serve uploaded images statically
+app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {

@@ -40,7 +40,10 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log('[CONTROLLER DEBUG] Login request received:', { email, hasPassword: !!password });
+
     if (!email || !password) {
+      console.log('[CONTROLLER DEBUG] Missing email or password');
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
@@ -49,13 +52,15 @@ const login = async (req, res) => {
 
     const result = await authService.loginUser(email, password);
 
+    console.log('[CONTROLLER DEBUG] Auth service result:', { success: result.success, message: result.message });
+
     if (result.success) {
       return res.status(200).json(result);
     } else {
       return res.status(401).json(result);
     }
   } catch (error) {
-    console.error("Login controller error:", error);
+    console.error("[CONTROLLER DEBUG] Login controller error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error",

@@ -88,7 +88,13 @@ router.get("/instructors/departments", async (req, res) => {
 router.get("/students/sections", async (req, res) => {
   const db = require("../config/database");
   try {
-    const query = "SELECT DISTINCT course_yr_section FROM students WHERE course_yr_section IS NOT NULL AND course_yr_section != '' ORDER BY course_yr_section";
+    const query = `
+      SELECT DISTINCT cm.course_section
+      FROM students s
+      LEFT JOIN course_management cm ON s.program_id = cm.id
+      WHERE cm.course_section IS NOT NULL AND cm.course_section != ''
+      ORDER BY cm.course_section
+    `;
     db.query(query, (err, results) => {
       if (err) {
         console.error("Error fetching sections:", err);
@@ -99,7 +105,7 @@ router.get("/students/sections", async (req, res) => {
       }
       return res.status(200).json({
         success: true,
-        sections: results.map(r => r.course_yr_section),
+        sections: results.map(r => r.course_section),
       });
     });
   } catch (error) {

@@ -8,25 +8,33 @@ const API_BASE_URL = 'http://localhost:5000';
 /**
  * Formats image URL for display
  * Handles different image URL formats and provides fallbacks
+ * Now supports file-based URLs from server uploads
  */
 export const formatImageUrl = (imageUrl: string | undefined | null): string => {
   if (!imageUrl) {
     return '';
   }
 
-  // If it's already a data URL, return as is
+  // If it's already a data URL (legacy support), return as is
   if (imageUrl.startsWith('data:')) {
-    console.log('Image URL formatting: Data URL detected, returning as is');
+    console.log('Image URL formatting: Legacy data URL detected, returning as is');
     return imageUrl;
   }
 
   // If it's already a full URL, return as is
-  if (imageUrl.startsWith('http')) {
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
     console.log('Image URL formatting: Full URL detected, returning as is');
     return imageUrl;
   }
 
-  // Handle relative paths - ensure proper formatting
+  // For file-based uploads, use relative path (proxied through Vite)
+  // This avoids CORS issues in development
+  if (imageUrl.startsWith('/uploads/')) {
+    console.log('Image URL formatting: Upload path detected, using relative URL');
+    return imageUrl; // Return as-is for Vite proxy
+  }
+
+  // Handle other relative paths - ensure proper formatting
   let cleanPath = imageUrl;
   
   // Remove leading slash if present to avoid double slashes
