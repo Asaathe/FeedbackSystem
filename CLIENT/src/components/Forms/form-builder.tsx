@@ -52,7 +52,7 @@ import {
 } from "../ui/dialog";
 import { toast } from "sonner";
 import { Checkbox } from "../ui/checkbox";
-import { EnhancedImage, getImageRecommendations } from "../../utils/imageUtils";
+import { EnhancedImage, getImageRecommendations, validateImageFile } from "../../utils/imageUtils";
 import { ScrollArea } from "../ui/scroll-area";
 import { Separator } from "../ui/separator";
 import {
@@ -60,6 +60,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../ui/collapsible";
+import { ImageCropper } from "../ui/image-cropper";
 
 // Custom hooks
 import { useFormSettings } from "./hooks/useFormSettings";
@@ -199,6 +200,8 @@ export function FormBuilder({
   const [publishDialogOpen, setPublishDialogOpen] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(true);
+  const [cropperDialogOpen, setCropperDialogOpen] = useState(false);
+  const [fileToCrop, setFileToCrop] = useState<File | null>(null);
 
   // AI Question Generation States
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
@@ -442,6 +445,75 @@ export function FormBuilder({
     } finally {
       setIsGeneratingQuestions(false);
     }
+  };
+
+  // Handle image file selection - opens cropper dialog
+  const handleImageFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const { isValid, error } = validateImageFile(file);
+      if (!isValid) {
+        toast.error("Image upload failed", {
+          description: error,
+        });
+        return;
+      }
+      setFileToCrop(file);
+      setCropperDialogOpen(true);
+    }
+    // Reset the input
+    event.target.value = '';
+  };
+
+  // Handle crop complete - upload cropped image
+  const handleCropComplete = async (croppedImageDataUrl: string) => {
+    try {
+      // Convert data URL to File
+      const response = await fetch(croppedImageDataUrl);
+      const blob = await response.blob();
+      const croppedFile = new File([blob], fileToCrop?.name || 'cropped-image.jpg', {
+        type: 'image/jpeg',
+      });
+
+      // Upload cropped file to server using FormData
+      const formData = new FormData();
+      formData.append('image', croppedFile);
+      formData.append('uploadType', 'forms');
+
+      const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+      const uploadResponse = await fetch('http://localhost:5000/api/forms/upload-image', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const result = await uploadResponse.json();
+
+      if (result.success) {
+        setFormImage(result.imageUrl);
+        toast.success("Image cropped and uploaded successfully");
+      } else {
+        toast.error("Image upload failed", {
+          description: result.message || "Unknown error",
+        });
+      }
+    } catch (error) {
+      console.error('Error uploading cropped image:', error);
+      toast.error("Image upload failed", {
+        description: "Network error occurred",
+      });
+    } finally {
+      setCropperDialogOpen(false);
+      setFileToCrop(null);
+    }
+  };
+
+  // Handle crop cancel
+  const handleCropCancel = () => {
+    setCropperDialogOpen(false);
+    setFileToCrop(null);
   };
 
   return (
@@ -1468,13 +1540,16 @@ export function FormBuilder({
                             <p className="text-xs text-gray-400 mt-1">
                               Recommended: 800×200px for best display
                             </p>
+                            <p className="text-xs text-green-600 mt-2">
+                              ✨ You can crop your image after uploading
+                            </p>
                           </div>
                           <input
                             id="form-image-upload"
                             type="file"
                             accept="image/*"
                             className="hidden"
-                            onChange={handleImageUpload}
+                            onChange={handleImageFileSelect}
                           />
                         </label>
                       </div>
@@ -1643,6 +1718,26 @@ export function FormBuilder({
           </Card>
         </div>
       </div>
+
+      {/* Image Cropper Dialog */}
+      <Dialog open={cropperDialogOpen} onOpenChange={setCropperDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Crop Image</DialogTitle>
+            <DialogDescription>
+              Adjust the crop box to select the part of the image you want to use. Drag the box to move it, or drag the handles to resize it.
+            </DialogDescription>
+          </DialogHeader>
+          {fileToCrop && (
+            <ImageCropper
+              imageFile={fileToCrop}
+              onCropComplete={handleCropComplete}
+              onCancel={handleCropCancel}
+              aspectRatio={4}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
