@@ -44,6 +44,20 @@ import {
   getForm,
   FormData,
 } from "../../services/formManagementService";
+import {
+  analyzeFormResponses,
+  QuestionAIInsight,
+  ResponseAnalysisResponse,
+} from "../../services/aiQuestionService";
+import {
+  Brain,
+  Sparkles,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  RefreshCw,
+} from "lucide-react";
 
 interface FormResponsesViewerProps {
   formId: string;
@@ -60,6 +74,12 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  
+  // AI Insights state
+  const [aiInsights, setAiInsights] = useState<QuestionAIInsight[]>([]);
+  const [overallSummary, setOverallSummary] = useState<string>("");
+  const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
+  const [showAIInsights, setShowAIInsights] = useState(false);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -228,6 +248,36 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     }
   };
 
+  const analyzeWithAI = async () => {
+    if (!form || responses.length === 0) {
+      toast.error("No form or responses to analyze");
+      return;
+    }
+
+    setAnalyzingWithAI(true);
+    try {
+      const result: ResponseAnalysisResponse = await analyzeFormResponses(
+        form.title,
+        form.questions || [],
+        responses
+      );
+
+      if (result.success && result.overallSummary) {
+        setAiInsights(result.insights || []);
+        setOverallSummary(result.overallSummary || "");
+        setShowAIInsights(true);
+        toast.success("AI analysis complete!");
+      } else {
+        toast.error(result.error || "Failed to analyze responses");
+      }
+    } catch (error) {
+      console.error("Error analyzing with AI:", error);
+      toast.error("Failed to analyze responses with AI");
+    } finally {
+      setAnalyzingWithAI(false);
+    }
+  };
+
   const handleViewResponse = (response: FormResponse) => {
     setSelectedResponse(response);
     setViewDialogOpen(true);
@@ -373,6 +423,167 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     }
   };
 
+  // AI Insights rendering functions
+  const renderSentimentBadge = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return (
+          <Badge className="bg-green-100 text-green-700 border-green-200">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Positive
+          </Badge>
+        );
+      case 'negative':
+        return (
+          <Badge className="bg-red-100 text-red-700 border-red-200">
+            <XCircle className="w-3 h-3 mr-1" />
+            Negative
+          </Badge>
+        );
+      case 'neutral':
+        return (
+          <Badge className="bg-gray-100 text-gray-700 border-gray-200">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Neutral
+          </Badge>
+        );
+      default:
+        return (
+          <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
+            <AlertCircle className="w-3 h-3 mr-1" />
+            Mixed
+          </Badge>
+        );
+    }
+  };
+
+  const renderAIInsightCard = (insight: QuestionAIInsight, index: number) => {
+    return (
+      <Card key={insight.questionId} className="overflow-hidden border-l-4 border-l-blue-500">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <CardTitle className="text-lg leading-relaxed" title={insight.question}>
+                <span className="inline-flex items-center gap-2">
+                  <Brain className="w-5 h-5 text-blue-600 shrink-0" />
+                  Q{index + 1}: {insight.question}
+                </span>
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">
+                {insight.type.replace('-', ' ').toUpperCase()} • {insight.totalResponses} responses
+              </p>
+            </div>
+            {insight.sentiment && renderSentimentBadge(insight.sentiment.overall)}
+          </div>
+        </CardHeader>
+        <CardContent className="p-6 space-y-4">
+          {/* AI Summary */}
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-4 h-4 text-purple-600" />
+              <span className="font-semibold text-sm text-purple-900">AI Summary</span>
+            </div>
+            <p className="text-sm text-gray-700 leading-relaxed">{insight.summary}</p>
+          </div>
+
+          {/* Key Findings */}
+          {insight.keyFindings.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-blue-600" />
+                <span className="font-semibold text-sm text-gray-900">Key Findings</span>
+              </div>
+              <ul className="space-y-1">
+                {insight.keyFindings.map((finding, idx) => (
+                  <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                    <span className="text-blue-500 mt-1">•</span>
+                    <span>{finding}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Themes (for text questions) */}
+          {insight.themes && insight.themes.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <FileText className="w-4 h-4 text-green-600" />
+                <span className="font-semibold text-sm text-gray-900">Main Themes</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {insight.themes.map((theme, idx) => (
+                  <Badge key={idx} variant="outline" className="text-xs">
+                    {theme.name} ({theme.count})
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Sentiment Breakdown */}
+          {insight.sentiment && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <BarChart3 className="w-4 h-4 text-indigo-600" />
+                <span className="font-semibold text-sm text-gray-900">Sentiment Breakdown</span>
+              </div>
+              <div className="flex gap-4 text-sm">
+                <div className="flex items-center gap-1">
+                  <CheckCircle className="w-4 h-4 text-green-500" />
+                  <span className="text-gray-700">Positive: {insight.sentiment.positive}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4 text-gray-500" />
+                  <span className="text-gray-700">Neutral: {insight.sentiment.neutral}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <XCircle className="w-4 h-4 text-red-500" />
+                  <span className="text-gray-700">Negative: {insight.sentiment.negative}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {insight.recommendations.length > 0 && (
+            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-100">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-4 h-4 text-amber-600" />
+                <span className="font-semibold text-sm text-amber-900">Recommendations</span>
+              </div>
+              <ul className="space-y-1">
+                {insight.recommendations.map((rec, idx) => (
+                  <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
+                    <span className="text-amber-500 mt-1">→</span>
+                    <span>{rec}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Quick Stats */}
+          <div className="flex flex-wrap gap-4 pt-2 border-t">
+            {insight.average !== undefined && (
+              <div className="text-sm">
+                <span className="text-gray-500">Average:</span>{' '}
+                <span className="font-semibold text-blue-600">{insight.average.toFixed(1)}</span>
+                {insight.maxRating && <span className="text-gray-500">/{insight.maxRating}</span>}
+              </div>
+            )}
+            {insight.trend && (
+              <div className="text-sm">
+                <span className="text-gray-500">Trend:</span>{' '}
+                <span className="font-semibold text-green-600">{insight.trend}</span>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   if (loading) {
     return (
       <div className="text-center py-12">
@@ -402,6 +613,24 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
             </p>
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
+            <Button
+              variant="outline"
+              onClick={analyzeWithAI}
+              disabled={responses.length === 0 || analyzingWithAI}
+              className="flex-1 sm:flex-none bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-0 hover:from-purple-600 hover:to-indigo-600"
+            >
+              {analyzingWithAI ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Analyzing...
+                </>
+              ) : (
+                <>
+                  <Brain className="w-4 h-4 mr-2" />
+                  Analyze with AI
+                </>
+              )}
+            </Button>
             <Button
               variant="outline"
               onClick={generatePDF}
@@ -465,10 +694,40 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         </Card>
       </div>
 
-      {/* Question Analytics */}
-      {applicableQuestions.length > 0 && (
+      {/* AI Insights Section - Overall Summary Only */}
+      {showAIInsights && overallSummary && (
         <div className="space-y-6">
-          <h3 className="text-xl font-semibold">Question Analytics</h3>
+          {/* Overall Summary */}
+          <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Brain className="w-6 h-6 text-purple-600" />
+                <CardTitle className="text-xl">AI-Generated Overall Summary</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-700 leading-relaxed">{overallSummary}</p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Legacy Question Analytics (shown when AI insights not available) */}
+      {!showAIInsights && applicableQuestions.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold">Question Analytics</h3>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={analyzeWithAI}
+              disabled={analyzingWithAI}
+              className="text-purple-600 border-purple-300 hover:bg-purple-50"
+            >
+              <Brain className="w-4 h-4 mr-2" />
+              Get AI Insights
+            </Button>
+          </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {applicableQuestions.map((question, index) => {
               const analytics = getQuestionAnalytics(question);

@@ -39,9 +39,6 @@ const AlertDialogOverlay = React.forwardRef<
       "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/50",
       className,
     )}
-    // Use aria-hidden="true" for non-interactive overlay to prevent screen reader access
-    // This is the standard approach for overlays - the overlay is purely visual
-    aria-hidden="true"
     {...props}
   />
 ));

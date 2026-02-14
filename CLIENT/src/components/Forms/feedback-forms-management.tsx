@@ -940,7 +940,7 @@ export function FeedbackFormsManagement({
               Custom Forms ({filteredCustomForms.length})
             </TabsTrigger>
             <TabsTrigger value="templates">
-              <Star className="w-4 h-4 mr-2" />
+             
               Templates ({filteredTemplateForms.length})
             </TabsTrigger>
           </TabsList>
@@ -1013,7 +1013,7 @@ export function FeedbackFormsManagement({
                               onClick={() => handleSaveAsTemplate(form.id)}
                               disabled={savingAsTemplate === form.id}
                             >
-                              <Star className="w-4 h-4 mr-2" />
+                             
                               {savingAsTemplate === form.id
                                 ? "Saving..."
                                 : "Save as Template"}
@@ -1175,9 +1175,10 @@ export function FeedbackFormsManagement({
                           maxWidth={90}
                           className="bg-purple-100 text-purple-700"
                         >
-                          <Star className="w-3 h-3 mr-1" />
+                          
                           Template
                         </Badge>
+                        
                         <Badge
                           variant="outline"
                           truncate
