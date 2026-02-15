@@ -112,6 +112,33 @@ const getFormById = async (formId) => {
 
     const form = formatFormResponse(forms[0]);
 
+    // Get sections (if table exists)
+    let sections = [];
+    try {
+      sections = await queryDatabase(
+        db,
+        `
+        SELECT 
+          s.*
+        FROM sections s
+        WHERE s.form_id = ?
+        ORDER BY s.order_index ASC
+      `,
+        [formId]
+      );
+    } catch (err) {
+      // Table might not exist yet, ignore error
+      console.log("Sections table not found, skipping...");
+    }
+
+    // Format sections
+    form.sections = sections.map(s => ({
+      id: s.id,
+      title: s.title,
+      description: s.description,
+      order: s.order_index,
+    }));
+
     // Get questions
     const questions = await queryDatabase(
       db,
@@ -257,6 +284,7 @@ const createForm = async (formData, userId) => {
       startTime,
       endTime,
       questions = [],
+      sections = [],
       imageUrl,
       isTemplate = false,
     } = formData;
@@ -308,19 +336,50 @@ const createForm = async (formData, userId) => {
 
     const formId = insertResult.insertId;
 
+    // Create a map of section IDs for questions
+    const sectionIdMap = {};
+
+    // Insert sections
+    if (sections && sections.length > 0) {
+      for (const section of sections) {
+        const sectionResult = await queryDatabase(
+          db,
+          `
+          INSERT INTO sections (
+            form_id, title, description, order_index
+          ) VALUES (?, ?, ?, ?)
+        `,
+          [
+            formId,
+            section.title || 'New Section',
+            section.description || null,
+            section.order || 0,
+          ]
+        );
+        sectionIdMap[section.id] = sectionResult.insertId;
+      }
+    }
+
     // Insert questions
     if (questions.length > 0) {
       for (const question of questions) {
+        // Get the mapped section ID if question has a sectionId
+        let mappedSectionId = null;
+        if (question.sectionId && sectionIdMap[question.sectionId]) {
+          mappedSectionId = sectionIdMap[question.sectionId];
+        }
+
         const questionResult = await queryDatabase(
           db,
           `
           INSERT INTO Questions (
-            form_id, question_text, question_type, description, 
+            form_id, section_id, question_text, question_type, description, 
             required, order_index, min_value, max_value
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
           [
             formId,
+            mappedSectionId,
             question.question,
             question.type,
             question.description || null,
@@ -486,6 +545,194 @@ const updateForm = async (formId, updates, userId) => {
             `UPDATE form_deployments SET ${deploymentUpdateFields.join(", ")} WHERE form_id = ?`,
             deploymentUpdateValues
           );
+        }
+      }
+    }
+
+    // Update sections if provided
+    if (updates.sections && Array.isArray(updates.sections)) {
+      // Get existing section IDs for this form
+      const existingSections = await queryDatabase(
+        db,
+        "SELECT id FROM sections WHERE form_id = ?",
+        [formId]
+      );
+      const existingSectionIds = new Set(existingSections.map(s => s.id));
+      const newSectionIds = new Set();
+
+      // Create a map for section ID mapping (old ID -> new ID)
+      const sectionIdMap = {};
+
+      // Insert or update sections
+      for (const section of updates.sections) {
+        if (section.id && section.id.toString().startsWith('section_')) {
+          // This is a new section (client-generated ID)
+          const result = await queryDatabase(
+            db,
+            `INSERT INTO sections (form_id, title, description, order_index) VALUES (?, ?, ?, ?)`,
+            [formId, section.title || 'New Section', section.description || null, section.order || 0]
+          );
+          sectionIdMap[section.id] = result.insertId;
+          newSectionIds.add(result.insertId);
+        } else if (section.id) {
+          // This is an existing section (has numeric ID) - update it
+          const numericId = parseInt(section.id);
+          if (!isNaN(numericId) && existingSectionIds.has(numericId)) {
+            // Update existing section
+            await queryDatabase(
+              db,
+              `UPDATE sections SET title = ?, description = ?, order_index = ? WHERE id = ?`,
+              [section.title || 'New Section', section.description || null, section.order || 0, numericId]
+            );
+            sectionIdMap[section.id] = numericId;
+            newSectionIds.add(numericId);
+          }
+        }
+      }
+
+      // Delete sections that are no longer in the update
+      for (const existingSection of existingSections) {
+        if (!newSectionIds.has(existingSection.id)) {
+          await queryDatabase(
+            db,
+            "DELETE FROM sections WHERE id = ?",
+            [existingSection.id]
+          );
+        }
+      }
+
+      // Update questions with section IDs
+      if (updates.questions && Array.isArray(updates.questions)) {
+        // Get all existing questions for this form
+        const existingQuestions = await queryDatabase(
+          db,
+          "SELECT id FROM questions WHERE form_id = ?",
+          [formId]
+        );
+        const existingQuestionIds = new Set(existingQuestions.map(q => q.id));
+        const newQuestionIds = new Set();
+
+        // Delete questions that are no longer in the update
+        const questionIdsInUpdate = new Set(updates.questions.filter(q => !q.id.toString().startsWith('q_')).map(q => parseInt(q.id)));
+        
+        for (const existingQuestion of existingQuestions) {
+          if (!questionIdsInUpdate.has(existingQuestion.id)) {
+            await queryDatabase(
+              db,
+              "DELETE FROM questions WHERE id = ?",
+              [existingQuestion.id]
+            );
+            await queryDatabase(
+              db,
+              "DELETE FROM question_options WHERE question_id = ?",
+              [existingQuestion.id]
+            );
+          }
+        }
+
+        // Update or insert questions
+        for (let i = 0; i < updates.questions.length; i++) {
+          const question = updates.questions[i];
+          let mappedSectionId = null;
+          
+          // Map section ID if question has a sectionId
+          if (question.sectionId && sectionIdMap[question.sectionId]) {
+            mappedSectionId = sectionIdMap[question.sectionId];
+          } else if (question.sectionId) {
+            // Section already exists in database, use it directly
+            mappedSectionId = parseInt(question.sectionId) || null;
+          }
+
+          const questionIdNum = parseInt(question.id);
+          
+          if (!isNaN(questionIdNum) && existingQuestionIds.has(questionIdNum)) {
+            // Update existing question
+            await queryDatabase(
+              db,
+              `UPDATE questions SET 
+                section_id = ?,
+                question_text = ?, 
+                question_type = ?, 
+                description = ?, 
+                required = ?, 
+                order_index = ?,
+                min_value = ?,
+                max_value = ?
+              WHERE id = ?`,
+              [
+                mappedSectionId,
+                question.question,
+                question.type,
+                question.description || null,
+                question.required ? 1 : 0,
+                i,
+                question.min || question.minValue || null,
+                question.max || question.maxValue || null,
+                questionIdNum
+              ]
+            );
+
+            // Delete existing options and re-insert
+            await queryDatabase(
+              db,
+              "DELETE FROM question_options WHERE question_id = ?",
+              [questionIdNum]
+            );
+
+            // Insert options for choice-based questions
+            if (
+              ["multiple-choice", "checkbox", "dropdown"].includes(question.type) &&
+              question.options &&
+              question.options.length > 0
+            ) {
+              for (let j = 0; j < question.options.length; j++) {
+                await queryDatabase(
+                  db,
+                  "INSERT INTO question_options (question_id, option_text, order_index) VALUES (?, ?, ?)",
+                  [questionIdNum, question.options[j], j]
+                );
+              }
+            }
+            newQuestionIds.add(questionIdNum);
+          } else {
+            // Insert new question
+            const result = await queryDatabase(
+              db,
+              `INSERT INTO questions (
+                form_id, section_id, question_text, question_type, description, 
+                required, order_index, min_value, max_value
+              ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                formId,
+                mappedSectionId,
+                question.question,
+                question.type,
+                question.description || null,
+                question.required ? 1 : 0,
+                i,
+                question.min || question.minValue || null,
+                question.max || question.maxValue || null,
+              ]
+            );
+
+            const newQuestionId = result.insertId;
+            newQuestionIds.add(newQuestionId);
+
+            // Insert options for choice-based questions
+            if (
+              ["multiple-choice", "checkbox", "dropdown"].includes(question.type) &&
+              question.options &&
+              question.options.length > 0
+            ) {
+              for (let j = 0; j < question.options.length; j++) {
+                await queryDatabase(
+                  db,
+                  "INSERT INTO question_options (question_id, option_text, order_index) VALUES (?, ?, ?)",
+                  [newQuestionId, question.options[j], j]
+                );
+              }
+            }
+          }
         }
       }
     }

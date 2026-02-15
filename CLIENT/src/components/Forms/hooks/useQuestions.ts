@@ -1,13 +1,115 @@
 import { useState, useCallback } from "react";
 import { toast } from "sonner";
-import { FormQuestion, QuestionType } from "../types/form";
+import { FormQuestion, FormSection, QuestionType } from "../types/form";
 
 export function useQuestions() {
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [sections, setSections] = useState<FormSection[]>([]);
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+
+  // Helper to get the next global order index
+  const getNextOrder = useCallback(() => {
+    const maxQuestionOrder = questions.reduce((max, q) => {
+      const qOrder = q.order ?? -1;
+      return qOrder > max ? qOrder : max;
+    }, -1);
+    const maxSectionOrder = sections.reduce((max, s) => {
+      return s.order > max ? s.order : max;
+    }, -1);
+    return Math.max(maxQuestionOrder, maxSectionOrder) + 1;
+  }, [questions, sections]);
+
+  // Add a new section
+  const addSection = useCallback((title: string = "New Section", description?: string) => {
+    const newSection: FormSection = {
+      id: `section_${Date.now()}`,
+      title,
+      description,
+      order: getNextOrder(),
+    };
+    setSections(prev => [...prev, newSection]);
+    setActiveSection(newSection.id);
+    toast.success("Section added");
+    return newSection;
+  }, [getNextOrder]);
+
+  // Update a section
+  const updateSection = useCallback((id: string, updates: Partial<FormSection>) => {
+    setSections(prev =>
+      prev.map(s => (s.id === id ? { ...s, ...updates } : s))
+    );
+  }, []);
+
+  // Delete a section
+  const deleteSection = useCallback((id: string) => {
+    setSections(prev => prev.filter(s => s.id !== id));
+    // Remove section reference from questions in this section
+    setQuestions(prev =>
+      prev.map(q => (q.sectionId === id ? { ...q, sectionId: undefined } : q))
+    );
+    if (activeSection === id) {
+      setActiveSection(null);
+    }
+    toast.success("Section deleted");
+  }, [activeSection]);
+
+  // Move a section up or down (swaps order with adjacent section or standalone question)
+  const moveSection = useCallback((id: string, direction: "up" | "down") => {
+    const section = sections.find(s => s.id === id);
+    if (!section) return;
+    
+    const currentOrder = section.order;
+    
+    // Get all items (sections and standalone questions) with their orders
+    const standaloneQuestions = questions.filter(q => !q.sectionId);
+    const allItems: Array<{ type: 'section'; id: string; order: number } | { type: 'question'; id: string; order: number }> = [
+      ...sections.map(s => ({ type: 'section' as const, id: s.id, order: s.order })),
+      ...standaloneQuestions.map(q => ({ type: 'question' as const, id: q.id, order: q.order ?? 0 }))
+    ];
+    
+    // Sort by order
+    allItems.sort((a, b) => a.order - b.order);
+    
+    const currentIndex = allItems.findIndex(item => item.type === 'section' && item.id === id);
+    
+    if (
+      (direction === "up" && currentIndex === 0) ||
+      (direction === "down" && currentIndex === allItems.length - 1)
+    ) {
+      return;
+    }
+    
+    const adjacentIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    const adjacentItem = allItems[adjacentIndex];
+    
+    // Swap orders
+    const newOrder = adjacentItem.order;
+    
+    if (adjacentItem.type === 'section') {
+      // Swap with another section
+      setSections(prev => prev.map(s => {
+        if (s.id === id) return { ...s, order: newOrder };
+        if (s.id === adjacentItem.id) return { ...s, order: currentOrder };
+        return s;
+      }));
+    } else {
+      // Swap with a standalone question
+      setSections(prev => prev.map(s => {
+        if (s.id === id) return { ...s, order: newOrder };
+        return s;
+      }));
+      setQuestions(prev => prev.map(q => {
+        if (q.id === adjacentItem.id) return { ...q, order: currentOrder };
+        return q;
+      }));
+    }
+  }, [sections, questions]);
 
   // Add a new question
   const addQuestion = useCallback((type: QuestionType = "text", data?: Partial<FormQuestion>) => {
+    // Only set order for standalone questions (not in a section)
+    const questionOrder = data?.sectionId ? undefined : (data?.order ?? getNextOrder());
     const newQuestion: FormQuestion = {
       id: data?.id || Date.now().toString(),
       type: type,
@@ -17,6 +119,8 @@ export function useQuestions() {
       options: data?.options,
       min: data?.min,
       max: data?.max,
+      sectionId: data?.sectionId, // Support section assignment
+      order: questionOrder, // Global order for standalone questions
       ...(type === "multiple-choice" ||
       type === "checkbox" ||
       type === "dropdown"
@@ -72,25 +176,85 @@ export function useQuestions() {
     [questions]
   );
 
-  // Move a question up or down
+  // Move a question up or down (handles both section questions and standalone questions)
   const moveQuestion = useCallback(
     (id: string, direction: "up" | "down") => {
-      const index = questions.findIndex((q) => q.id === id);
-      if (
-        (direction === "up" && index === 0) ||
-        (direction === "down" && index === questions.length - 1)
-      ) {
-        return;
+      const question = questions.find(q => q.id === id);
+      if (!question) return;
+      
+      // If question is in a section, move within that section's questions
+      if (question.sectionId) {
+        const sectionQuestions = questions.filter(q => q.sectionId === question.sectionId);
+        const index = sectionQuestions.findIndex(q => q.id === id);
+        if (
+          (direction === "up" && index === 0) ||
+          (direction === "down" && index === sectionQuestions.length - 1)
+        ) {
+          return;
+        }
+        const newQuestions = [...questions];
+        const sectionQuestionIds = sectionQuestions.map(q => q.id);
+        const currentGlobalIndex = newQuestions.findIndex(q => q.id === id);
+        const adjacentSectionQuestion = direction === "up" 
+          ? sectionQuestions[index - 1] 
+          : sectionQuestions[index + 1];
+        const adjacentGlobalIndex = newQuestions.findIndex(q => q.id === adjacentSectionQuestion.id);
+        
+        [newQuestions[currentGlobalIndex], newQuestions[adjacentGlobalIndex]] = [
+          newQuestions[adjacentGlobalIndex],
+          newQuestions[currentGlobalIndex],
+        ];
+        setQuestions(newQuestions);
+      } else {
+        // Standalone question - swap order with adjacent item (section or standalone question)
+        const currentOrder = question.order ?? 0;
+        
+        // Get all items (sections and standalone questions) with their orders
+        const standaloneQuestions = questions.filter(q => !q.sectionId);
+        const allItems: Array<{ type: 'section'; id: string; order: number } | { type: 'question'; id: string; order: number }> = [
+          ...sections.map(s => ({ type: 'section' as const, id: s.id, order: s.order })),
+          ...standaloneQuestions.map(q => ({ type: 'question' as const, id: q.id, order: q.order ?? 0 }))
+        ];
+        
+        // Sort by order
+        allItems.sort((a, b) => a.order - b.order);
+        
+        const currentIndex = allItems.findIndex(item => item.type === 'question' && item.id === id);
+        
+        if (
+          (direction === "up" && currentIndex === 0) ||
+          (direction === "down" && currentIndex === allItems.length - 1)
+        ) {
+          return;
+        }
+        
+        const adjacentIndex = direction === "up" ? currentIndex - 1 : currentIndex + 1;
+        const adjacentItem = allItems[adjacentIndex];
+        
+        // Swap orders
+        const newOrder = adjacentItem.order;
+        
+        if (adjacentItem.type === 'section') {
+          // Swap with a section
+          setQuestions(prev => prev.map(q => {
+            if (q.id === id) return { ...q, order: newOrder };
+            return q;
+          }));
+          setSections(prev => prev.map(s => {
+            if (s.id === adjacentItem.id) return { ...s, order: currentOrder };
+            return s;
+          }));
+        } else {
+          // Swap with another standalone question
+          setQuestions(prev => prev.map(q => {
+            if (q.id === id) return { ...q, order: newOrder };
+            if (q.id === adjacentItem.id) return { ...q, order: currentOrder };
+            return q;
+          }));
+        }
       }
-      const newQuestions = [...questions];
-      const newIndex = direction === "up" ? index - 1 : index + 1;
-      [newQuestions[index], newQuestions[newIndex]] = [
-        newQuestions[newIndex],
-        newQuestions[index],
-      ];
-      setQuestions(newQuestions);
     },
-    [questions]
+    [questions, sections]
   );
 
   // Add an option to a question
@@ -150,6 +314,8 @@ export function useQuestions() {
           : undefined,
         min: q.min_value,
         max: q.max_value,
+        sectionId: q.sectionId?.toString() || q.section_id?.toString() || undefined,
+        order: q.order ?? q.order_index ?? index, // Load order for standalone questions
       }));
       setQuestions(questions);
       setActiveQuestion(questions[0]?.id || null);
@@ -159,18 +325,58 @@ export function useQuestions() {
     }
   }, []);
 
+  // Load sections from API data
+  const loadSections = useCallback((apiSections: any[]) => {
+    if (apiSections && apiSections.length > 0) {
+      const sections = apiSections.map((s: any) => ({
+        id: s.id?.toString() || s.id,
+        title: s.title || "",
+        description: s.description || "",
+        order: s.order ?? s.order_index ?? 0,
+      }));
+      setSections(sections);
+    } else {
+      setSections([]);
+    }
+  }, []);
+
   // Clear all questions
   const clearQuestions = useCallback(() => {
     setQuestions([]);
     setActiveQuestion(null);
   }, []);
 
+  // Get questions for a specific section
+  const getQuestionsBySection = useCallback((sectionId: string | null) => {
+    return questions.filter(q => q.sectionId === sectionId);
+  }, [questions]);
+
+  // Get questions without a section
+  const getStandaloneQuestions = useCallback(() => {
+    return questions.filter(q => !q.sectionId);
+  }, [questions]);
+
+  // Assign question to section
+  const assignQuestionToSection = useCallback((questionId: string, sectionId: string | null) => {
+    setQuestions(prev =>
+      prev.map(q => (q.id === questionId ? { ...q, sectionId: sectionId || undefined } : q))
+    );
+  }, []);
+
   return {
     // State
     questions,
+    sections,
     activeQuestion,
+    activeSection,
     setActiveQuestion,
-    // Actions
+    setActiveSection,
+    // Section Actions
+    addSection,
+    updateSection,
+    deleteSection,
+    moveSection,
+    // Question Actions
     addQuestion,
     duplicateQuestion,
     updateQuestion,
@@ -180,6 +386,11 @@ export function useQuestions() {
     updateOption,
     deleteOption,
     loadQuestions,
+    loadSections,
     clearQuestions,
+    // Helper Functions
+    getQuestionsBySection,
+    getStandaloneQuestions,
+    assignQuestionToSection,
   };
 }

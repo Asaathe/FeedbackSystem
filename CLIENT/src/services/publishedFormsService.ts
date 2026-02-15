@@ -10,6 +10,8 @@ export interface FormQuestion {
   options?: Array<{ id: number; option_text: string; order_index: number }>;
   min?: number;
   max?: number;
+  section_id?: number;
+  sectionId?: number;
 }
 
 export interface PublishedForm {

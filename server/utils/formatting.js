@@ -84,6 +84,7 @@ const formatQuestionResponse = (question) => {
     options: question.options || [],
     min: question.min_value || question.min,
     max: question.max_value || question.max,
+    sectionId: question.section_id || null,
   };
 };
 

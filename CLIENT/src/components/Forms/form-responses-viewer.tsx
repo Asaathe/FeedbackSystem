@@ -47,6 +47,7 @@ import {
 import {
   analyzeFormResponses,
   QuestionAIInsight,
+  QuickQuestionInsight,
   ResponseAnalysisResponse,
 } from "../../services/aiQuestionService";
 import {
@@ -76,7 +77,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const itemsPerPage = 5;
   
   // AI Insights state
-  const [aiInsights, setAiInsights] = useState<QuestionAIInsight[]>([]);
+  const [aiInsights, setAiInsights] = useState<QuickQuestionInsight[]>([]);
   const [overallSummary, setOverallSummary] = useState<string>("");
   const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
   const [showAIInsights, setShowAIInsights] = useState(false);
@@ -256,10 +257,26 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
     setAnalyzingWithAI(true);
     try {
+      // Prepare questions with section information
+      const questionsWithSections = (form.questions || []).map(q => ({
+        ...q,
+        id: String(q.id),
+        sectionId: q.section_id || q.sectionId,
+        sectionTitle: q.section_title || q.sectionTitle
+      }));
+
+      // Prepare sections data
+      const sectionsData = (form.sections || []).map((s, index) => ({
+        id: String(s.id),
+        title: s.title,
+        order: s.order ?? index
+      }));
+
       const result: ResponseAnalysisResponse = await analyzeFormResponses(
         form.title,
-        form.questions || [],
-        responses
+        questionsWithSections,
+        responses,
+        sectionsData
       );
 
       if (result.success && result.overallSummary) {
@@ -694,15 +711,44 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         </Card>
       </div>
 
-      {/* AI Insights Section - Overall Summary Only */}
+      {/* AI Insights Section - Overall Summary + Quick Insights */}
       {showAIInsights && overallSummary && (
         <div className="space-y-6">
+          {/* Quick Insights - Short main ideas as badges */}
+          {aiInsights.length > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="w-5 h-5 text-purple-600" />
+                <h3 className="text-lg font-semibold">Quick Insights</h3>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {aiInsights.map((insight: any, index: number) => (
+                  <div
+                    key={insight.questionId || index}
+                    className={`p-3 rounded-lg border-2 flex flex-col items-center justify-center text-center min-h-[80px] ${
+                      insight.shortSentiment === 'positive' ? 'border-green-300 bg-green-50' :
+                      insight.shortSentiment === 'negative' ? 'border-red-300 bg-red-50' :
+                      'border-gray-200 bg-gray-50'
+                    }`}
+                  >
+                    <span className="text-xs text-gray-500 mb-1 truncate w-full">
+                      Q{index + 1}
+                    </span>
+                    <span className="text-sm font-bold text-gray-800">
+                      {insight.mainIdea || 'No data'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Overall Summary */}
           <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
             <CardHeader>
               <div className="flex items-center gap-2">
                 <Brain className="w-6 h-6 text-purple-600" />
-                <CardTitle className="text-xl">AI-Generated Overall Summary</CardTitle>
+                <CardTitle className="text-xl">Overall Summary</CardTitle>
               </div>
             </CardHeader>
             <CardContent>

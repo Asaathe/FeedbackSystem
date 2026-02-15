@@ -41,6 +41,7 @@ import {
   Clock,
   Sparkles,
   Loader2,
+  Layers,
 } from "lucide-react";
 import {
   Dialog,
@@ -70,11 +71,12 @@ import { usePublishWizard } from "./hooks/usePublishWizard";
 
 // Components
 import { QuestionCard } from "./components/QuestionCard";
+import { SectionCard } from "./components/SectionCard";
 import { RecipientSelector } from "./components/RecipientSelector";
 import { CategoryManager } from "./components/CategoryManager";
 
 // Types
-import { QuestionTypeConfig, FormQuestion, Instructor } from "./types/form";
+import { QuestionTypeConfig, FormQuestion, FormSection, Instructor } from "./types/form";
 
 // Utils
 import { cleanQuestions, getDepartmentFromSection, formatUserDetails } from "./utils/formValidation";
@@ -140,9 +142,16 @@ export function FormBuilder({
   // Questions Hook
   const {
     questions,
+    sections,
     activeQuestion,
+    activeSection,
     setActiveQuestion,
+    setActiveSection,
     addQuestion,
+    addSection,
+    updateSection,
+    deleteSection,
+    moveSection,
     duplicateQuestion,
     updateQuestion,
     deleteQuestion,
@@ -151,6 +160,9 @@ export function FormBuilder({
     updateOption,
     deleteOption,
     loadQuestions,
+    loadSections,
+    getQuestionsBySection,
+    getStandaloneQuestions,
   } = useQuestions();
 
   // Recipients Hook
@@ -372,6 +384,11 @@ export function FormBuilder({
             // Load questions
             loadQuestions(form.questions || []);
 
+            // Load sections
+            if (form.sections && form.sections.length > 0) {
+              loadSections(form.sections);
+            }
+
             // Load assigned recipients and restore selection
             if (form.assigned_recipients && form.assigned_recipients.length > 0) {
               // Store the loaded recipient IDs to be used after recipients list is loaded
@@ -432,7 +449,10 @@ export function FormBuilder({
       case "rating":
         return (
           <div className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((star) => (
+            {Array.from(
+              { length: question.max || 5 },
+              (_, i) => i + 1
+            ).map((star) => (
               <Star
                 key={star}
                 className="w-6 h-6 text-yellow-400 fill-yellow-400"
@@ -473,9 +493,12 @@ export function FormBuilder({
       case "linear-scale":
         return (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-500">1</span>
+            <span className="text-sm text-gray-500">{question.min || 1}</span>
             <div className="flex gap-1">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => (
+              {Array.from(
+                { length: (question.max || 10) - (question.min || 1) + 1 },
+                (_, i) => (question.min || 1) + i
+              ).map((num) => (
                 <div
                   key={num}
                   className="w-8 h-8 border-2 border-gray-300 rounded flex items-center justify-center text-xs"
@@ -484,7 +507,7 @@ export function FormBuilder({
                 </div>
               ))}
             </div>
-            <span className="text-sm text-gray-500">10</span>
+            <span className="text-sm text-gray-500">{question.max || 10}</span>
           </div>
         );
       case "text":
@@ -505,7 +528,7 @@ export function FormBuilder({
   // Handle save form
   const handleSaveForm = async () => {
     const cleanedQuestions = cleanQuestions(questions);
-    const success = await saveForm(cleanedQuestions);
+    const success = await saveForm(cleanedQuestions, sections);
     if (success) {
       setTimeout(() => {
         onBack();
@@ -518,6 +541,7 @@ export function FormBuilder({
     const cleanedQuestions = cleanQuestions(questions);
     const result = await publishForm(
       cleanedQuestions,
+      sections,
       selectedRecipients,
       recipients,
       selectedInstructors
@@ -622,6 +646,18 @@ export function FormBuilder({
       );
 
       if (response.success && response.questions) {
+        // First, add any sections that were generated
+        const sectionIdMap: Record<string, string> = {};
+        if (response.sections && response.sections.length > 0) {
+          response.sections.forEach((section) => {
+            const newSection = addSection(section.title, section.description);
+            // Map the AI-generated section ID to the actual section ID
+            if (section.id) {
+              sectionIdMap[section.id] = newSection.id;
+            }
+          });
+        }
+
         // Convert generated questions to FormQuestion format and add directly to form
         const newQuestions: FormQuestion[] = response.questions.map(
           (q, index) => ({
@@ -631,6 +667,7 @@ export function FormBuilder({
             description: q.description,
             required: q.required ?? true,
             options: q.options,
+            sectionId: q.sectionId ? sectionIdMap[q.sectionId] : undefined,
           })
         );
 
@@ -640,7 +677,8 @@ export function FormBuilder({
         });
 
         // Keep the AI description for reference
-        toast.success(`Added ${newQuestions.length} questions to your form`);
+        const sectionCount = response.sections?.length || 0;
+        toast.success(`Added ${newQuestions.length} questions${sectionCount > 0 ? ` in ${sectionCount} sections` : ''} to your form`);
       } else {
         toast.error(response.error || "Failed to generate questions");
       }
@@ -849,126 +887,101 @@ export function FormBuilder({
 
                           {/* Questions */}
                           <div className="space-y-6">
-                            {questions.map((question, index) => (
-                              <div key={question.id} className="space-y-3">
-                                <div className="flex items-start gap-2">
-                                  <span className="text-gray-500 shrink-0">
-                                    {index + 1}.
-                                  </span>
-                                  <div className="flex-1 space-y-2">
-                                    <div className="flex items-start gap-2">
-                                      <Label className="text-base">
-                                        {question.question}
-                                        {question.required && (
-                                          <span className="text-red-500 ml-1">
-                                            *
-                                          </span>
+                            {(() => {
+                              // Create a combined array of sections and standalone questions with their order
+                              const standaloneQuestions = questions.filter(q => !q.sectionId);
+                              
+                              // Create items array with order information
+                              const items: Array<{ type: 'section'; data: FormSection; order: number } | { type: 'question'; data: FormQuestion; order: number }> = [
+                                ...sections.map(s => ({ type: 'section' as const, data: s, order: s.order })),
+                                ...standaloneQuestions.map(q => ({ type: 'question' as const, data: q, order: q.order ?? 0 }))
+                              ];
+                              
+                              // Sort by order
+                              items.sort((a, b) => a.order - b.order);
+                              
+                              // Render in sorted order
+                              return items.flatMap((item) => {
+                                const elements: React.ReactNode[] = [];
+                                
+                                if (item.type === 'section') {
+                                  const section = item.data;
+                                  const sectionQuestions = questions.filter(q => q.sectionId === section.id);
+                                  
+                                  // Render section header
+                                  elements.push(
+                                    <div key={`section-${section.id}`} className="bg-green-50 rounded-lg border border-green-200 p-4 mt-4">
+                                      <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                                          </svg>
+                                        </div>
+                                        <div>
+                                          <h3 className="font-semibold text-green-800">{section.title}</h3>
+                                          {section.description && (
+                                            <p className="text-sm text-green-600 mt-0.5">{section.description}</p>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                  
+                                  // Render section questions without numbering
+                                  sectionQuestions.forEach((question) => {
+                                    elements.push(
+                                      <div key={question.id} className="space-y-2">
+                                        <div className="flex items-start gap-2">
+                                          <Label className="text-base">
+                                            {question.question}
+                                            {question.required && (
+                                              <span className="text-red-500 ml-1">
+                                                *
+                                              </span>
+                                            )}
+                                          </Label>
+                                        </div>
+                                        {question.description && (
+                                          <p className="text-sm text-gray-500">
+                                            {question.description}
+                                          </p>
                                         )}
-                                      </Label>
-                                    </div>
-                                    {question.description && (
-                                      <p className="text-sm text-gray-500">
-                                        {question.description}
-                                      </p>
-                                    )}
-
-                                    {/* Question Input Based on Type */}
-                                    <div className="pt-2">
-                                      {question.type === "rating" && (
-                                        <div className="flex gap-1">
-                                          {[1, 2, 3, 4, 5].map((star) => (
-                                            <Star
-                                              key={star}
-                                              className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors"
-                                            />
-                                          ))}
+                                        <div className="pt-2">
+                                          {renderQuestionPreview(question)}
                                         </div>
-                                      )}
-
-                                      {question.type === "multiple-choice" && (
-                                        <div className="space-y-2">
-                                          {question.options?.map(
-                                            (option, i) => (
-                                              <label
-                                                key={i}
-                                                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
-                                              >
-                                                <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
-                                                <span>{option}</span>
-                                              </label>
-                                            )
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {question.type === "checkbox" && (
-                                        <div className="space-y-2">
-                                          {question.options?.map(
-                                            (option, i) => (
-                                              <label
-                                                key={i}
-                                                className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
-                                              >
-                                                <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
-                                                <span>{option}</span>
-                                              </label>
-                                            )
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {question.type === "dropdown" && (
-                                        <Select disabled>
-                                          <SelectTrigger className="w-full max-w-md">
-                                            <SelectValue placeholder="Select an option" />
-                                          </SelectTrigger>
-                                        </Select>
-                                      )}
-
-                                      {question.type === "linear-scale" && (
-                                        <div className="flex flex-col gap-3">
-                                          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                                            <span className="text-sm text-gray-500 shrink-0">
-                                              1
+                                      </div>
+                                    );
+                                  });
+                                } else {
+                                  // Standalone question
+                                  const question = item.data;
+                                  elements.push(
+                                    <div key={question.id} className="space-y-2">
+                                      <div className="flex items-start gap-2">
+                                        <Label className="text-base">
+                                          {question.question}
+                                          {question.required && (
+                                            <span className="text-red-500 ml-1">
+                                              *
                                             </span>
-                                            <div className="flex gap-2">
-                                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
-                                                (num) => (
-                                                  <button
-                                                    key={num}
-                                                    className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
-                                                  >
-                                                    {num}
-                                                  </button>
-                                                )
-                                              )}
-                                            </div>
-                                            <span className="text-sm text-gray-500 shrink-0">
-                                              10
-                                            </span>
-                                          </div>
-                                        </div>
+                                          )}
+                                        </Label>
+                                      </div>
+                                      {question.description && (
+                                        <p className="text-sm text-gray-500">
+                                          {question.description}
+                                        </p>
                                       )}
-
-                                      {question.type === "text" && (
-                                        <Input
-                                          placeholder="Your answer"
-                                          className="max-w-md"
-                                        />
-                                      )}
-
-                                      {question.type === "textarea" && (
-                                        <Textarea
-                                          placeholder="Your answer"
-                                          rows={4}
-                                          className="resize-none"
-                                        />
-                                      )}
+                                      <div className="pt-2">
+                                        {renderQuestionPreview(question)}
+                                      </div>
                                     </div>
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                                  );
+                                }
+                                
+                                return elements;
+                              });
+                            })()}
                           </div>
 
                           {/* Submit Button Preview */}
@@ -1873,34 +1886,90 @@ export function FormBuilder({
               </CardContent>
             </Card>
           )}
-          {questions.map((question, index) => (
-            <Card
-              key={question.id}
-              className={`transition-all ${
-                activeQuestion === question.id
-                  ? "border-green-500 border-2 shadow-md"
-                  : "border-gray-200"
-              }`}
-              onClick={() => setActiveQuestion(question.id)}
-            >
-              <QuestionCard
-                question={question}
-                index={index}
-                isActive={activeQuestion === question.id}
-                questionTypes={questionTypes}
-                onUpdate={updateQuestion}
-                onDelete={deleteQuestion}
-                onDuplicate={duplicateQuestion}
-                onMove={moveQuestion}
-                onAddOption={addOption}
-                onUpdateOption={updateOption}
-                onDeleteOption={deleteOption}
-                onSetActive={setActiveQuestion}
-              />
-            </Card>
-          ))}
+          
+          {/* Render Sections and Questions in order */}
+          {(() => {
+            const elements: React.ReactNode[] = [];
+            let standaloneIndex = 0;
+            
+            // Create a combined array of sections and standalone questions with their order
+            const standaloneQuestions = questions.filter(q => !q.sectionId);
+            
+            // Create items array with order information
+            const items: Array<{ type: 'section'; data: FormSection; order: number } | { type: 'question'; data: FormQuestion; order: number }> = [
+              ...sections.map(s => ({ type: 'section' as const, data: s, order: s.order })),
+              ...standaloneQuestions.map(q => ({ type: 'question' as const, data: q, order: q.order ?? 0 }))
+            ];
+            
+            // Sort by order
+            items.sort((a, b) => a.order - b.order);
+            
+            // Render in sorted order
+            items.forEach((item) => {
+              if (item.type === 'section') {
+                const section = item.data;
+                const sectionQuestions = questions.filter(q => q.sectionId === section.id);
+                const sectionIndex = sections.indexOf(section);
+                elements.push(
+                  <SectionCard
+                    key={section.id}
+                    section={section}
+                    questions={sectionQuestions}
+                    index={sectionIndex}
+                    isActive={activeSection === section.id}
+                    questionTypes={questionTypes}
+                    activeQuestion={activeQuestion}
+                    onUpdateSection={updateSection}
+                    onDeleteSection={deleteSection}
+                    onMoveSection={moveSection}
+                    onSetActiveSection={setActiveSection}
+                    onAddQuestion={(sectionId) => addQuestion("text", { sectionId })}
+                    onUpdateQuestion={updateQuestion}
+                    onDeleteQuestion={deleteQuestion}
+                    onDuplicateQuestion={duplicateQuestion}
+                    onMoveQuestion={moveQuestion}
+                    onAddOption={addOption}
+                    onUpdateOption={updateOption}
+                    onDeleteOption={deleteOption}
+                    onSetActiveQuestion={setActiveQuestion}
+                  />
+                );
+              } else {
+                const question = item.data;
+                elements.push(
+                  <Card
+                    key={question.id}
+                    className={`transition-all ${
+                      activeQuestion === question.id
+                        ? "border-green-500 border-2 shadow-md"
+                        : "border-gray-200"
+                    }`}
+                    onClick={() => setActiveQuestion(question.id)}
+                  >
+                    <QuestionCard
+                      question={question}
+                      index={standaloneIndex}
+                      isActive={activeQuestion === question.id}
+                      questionTypes={questionTypes}
+                      onUpdate={updateQuestion}
+                      onDelete={deleteQuestion}
+                      onDuplicate={duplicateQuestion}
+                      onMove={moveQuestion}
+                      onAddOption={addOption}
+                      onUpdateOption={updateOption}
+                      onDeleteOption={deleteOption}
+                      onSetActive={setActiveQuestion}
+                    />
+                  </Card>
+                );
+                standaloneIndex++;
+              }
+            });
+            
+            return elements;
+          })()}
 
-          {/* Add Question Button */}
+          {/* Add Question and Section Buttons */}
           <Card className="border-dashed border-2 border-gray-300 hover:border-green-400 transition-colors cursor-pointer bg-white/50">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-3 py-4">
@@ -1919,9 +1988,17 @@ export function FormBuilder({
                       </Button>
                     );
                   })}
+                  <Button
+                    variant="outline"
+                    onClick={() => addSection("New Section")}
+                    className="hover:bg-blue-50 hover:border-blue-400"
+                  >
+                    <Layers className="w-4 h-4 mr-2" />
+                    Add Section
+                  </Button>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Click a question type to add it to your form
+                  Click a question type to add it to your form, or add a section to group related questions
                 </p>
               </div>
             </CardContent>

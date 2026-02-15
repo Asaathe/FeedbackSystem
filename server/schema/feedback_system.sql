@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 05, 2026 at 05:14 PM
+-- Generation Time: Feb 14, 2026 at 05:02 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -83,11 +83,12 @@ CREATE TABLE `forms` (
   `id` int(11) NOT NULL,
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
+  `ai_description` text DEFAULT NULL,
   `type` enum('general','course-evaluation','event-feedback','exit-survey','self-assessment') DEFAULT 'general',
   `category` varchar(100) NOT NULL,
   `target_audience` varchar(100) NOT NULL,
   `status` enum('draft','active','inactive','archived') NOT NULL DEFAULT 'draft',
-  `image_url` longtext DEFAULT NULL,
+  `image_url` varchar(500) DEFAULT NULL,
   `is_template` tinyint(1) NOT NULL DEFAULT 0,
   `start_date` date DEFAULT NULL,
   `end_date` date DEFAULT NULL,
@@ -96,8 +97,7 @@ CREATE TABLE `forms` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `submission_count` int(11) DEFAULT 0,
   `is_anonymous` tinyint(1) DEFAULT 0,
-  `deadline` datetime DEFAULT NULL,
-  `ai_description` text DEFAULT NULL
+  `deadline` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -154,7 +154,9 @@ CREATE TABLE `form_deployments` (
   `form_id` int(11) NOT NULL,
   `deployed_by` int(11) NOT NULL,
   `start_date` date NOT NULL,
+  `start_time` time DEFAULT NULL,
   `end_date` date NOT NULL,
+  `end_time` time DEFAULT NULL,
   `target_filters` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin DEFAULT NULL CHECK (json_valid(`target_filters`)),
   `deployment_status` enum('scheduled','active','completed','cancelled') NOT NULL DEFAULT 'scheduled',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
@@ -187,7 +189,7 @@ CREATE TABLE `form_summary` (
 ,`category` varchar(100)
 ,`target_audience` varchar(100)
 ,`status` enum('draft','active','inactive','archived')
-,`image_url` longtext
+,`image_url` varchar(500)
 ,`start_date` date
 ,`end_date` date
 ,`is_template` tinyint(1)
@@ -225,6 +227,7 @@ CREATE TABLE `instructors` (
 CREATE TABLE `questions` (
   `id` int(11) NOT NULL,
   `form_id` int(11) NOT NULL,
+  `section_id` int(11) DEFAULT NULL,
   `question_text` text NOT NULL,
   `question_type` enum('text','textarea','multiple-choice','checkbox','dropdown','rating','linear-scale') NOT NULL,
   `description` text DEFAULT NULL,
@@ -269,6 +272,22 @@ CREATE TABLE `question_options` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `sections`
+--
+
+CREATE TABLE `sections` (
+  `id` int(11) NOT NULL,
+  `form_id` int(11) NOT NULL,
+  `title` varchar(255) NOT NULL DEFAULT 'New Section',
+  `description` text DEFAULT NULL,
+  `order_index` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `shared_responses`
 --
 
@@ -295,6 +314,23 @@ CREATE TABLE `students` (
   `image` varchar(500) DEFAULT NULL,
   `program_id` int(11) DEFAULT NULL COMMENT 'References course_management.id'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `template_categories`
+--
+
+CREATE TABLE `template_categories` (
+  `id` int(11) NOT NULL,
+  `name` varchar(100) NOT NULL,
+  `description` text DEFAULT NULL,
+  `icon` varchar(100) DEFAULT NULL,
+  `color` varchar(20) DEFAULT '#007bff',
+  `sort_order` int(11) DEFAULT 0,
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
@@ -409,7 +445,8 @@ ALTER TABLE `form_deployments`
   ADD KEY `idx_form_id` (`form_id`),
   ADD KEY `idx_deployment_status` (`deployment_status`),
   ADD KEY `idx_dates` (`start_date`,`end_date`),
-  ADD KEY `idx_form_deployments_status_dates` (`deployment_status`,`start_date`,`end_date`);
+  ADD KEY `idx_form_deployments_status_dates` (`deployment_status`,`start_date`,`end_date`),
+  ADD KEY `idx_time_range` (`start_time`,`end_time`);
 
 --
 -- Indexes for table `form_responses`
@@ -436,7 +473,9 @@ ALTER TABLE `questions`
   ADD PRIMARY KEY (`id`),
   ADD KEY `idx_form_id` (`form_id`),
   ADD KEY `idx_order` (`order_index`),
-  ADD KEY `idx_questions_form_type` (`form_id`,`question_type`);
+  ADD KEY `idx_questions_form_type` (`form_id`,`question_type`),
+  ADD KEY `idx_section_id` (`section_id`),
+  ADD KEY `idx_questions_form_section_order` (`form_id`,`section_id`,`order_index`);
 
 --
 -- Indexes for table `question_options`
@@ -446,6 +485,14 @@ ALTER TABLE `question_options`
   ADD KEY `idx_question_id` (`question_id`),
   ADD KEY `idx_order` (`order_index`),
   ADD KEY `idx_question_options_question_order` (`question_id`,`order_index`);
+
+--
+-- Indexes for table `sections`
+--
+ALTER TABLE `sections`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_form_id` (`form_id`),
+  ADD KEY `idx_order` (`order_index`);
 
 --
 -- Indexes for table `shared_responses`
@@ -463,6 +510,15 @@ ALTER TABLE `shared_responses`
 ALTER TABLE `students`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `user_id` (`user_id`);
+
+--
+-- Indexes for table `template_categories`
+--
+ALTER TABLE `template_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `idx_name` (`name`),
+  ADD KEY `idx_is_active` (`is_active`),
+  ADD KEY `idx_sort_order` (`sort_order`);
 
 --
 -- Indexes for table `users`
@@ -550,6 +606,12 @@ ALTER TABLE `question_options`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `sections`
+--
+ALTER TABLE `sections`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `shared_responses`
 --
 ALTER TABLE `shared_responses`
@@ -559,6 +621,12 @@ ALTER TABLE `shared_responses`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
+-- AUTO_INCREMENT for table `template_categories`
+--
+ALTER TABLE `template_categories`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -626,6 +694,7 @@ ALTER TABLE `instructors`
 -- Constraints for table `questions`
 --
 ALTER TABLE `questions`
+  ADD CONSTRAINT `fk_questions_section` FOREIGN KEY (`section_id`) REFERENCES `sections` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `questions_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE;
 
 --
@@ -633,6 +702,12 @@ ALTER TABLE `questions`
 --
 ALTER TABLE `question_options`
   ADD CONSTRAINT `question_options_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `questions` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `sections`
+--
+ALTER TABLE `sections`
+  ADD CONSTRAINT `fk_sections_form` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `shared_responses`

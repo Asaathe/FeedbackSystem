@@ -14,6 +14,13 @@ const logError = (...args: any[]) => {
   console.error('[FormManagementService ERROR]', ...args);
 };
 
+export interface FormSection {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+}
+
 export interface FormData {
   id: string;
   title: string;
@@ -28,6 +35,7 @@ export interface FormData {
   creator_name?: string;
   is_template?: boolean;
   questions?: any[];
+  sections?: FormSection[];
   ai_description?: string;
 }
 
@@ -41,6 +49,7 @@ export interface CreateFormData {
   startTime?: string;
   endTime?: string;
   questions?: any[];
+  sections?: any[];
   imageUrl?: string;
   isTemplate?: boolean;
   status?: string;
@@ -106,7 +115,10 @@ export const getForm = async (formId: string): Promise<{ success: boolean; form?
           ...question,
           type: question.question_type || question.type,
           question: question.question_text || question.question,
-        }))
+          sectionId: question.section_id || question.sectionId,
+        })),
+        // Include sections if available
+        sections: result.form.sections || [],
       };
       return { success: true, form: standardizedForm, message: 'Form fetched successfully' };
     } else {
@@ -239,6 +251,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       startTime: formData.startTime,
       endTime: formData.endTime,
       questions: questionsToSend,
+      sections: formData.sections || [],
       imageUrl: formData.imageUrl,
       isTemplate: formData.isTemplate,
     };
@@ -254,12 +267,14 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
     }
     logDebug('Mapped request data:', mappedRequestData);
     console.log('🔍 CLIENT: Form creation request data:', JSON.stringify(mappedRequestData, null, 2));
+    console.log('🔍 CLIENT: Sections being sent:', mappedRequestData.sections);
     if (requestData.questions && requestData.questions.length > 0) {
       console.log('🔍 CLIENT: Questions being sent:', requestData.questions.map((q, i) => ({
         index: i + 1,
         question: q.question,
         type: q.type,
         required: q.required,
+        sectionId: q.sectionId,
         hasOptions: !!(q.options && q.options.length > 0),
         optionsCount: q.options ? q.options.length : 0
       })));

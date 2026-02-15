@@ -56,6 +56,7 @@ import {
   deleteFormCategory,
   FormData,
   FormCategory,
+  FormSection,
 } from "../../services/formManagementService";
 import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { formatImageUrl, EnhancedImage } from "../../utils/imageUtils";
@@ -607,130 +608,227 @@ export function FeedbackFormsManagement({
 
                 <Separator />
 
-                {/* Questions */}
+                {/* Questions with Sections */}
                 <div className="space-y-6">
-                  {selectedForm?.questions?.map((question, index) => (
-                    <div key={question.id || index} className="space-y-3">
-                      <div className="flex items-start gap-2">
-                        <span className="text-gray-500 shrink-0">
-                          {index + 1}.
-                        </span>
-                        <div className="flex-1 space-y-2">
-                          <div className="flex items-start gap-2">
-                            <Label className="text-base">
-                              {question.question_text || question.question}
-                              {question.required && (
-                                <span className="text-red-500 ml-1">*</span>
+                  {(() => {
+                    if (!selectedForm?.questions) return null;
+                    
+                    const formQuestions = selectedForm.questions;
+                    const formSections = selectedForm.sections || [];
+                    
+                    // Get standalone questions (no section)
+                    const standaloneQuestions = formQuestions.filter(
+                      (q: any) => !(q.section_id || q.sectionId)
+                    );
+                    
+                    // Create items array with order information
+                    const items: Array<{ type: 'section'; data: any; order: number } | { type: 'question'; data: any; order: number }> = [
+                      ...formSections.map((s: any) => ({ 
+                        type: 'section' as const, 
+                        data: s, 
+                        order: s.order ?? s.order_index ?? 0 
+                      })),
+                      ...standaloneQuestions.map((q: any) => ({ 
+                        type: 'question' as const, 
+                        data: q, 
+                        order: q.order ?? q.order_index ?? 0 
+                      }))
+                    ];
+                    
+                    // Sort by order
+                    items.sort((a, b) => a.order - b.order);
+                    
+                    // Render in sorted order
+                    return items.flatMap((item) => {
+                      const elements: React.ReactNode[] = [];
+                      
+                      if (item.type === 'section') {
+                        const section = item.data;
+                        const sectionQuestions = formQuestions.filter(
+                          (q: any) => (q.section_id || q.sectionId) === section.id
+                        );
+                        
+                        // Render section header
+                        elements.push(
+                          <div key={`section-${section.id}`} className="bg-green-50 rounded-lg border border-green-200 p-4 mt-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                                </svg>
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-green-800">{section.title}</h3>
+                                {section.description && (
+                                  <p className="text-sm text-green-600 mt-0.5">{section.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                        
+                        // Render section questions without numbering
+                        sectionQuestions.forEach((question: any) => {
+                          elements.push(
+                            <div key={question.id || `q-${Math.random()}`} className="space-y-2">
+                              <div className="flex items-start gap-2">
+                                <Label className="text-base">
+                                  {question.question_text || question.question}
+                                  {question.required && (
+                                    <span className="text-red-500 ml-1">*</span>
+                                  )}
+                                </Label>
+                              </div>
+                              {question.description && (
+                                <p className="text-sm text-gray-500">
+                                  {question.description}
+                                </p>
                               )}
-                            </Label>
-                          </div>
-                          {question.description && (
-                            <p className="text-sm text-gray-500">
-                              {question.description}
-                            </p>
-                          )}
-
-                          {/* Question Input Based on Type */}
-                          <div className="pt-2">
-                            {question.question_type === "rating" && (
-                              <div className="flex gap-1">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                  <Star
-                                    key={star}
-                                    className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors"
-                                  />
-                                ))}
-                              </div>
-                            )}
-
-                            {question.question_type === "multiple-choice" && (
-                              <div className="space-y-2">
-                                {question.options?.map(
-                                  (option: any, i: number) => (
-                                    <label
-                                      key={i}
-                                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
-                                    >
-                                      <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
-                                      <span>
-                                        {option.option_text || option}
-                                      </span>
-                                    </label>
-                                  ),
-                                )}
-                              </div>
-                            )}
-
-                            {question.question_type === "checkbox" && (
-                              <div className="space-y-2">
-                                {question.options?.map(
-                                  (option: any, i: number) => (
-                                    <label
-                                      key={i}
-                                      className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors"
-                                    >
-                                      <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
-                                      <span>
-                                        {option.option_text || option}
-                                      </span>
-                                    </label>
-                                  ),
-                                )}
-                              </div>
-                            )}
-
-                            {question.question_type === "dropdown" && (
-                              <Select disabled>
-                                <SelectTrigger className="w-full max-w-md">
-                                  <SelectValue placeholder="Select an option" />
-                                </SelectTrigger>
-                              </Select>
-                            )}
-
-                            {question.question_type === "linear-scale" && (
-                              <div className="flex flex-col gap-3">
-                                <div className="flex items-center gap-2 overflow-x-auto pb-2">
-                                  <span className="text-sm text-gray-500 shrink-0">
-                                    1
-                                  </span>
-                                  <div className="flex gap-2">
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
-                                      (num) => (
-                                        <button
-                                          key={num}
-                                          className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0"
-                                        >
-                                          {num}
-                                        </button>
-                                      ),
-                                    )}
+                              <div className="pt-2">
+                                {(question.question_type || question.type) === "rating" && (
+                                  <div className="flex gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                      <Star
+                                        key={star}
+                                        className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors"
+                                      />
+                                    ))}
                                   </div>
-                                  <span className="text-sm text-gray-500 shrink-0">
-                                    10
-                                  </span>
-                                </div>
+                                )}
+                                {(question.question_type || question.type) === "multiple-choice" && (
+                                  <div className="space-y-2">
+                                    {question.options?.map((option: any, i: number) => (
+                                      <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
+                                        <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                                        <span>{option.option_text || option}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                                {(question.question_type || question.type) === "checkbox" && (
+                                  <div className="space-y-2">
+                                    {question.options?.map((option: any, i: number) => (
+                                      <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
+                                        <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
+                                        <span>{option.option_text || option}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                )}
+                                {(question.question_type || question.type) === "dropdown" && (
+                                  <Select disabled>
+                                    <SelectTrigger className="w-full max-w-md">
+                                      <SelectValue placeholder="Select an option" />
+                                    </SelectTrigger>
+                                  </Select>
+                                )}
+                                {(question.question_type || question.type) === "linear-scale" && (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                                      <span className="text-sm text-gray-500 shrink-0">{question.min || 1}</span>
+                                      <div className="flex gap-2">
+                                        {Array.from({ length: (question.max || 10) - (question.min || 1) + 1 }, (_, i) => (question.min || 1) + i).map((num) => (
+                                          <button key={num} className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0">
+                                            {num}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <span className="text-sm text-gray-500 shrink-0">{question.max || 10}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {(question.question_type || question.type) === "text" && (
+                                  <Input placeholder="Your answer" className="max-w-md" />
+                                )}
+                                {(question.question_type || question.type) === "textarea" && (
+                                  <Textarea placeholder="Your answer" rows={4} className="resize-none" />
+                                )}
                               </div>
+                            </div>
+                          );
+                        });
+                      } else {
+                        // Standalone question
+                        const question = item.data;
+                        elements.push(
+                          <div key={question.id || `q-${Math.random()}`} className="space-y-2">
+                            <div className="flex items-start gap-2">
+                              <Label className="text-base">
+                                {question.question_text || question.question}
+                                {question.required && (
+                                  <span className="text-red-500 ml-1">*</span>
+                                )}
+                              </Label>
+                            </div>
+                            {question.description && (
+                              <p className="text-sm text-gray-500">
+                                {question.description}
+                              </p>
                             )}
-
-                            {question.question_type === "text" && (
-                              <Input
-                                placeholder="Your answer"
-                                className="max-w-md"
-                              />
-                            )}
-
-                            {question.question_type === "textarea" && (
-                              <Textarea
-                                placeholder="Your answer"
-                                rows={4}
-                                className="resize-none"
-                              />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            <div className="pt-2">
+                              {(question.question_type || question.type) === "rating" && (
+                                <div className="flex gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <Star key={star} className="w-8 h-8 text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors" />
+                                  ))}
+                                </div>
+                              )}
+                              {(question.question_type || question.type) === "multiple-choice" && (
+                                <div className="space-y-2">
+                                  {question.options?.map((option: any, i: number) => (
+                                    <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
+                                      <div className="w-5 h-5 rounded-full border-2 border-gray-300"></div>
+                                      <span>{option.option_text || option}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                              )}
+                              {(question.question_type || question.type) === "checkbox" && (
+                                <div className="space-y-2">
+                                  {question.options?.map((option: any, i: number) => (
+                                    <label key={i} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-gray-50 cursor-pointer transition-colors">
+                                      <div className="w-5 h-5 rounded border-2 border-gray-300"></div>
+                                      <span>{option.option_text || option}</span>
+                                    </label>
+                                  ))}
+                                </div>
+                                )}
+                                {(question.question_type || question.type) === "dropdown" && (
+                                  <Select disabled>
+                                    <SelectTrigger className="w-full max-w-md">
+                                      <SelectValue placeholder="Select an option" />
+                                    </SelectTrigger>
+                                  </Select>
+                                )}
+                                {(question.question_type || question.type) === "linear-scale" && (
+                                  <div className="flex flex-col gap-3">
+                                    <div className="flex items-center gap-2 overflow-x-auto pb-2">
+                                      <span className="text-sm text-gray-500 shrink-0">{question.min || 1}</span>
+                                      <div className="flex gap-2">
+                                        {Array.from({ length: (question.max || 10) - (question.min || 1) + 1 }, (_, i) => (question.min || 1) + i).map((num) => (
+                                          <button key={num} className="w-10 h-10 border-2 border-gray-300 rounded-lg flex items-center justify-center hover:bg-green-50 hover:border-green-400 transition-colors shrink-0">
+                                            {num}
+                                          </button>
+                                        ))}
+                                      </div>
+                                      <span className="text-sm text-gray-500 shrink-0">{question.max || 10}</span>
+                                    </div>
+                                  </div>
+                                )}
+                                {(question.question_type || question.type) === "text" && (
+                                  <Input placeholder="Your answer" className="max-w-md" />
+                                )}
+                                {(question.question_type || question.type) === "textarea" && (
+                                  <Textarea placeholder="Your answer" rows={4} className="resize-none" />
+                                )}
+                              </div>
+                            </div>
+                        );
+                      }
+                      
+                      return elements;
+                    });
+                  })()}
                 </div>
 
                 {/* Submit Button Preview */}
@@ -1013,7 +1111,7 @@ export function FeedbackFormsManagement({
                               onClick={() => handleSaveAsTemplate(form.id)}
                               disabled={savingAsTemplate === form.id}
                             >
-                             
+                             <Star className="w-4 h-4 mr-2" />
                               {savingAsTemplate === form.id
                                 ? "Saving..."
                                 : "Save as Template"}

@@ -47,8 +47,17 @@ const createProgram = async (req, res) => {
       });
     }
 
+    // Convert year_level to integer
+    const yearLevelInt = parseInt(year_level, 10);
+    if (isNaN(yearLevelInt)) {
+      return res.status(400).json({
+        success: false,
+        message: "Year level must be a valid number",
+      });
+    }
+
     const query = "INSERT INTO course_management (department, program_name, program_code, year_level, section, status) VALUES (?, ?, ?, ?, ?, ?)";
-    db.query(query, [department, program_name, program_code, year_level, section, status || 'active'], (err, result) => {
+    db.query(query, [department, program_name, program_code, yearLevelInt, section, status || 'active'], (err, result) => {
       if (err) {
         console.error("Error creating program:", err);
         if (err.code === "ER_DUP_ENTRY") {
@@ -86,10 +95,36 @@ const updateProgram = async (req, res) => {
     const { id } = req.params;
     const { department, program_name, program_code, year_level, section, status } = req.body;
 
+    // DEBUG: Log incoming request body
+    console.log("[DEBUG] Update Program - Request body:", JSON.stringify(req.body, null, 2));
+
+    // Validate required fields
+    if (!department || !program_name || !program_code || !year_level || !section) {
+      return res.status(400).json({
+        success: false,
+        message: "Department, program name, program code, year level, and section are required",
+      });
+    }
+
+    // Convert year_level to integer
+    const yearLevelInt = parseInt(year_level, 10);
+    if (isNaN(yearLevelInt)) {
+      return res.status(400).json({
+        success: false,
+        message: "Year level must be a valid number",
+      });
+    }
+
     const query = "UPDATE course_management SET department = ?, program_name = ?, program_code = ?, year_level = ?, section = ?, status = ? WHERE id = ?";
-    db.query(query, [department, program_name, program_code, year_level, section, status, id], (err, result) => {
+    db.query(query, [department, program_name, program_code, yearLevelInt, section, status, id], (err, result) => {
       if (err) {
         console.error("Error updating program:", err);
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({
+            success: false,
+            message: "Program with this combination already exists",
+          });
+        }
         return res.status(500).json({
           success: false,
           message: "Failed to update program",

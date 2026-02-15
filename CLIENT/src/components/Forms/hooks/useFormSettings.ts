@@ -267,7 +267,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
 
   // Save Form
   const saveForm = useCallback(
-    async (questions: any[]) => {
+    async (questions: any[], sections: any[] = []) => {
       // Validate required fields
       if (!formTitle.trim()) {
         toast.error("Please enter a form title");
@@ -295,6 +295,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           startTime: submissionSchedule.startTime || undefined,
           endTime: submissionSchedule.endTime || undefined,
           questions: questions,
+          sections: sections,
           question_count: questions.length,
           total_questions: questions.length,
           questions_count: questions.length,
@@ -333,6 +334,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
   const publishForm = useCallback(
     async (
       questions: any[],
+      sections: any[],
       selectedRecipients: Set<number>,
       recipients: any[],
       selectedInstructors: Set<number>
@@ -381,6 +383,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           startTime: submissionSchedule.startTime || undefined,
           endTime: submissionSchedule.endTime || undefined,
           questions: questions,
+          sections: sections,
           question_count: questions.length,
           total_questions: questions.length,
           questions_count: questions.length,

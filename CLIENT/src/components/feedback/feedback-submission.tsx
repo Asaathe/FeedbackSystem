@@ -40,6 +40,13 @@ import { getAuthToken } from "../../utils/auth";
 
 type FormQuestion = ServiceFormQuestion;
 
+interface FormSection {
+  id: number;
+  title: string;
+  description?: string;
+  order: number;
+}
+
 interface FeedbackForm {
   id: string;
   title: string;
@@ -49,6 +56,7 @@ interface FeedbackForm {
   imageUrl?: string;
   questions: FormQuestion[];
   questionCount?: number;
+  sections?: FormSection[];
 }
 
 
@@ -65,6 +73,9 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   const [loading, setLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
+  
+  // Track current "page" - either a standalone question or a section with all its questions
+  const [currentPageIndex, setCurrentPageIndex] = useState(0);
 
   // Clear any stale localStorage data from previous sessions
   useEffect(() => {
@@ -75,6 +86,54 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const minSwipeDistance = 50;
+
+  // Build pages array from questions - each page is either a standalone question or a section with all its questions
+  const buildPages = (questions: FormQuestion[], sections: FormSection[]) => {
+    const standaloneQuestions = questions.filter(q => !q.sectionId);
+    
+    // Create items array with order information
+    const items: Array<{ type: 'section'; data: FormSection; order: number } | { type: 'question'; data: FormQuestion; order: number }> = [
+      ...sections.map(s => ({ 
+        type: 'section' as const, 
+        data: s, 
+        order: s.order ?? 0 
+      })),
+      ...standaloneQuestions.map((q, idx) => ({ 
+        type: 'question' as const, 
+        data: q, 
+        order: (q as any).order ?? idx
+      }))
+    ];
+    
+    // Sort by order
+    items.sort((a, b) => a.order - b.order);
+    
+    // Build pages
+    const pages: Array<{ type: 'standalone'; question: FormQuestion } | { type: 'section'; section: FormSection; questions: FormQuestion[] }> = [];
+    
+    items.forEach(item => {
+      if (item.type === 'section') {
+        const sectionQuestions = questions.filter(q => q.sectionId === item.data.id);
+        pages.push({
+          type: 'section',
+          section: item.data,
+          questions: sectionQuestions
+        });
+      } else {
+        pages.push({
+          type: 'standalone',
+          question: item.data
+        });
+      }
+    });
+    
+    return pages;
+  };
+
+  // Get current pages
+  const currentPages = selectedForm ? buildPages(selectedForm.questions, selectedForm.sections || []) : [];
+  const currentPage = currentPages[currentPageIndex];
+  const totalPages = currentPages.length;
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -92,14 +151,14 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     // Only handle horizontal swipes (ignore vertical scrolls)
     if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
       if (deltaX > 0) {
-        // Swipe left - next question
-        if (currentQuestionIndex < selectedForm!.questions.length - 1) {
-          setCurrentQuestionIndex(currentQuestionIndex + 1);
+        // Swipe left - next page
+        if (currentPageIndex < totalPages - 1) {
+          setCurrentPageIndex(currentPageIndex + 1);
         }
       } else {
-        // Swipe right - previous question
-        if (currentQuestionIndex > 0) {
-          setCurrentQuestionIndex(currentQuestionIndex - 1);
+        // Swipe right - previous page
+        if (currentPageIndex > 0) {
+          setCurrentPageIndex(currentPageIndex - 1);
         } else {
           handleBack();
         }
@@ -160,9 +219,48 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
       // Fetch the full form data including questions
       const result = await getForm(form.id);
       if (result.success && result.form) {
+        const formQuestions = result.form.questions || [];
+        const formSections = result.form.sections || [];
+        
+        // Sort questions based on interleaved order (sections + standalone questions)
+        const standaloneQuestions = formQuestions.filter((q: any) => !(q.sectionId || q.section_id));
+        
+        // Create items array with order information
+        const items: Array<{ type: 'section'; data: any; order: number } | { type: 'question'; data: any; order: number }> = [
+          ...formSections.map((s: any) => ({ 
+            type: 'section' as const, 
+            data: s, 
+            order: s.order ?? s.order_index ?? 0 
+          })),
+          ...standaloneQuestions.map((q: any) => ({ 
+            type: 'question' as const, 
+            data: q, 
+            order: q.order ?? q.order_index ?? 0 
+          }))
+        ];
+        
+        // Sort by order
+        items.sort((a, b) => a.order - b.order);
+        
+        // Build the sorted questions array
+        const sortedQuestions: any[] = [];
+        items.forEach(item => {
+          if (item.type === 'section') {
+            // Add all questions from this section in their original order
+            const sectionQuestions = formQuestions.filter(
+              (q: any) => (q.sectionId || q.section_id) === item.data.id
+            );
+            sortedQuestions.push(...sectionQuestions);
+          } else {
+            // Add standalone question
+            sortedQuestions.push(item.data);
+          }
+        });
+        
         setSelectedForm({
           ...form,
-          questions: result.form.questions || [],
+          questions: sortedQuestions,
+          sections: formSections,
         });
       } else {
         // Fallback to the basic form data if full fetch fails
@@ -174,13 +272,13 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
       setSelectedForm(form);
     }
     setAnswers({});
-    setCurrentQuestionIndex(0);
+    setCurrentPageIndex(0);
   };
 
   const handleBack = () => {
     setSelectedForm(null);
     setAnswers({});
-    setCurrentQuestionIndex(0);
+    setCurrentPageIndex(0);
   };
 
   const handleSubmit = async () => {
@@ -257,9 +355,10 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   const renderQuestionInput = (question: FormQuestion) => {
     switch (question.type) {
       case "rating":
+        const maxStars = (question as any).max || 5;
         return (
           <div className="flex gap-2 sm:gap-3 justify-center py-4">
-            {[1, 2, 3, 4, 5].map((star) => (
+            {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
               <button
                 key={star}
                 onClick={() => setAnswers({ ...answers, [question.id]: star })}
@@ -368,13 +467,15 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
         );
 
       case "linear-scale":
-        const currentValue = answers[question.id] || 5;
+        const minVal = (question as any).min || 1;
+        const maxVal = (question as any).max || 10;
+        const currentValue = answers[question.id] || minVal;
         return (
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-1 sm:gap-2">
-              <span className="text-xs sm:text-sm text-gray-500">1</span>
+              <span className="text-xs sm:text-sm text-gray-500">{minVal}</span>
               <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2">
-                {Array.from({ length: 10 }, (_, i) => i + 1).map((num) => (
+                {Array.from({ length: maxVal - minVal + 1 }, (_, i) => minVal + i).map((num) => (
                   <button
                     key={num}
                     onClick={() =>
@@ -390,7 +491,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                   </button>
                 ))}
               </div>
-              <span className="text-xs sm:text-sm text-gray-500">10</span>
+              <span className="text-xs sm:text-sm text-gray-500">{maxVal}</span>
             </div>
           </div>
         );
@@ -553,11 +654,36 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   }
 
   // Show form answering interface
-  const currentQuestion = selectedForm.questions[currentQuestionIndex];
-  const progress =
-    ((currentQuestionIndex + 1) / selectedForm.questions.length) * 100;
-  const isLastQuestion =
-    currentQuestionIndex === selectedForm.questions.length - 1;
+  // Calculate progress based on pages
+  const progress = ((currentPageIndex + 1) / totalPages) * 100;
+  const isLastPage = currentPageIndex === totalPages - 1;
+
+  // Render a single question card
+  const renderQuestionCard = (question: FormQuestion) => (
+    <div key={question.id} className="bg-white rounded-xl shadow-md border border-green-100 p-3 sm:p-4 mb-4">
+      <div className="space-y-3">
+        {/* Question Header */}
+        <div className="pb-3 border-b border-gray-100">
+          <div className="flex-1 min-w-0">
+            <h3 className="text-base sm:text-lg text-gray-900 mb-1 leading-tight break-words">
+              {question.question}
+              {question.required && (
+                <span className="text-red-500 ml-1.5">*</span>
+              )}
+            </h3>
+            {question.description && (
+              <p className="text-sm text-gray-500 mt-1 leading-relaxed break-words">
+                {question.description}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Answer Input Area */}
+        <div className="pt-1">{renderQuestionInput(question)}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div
@@ -624,11 +750,18 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 text-sm">
                 <span className="text-gray-700">
-                  Question{" "}
-                  <span className="text-green-600">
-                    {currentQuestionIndex + 1}
-                  </span>{" "}
-                  of {selectedForm.questions.length}
+                  {currentPage?.type === 'section' ? (
+                    <>
+                      {currentPage.section.title}
+                    </>
+                  ) : (
+                    <>
+                      Question{" "}
+                      <span className="text-green-600">
+                        {currentPageIndex + 1}
+                      </span>
+                    </>
+                  )}
                 </span>
                 <span className="text-green-600">
                   {Math.round(progress)}% Complete
@@ -657,35 +790,33 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
           </div>
         </div>
 
-        {/* Question Card */}
-        <div className="bg-white rounded-xl shadow-md border border-green-100 p-4 sm:p-8">
-          <div className="space-y-4 sm:space-y-6">
-            {/* Question Header */}
-            <div className="pb-4 border-b border-gray-100">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-lime-500 flex items-center justify-center text-white text-sm sm:text-base">
-                  {currentQuestionIndex + 1}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg text-gray-900 mb-1 leading-tight break-words">
-                    {currentQuestion.question}
-                    {currentQuestion.required && (
-                      <span className="text-red-500 ml-1.5">*</span>
-                    )}
-                  </h3>
-                  {currentQuestion.description && (
-                    <p className="text-sm text-gray-500 mt-2 leading-relaxed break-words">
-                      {currentQuestion.description}
-                    </p>
-                  )}
-                </div>
+        {/* Section Header (for section pages) */}
+        {currentPage?.type === 'section' && (
+          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl border border-green-200 p-4 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-semibold text-green-800">{currentPage.section.title}</h3>
+                {currentPage.section.description && (
+                  <p className="text-sm text-green-600 mt-0.5">{currentPage.section.description}</p>
+                )}
               </div>
             </div>
-
-            {/* Answer Input Area */}
-            <div className="pt-2">{renderQuestionInput(currentQuestion)}</div>
           </div>
-        </div>
+        )}
+
+        {/* Questions - either single standalone or all questions in a section */}
+        {currentPage?.type === 'section' ? (
+          // Render all questions in the section
+          currentPage.questions.map((question) => renderQuestionCard(question))
+        ) : (
+          // Render single standalone question
+          currentPage && renderQuestionCard(currentPage.question)
+        )}
 
         {/* Navigation Footer */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 px-4 sm:px-8 py-4 sm:py-5">
@@ -693,8 +824,8 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
             <Button
               variant="outline"
               onClick={() => {
-                if (currentQuestionIndex > 0) {
-                  setCurrentQuestionIndex(currentQuestionIndex - 1);
+                if (currentPageIndex > 0) {
+                  setCurrentPageIndex(currentPageIndex - 1);
                 } else {
                   handleBack();
                 }
@@ -704,19 +835,17 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               <ArrowLeft className="w-4 h-4 mr-2" />
               
               <span className="sm:hidden">
-                {currentQuestionIndex === 0 ? "Back" : "Prev"}
+                {currentPageIndex === 0 ? "Back" : "Prev"}
               </span>
             </Button>
 
             <div className="text-center text-sm text-gray-500 order-first sm:order-none">
-              {isLastQuestion
+              {isLastPage
                 ? "Ready to submit"
-                : `${
-                    selectedForm.questions.length - currentQuestionIndex - 1
-                  } questions remaining`}
+                : `${totalPages - currentPageIndex - 1} pages remaining`}
             </div>
 
-            {isLastQuestion ? (
+            {isLastPage ? (
               <Button
                 onClick={handleSubmit}
                 className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-3 sm:px-4 shadow-md h-10 text-sm whitespace-nowrap w-auto"
@@ -727,9 +856,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
               </Button>
             ) : (
               <Button
-                onClick={() =>
-                  setCurrentQuestionIndex(currentQuestionIndex + 1)
-                }
+                onClick={() => setCurrentPageIndex(currentPageIndex + 1)}
                 className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-3 sm:px-4 h-10 text-sm whitespace-nowrap w-auto"
               >
                 

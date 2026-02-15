@@ -137,6 +137,43 @@ export function QuestionCard({
                 />
               )}
 
+              {/* Scale Settings for Rating and Linear Scale */}
+              {(question.type === "rating" || question.type === "linear-scale") && isActive && (
+                <div className="flex items-center gap-4 pl-0 sm:pl-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-gray-600">Scale:</Label>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-gray-500">From</span>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={question.min || 1}
+                        onChange={(e) =>
+                          onUpdate(question.id, { min: Math.min(10, Math.max(1, parseInt(e.target.value) || 1)) })
+                        }
+                        className="w-16 h-8 text-sm"
+                        aria-label="Minimum scale value"
+                      />
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className="text-sm text-gray-500">to</span>
+                      <Input
+                        type="number"
+                        min={2}
+                        max={10}
+                        value={question.max || (question.type === "rating" ? 5 : 10)}
+                        onChange={(e) =>
+                          onUpdate(question.id, { max: Math.min(10, Math.max(2, parseInt(e.target.value) || (question.type === "rating" ? 5 : 10))) })
+                        }
+                        className="w-16 h-8 text-sm"
+                        aria-label="Maximum scale value"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Options for choice-based questions */}
               {(question.type === "multiple-choice" ||
                 question.type === "checkbox" ||

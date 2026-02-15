@@ -9,6 +9,13 @@ export type QuestionType =
   | "dropdown"
   | "linear-scale";
 
+export interface FormSection {
+  id: string;
+  title: string;
+  description?: string;
+  order: number;
+}
+
 export interface FormQuestion {
   id: string;
   type: QuestionType;
@@ -18,6 +25,8 @@ export interface FormQuestion {
   options?: string[];
   min?: number;
   max?: number;
+  sectionId?: string;
+  order?: number; // Global order for standalone questions (used for interleaving with sections)
 }
 
 export interface SubmissionSchedule {
