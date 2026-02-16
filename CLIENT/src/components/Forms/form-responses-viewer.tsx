@@ -10,7 +10,6 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import {
   Search,
-  Download,
   ArrowLeft,
   Calendar,
   User,
@@ -19,7 +18,6 @@ import {
   Star,
   Mail,
 } from "lucide-react";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import {
   Table,
@@ -76,11 +74,10 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
   
-  // AI Insights state
+  // AI Insights state (for PDF generation)
   const [aiInsights, setAiInsights] = useState<QuickQuestionInsight[]>([]);
   const [overallSummary, setOverallSummary] = useState<string>("");
   const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
-  const [showAIInsights, setShowAIInsights] = useState(false);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -282,8 +279,11 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       if (result.success && result.overallSummary) {
         setAiInsights(result.insights || []);
         setOverallSummary(result.overallSummary || "");
-        setShowAIInsights(true);
-        toast.success("AI analysis complete!");
+        
+        // Generate AI Insights PDF instead of showing on screen
+        generateAIInsightsPDF(result.overallSummary, result.insights || []);
+        
+        toast.success("AI analysis complete! PDF downloaded.");
       } else {
         toast.error(result.error || "Failed to analyze responses");
       }
@@ -300,24 +300,137 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     setViewDialogOpen(true);
   };
 
-  const generatePDF = () => {
-    if (!form || responses.length === 0) return;
+  // Generate PDF with AI Insights
+  const generateAIInsightsPDF = async (summary: string, insights: QuickQuestionInsight[]) => {
+    if (!form) return;
 
     const doc = new jsPDF();
     let yPosition = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxWidth = pageWidth - 2 * margin;
+
+    // Add header image - full width across the page
+    try {
+      const headerImg = new window.Image();
+      headerImg.src = '/ACTSPDFHEADERTOBEUSED.png';
+      await new Promise((resolve) => { headerImg.onload = resolve; });
+      const canvas = document.createElement('canvas');
+      canvas.width = headerImg.width;
+      canvas.height = headerImg.height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(headerImg, 0, 0);
+      const headerData = canvas.toDataURL('image/png');
+      // Scale image to full page width (210mm for A4)
+      const imgWidth = pageWidth;
+      const imgHeight = (headerImg.height / headerImg.width) * imgWidth;
+      doc.addImage(headerData, 'PNG', 0, 0, imgWidth, imgHeight);
+      yPosition = imgHeight + 10;
+    } catch (e) {
+      console.warn('Could not add header image:', e);
+      yPosition = 30;
+    }
 
     // Title
-    doc.setFontSize(18);
-    doc.text(`${form.title} - Analytics Report`, 20, yPosition);
-    yPosition += 20;
-
-    doc.setFontSize(12);
-    doc.text(`Total Responses: ${responses.length}`, 20, yPosition);
+    doc.setFontSize(20);
+    doc.setTextColor(79, 70, 229); // Indigo color
+    doc.text(`${form.title} - AI Insights Report`, margin, yPosition);
     yPosition += 15;
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, 20, yPosition);
-    yPosition += 20;
 
-    // Analytics for each applicable question
+    // Form details
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Total Responses: ${responses.length}`, margin, yPosition);
+    yPosition += 7;
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
+    yPosition += 15;
+
+    // Divider line
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 15;
+
+    // Overall Summary Section
+    doc.setFontSize(16);
+    doc.setTextColor(79, 70, 229); // Indigo
+    doc.text("Overall Summary", margin, yPosition);
+    yPosition += 10;
+
+    doc.setFontSize(11);
+    doc.setTextColor(50, 50, 50);
+    const summaryLines = doc.splitTextToSize(summary, maxWidth);
+    summaryLines.forEach((line: string) => {
+      if (yPosition > 270) {
+        doc.addPage();
+        yPosition = 20;
+      }
+      doc.text(line, margin, yPosition);
+      yPosition += 6;
+    });
+    yPosition += 10;
+
+    // Quick Insights Section
+    if (insights.length > 0) {
+      if (yPosition > 230) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      doc.setFontSize(16);
+      doc.setTextColor(79, 70, 229);
+      doc.text("Quick Insights by Question", margin, yPosition);
+      yPosition += 12;
+
+      insights.forEach((insight, index) => {
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        // Question header
+        doc.setFontSize(12);
+        doc.setTextColor(30, 30, 30);
+        doc.text(`Q${index + 1}:`, margin, yPosition);
+        
+        // Main idea
+        doc.setFontSize(11);
+        doc.setTextColor(60, 60, 60);
+        const ideaLines = doc.splitTextToSize(insight.mainIdea || "No data", maxWidth - 15);
+        doc.text(ideaLines, margin + 15, yPosition);
+        yPosition += ideaLines.length * 6 + 5;
+
+        // Sentiment badge
+        doc.setFontSize(10);
+        if (insight.shortSentiment === "positive") {
+          doc.setTextColor(22, 163, 74); // Green
+          doc.text("✓ Positive", margin + 15, yPosition);
+        } else if (insight.shortSentiment === "negative") {
+          doc.setTextColor(220, 38, 38); // Red
+          doc.text("✗ Negative", margin + 15, yPosition);
+        } else {
+          doc.setTextColor(107, 114, 128); // Gray
+          doc.text("● Neutral", margin + 15, yPosition);
+        }
+        yPosition += 12;
+      });
+    }
+
+    // Basic Analytics Section
+    if (yPosition > 220) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    yPosition += 5;
+    doc.setDrawColor(200, 200, 200);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 15;
+
+    doc.setFontSize(16);
+    doc.setTextColor(79, 70, 229);
+    doc.text("Question Analytics", margin, yPosition);
+    yPosition += 12;
+
     applicableQuestions.forEach((question, index) => {
       if (yPosition > 250) {
         doc.addPage();
@@ -327,76 +440,48 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       const analytics = getQuestionAnalytics(question);
       if (!analytics) return;
 
-      doc.setFontSize(14);
-      doc.text(`Q${index + 1}: ${question.question}`, 20, yPosition);
-      yPosition += 10;
+      doc.setFontSize(12);
+      doc.setTextColor(30, 30, 30);
+      const qText = `Q${index + 1}: ${question.question}`;
+      const qLines = doc.splitTextToSize(qText, maxWidth);
+      doc.text(qLines, margin, yPosition);
+      yPosition += qLines.length * 6 + 4;
 
-      if (analytics.type === 'average') {
-        doc.setFontSize(12);
+      if (analytics.type === "average") {
+        doc.setFontSize(11);
+        doc.setTextColor(60, 60, 60);
         if (analytics.average !== undefined && analytics.maxRating !== undefined) {
-          doc.text(`Average Rating: ${analytics.average.toFixed(1)} / ${analytics.maxRating}`, 30, yPosition);
+          doc.text(`Average Rating: ${analytics.average.toFixed(1)} / ${analytics.maxRating}`, margin + 5, yPosition);
         } else {
-          doc.text(`Average Rating: N/A`, 30, yPosition);
+          doc.text("Average Rating: N/A", margin + 5, yPosition);
         }
-        yPosition += 10;
-        doc.text(`Based on ${analytics.count} responses`, 30, yPosition);
-        yPosition += 15;
-      } else if (analytics.type === 'distribution') {
-        doc.setFontSize(12);
+        yPosition += 7;
+        doc.text(`Based on ${analytics.count} responses`, margin + 5, yPosition);
+        yPosition += 12;
+      } else if (analytics.type === "distribution") {
+        doc.setFontSize(10);
+        doc.setTextColor(60, 60, 60);
         if (analytics.chartData) {
           analytics.chartData.forEach((item) => {
-            doc.text(`${item.answer}: ${item.count} responses (${item.percentage}%)`, 30, yPosition);
-            yPosition += 8;
+            doc.text(`${item.answer}: ${item.count} responses (${item.percentage}%)`, margin + 5, yPosition);
+            yPosition += 6;
           });
         }
-        yPosition += 10;
+        yPosition += 8;
       }
     });
 
-    // Text questions answers
-    const textQuestions = form.questions?.filter(q =>
-      ['text', 'textarea'].includes(q.question_type || q.type)
-    ) || [];
-
-    if (textQuestions.length > 0) {
-      if (yPosition > 200) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      doc.setFontSize(16);
-      doc.text('Text Question Responses', 20, yPosition);
-      yPosition += 15;
-
-      textQuestions.forEach((question, qIndex) => {
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        doc.setFontSize(14);
-        doc.text(`Q: ${question.question}`, 20, yPosition);
-        yPosition += 10;
-
-        responses.forEach((response, rIndex) => {
-          const answer = response.response_data[question.id] || response.response_data[String(question.id)];
-          if (answer && answer.trim()) {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 20;
-            }
-            doc.setFontSize(10);
-            const respondent = response.respondent_name || `Respondent ${rIndex + 1}`;
-            doc.text(`${respondent}: ${String(answer)}`, 30, yPosition);
-            yPosition += 8;
-          }
-        });
-        yPosition += 10;
-      });
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 290, { align: "center" });
     }
 
     // Download PDF
-    doc.save(`${form.title}_analytics_report.pdf`);
+    doc.save(`${form.title}Feedb-ACTS_Report.pdf`);
   };
 
   const renderResponseValue = (question: any, value: any) => {
@@ -631,31 +716,20 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
           </div>
           <div className="flex gap-2 w-full sm:w-auto">
             <Button
-              variant="outline"
               onClick={analyzeWithAI}
               disabled={responses.length === 0 || analyzingWithAI}
-              className="flex-1 sm:flex-none bg-gradient-to-r from-purple-500 to-indigo-500 text-white border-0 hover:from-purple-600 hover:to-indigo-600"
             >
               {analyzingWithAI ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Analyzing...
+                  Generating Report...
                 </>
               ) : (
                 <>
                   <Brain className="w-4 h-4 mr-2" />
-                  Analyze with AI
+                  Generate Report
                 </>
               )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={generatePDF}
-              disabled={responses.length === 0}
-              className="flex-1 sm:flex-none"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Generate PDF
             </Button>
           </div>
         </div>
@@ -711,69 +785,10 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
         </Card>
       </div>
 
-      {/* AI Insights Section - Overall Summary + Quick Insights */}
-      {showAIInsights && overallSummary && (
+      {/* Question Analytics Section (always shown) */}
+      {applicableQuestions.length > 0 && (
         <div className="space-y-6">
-          {/* Quick Insights - Short main ideas as badges */}
-          {aiInsights.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-5 h-5 text-purple-600" />
-                <h3 className="text-lg font-semibold">Quick Insights</h3>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {aiInsights.map((insight: any, index: number) => (
-                  <div
-                    key={insight.questionId || index}
-                    className={`p-3 rounded-lg border-2 flex flex-col items-center justify-center text-center min-h-[80px] ${
-                      insight.shortSentiment === 'positive' ? 'border-green-300 bg-green-50' :
-                      insight.shortSentiment === 'negative' ? 'border-red-300 bg-red-50' :
-                      'border-gray-200 bg-gray-50'
-                    }`}
-                  >
-                    <span className="text-xs text-gray-500 mb-1 truncate w-full">
-                      Q{index + 1}
-                    </span>
-                    <span className="text-sm font-bold text-gray-800">
-                      {insight.mainIdea || 'No data'}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Overall Summary */}
-          <Card className="bg-gradient-to-r from-purple-50 to-indigo-50 border-purple-200">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Brain className="w-6 h-6 text-purple-600" />
-                <CardTitle className="text-xl">Overall Summary</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <p className="text-gray-700 leading-relaxed">{overallSummary}</p>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-      {/* Legacy Question Analytics (shown when AI insights not available) */}
-      {!showAIInsights && applicableQuestions.length > 0 && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Question Analytics</h3>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={analyzeWithAI}
-              disabled={analyzingWithAI}
-              className="text-purple-600 border-purple-300 hover:bg-purple-50"
-            >
-              <Brain className="w-4 h-4 mr-2" />
-              Get AI Insights
-            </Button>
-          </div>
+          <h3 className="text-xl font-semibold">Question Analytics</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {applicableQuestions.map((question, index) => {
               const analytics = getQuestionAnalytics(question);
@@ -827,77 +842,25 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
                       </p>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex justify-center">
-                        {question.question_type === 'multiple-choice' || question.type === 'multiple-choice' || question.type === 'multiple_choice' ? (
-                          <PieChart width={400} height={256}>
-                            <Pie
-                              data={analytics.chartData}
-                              dataKey="count"
-                              nameKey="answer"
-                              cx="50%"
-                              cy="50%"
-                              outerRadius={80}
-                              fill="#8884d8"
-                            >
-                              {analytics.chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value, name) => [
-                                `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
-                                'Count'
-                              ]}
-                            />
-                            <Legend />
-                          </PieChart>
-                        ) : question.question_type === 'dropdown' || question.type === 'dropdown' ? (
-                          <PieChart width={400} height={256}>
-                            <Pie
-                              data={analytics.chartData}
-                              dataKey="count"
-                              nameKey="answer"
-                              cx="50%"
-                              cy="50%"
-                              innerRadius={60}
-                              outerRadius={100}
-                              fill="#8884d8"
-                            >
-                              {analytics.chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                              ))}
-                            </Pie>
-                            <Tooltip
-                              formatter={(value, name) => [
-                                `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
-                                'Count'
-                              ]}
-                            />
-                            <Legend />
-                          </PieChart>
-                        ) : (
-                          <BarChart width={400} height={256} data={analytics.chartData}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                            <XAxis
-                              dataKey="answer"
-                              tick={{ fontSize: 12 }}
-                              axisLine={{ stroke: '#e5e7eb' }}
-                              tickLine={{ stroke: '#e5e7eb' }}
-                            />
-                            <YAxis
-                              tick={{ fontSize: 12 }}
-                              axisLine={{ stroke: '#e5e7eb' }}
-                              tickLine={{ stroke: '#e5e7eb' }}
-                            />
-                            <Tooltip
-                              formatter={(value, name) => [
-                                `${value} responses (${analytics.chartData.find(d => d.answer === name)?.percentage}%)`,
-                                'Count'
-                              ]}
-                            />
-                            <Bar dataKey="count" fill="#8884d8" />
-                          </BarChart>
-                        )}
+                      <div className="space-y-2">
+                        {analytics.chartData.map((item, idx) => (
+                          <div key={idx} className="flex items-center justify-between">
+                            <span className="text-sm font-medium text-gray-700 truncate flex-1 mr-4" title={item.answer}>
+                              {item.answer}
+                            </span>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <span className="text-sm text-gray-600">
+                                {item.count} ({item.percentage}%)
+                              </span>
+                              <div className="w-20 bg-gray-200 rounded-full h-2">
+                                <div
+                                  className="bg-blue-600 h-2 rounded-full"
+                                  style={{ width: `${item.percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </CardContent>
                   </Card>
