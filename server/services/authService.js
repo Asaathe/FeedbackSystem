@@ -369,10 +369,63 @@ const updateUserProfile = async (userId, updates) => {
   }
 };
 
+/**
+ * Change user password
+ * @param {number} userId - User ID
+ * @param {string} currentPassword - Current password
+ * @param {string} newPassword - New password
+ * @returns {Promise<object>} Result with success status
+ */
+const changePassword = async (userId, currentPassword, newPassword) => {
+  try {
+    // Get user from database
+    const users = await queryDatabase(
+      db,
+      "SELECT * FROM Users WHERE id = ?",
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return { success: false, message: "User not found" };
+    }
+
+    const user = users[0];
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password_hash);
+    if (!isMatch) {
+      return { success: false, message: "Current password is incorrect" };
+    }
+
+    // Validate new password
+    const passwordError = validatePassword(newPassword);
+    if (passwordError) {
+      return { success: false, message: passwordError };
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update password in database
+    await queryDatabase(
+      db,
+      "UPDATE Users SET password_hash = ? WHERE id = ?",
+      [hashedPassword, userId]
+    );
+
+    return { success: true, message: "Password changed successfully" };
+  } catch (error) {
+    console.error("Change password error:", error);
+    return { success: false, message: "Failed to change password" };
+  }
+};
+
 module.exports = {
   registerUser,
   loginUser,
   verifyUserToken,
   getUserProfile,
   updateUserProfile,
+  changePassword,
 };

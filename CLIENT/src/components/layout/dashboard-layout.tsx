@@ -212,7 +212,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
                   <UserCircle className="w-4 h-4 mr-2" />
                   Profile
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onNavigate('change-password')}>
                   <Lock className="w-4 h-4 mr-2" />
                   Change password
                 </DropdownMenuItem>

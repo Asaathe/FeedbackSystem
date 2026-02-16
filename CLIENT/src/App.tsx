@@ -87,6 +87,12 @@ const MySubmissions = lazy(() =>
   }))
 );
 
+const ChangePassword = lazy(() =>
+  import("./components/auth/change-password").then((m) => ({
+    default: m.ChangePassword,
+  }))
+);
+
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -245,6 +251,11 @@ export default function App() {
   }
 
   const renderPage = () => {
+    // Shared pages available to all roles
+    if (currentPage === "change-password") {
+      return <ChangePassword onBack={() => setCurrentPage("dashboard")} />;
+    }
+
     // Admin pages
     if (userRole === "admin") {
       switch (currentPage) {

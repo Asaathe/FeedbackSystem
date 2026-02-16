@@ -116,6 +116,37 @@ const updateProfile = async (req, res) => {
 };
 
 /**
+ * Change user password
+ */
+const changePassword = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Current password and new password are required",
+      });
+    }
+
+    const result = await authService.changePassword(userId, currentPassword, newPassword);
+
+    if (result.success) {
+      return res.status(200).json(result);
+    } else {
+      return res.status(400).json(result);
+    }
+  } catch (error) {
+    console.error("Change password controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+    });
+  }
+};
+
+/**
  * Validate registration input
  */
 const validateRegistration = [
@@ -177,6 +208,7 @@ module.exports = {
   login,
   getProfile,
   updateProfile,
+  changePassword,
   validateRegistration,
   validateLogin,
 };
