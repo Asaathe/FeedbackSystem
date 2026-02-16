@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -1129,7 +1129,7 @@ export function FeedbackFormsManagement({
                     </CardHeader>
                     <CardContent className="space-y-4">
                       {/* In feedback-forms-management.tsx - Custom Forms Section */}
-                      <div className="flex flex-wrap gap-1.5">
+                      <div className="flex flex-wrap gap-1.5 min-h-[32px] items-start">
                         <Badge
                           variant="secondary"
                           className={`
@@ -1142,20 +1142,20 @@ export function FeedbackFormsManagement({
               ? "bg-purple-100 text-purple-700"
               : "bg-gray-100 text-gray-700"
       }
-      whitespace-normal break-words text-center min-h-[24px] px-2 py-0.5
+      shrink-0
     `}
                         >
                           {form.status}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="border-green-200 whitespace-normal break-words text-center min-h-[24px] px-2 py-0.5"
+                          className="border-green-200 shrink-0 max-w-[120px] truncate"
                         >
                           {form.category}
                         </Badge>
                         <Badge
                           variant="outline"
-                          className="border-blue-200 whitespace-normal break-words text-center min-h-[24px] px-2 py-0.5"
+                          className="border-blue-200 shrink-0 max-w-[100px] truncate"
                         >
                           {form.target_audience}
                         </Badge>
@@ -1174,22 +1174,22 @@ export function FeedbackFormsManagement({
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1 border-green-200 hover:bg-green-50"
-                          onClick={() => onNavigateToResponses?.(form.id)}
-                        >
-                          Responses
-                        </Button>
-                        <Button
-                          className="flex-1 bg-green-500 hover:bg-green-600"
-                          onClick={() => onNavigateToBuilder?.(form.id)}
-                        >
-                          Edit
-                        </Button>
-                      </div>
                     </CardContent>
+                    <CardFooter className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-green-200 hover:bg-green-50"
+                        onClick={() => onNavigateToResponses?.(form.id)}
+                      >
+                        Responses
+                      </Button>
+                      <Button
+                        className="flex-1 bg-green-500 hover:bg-green-600"
+                        onClick={() => onNavigateToBuilder?.(form.id)}
+                      >
+                        Edit
+                      </Button>
+                    </CardFooter>
                   </Card>
                 ))}
               </div>
@@ -1266,12 +1266,11 @@ export function FeedbackFormsManagement({
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                      <div className="flex gap-2 flex-wrap">
+                      <div className="flex gap-2 flex-wrap min-h-[32px] items-start">
                         <Badge
                           variant="secondary"
                           truncate
-                          maxWidth={90}
-                          className="bg-purple-100 text-purple-700"
+                          className="bg-purple-100 text-purple-700 shrink-0"
                         >
                           
                           Template
@@ -1280,8 +1279,7 @@ export function FeedbackFormsManagement({
                         <Badge
                           variant="outline"
                           truncate
-                          maxWidth={90}
-                          className="border-purple-200"
+                          className="border-purple-200 shrink-0 max-w-[120px]"
                         >
                           {template.category}
                         </Badge>
@@ -1294,24 +1292,24 @@ export function FeedbackFormsManagement({
                             : "N/A"}
                         </p>
                       </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          className="flex-1 border-purple-200 hover:bg-purple-50"
-                          onClick={() => handlePreviewForm(template)}
-                        >
-                          View
-                        </Button>
-
-                        <Button
-                          className="flex-1 bg-purple-500 hover:bg-purple-600"
-                          onClick={() => onNavigateToBuilder?.(template.id)}
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Use Template
-                        </Button>
-                      </div>
                     </CardContent>
+                    <CardFooter className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        className="flex-1 border-purple-200 hover:bg-purple-50"
+                        onClick={() => handlePreviewForm(template)}
+                      >
+                        View
+                      </Button>
+
+                      <Button
+                        className="flex-1 bg-purple-500 hover:bg-purple-600"
+                        onClick={() => onNavigateToBuilder?.(template.id)}
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Use Template
+                      </Button>
+                    </CardFooter>
                   </Card>
                 ))}
               </div>
