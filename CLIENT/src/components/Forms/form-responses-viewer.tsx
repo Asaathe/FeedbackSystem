@@ -173,11 +173,65 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     return ['multiple-choice', 'multiple_choice', 'rating', 'linear-scale', 'linear_scale', 'dropdown', 'checkbox'].includes(qType);
   }) || [];
 
+  // Group questions by sections for analytics display
+  const getQuestionsBySection = () => {
+    const sections = form?.sections || [];
+    
+    if (!sections.length) {
+      // No sections - return all applicable questions as "Uncategorized"
+      return [{ sectionId: null, sectionTitle: 'Questions', questions: applicableQuestions }];
+    }
+
+    const sectionMap = new Map<string | null, { sectionId: string | null; sectionTitle: string; questions: typeof applicableQuestions }>();
+    
+    // Initialize with all sections
+    sections.forEach(section => {
+      sectionMap.set(section.id, {
+        sectionId: section.id,
+        sectionTitle: section.title,
+        questions: []
+      });
+    });
+
+    // Add uncategorized group
+    sectionMap.set(null, {
+      sectionId: null,
+      sectionTitle: 'General Questions',
+      questions: []
+    });
+
+    // Group questions
+    applicableQuestions.forEach(question => {
+      const sectionId = question.section_id || question.sectionId || null;
+      if (sectionMap.has(sectionId)) {
+        sectionMap.get(sectionId)!.questions.push(question);
+      } else {
+        sectionMap.get(null)!.questions.push(question);
+      }
+    });
+
+    // Filter out empty sections and sort by section order
+    const result = Array.from(sectionMap.values())
+      .filter(group => group.questions.length > 0)
+      .sort((a, b) => {
+        if (a.sectionId === null) return 1;
+        if (b.sectionId === null) return -1;
+        const sectionA = sections.find(s => s.id === a.sectionId);
+        const sectionB = sections.find(s => s.id === b.sectionId);
+        return (sectionA?.order ?? 0) - (sectionB?.order ?? 0);
+      });
+
+    return result;
+  };
+
+  const questionsBySection = getQuestionsBySection();
+
   console.log('Form loaded:', !!form);
   console.log('Form questions:', form?.questions?.length);
   console.log('Applicable questions:', applicableQuestions.length);
   console.log('Applicable questions details:', applicableQuestions.map(q => ({id: q.id, type: q.question_type || q.type, question: q.question})));
   console.log('Responses loaded:', responses.length);
+  console.log('Questions by section:', questionsBySection.map(s => ({title: s.sectionTitle, count: s.questions.length})));
 
   // Function to render star rating
   const renderStars = (rating: number, maxRating: number = 5) => {
@@ -788,87 +842,125 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       {/* Question Analytics Section (always shown) */}
       {applicableQuestions.length > 0 && (
         <div className="space-y-6">
-          <h3 className="text-xl font-semibold">Question Analytics</h3>
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {applicableQuestions.map((question, index) => {
-              const analytics = getQuestionAnalytics(question);
-              console.log('Analytics for question', question.id, ':', analytics);
-              if (!analytics) return null;
-
-              if (analytics.type === 'average' && typeof analytics.average === 'number') {
-                return (
-                  <Card key={question.id} className="overflow-hidden">
-                    <CardHeader>
-                      <CardTitle className="text-lg leading-relaxed" title={question.question}>
-                        Q{index + 1}: {question.question}
-                      </CardTitle>
-                      <p className="text-sm text-gray-600">
-                        {(question.question_type || question.type).replace('-', ' ').toUpperCase()} • {analytics.count} responses
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="text-center py-6">
-                        <div className="flex items-center justify-center gap-4 mb-4">
-                          <div className="text-4xl font-bold text-blue-600">
-                            {analytics.average.toFixed(1)}
-                          </div>
-                          {question.type === 'rating' && renderStars(analytics.average, analytics.maxRating)}
-                        </div>
-                        <div className="text-sm text-gray-600 mb-4">
-                          out of {analytics.maxRating}
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                          <div
-                            className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                            style={{ width: `${(analytics.average / analytics.maxRating) * 100}%` }}
-                          ></div>
-                        </div>
-                        <p className="text-xs text-gray-500">
-                          Average rating from {analytics.count} responses
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              } else if (analytics.type === 'distribution' && analytics.chartData && analytics.chartData.length > 0) {
-                return (
-                  <Card key={question.id} className="overflow-hidden">
-                    <CardHeader>
-                      <CardTitle className="text-lg leading-relaxed" title={question.question}>
-                        Q{index + 1}: {question.question}
-                      </CardTitle>
-                      <p className="text-sm text-gray-600">
-                        {(question.question_type || question.type).replace('-', ' ').toUpperCase()} • {analytics.totalAnswers} responses
-                      </p>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-2">
-                        {analytics.chartData.map((item, idx) => (
-                          <div key={idx} className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-700 truncate flex-1 mr-4" title={item.answer}>
-                              {item.answer}
-                            </span>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-sm text-gray-600">
-                                {item.count} ({item.percentage}%)
-                              </span>
-                              <div className="w-20 bg-gray-200 rounded-full h-2">
-                                <div
-                                  className="bg-blue-600 h-2 rounded-full"
-                                  style={{ width: `${item.percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              }
-              return null;
-            })}
+          <div className="flex items-center gap-3">
+            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
+              <BarChart3 className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900">Question Analytics</h3>
+            </div>
           </div>
+          
+          {questionsBySection.map((sectionGroup, sectionIndex) => (
+            <div key={sectionGroup.sectionId ?? 'uncategorized'} className="space-y-2">
+              {/* Section Header */}
+              <div className="flex items-center gap-3">
+                <h4 className="text-lg font-semibold text-gray-800">{sectionGroup.sectionTitle}</h4>
+                <Badge variant="secondary" className="ml-auto">
+                  {sectionGroup.questions.length} question{sectionGroup.questions.length !== 1 ? 's' : ''}
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {sectionGroup.questions.map((question, qIndex) => {
+                  const analytics = getQuestionAnalytics(question);
+                  const globalIndex = applicableQuestions.findIndex(q => q.id === question.id);
+                  if (!analytics) return null;
+
+                  if (analytics.type === 'average' && typeof analytics.average === 'number') {
+                    return (
+                      <Card key={question.id} className="overflow-hidden hover:shadow-md transition-shadow duration-200 border-l-4 border-l-blue-500">
+                        <CardHeader className="pb-2 bg-gradient-to-r from-blue-50/50 to-transparent">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base leading-relaxed" title={question.question}>
+                              <span className="line-clamp-2">{question.question}</span>
+                            </CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-center py-4">
+                            <div className="flex items-center justify-center gap-3 mb-3">
+                              <div className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                {analytics.average.toFixed(1)}
+                              </div>
+                              {question.type === 'rating' && renderStars(analytics.average, analytics.maxRating)}
+                            </div>
+                            <div className="text-sm text-gray-600 mb-3">
+                              out of {analytics.maxRating}
+                            </div>
+                            <div className="w-full bg-gray-100 rounded-full h-2.5 mb-2 overflow-hidden">
+                              <div
+                                className="bg-gradient-to-r from-blue-500 to-indigo-500 h-2.5 rounded-full transition-all duration-500"
+                                style={{ width: `${Math.min(100, (analytics.average / analytics.maxRating) * 100)}%` }}
+                              ></div>
+                            </div>
+                            <p className="text-xs text-gray-400">
+                              Average from {analytics.count} response{analytics.count !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  } else if (analytics.type === 'distribution' && analytics.chartData && analytics.chartData.length > 0) {
+                    // Find the most common answer for this question
+                    const topAnswer = analytics.chartData[0];
+                    const topPercentage = topAnswer ? topAnswer.percentage : 0;
+                    
+                    return (
+                      <Card key={question.id} className="overflow-hidden hover:shadow-md transition-shadow duration-200 border-l-4 border-l-green-500">
+                        <CardHeader className="pb-2 bg-gradient-to-r from-green-50/50 to-transparent">
+                          <div className="flex items-start justify-between gap-2">
+                            <CardTitle className="text-base leading-relaxed" title={question.question}>
+                              <span className="line-clamp-2">{question.question}</span>
+                            </CardTitle>
+                          </div>
+                        </CardHeader>
+                        <CardContent>
+                          {/* Top answer highlight */}
+                          {topAnswer && (
+                            <div className="mb-4 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                              <p className="text-xs text-green-600 font-medium mb-1">Most Common Answer</p>
+                              <p className="font-semibold text-gray-900">{topAnswer.answer}</p>
+                              <p className="text-sm text-green-600">{topAnswer.percentage}% of respondents</p>
+                            </div>
+                          )}
+                          
+                          <div className="space-y-3">
+                            {analytics.chartData.slice(0, 5).map((item, idx) => (
+                              <div key={idx} className="group">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-sm font-medium text-gray-700 truncate flex-1 mr-3" title={item.answer}>
+                                    {item.answer}
+                                  </span>
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    <span className="text-sm text-gray-600 font-medium">
+                                      {item.count} <span className="text-gray-400 text-xs">({item.percentage}%)</span>
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                                  <div
+                                    className={`h-2 rounded-full transition-all duration-300 ${idx === 0 ? 'bg-gradient-to-r from-green-500 to-emerald-500' : 'bg-gray-300'}`}
+                                    style={{ width: `${item.percentage}%` }}
+                                  ></div>
+                                </div>
+                              </div>
+                            ))}
+                            {analytics.chartData.length > 5 && (
+                              <p className="text-xs text-gray-400 text-center pt-1">
+                                +{analytics.chartData.length - 5} more options
+                              </p>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+                  return null;
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
