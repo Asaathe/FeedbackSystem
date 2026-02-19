@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Progress } from "../ui/progress";
-import { ArrowLeft, Send, ClipboardList, Clock, Check } from "lucide-react";
+import { ArrowLeft, Send, ClipboardList, Clock, Check, AlertCircle } from "lucide-react";
 import { Badge } from "../ui/badge";
 import {
   Dialog,
@@ -80,6 +80,33 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   // Clear any stale localStorage data from previous sessions
   useEffect(() => {
     localStorage.removeItem('submittedFormIds');
+  }, []);
+
+  // Load submitted form IDs from database on mount
+  useEffect(() => {
+    const loadSubmittedForms = async () => {
+      try {
+        const token = getAuthToken();
+        if (!token) return;
+
+        const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const submittedIds = new Set<string>(result.responses?.map((r: any) => String(r.form_id)) || []);
+          setSubmittedFormIds(submittedIds);
+        }
+      } catch (error) {
+        console.error('Error loading submitted forms:', error);
+      }
+    };
+
+    loadSubmittedForms();
   }, []);
 
   // Mobile swipe gesture handling
@@ -280,6 +307,32 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     setAnswers({});
     setCurrentPageIndex(0);
   };
+
+  // Check if a form is overdue
+  const isOverdue = (dueDate: string) => {
+    if (!dueDate || dueDate === 'No due date') return false;
+    const date = new Date(dueDate);
+    return isNaN(date.getTime()) ? false : date < new Date();
+  };
+
+  // Filter out submitted forms and sort by due date
+  const pendingForms = availableForms
+    .filter(form => {
+      // Filter out already submitted forms
+      if (submittedFormIds.has(form.id)) return false;
+      
+      // Exclude overdue forms - they should appear in My Submissions instead
+      if (isOverdue(form.dueDate)) return false;
+      
+      // Only show forms that are not yet due (pending)
+      return true;
+    })
+    .sort((a, b) => {
+      const dateA = new Date(a.dueDate);
+      const dateB = new Date(b.dueDate);
+      // Sort by due date (earliest first)
+      return dateA.getTime() - dateB.getTime();
+    });
 
   const handleSubmit = async () => {
     if (!selectedForm) {
@@ -544,23 +597,23 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
             <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
             <p className="mt-2 text-gray-600">Loading your assigned forms...</p>
           </div>
-        ) : availableForms.length === 0 ? (
+        ) : pendingForms.length === 0 ? (
           <div className="text-center py-8">
-            <ClipboardList className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No Forms Assigned
+              All Caught Up!
             </h3>
             <p className="text-gray-600">
-              You don't have any feedback forms assigned at this time.
+              You have no pending feedback forms. Check "My Submissions" for your history.
             </p>
           </div>
         ) : (
-          /* Assigned Forms */
+          /* Pending Forms - Sorted by due date, overdue first */
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {availableForms.map((form) => (
+            {pendingForms.map((form) => (
               <Card
                 key={form.id}
-                className="border-green-100 hover:shadow-md transition-shadow overflow-hidden"
+                className={`border-green-100 hover:shadow-md transition-shadow overflow-hidden ${isOverdue(form.dueDate) ? 'border-l-4 border-l-red-500' : ''}`}
               >
                 {/* Form Image */}
                 {form.imageUrl ? (
@@ -568,24 +621,24 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                     <img
                       src={form.imageUrl}
                       alt={form.title}
-                      className={`w-full h-full object-cover ${submittedFormIds.has(form.id) ? 'opacity-60' : ''}`}
+                      className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
                     <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 z-10">
                       <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
                         <Badge
                           variant="outline"
-                          className={`${submittedFormIds.has(form.id) ? 'bg-gray-100 border-gray-300 text-gray-600' : 'bg-white border-green-200 text-green-700'} text-xs shadow-md`}
+                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
                         >
                           {form.category}
                         </Badge>
-                        {submittedFormIds.has(form.id) ? (
-                          <div className="flex items-center gap-1 text-white bg-green-600 px-2 py-1 rounded text-xs shadow-md">
-                            <Check className="w-3 h-3" />
-                            <span>Submitted</span>
+                        {isOverdue(form.dueDate) ? (
+                          <div className="flex items-center gap-1 text-white bg-red-600 px-2 py-1 rounded text-xs shadow-md">
+                            <AlertCircle className="w-3 h-3" />
+                            <span>Overdue</span>
                           </div>
                         ) : (
-                          <div className="flex items-center gap-1 text-white bg-orange-600 px-2 py-1 rounded text-xs shadow-md">
+                          <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
                             <Clock className="w-3 h-3" />
                             <span>Due {form.dueDate}</span>
                           </div>
@@ -594,19 +647,19 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                     </div>
                   </div>
                 ) : (
-                  <div className={`relative h-32 sm:h-48 w-full overflow-hidden flex items-center justify-center ${submittedFormIds.has(form.id) ? 'bg-gradient-to-br from-gray-50 to-gray-100' : 'bg-gradient-to-br from-green-50 to-lime-50'}`}>
+                  <div className={`relative h-32 sm:h-48 w-full overflow-hidden flex items-center justify-center ${isOverdue(form.dueDate) ? 'bg-gradient-to-br from-red-50 to-orange-50' : 'bg-gradient-to-br from-green-50 to-lime-50'}`}>
                     <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
                       <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                         <Badge
                           variant="outline"
-                          className={`${submittedFormIds.has(form.id) ? 'bg-gray-100 border-gray-300 text-gray-600' : 'bg-white border-green-200 text-green-700'} text-xs shadow-md`}
+                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
                         >
                           {form.category}
                         </Badge>
-                        {submittedFormIds.has(form.id) ? (
-                          <div className="flex items-center gap-1 text-white bg-green-600 px-2 py-1 rounded text-xs shadow-md">
-                            <Check className="w-3 h-3" />
-                            <span>Submitted</span>
+                        {isOverdue(form.dueDate) ? (
+                          <div className="flex items-center gap-1 text-white bg-red-600 px-2 py-1 rounded text-xs shadow-md">
+                            <AlertCircle className="w-3 h-3" />
+                            <span>Overdue</span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
@@ -637,11 +690,10 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
                       <span>{form.questionCount || form.questions.length} questions</span>
                     </div>
                     <Button
-                      className="h-10 px-4 sm:px-6 text-sm whitespace-nowrap bg-green-500 hover:bg-green-600"
+                      className={`h-10 px-4 sm:px-6 text-sm whitespace-nowrap ${isOverdue(form.dueDate) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
                       onClick={() => handleSelectForm(form)}
-                      disabled={submittedFormIds.has(form.id)}
                     >
-                      {submittedFormIds.has(form.id) ? "Submitted" : "Start Feedback"}
+                      {isOverdue(form.dueDate) ? 'Complete Now' : 'Start Feedback'}
                     </Button>
                   </div>
                 </CardContent>

@@ -661,7 +661,7 @@ export function FormBuilder({
         // Convert generated questions to FormQuestion format and add directly to form
         const newQuestions: FormQuestion[] = response.questions.map(
           (q, index) => ({
-            id: `question-${Date.now()}-${index}`,
+            id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}_${index}`,
             type: q.type as any,
             question: q.question,
             description: q.description,

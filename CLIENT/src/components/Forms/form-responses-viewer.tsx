@@ -354,7 +354,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     setViewDialogOpen(true);
   };
 
-  // Generate PDF with AI Insights
+  // Generate PDF with AI Insights (simplified - no detailed per-question analytics)
   const generateAIInsightsPDF = async (summary: string, insights: QuickQuestionInsight[]) => {
     if (!form) return;
 
@@ -407,7 +407,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     // Overall Summary Section
     doc.setFontSize(16);
     doc.setTextColor(79, 70, 229); // Indigo
-    doc.text("Overall Summary", margin, yPosition);
+    doc.text("AI Insights Summary", margin, yPosition);
     yPosition += 10;
 
     doc.setFontSize(11);
@@ -423,7 +423,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     });
     yPosition += 10;
 
-    // Quick Insights Section
+    // Quick Insights Section (simplified - just main ideas)
     if (insights.length > 0) {
       if (yPosition > 230) {
         doc.addPage();
@@ -432,7 +432,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
       doc.setFontSize(16);
       doc.setTextColor(79, 70, 229);
-      doc.text("Quick Insights by Question", margin, yPosition);
+      doc.text("Key Insights by Question", margin, yPosition);
       yPosition += 12;
 
       insights.forEach((insight, index) => {
@@ -469,61 +469,226 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       });
     }
 
-    // Basic Analytics Section
-    if (yPosition > 220) {
-      doc.addPage();
-      yPosition = 20;
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(9);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 290, { align: "center" });
     }
 
-    yPosition += 5;
+    // Download PDF
+    doc.save(`${form.title}Feedb-ACTS_AI_Insights.pdf`);
+  };
+
+  // Get all questions including text questions for analytics
+  const getAllQuestionsForAnalytics = () => {
+    return form?.questions || [];
+  };
+
+  // Get analytics for text questions (sample responses)
+  const getTextQuestionAnalytics = (question: any) => {
+    if (!responses.length) return null;
+
+    const questionId = question.id;
+    const questionIdStr = String(question.id);
+    
+    const textResponses: string[] = [];
+    responses.forEach(response => {
+      const answer = response.response_data[questionId] || response.response_data[questionIdStr];
+      if (answer !== undefined && answer !== null && answer !== '') {
+        textResponses.push(String(answer));
+      }
+    });
+
+    if (textResponses.length === 0) return null;
+
+    // Return sample of responses (up to 10 for token efficiency)
+    const sampleResponses = textResponses.slice(0, 10);
+    
+    return {
+      question,
+      type: 'text',
+      totalResponses: textResponses.length,
+      sampleResponses
+    };
+  };
+
+  // Generate Question Analytics PDF (includes all question types + text responses)
+  const generateQuestionAnalyticsPDF = async () => {
+    if (!form) return;
+
+    const doc = new jsPDF();
+    let yPosition = 20;
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const maxWidth = pageWidth - 2 * margin - 5; // Slightly smaller for better wrapping
+
+    // Add header image
+    try {
+      const headerImg = new window.Image();
+      headerImg.src = '/ACTSPDFHEADERTOBEUSED.png';
+      await new Promise((resolve) => { headerImg.onload = resolve; });
+      const canvas = document.createElement('canvas');
+      canvas.width = headerImg.width;
+      canvas.height = headerImg.height;
+      const ctx = canvas.getContext('2d');
+      ctx?.drawImage(headerImg, 0, 0);
+      const headerData = canvas.toDataURL('image/png');
+      const imgWidth = pageWidth;
+      const imgHeight = (headerImg.height / headerImg.width) * imgWidth;
+      doc.addImage(headerData, 'PNG', 0, 0, imgWidth, imgHeight);
+      yPosition = imgHeight + 10;
+    } catch (e) {
+      console.warn('Could not add header image:', e);
+      yPosition = 30;
+    }
+
+    // Title
+    doc.setFontSize(20);
+    doc.setTextColor(79, 70, 229);
+    doc.text(`${form.title} - Report`, margin, yPosition);
+    yPosition += 15;
+
+    // Form details
+    doc.setFontSize(11);
+    doc.setTextColor(100, 100, 100);
+    doc.text(`Total Responses: ${responses.length}`, margin, yPosition);
+    yPosition += 7;
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
+    yPosition += 15;
+
+    // Divider line
     doc.setDrawColor(200, 200, 200);
     doc.line(margin, yPosition, pageWidth - margin, yPosition);
     yPosition += 15;
 
-    doc.setFontSize(16);
-    doc.setTextColor(79, 70, 229);
-    doc.text("Question Analytics", margin, yPosition);
-    yPosition += 12;
+    const allQuestions = getAllQuestionsForAnalytics();
+    const textQuestions = allQuestions.filter(q => {
+      const qType = q.question_type || q.type;
+      return qType === 'text' || qType === 'textarea';
+    });
+    const ratingChoiceQuestions = allQuestions.filter(q => {
+      const qType = q.question_type || q.type;
+      return ['rating', 'linear-scale', 'linear_scale', 'multiple-choice', 'multiple_choice', 'dropdown', 'checkbox'].includes(qType);
+    });
 
-    applicableQuestions.forEach((question, index) => {
-      if (yPosition > 250) {
+    // Rating and Choice Questions Analytics
+    if (ratingChoiceQuestions.length > 0) {
+      doc.setFontSize(16);
+      doc.setTextColor(79, 70, 229);
+      doc.text("Rating & Choice Questions", margin, yPosition);
+      yPosition += 12;
+
+      ratingChoiceQuestions.forEach((question, index) => {
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
+        }
+
+        const analytics = getQuestionAnalytics(question);
+        if (!analytics) return;
+
+        doc.setFontSize(12);
+        doc.setTextColor(30, 30, 30);
+        const qText = `Q${index + 1}: ${question.question}`;
+        // Use splitTextToSize with proper maxWidth and get line height
+        const qLines = doc.splitTextToSize(qText, maxWidth);
+        const lineHeight = 6;
+        doc.text(qLines, margin, yPosition);
+        yPosition += qLines.length * lineHeight + 4;
+
+        if (analytics.type === "average") {
+          doc.setFontSize(11);
+          doc.setTextColor(60, 60, 60);
+          if (analytics.average !== undefined && analytics.maxRating !== undefined) {
+            doc.text(`Average Rating: ${analytics.average.toFixed(1)} / ${analytics.maxRating}`, margin + 5, yPosition);
+          } else {
+            doc.text("Average Rating: N/A", margin + 5, yPosition);
+          }
+          yPosition += 7;
+          doc.text(`Based on ${analytics.count} responses`, margin + 5, yPosition);
+          yPosition += 12;
+        } else if (analytics.type === "distribution") {
+          doc.setFontSize(10);
+          doc.setTextColor(60, 60, 60);
+          if (analytics.chartData) {
+            analytics.chartData.forEach((item) => {
+              if (yPosition > 270) {
+                doc.addPage();
+                yPosition = 20;
+              }
+              const itemText = `${item.answer}: ${item.count} responses (${item.percentage}%)`;
+              const itemLines = doc.splitTextToSize(itemText, maxWidth - 10);
+              doc.text(itemLines, margin + 5, yPosition);
+              yPosition += itemLines.length * 5;
+            });
+          }
+          yPosition += 8;
+        }
+      });
+    }
+
+    // Text Questions Analytics
+    if (textQuestions.length > 0) {
+      if (yPosition > 200) {
         doc.addPage();
         yPosition = 20;
       }
 
-      const analytics = getQuestionAnalytics(question);
-      if (!analytics) return;
+      yPosition += 5;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      yPosition += 15;
 
-      doc.setFontSize(12);
-      doc.setTextColor(30, 30, 30);
-      const qText = `Q${index + 1}: ${question.question}`;
-      const qLines = doc.splitTextToSize(qText, maxWidth);
-      doc.text(qLines, margin, yPosition);
-      yPosition += qLines.length * 6 + 4;
+      doc.setFontSize(16);
+      doc.setTextColor(79, 70, 229);
+      doc.text("Text Response Questions", margin, yPosition);
+      yPosition += 12;
 
-      if (analytics.type === "average") {
-        doc.setFontSize(11);
-        doc.setTextColor(60, 60, 60);
-        if (analytics.average !== undefined && analytics.maxRating !== undefined) {
-          doc.text(`Average Rating: ${analytics.average.toFixed(1)} / ${analytics.maxRating}`, margin + 5, yPosition);
-        } else {
-          doc.text("Average Rating: N/A", margin + 5, yPosition);
+      textQuestions.forEach((question, index) => {
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = 20;
         }
-        yPosition += 7;
-        doc.text(`Based on ${analytics.count} responses`, margin + 5, yPosition);
-        yPosition += 12;
-      } else if (analytics.type === "distribution") {
+
+        const analytics = getTextQuestionAnalytics(question);
+        if (!analytics) return;
+
+        doc.setFontSize(12);
+        doc.setTextColor(30, 30, 30);
+        const qText = `Q${index + 1}: ${question.question}`;
+        const qLines = doc.splitTextToSize(qText, maxWidth);
+        const lineHeight = 6;
+        doc.text(qLines, margin, yPosition);
+        yPosition += qLines.length * lineHeight + 4;
+
         doc.setFontSize(10);
-        doc.setTextColor(60, 60, 60);
-        if (analytics.chartData) {
-          analytics.chartData.forEach((item) => {
-            doc.text(`${item.answer}: ${item.count} responses (${item.percentage}%)`, margin + 5, yPosition);
-            yPosition += 6;
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Total Responses: ${analytics.totalResponses}`, margin + 5, yPosition);
+        yPosition += 7;
+
+        if (analytics.sampleResponses.length > 0) {
+          doc.setFontSize(10);
+          doc.setTextColor(60, 60, 60);
+          doc.text("Sample Responses:", margin + 5, yPosition);
+          yPosition += 6;
+          
+          analytics.sampleResponses.forEach((response, rIndex) => {
+            if (yPosition > 270) {
+              doc.addPage();
+              yPosition = 20;
+            }
+            const responseText = `${rIndex + 1}. ${response}`;
+            const responseLines = doc.splitTextToSize(responseText, maxWidth - 10);
+            doc.text(responseLines, margin + 10, yPosition);
+            yPosition += responseLines.length * 5 + 2;
           });
         }
         yPosition += 8;
-      }
-    });
+      });
+    }
 
     // Footer
     const totalPages = doc.getNumberOfPages();
@@ -535,7 +700,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     }
 
     // Download PDF
-    doc.save(`${form.title}Feedb-ACTS_Report.pdf`);
+    doc.save(`${form.title}Feedb-ACTS_Question_Analytics.pdf`);
+    toast.success("Question Analytics PDF downloaded!");
   };
 
   const renderResponseValue = (question: any, value: any) => {
@@ -772,18 +938,28 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
             <Button
               onClick={analyzeWithAI}
               disabled={responses.length === 0 || analyzingWithAI}
+              className="bg-green-600 hover:bg-green-700 text-white"
             >
               {analyzingWithAI ? (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Generating Report...
+                  Analyzing...
                 </>
               ) : (
                 <>
                   <Brain className="w-4 h-4 mr-2" />
-                  Generate Report
+                  AI Insights
                 </>
               )}
+            </Button>
+            <Button
+              onClick={generateQuestionAnalyticsPDF}
+              disabled={responses.length === 0}
+              variant="outline"
+              className="border-blue-300 text-blue-700 hover:bg-blue-50"
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Question Analytics
             </Button>
           </div>
         </div>
@@ -841,14 +1017,10 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
       {/* Question Analytics Section (always shown) */}
       {applicableQuestions.length > 0 && (
-        <div className="space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-2 rounded-lg">
-              <BarChart3 className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-900">Question Analytics</h3>
-            </div>
+        <div className="space-y-4">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-blue-600" />
+            <h3 className="text-base font-semibold text-gray-900">Question Analytics</h3>
           </div>
           
           {questionsBySection.map((sectionGroup, sectionIndex) => (

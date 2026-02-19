@@ -22,8 +22,10 @@ export function useQuestions() {
 
   // Add a new section
   const addSection = useCallback((title: string = "New Section", description?: string) => {
+    // Generate a unique ID using timestamp + random suffix to avoid collisions
+    const uniqueId = `section_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newSection: FormSection = {
-      id: `section_${Date.now()}`,
+      id: uniqueId,
       title,
       description,
       order: getNextOrder(),
@@ -110,8 +112,10 @@ export function useQuestions() {
   const addQuestion = useCallback((type: QuestionType = "text", data?: Partial<FormQuestion>) => {
     // Only set order for standalone questions (not in a section)
     const questionOrder = data?.sectionId ? undefined : (data?.order ?? getNextOrder());
+    // Generate a unique ID using timestamp + random suffix to avoid collisions
+    const uniqueId = data?.id || `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newQuestion: FormQuestion = {
-      id: data?.id || Date.now().toString(),
+      id: uniqueId,
       type: type,
       question: data?.question || "",
       description: data?.description,
@@ -139,9 +143,10 @@ export function useQuestions() {
     (id: string) => {
       const question = questions.find((q) => q.id === id);
       if (question) {
+        // Generate a unique ID using timestamp + random suffix to avoid collisions
         const newQuestion = {
           ...question,
-          id: Date.now().toString(),
+          id: `q_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           question: question.question + " (Copy)",
           options: question.options ? [...question.options] : undefined,
         };
@@ -301,22 +306,31 @@ export function useQuestions() {
   // Load questions from API data
   const loadQuestions = useCallback((apiQuestions: any[]) => {
     if (apiQuestions && apiQuestions.length > 0) {
-      const questions = apiQuestions.map((q: any, index: number) => ({
-        id: q.id?.toString() || `q_${index + 1}`,
-        type: q.question_type || q.type || "text",
-        question: q.question_text || q.question || "",
-        description: q.description || "",
-        required: q.required || false,
-        options: q.options
-          ? q.options
-              .map((opt: any) => opt.option_text)
-              .filter((opt: string) => opt && opt.trim() !== "")
-          : undefined,
-        min: q.min_value,
-        max: q.max_value,
-        sectionId: q.sectionId?.toString() || q.section_id?.toString() || undefined,
-        order: q.order ?? q.order_index ?? index, // Load order for standalone questions
-      }));
+      // First, convert to questions and filter out duplicates by ID
+      const questionsMap = new Map<string, FormQuestion>();
+      apiQuestions.forEach((q: any, index: number) => {
+        const id = q.id?.toString() || `q_${index + 1}`;
+        // Only add if not already present (first occurrence wins)
+        if (id && !questionsMap.has(id)) {
+          questionsMap.set(id, {
+            id,
+            type: q.question_type || q.type || "text",
+            question: q.question_text || q.question || "",
+            description: q.description || "",
+            required: q.required || false,
+            options: q.options
+              ? q.options
+                  .map((opt: any) => opt.option_text)
+                  .filter((opt: string) => opt && opt.trim() !== "")
+              : undefined,
+            min: q.min_value,
+            max: q.max_value,
+            sectionId: q.sectionId?.toString() || q.section_id?.toString() || undefined,
+            order: q.order ?? q.order_index ?? index, // Load order for standalone questions
+          });
+        }
+      });
+      const questions = Array.from(questionsMap.values());
       setQuestions(questions);
       setActiveQuestion(questions[0]?.id || null);
     } else {
@@ -328,13 +342,21 @@ export function useQuestions() {
   // Load sections from API data
   const loadSections = useCallback((apiSections: any[]) => {
     if (apiSections && apiSections.length > 0) {
-      const sections = apiSections.map((s: any) => ({
-        id: s.id?.toString() || s.id,
-        title: s.title || "",
-        description: s.description || "",
-        order: s.order ?? s.order_index ?? 0,
-      }));
-      setSections(sections);
+      // First, convert to sections and filter out duplicates by ID
+      const sectionsMap = new Map<string, FormSection>();
+      apiSections.forEach((s: any) => {
+        const id = s.id?.toString() || s.id;
+        // Only add if not already present (first occurrence wins)
+        if (id && !sectionsMap.has(id)) {
+          sectionsMap.set(id, {
+            id,
+            title: s.title || "",
+            description: s.description || "",
+            order: s.order ?? s.order_index ?? 0,
+          });
+        }
+      });
+      setSections(Array.from(sectionsMap.values()));
     } else {
       setSections([]);
     }

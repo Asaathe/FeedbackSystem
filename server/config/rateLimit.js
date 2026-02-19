@@ -5,7 +5,7 @@ const rateLimit = require("express-rate-limit");
 const RATE_LIMIT_WINDOW_MS =
   parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX_REQUESTS =
-  parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100;
+  parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 500; // Increased to 500 for university systems
 
 /**
  * Rate limiter for authentication endpoints
@@ -25,11 +25,11 @@ const authLimiter = rateLimit({
 
 /**
  * Rate limiter for form submissions
- * Limits: 100 requests per hour
+ * Limits: 500 requests per hour for university systems with many students
  */
 const formSubmissionLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 100,
+  max: 500,
   message: {
     success: false,
     message: "Too many form submissions, please try again later.",

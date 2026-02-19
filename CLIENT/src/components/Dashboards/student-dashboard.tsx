@@ -68,8 +68,22 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
   }, []);
 
   // Transform published forms to match expected format
+  const isOverdue = (dueDate: string | undefined) => {
+    if (!dueDate || dueDate === 'No due date') return false;
+    const date = new Date(dueDate);
+    return isNaN(date.getTime()) ? false : date < new Date();
+  };
+
   const pendingForms = publishedForms
-    .filter(form => form.assignment_status === 'pending' && !submittedFormIds.has(form.id))
+    .filter(form => {
+      // Filter out already submitted forms
+      if (submittedFormIds.has(form.id)) return false;
+      // Filter out completed forms
+      if (form.assignment_status === 'completed') return false;
+      // Filter out overdue forms
+      if (isOverdue(form.dueDate)) return false;
+      return true;
+    })
     .map(form => ({
       id: form.id,
       title: form.title,
@@ -78,6 +92,14 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
       dueDate: form.dueDate,
       priority: form.category === 'Academic' ? 'high' : 'medium',
     }));
+
+  // Get overdue forms count
+  const overdueFormsCount = publishedForms
+    .filter(form => {
+      if (submittedFormIds.has(form.id)) return false;
+      if (form.assignment_status === 'completed') return false;
+      return isOverdue(form.dueDate);
+    }).length;
 
   // Get completed forms count
   const completedFormsCount = publishedForms.filter(form => form.assignment_status === 'completed').length;
@@ -99,7 +121,18 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
           </CardHeader>
           <CardContent>
             <div className="text-3xl">{pendingForms.length}</div>
-            <p className="text-xs text-orange-600 mt-1">Due this week</p>
+            <p className="text-xs text-orange-600 mt-1">Awaiting your response</p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-100">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm text-gray-600">Overdue</CardTitle>
+            <AlertCircle className="w-5 h-5 text-red-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl">{overdueFormsCount}</div>
+            <p className="text-xs text-red-600 mt-1">Past due date</p>
           </CardContent>
         </Card>
 
@@ -125,16 +158,6 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
           </CardContent>
         </Card>
 
-        <Card className="border-green-100">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-gray-600">Active Courses</CardTitle>
-            <AlertCircle className="w-5 h-5 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl">5</div>
-            <p className="text-xs text-gray-600 mt-1">Fall 2025</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Pending Forms */}
@@ -201,7 +224,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {completedForms.map((form, index) => (
+            {completedForms.slice(0, 3).map((form, index) => (
               <div 
                 key={index}
                 className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
@@ -210,18 +233,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
                   <CheckCircle className="w-5 h-5 text-green-500" />
                   <div>
                     <p>{form.title}</p>
-                    <p className="text-sm text-gray-500">{form.date}</p>
                   </div>
-                </div>
-                <div className="flex gap-1">
-                  {[...Array(5)].map((_, i) => (
-                    <span 
-                      key={i} 
-                      className={`text-lg ${i < (form.rating || 0) ? 'text-yellow-400' : 'text-gray-300'}`}
-                    >
-                      ★
-                    </span>
-                  ))}
                 </div>
               </div>
             ))}

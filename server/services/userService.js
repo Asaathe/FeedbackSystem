@@ -201,6 +201,7 @@ const getAssignedForms = async (userId) => {
         submission_count: form.submission_count || 0,
         question_count: form.question_count || 0,
         created_at: form.created_at,
+        end_date: form.end_date,
         creator_name: form.creator_name,
         assignment_status: form.assignment_status || "pending",
         assigned_at: form.assigned_at,

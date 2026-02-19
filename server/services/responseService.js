@@ -420,6 +420,27 @@ const getUserResponses = async (userId) => {
       [userId]
     );
 
+    // Get questions for all forms
+    const formIds = [...new Set(responses.map(r => r.form_id))];
+    const questionsMap = {};
+    
+    if (formIds.length > 0) {
+      const placeholders = formIds.map(() => '?').join(',');
+      const questions = await queryDatabase(
+        db,
+        `SELECT id, form_id, question_text, order_index FROM questions WHERE form_id IN (${placeholders}) ORDER BY form_id, order_index`,
+        formIds
+      );
+      
+      // Group questions by form_id
+      for (const q of questions) {
+        if (!questionsMap[q.form_id]) {
+          questionsMap[q.form_id] = [];
+        }
+        questionsMap[q.form_id].push(q);
+      }
+    }
+
     return {
       success: true,
       responses: responses.map((r) => ({
@@ -429,6 +450,7 @@ const getUserResponses = async (userId) => {
         category: r.category,
         answers: r.response_data ? JSON.parse(r.response_data) : {},
         submitted_at: r.submitted_at,
+        questions: questionsMap[r.form_id] || [],
       })),
     };
   } catch (error) {

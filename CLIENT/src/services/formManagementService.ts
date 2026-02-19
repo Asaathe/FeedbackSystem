@@ -109,16 +109,22 @@ export const getForm = async (formId: string): Promise<{ success: boolean; form?
     if (result.success && result.form) {
       logDebug('Form fetched successfully');
       // Standardize question properties for consistency
+      const formSections = result.form.sections || [];
       const standardizedForm = {
         ...result.form,
-        questions: result.form.questions?.map((question: any) => ({
-          ...question,
-          type: question.question_type || question.type,
-          question: question.question_text || question.question,
-          sectionId: question.section_id || question.sectionId,
-        })),
+        questions: result.form.questions?.map((question: any) => {
+          // Find the section title if sectionId exists
+          const section = formSections.find((s: any) => s.id === question.section_id || s.id === question.sectionId);
+          return {
+            ...question,
+            type: question.question_type || question.type,
+            question: question.question_text || question.question,
+            sectionId: question.section_id || question.sectionId,
+            sectionTitle: section?.title || question.sectionTitle || null,
+          };
+        }),
         // Include sections if available
-        sections: result.form.sections || [],
+        sections: formSections,
       };
       return { success: true, form: standardizedForm, message: 'Form fetched successfully' };
     } else {
