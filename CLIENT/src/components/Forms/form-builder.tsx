@@ -1681,8 +1681,9 @@ export function FormBuilder({
                     <Label>Form Title *</Label>
                     <Input
                       value={formTitle}
-                      onChange={(e) => setFormTitle(e.target.value)}
+                      onChange={(e) => setFormTitle(e.target.value.slice(0, 50))}
                       placeholder="Name your feedback form"
+                      maxLength={50}
                     />
                   </div>
 
@@ -1691,10 +1692,11 @@ export function FormBuilder({
                     <Label>Form Description</Label>
                     <Textarea
                       value={formDescription}
-                      onChange={(e) => setFormDescription(e.target.value)}
+                      onChange={(e) => setFormDescription(e.target.value.slice(0, 100))}
                       placeholder="Describe your form (optional)"
                       rows={3}
                       className="resize-none"
+                      maxLength={100}
                     />
                   </div>
 

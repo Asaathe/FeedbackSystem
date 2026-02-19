@@ -855,17 +855,19 @@ export function FeedbackFormsManagement({
               <Label>Form Title</Label>
               <Input
                 value={editFormTitle}
-                onChange={(e) => setEditFormTitle(e.target.value)}
+                onChange={(e) => setEditFormTitle(e.target.value.slice(0, 50))}
                 placeholder="Enter form title"
+                maxLength={50}
               />
             </div>
             <div className="space-y-2">
               <Label>Description</Label>
               <Textarea
                 value={editFormDescription}
-                onChange={(e) => setEditFormDescription(e.target.value)}
+                onChange={(e) => setEditFormDescription(e.target.value.slice(0, 100))}
                 placeholder="Brief description"
                 rows={3}
+                maxLength={100}
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1067,7 +1069,7 @@ export function FeedbackFormsManagement({
                 {filteredCustomForms.map((form) => (
                   <Card
                     key={form.id}
-                    className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden"
+                    className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
                   >
                     {/* Image or Placeholder */}
                     <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100 flex items-center justify-center">
@@ -1078,14 +1080,14 @@ export function FeedbackFormsManagement({
                       />
                     </div>
 
-                    <CardHeader>
+                    <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg">
-                            {form.title}
+                        <div className="flex-1 min-h-[60px]">
+                          <CardTitle className="text-lg line-clamp-2">
+                            {form.title.slice(0, 50)}
                           </CardTitle>
-                          <p className="text-sm text-gray-500 mt-1">
-                            {form.description}
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+                            {(form.description || "No description").slice(0, 100)}
                           </p>
                         </div>
                         <DropdownMenu>
@@ -1127,7 +1129,7 @@ export function FeedbackFormsManagement({
                         </DropdownMenu>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-2 flex-1">
                       {/* In feedback-forms-management.tsx - Custom Forms Section */}
                       <div className="flex flex-wrap gap-1.5 min-h-[32px] items-start">
                         <Badge
@@ -1160,7 +1162,7 @@ export function FeedbackFormsManagement({
                           {form.target_audience}
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-2 text-sm border-t pt-3">
                         <div>
                           <p className="text-gray-500">Responses</p>
                           <p className="font-medium">{form.submission_count}</p>
@@ -1211,7 +1213,7 @@ export function FeedbackFormsManagement({
                 {filteredTemplateForms.map((template) => (
                   <Card
                     key={template.id}
-                    className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden"
+                    className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden flex flex-col"
                   >
                     {/* Add image display here */}
                     <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
@@ -1222,17 +1224,17 @@ export function FeedbackFormsManagement({
                       />
                     </div>
 
-                    <CardHeader>
+                    <CardHeader className="pb-2">
                       <div className="flex items-start justify-between">
-                        <div className="flex-1">
+                        <div className="flex-1 min-h-[60px]">
                           <div className="flex items-center gap-2 mb-2">
-                            <CardTitle className="text-lg">
-                              {template.title}
+                            <CardTitle className="text-lg line-clamp-2">
+                              {template.title.slice(0, 50)}
                             </CardTitle>
-                            <Star className="w-4 h-4 text-purple-500 fill-purple-500" />
+                            <Star className="w-4 h-4 text-purple-500 fill-purple-500 shrink-0" />
                           </div>
-                          <p className="text-sm text-gray-500">
-                            {template.description}
+                          <p className="text-sm text-gray-500 line-clamp-2">
+                            {(template.description || "No description").slice(0, 100)}
                           </p>
                         </div>
                         <DropdownMenu>
@@ -1265,7 +1267,7 @@ export function FeedbackFormsManagement({
                         </DropdownMenu>
                       </div>
                     </CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardContent className="space-y-3 pt-2 flex-1">
                       <div className="flex gap-2 flex-wrap min-h-[32px] items-start">
                         <Badge
                           variant="secondary"
@@ -1284,7 +1286,7 @@ export function FeedbackFormsManagement({
                           {template.category}
                         </Badge>
                       </div>
-                      <div className="text-sm">
+                      <div className="text-sm border-t pt-3">
                         <p className="text-gray-500">Questions</p>
                         <p className="font-medium">
                           {getQuestionCount(template) > 0
