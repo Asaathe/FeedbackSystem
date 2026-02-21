@@ -288,6 +288,8 @@ const createForm = async (formData, userId) => {
       imageUrl,
       isTemplate = false,
     } = formData;
+    
+    console.log('🔍 SERVER formService createForm: ai_description received:', ai_description);
 
     // Validate form data
     const validation = validateFormData(formData);
@@ -459,14 +461,16 @@ const updateForm = async (formId, updates, userId) => {
       "image_url",
       "status",
     ];
+    
+    console.log('🔍 SERVER formService: updates object:', JSON.stringify(updates));
+    console.log('🔍 SERVER formService: ai_description value:', updates.ai_description);
+    
     const updateFields = [];
     const updateValues = [];
 
     for (const field of allowedFields) {
-      if (field === "ai_description" && updates[field] !== undefined) {
-        updateFields.push(`${field} = ?`);
-        updateValues.push(updates[field]);
-      } else if (field !== "ai_description" && updates[field] !== undefined) {
+      if (updates[field] !== undefined) {
+        console.log('🔍 SERVER formService: Adding field to update:', field, '=', updates[field]);
         updateFields.push(`${field} = ?`);
         updateValues.push(updates[field]);
       }

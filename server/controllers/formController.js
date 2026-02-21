@@ -83,6 +83,10 @@ const updateForm = async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
     const updates = req.body;
+    
+    console.log('🔍 SERVER: updateForm called with id:', id);
+    console.log('🔍 SERVER: updates received:', JSON.stringify(updates));
+    console.log('🔍 SERVER: ai_description in updates:', updates.ai_description);
 
     const result = await formService.updateForm(id, updates, userId);
 

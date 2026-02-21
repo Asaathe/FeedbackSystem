@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Card,
   CardContent,
@@ -220,6 +220,77 @@ export function FormBuilder({
   // AI Question Generation States
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
+  // Track unsaved changes for "Are you sure you want to leave?" warning
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isFormLoaded, setIsFormLoaded] = useState(false);
+  
+  // Store original/saved form state to compare against for detecting actual changes
+  const [originalFormState, setOriginalFormState] = useState({
+    title: "",
+    description: "",
+    questionsCount: 0,
+  });
+
+  // For new forms (no formId), mark as loaded immediately with empty original state
+  useEffect(() => {
+    if (!formId) {
+      setOriginalFormState({
+        title: "",
+        description: "",
+        questionsCount: 0,
+      });
+      setIsFormLoaded(true);
+    }
+  }, [formId]);
+
+  // Set up beforeunload warning when user tries to leave/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes. Are you sure you want to leave?";
+        return "You have unsaved changes. Are you sure you want to leave?";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [hasUnsavedChanges]);
+
+  // Track when form has unsaved changes
+  // This effect compares current form state against original saved state
+  useEffect(() => {
+    // Only check for unsaved changes after the form has been fully loaded
+    if (!isFormLoaded) return;
+    
+    // Compare current form state against original saved state
+    const hasChanges = 
+      formTitle !== originalFormState.title ||
+      formDescription !== originalFormState.description ||
+      questions.length !== originalFormState.questionsCount;
+    
+    if (hasChanges && !hasUnsavedChanges) {
+      setHasUnsavedChanges(true);
+    } else if (!hasChanges && hasUnsavedChanges) {
+      setHasUnsavedChanges(false);
+    }
+  }, [formTitle, formDescription, questions, isFormLoaded, originalFormState, hasUnsavedChanges]);
+
+  // Handle going back with unsaved changes warning
+  const handleGoBack = () => {
+    if (hasUnsavedChanges) {
+      const confirmLeave = window.confirm(
+        "You have unsaved changes. Are you sure you want to leave?"
+      );
+      if (!confirmLeave) {
+        return; // User cancelled
+      }
+    }
+    onBack();
+  };
+
   // State to track loaded recipients and instructors from existing form
   const [loadedRecipientIds, setLoadedRecipientIds] = useState<Set<number>>(new Set());
   const [loadedInstructorIds, setLoadedInstructorIds] = useState<Set<number>>(new Set());
@@ -244,6 +315,13 @@ export function FormBuilder({
             setFormImage(form.image_url || null);
             setIsPublished(form.status === "active");
             setAiDescription(form.ai_description || "");
+            
+            // Store original form state (but don't mark as loaded yet)
+            setOriginalFormState({
+              title: form.title || "",
+              description: form.description || "",
+              questionsCount: form.questions?.length || 0,
+            });
 
             // Parse target_audience to set audience selection fields
             // First, check if there's deployment data with target_filters
@@ -383,6 +461,10 @@ export function FormBuilder({
 
             // Load questions
             loadQuestions(form.questions || []);
+            
+            // Mark form as fully loaded after questions are loaded
+            setIsFormLoaded(true);
+            setHasUnsavedChanges(false);
 
             // Load sections
             if (form.sections && form.sections.length > 0) {
@@ -530,6 +612,14 @@ export function FormBuilder({
     const cleanedQuestions = cleanQuestions(questions);
     const success = await saveForm(cleanedQuestions, sections);
     if (success) {
+      // Update original state to match current state after saving
+      setOriginalFormState({
+        title: formTitle,
+        description: formDescription,
+        questionsCount: questions.length,
+      });
+      setHasUnsavedChanges(false); // Clear unsaved changes after saving
+      // Navigate back directly since we just saved
       setTimeout(() => {
         onBack();
       }, 1000);
@@ -621,6 +711,14 @@ export function FormBuilder({
 
       if (deployResult.success) {
         setPublishDialogOpen(false);
+        // Update original state to match current state after publishing
+        setOriginalFormState({
+          title: formTitle,
+          description: formDescription,
+          questionsCount: questions.length,
+        });
+        setHasUnsavedChanges(false); // Clear unsaved changes after publishing
+        // Navigate back directly since we just published
         setTimeout(() => {
           onBack();
         }, 1500);
@@ -770,7 +868,7 @@ export function FormBuilder({
             <div className="flex items-center gap-2 sm:gap-4 flex-1 min-w-0">
               <Button
                 variant="ghost"
-                onClick={onBack}
+                onClick={handleGoBack}
                 className="hover:bg-green-50 shrink-0 h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                 size="sm"
               >

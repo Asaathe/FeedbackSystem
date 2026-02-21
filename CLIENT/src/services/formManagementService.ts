@@ -2,7 +2,7 @@
 // Handles CRUD operations for forms via API
 
 // Debug mode - set to true to enable detailed logging
-const DEBUG_MODE = true;
+const DEBUG_MODE = false;
 
 const logDebug = (...args: any[]) => {
   if (DEBUG_MODE) {
@@ -267,12 +267,15 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
 
     // Map camelCase to snake_case for API
     const mappedRequestData: any = { ...requestData };
-    if (mappedRequestData.aiDescription !== undefined) {
+    
+    // Handle aiDescription - always ensure it's converted to ai_description
+    if ('aiDescription' in mappedRequestData) {
       mappedRequestData.ai_description = mappedRequestData.aiDescription;
       delete mappedRequestData.aiDescription;
     }
+    
     logDebug('Mapped request data:', mappedRequestData);
-    console.log('🔍 CLIENT: Form creation request data:', JSON.stringify(mappedRequestData, null, 2));
+    console.log('🔍 CLIENT: Form creation ai_description:', mappedRequestData.ai_description);
     console.log('🔍 CLIENT: Sections being sent:', mappedRequestData.sections);
     if (requestData.questions && requestData.questions.length > 0) {
       console.log('🔍 CLIENT: Questions being sent:', requestData.questions.map((q, i) => ({
@@ -332,10 +335,14 @@ export const updateForm = async (
 
     // Map camelCase to snake_case for API
     const mappedUpdates: any = { ...updates };
-    if (mappedUpdates.aiDescription !== undefined) {
+    
+    // Handle aiDescription - always ensure it's converted to ai_description
+    if ('aiDescription' in mappedUpdates) {
       mappedUpdates.ai_description = mappedUpdates.aiDescription;
       delete mappedUpdates.aiDescription;
     }
+    
+    console.log('🔍 CLIENT: Mapped updates:', JSON.stringify(mappedUpdates));
 
     const response = await fetch(`/api/forms/${formId}`, {
       method: 'PATCH',

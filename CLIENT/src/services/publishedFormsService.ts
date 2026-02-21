@@ -236,6 +236,7 @@ export interface SharedResponse {
   id: string;
   formId: string;
   formTitle: string;
+  category?: string;
   courseCode: string;
   section: string;
   sharedBy: string;

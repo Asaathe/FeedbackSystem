@@ -16,7 +16,8 @@ import {
   Lock,
   HelpCircle,
   Shield,
-  BookOpen
+  BookOpen,
+  Book
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 
@@ -94,6 +95,8 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'forms', label: 'Feedback Forms', icon: FileText },
         { id: 'users', label: 'User Management', icon: Users },
         { id: 'courses', label: 'Course Management', icon: BookOpen },
+        { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
+
       ]
     : role === 'employer'
     ? [
@@ -106,6 +109,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'my-feedback', label: 'My Feedback', icon: FileText },
         { id: 'submit-feedback', label: 'Submit Feedback', icon: FileText },
+        { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
       ]
     : role === 'staff'
     ? [

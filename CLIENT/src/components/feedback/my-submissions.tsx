@@ -37,7 +37,11 @@ interface AssignedForm {
   responseId?: number;
 }
 
-export function MySubmissions() {
+interface MySubmissionsProps {
+  userRole?: string;
+}
+
+export function MySubmissions({ userRole = 'student' }: MySubmissionsProps) {
   const [assignedForms, setAssignedForms] = useState<AssignedForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedForm, setSelectedForm] = useState<FormResponse | null>(null);
@@ -68,8 +72,8 @@ export function MySubmissions() {
         submittedForms = result.responses || [];
       }
 
-      // Fetch all assigned forms
-      const forms = await getFormsForUserRole('student');
+      // Fetch all assigned forms based on user role
+      const forms = await getFormsForUserRole(userRole);
       
       // Combine and determine status
       const submittedIds = new Set(submittedForms.map(s => String(s.form_id)));
@@ -157,6 +161,12 @@ export function MySubmissions() {
   };
 
   const getQuestionText = (questionId: string, questions: Question[]) => {
+    // If no questions provided, return the key as-is
+    if (!questions || questions.length === 0) {
+      return `Question ${questionId.replace(/\D/g, '') || 'Unknown'}`;
+    }
+    
+    // Try to match q1, q2 format (array index)
     const match = questionId.match(/q(\d+)/i);
     if (match) {
       const index = parseInt(match[1]) - 1;
@@ -164,12 +174,38 @@ export function MySubmissions() {
         return questions[index].question_text;
       }
     }
-    const qid = parseInt(questionId.replace(/\D/g, ""));
-    const found = questions?.find(q => q.id === qid);
-    if (found) {
-      return found.question_text;
+    
+    // Try to find by exact ID match (both as number and string)
+    const qidNum = parseInt(questionId.replace(/\D/g, ""));
+    if (!isNaN(qidNum)) {
+      // Try finding by id
+      const foundById = questions?.find(q => q.id === qidNum);
+      if (foundById) {
+        return foundById.question_text;
+      }
+      // Try finding by order_index (1-based)
+      const foundByOrder = questions?.find(q => q.order_index === qidNum);
+      if (foundByOrder) {
+        return foundByOrder.question_text;
+      }
     }
-    return questionId.replace(/_/g, " ");
+    
+    // If still not found, try partial match on question text
+    const cleanKey = questionId.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const foundByPartial = questions?.find(q => {
+      const cleanQ = q.question_text.toLowerCase().replace(/[^a-z0-9]/g, '');
+      return cleanKey.includes(cleanQ) || cleanQ.includes(cleanKey);
+    });
+    if (foundByPartial) {
+      return foundByPartial.question_text;
+    }
+    
+    // Fallback: try to get any question that might match
+    if (questions.length > 0) {
+      return questions[0].question_text;
+    }
+    
+    return `Question ${questionId.replace(/\D/g, '') || 'Unknown'}`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -295,7 +331,7 @@ export function MySubmissions() {
 
       {/* View Response Modal */}
       <Dialog open={!!selectedForm} onOpenChange={() => setSelectedForm(null)}>
-        <DialogContent className="max-w-3xl w-[95vw] max-h-[80vh] p-0 overflow-hidden">
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] p-0 overflow-hidden">
           <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10 flex items-center justify-between">
             <div>
               <DialogTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">

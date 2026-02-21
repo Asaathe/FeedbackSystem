@@ -259,7 +259,7 @@ const getSharedResponses = async (userId) => {
       return { success: false, message: "Access denied", responses: [] };
     }
 
-    // Get shared responses (forms shared with instructors)
+    // Get shared responses (forms explicitly shared with this instructor)
     const responses = await queryDatabase(
       db,
       `
@@ -267,18 +267,20 @@ const getSharedResponses = async (userId) => {
         f.id as form_id,
         f.title as form_title,
         f.category,
-        COUNT(fr.id) as total_responses,
-        GROUP_CONCAT(DISTINCT cm.course_section) as sections
-      FROM Forms f
+        f.target_audience,
+        sr.shared_at as shared_date,
+        sr.shared_by as shared_by_user_id,
+        ub.full_name as shared_by_name,
+        COUNT(fr.id) as total_responses
+      FROM shared_responses sr
+      INNER JOIN Forms f ON sr.form_id = f.id
+      LEFT JOIN Users ub ON sr.shared_by = ub.id
       LEFT JOIN Form_Responses fr ON f.id = fr.form_id
-      LEFT JOIN Users u ON fr.user_id = u.id
-      LEFT JOIN students s ON u.id = s.user_id
-      LEFT JOIN course_management cm ON s.program_id = cm.id
-      WHERE f.status = 'active'
-        AND f.target_audience IN ('Students', 'All Users')
+      WHERE sr.shared_with_instructor_id = ?
       GROUP BY f.id
-      ORDER BY f.created_at DESC
-    `
+      ORDER BY sr.shared_at DESC
+    `,
+      [userId]
     );
 
     return {
@@ -287,11 +289,13 @@ const getSharedResponses = async (userId) => {
         id: r.form_id,
         formId: r.form_id,
         formTitle: r.form_title,
-        category: r.category,
-        sections: r.sections ? r.sections.split(",") : [],
+        category: r.target_audience || r.category || 'General',
+        courseCode: r.form_title,
+        section: r.category || r.target_audience || 'General',
+        sections: [r.category || r.target_audience || 'General'],
         totalResponses: r.total_responses || 0,
-        sharedBy: "Administrator",
-        sharedDate: new Date().toISOString(),
+        sharedBy: r.shared_by_name || "Administrator",
+        sharedDate: r.shared_date ? new Date(r.shared_date).toLocaleDateString() : new Date().toLocaleDateString(),
       })),
     };
   } catch (error) {
@@ -325,6 +329,19 @@ const getSharedResponsesDetails = async (sharedId, userId) => {
       return { success: false, message: "Access denied", responses: [] };
     }
 
+    // Get questions for this form
+    const questions = await queryDatabase(
+      db,
+      `SELECT id, question_text, question_type FROM questions WHERE form_id = ? ORDER BY order_index`,
+      [sharedId]
+    );
+
+    // Create a map of question id to question text
+    const questionMap = {};
+    questions.forEach(q => {
+      questionMap[q.id] = { text: q.question_text, type: q.question_type };
+    });
+
     // Get detailed responses
     const responses = await queryDatabase(
       db,
@@ -347,11 +364,47 @@ const getSharedResponsesDetails = async (sharedId, userId) => {
       [sharedId]
     );
 
+    // Transform answers object to array format
+    const transformAnswers = (answersObj) => {
+      if (!answersObj || typeof answersObj !== 'object') return [];
+      
+      return Object.entries(answersObj).map(([key, value]) => {
+        // Try to extract question ID from key (e.g., "q1" -> 1)
+        const match = key.match(/^q(\d+)$/i);
+        let questionText = key;
+        let rating = undefined;
+
+        if (match) {
+          const qId = parseInt(match[1]);
+          if (questionMap[qId]) {
+            questionText = questionMap[qId].text;
+          }
+        } else {
+          // Try to parse as numeric ID directly
+          const numericId = parseInt(key);
+          if (!isNaN(numericId) && questionMap[numericId]) {
+            questionText = questionMap[numericId].text;
+          }
+        }
+
+        // Check if value is a rating (number between 1-5)
+        if (typeof value === 'number' && value >= 1 && value <= 5) {
+          rating = value;
+        }
+
+        return {
+          question: questionText,
+          answer: String(value),
+          rating: rating
+        };
+      });
+    };
+
     return {
       success: true,
       responses: responses.map((r) => ({
         id: r.id,
-        answers: r.response_data ? JSON.parse(r.response_data) : {},
+        answers: transformAnswers(r.response_data ? JSON.parse(r.response_data) : {}),
         submittedDate: r.submitted_at,
         email: r.email,
         fullName: r.full_name,
@@ -450,7 +503,12 @@ const getUserResponses = async (userId) => {
         category: r.category,
         answers: r.response_data ? JSON.parse(r.response_data) : {},
         submitted_at: r.submitted_at,
-        questions: questionsMap[r.form_id] || [],
+        questions: (questionsMap[r.form_id] || []).map(q => ({
+          id: q.id,
+          form_id: q.form_id,
+          question_text: q.question_text,
+          order_index: q.order_index
+        })),
       })),
     };
   } catch (error) {

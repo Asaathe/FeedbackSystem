@@ -13,8 +13,9 @@ import { Recipient, Instructor, FormFilters } from "../types/form";
 import { formatUserDetails, filterStudentsByDepartment } from "../utils/formValidation";
 
 const INSTRUCTOR_DEPARTMENTS = [
-  "Senior High Department",
-  "College Department",
+  "College",
+  "Senior High",
+  "Both",
 ];
 
 export function useRecipients() {

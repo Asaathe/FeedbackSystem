@@ -385,8 +385,8 @@ export function SignupPage({
             value={formData.department}
             onChange={(value) => handleChange("department", value)}
             options={[
-              { value: "College Department", label: "College Department" },
-              { value: "Senior High Department", label: "Senior High Department" },
+              { value: "College", label: "College" },
+              { value: "Senior High", label: "Senior High" },
               { value: "Both", label: "Both" },
             ]}
             placeholder="Select your department"

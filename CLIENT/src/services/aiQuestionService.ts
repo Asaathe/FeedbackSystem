@@ -163,9 +163,9 @@ Generate a clear and well-organized feedback form based on: "${description}"
 
 
 INSTRUCTIONS:
-1. Organize questions into 2 logical sections based on the topic
-2. Each section should have 3 questions
-3. Use appropriate question types:
+1. Organize questions into 3 logical sections based on the topic
+2. Each section should have 3 questions and 1 standalone question
+3. Use appropriate question types :
    - rating: 1-5 stars (for satisfaction/rating questions)
    - linear-scale: 1-10 scale (for detailed metrics)
    - multiple-choice: Single selection from options

@@ -97,18 +97,20 @@ export function InstructorFeedback() {
                     <div className="flex items-center gap-2 mb-2">
                       <CardTitle>{response.formTitle}</CardTitle>
                       <Badge variant="outline" className="border-green-200">
-                        {response.courseCode}
+                        {response.category || 'General'}
                       </Badge>
-                      <Badge variant="outline" className="border-blue-200">
-                        Section {response.section}
-                      </Badge>
+                      {response.section && (
+                        <Badge variant="outline" className="border-blue-200">
+                          {response.section}
+                        </Badge>
+                      )}
                     </div>
                     <p className="text-sm text-gray-600">
-                      Shared by {response.sharedBy} on {response.sharedDate}
+                      {response.totalResponses} response{response.totalResponses !== 1 ? 's' : ''}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-600">{response.totalResponses} responses</p>
+                    <p className="text-sm text-gray-500">{response.sharedDate}</p>
                   </div>
                 </div>
               </CardHeader>
