@@ -37,6 +37,12 @@ const CourseManagement = lazy(() =>
   }))
 );
 
+const StudentPromotion = lazy(() =>
+  import("./components/Admin/student-promotion").then((m) => ({
+    default: m.default,
+  }))
+);
+
 const StudentDashboard = lazy(() =>
   import("./components/Dashboards/student-dashboard").then((m) => ({
     default: m.StudentDashboard,
@@ -289,6 +295,8 @@ export default function App() {
           return <UserManagement />;
         case "courses":
           return <CourseManagement />;
+        case "student-promotion":
+          return <StudentPromotion />;
        
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;

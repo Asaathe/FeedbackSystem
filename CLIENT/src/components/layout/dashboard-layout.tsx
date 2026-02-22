@@ -95,6 +95,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'forms', label: 'Feedback Forms', icon: FileText },
         { id: 'users', label: 'User Management', icon: Users },
         { id: 'courses', label: 'Course Management', icon: BookOpen },
+        { id: 'student-promotion', label: 'Student Promotion', icon: GraduationCap },
         { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
 
       ]

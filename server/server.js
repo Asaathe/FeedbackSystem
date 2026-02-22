@@ -15,6 +15,7 @@ const courseRoutes = require("./routes/courses");
 const courseManagementRoutes = require("./routes/courseManagement");
 const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
+const studentPromotionRoutes = require("./routes/studentPromotion");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -107,6 +108,7 @@ app.use("/api/form-categories", formCategoriesRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/programs", courseManagementRoutes);
+app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
 
