@@ -106,6 +106,11 @@ export default function StudentPromotion() {
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   
+  // Pagination state
+  const [studentsPage, setStudentsPage] = useState(1);
+  const [historyPage, setHistoryPage] = useState(1);
+  const itemsPerPage = 15;
+  
   // Filter states
   const [selectedCourseSection, setSelectedCourseSection] = useState<string>("all");
   const [selectedTargetProgram, setSelectedTargetProgram] = useState<string>("select");
@@ -197,6 +202,7 @@ export default function StudentPromotion() {
   const handleCourseSectionChange = (value: string) => {
     setSelectedCourseSection(value);
     setSelectedStudents([]);
+    setStudentsPage(1);
   };
 
   // Handle student selection
@@ -323,6 +329,25 @@ export default function StudentPromotion() {
     return true;
   });
 
+  // Reset page when search changes
+  useEffect(() => {
+    setStudentsPage(1);
+  }, [searchTerm]);
+
+  // Paginated students
+  const totalStudentPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const paginatedStudents = filteredStudents.slice(
+    (studentsPage - 1) * itemsPerPage,
+    studentsPage * itemsPerPage
+  );
+
+  // Paginated history
+  const totalHistoryPages = Math.ceil(history.length / itemsPerPage);
+  const paginatedHistory = history.slice(
+    (historyPage - 1) * itemsPerPage,
+    historyPage * itemsPerPage
+  );
+
   // Group students by course_section for display
   const groupedStudents = filteredStudents.reduce((acc, student) => {
     const key = student.course_section || `${student.program_code} - ${student.year_level}${student.section}`;
@@ -342,24 +367,67 @@ export default function StudentPromotion() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="mb-4">
-          <TabsTrigger value="promote" className="flex items-center gap-2">
-            <ArrowRight className="h-4 w-4" />
-            Promote Students
-          </TabsTrigger>
-          <TabsTrigger value="graduate" className="flex items-center gap-2">
-            <Award className="h-4 w-4" />
-            Graduate Students
-          </TabsTrigger>
-          <TabsTrigger value="history" className="flex items-center gap-2">
-            <History className="h-4 w-4" />
-            History
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        {/* Custom Tab Navigation */}
+        <div className="mb-6">
+          <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
+            <button
+              onClick={() => setActiveTab("promote")}
+              className={`
+                flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg
+                text-sm font-medium transition-all duration-200 ease-in-out
+                ${activeTab === "promote"
+                  ? "bg-white text-primary shadow-sm ring-1 ring-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }
+              `}
+            >
+              <ArrowRight className={`h-4 w-4 ${activeTab === "promote" ? "text-blue-600" : "text-slate-500"}`} />
+              <span>Promote Students</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("graduate")}
+              className={`
+                flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg
+                text-sm font-medium transition-all duration-200 ease-in-out
+                ${activeTab === "graduate"
+                  ? "bg-white text-primary shadow-sm ring-1 ring-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }
+              `}
+            >
+              <Award className={`h-4 w-4 ${activeTab === "graduate" ? "text-amber-600" : "text-slate-500"}`} />
+              <span>Graduate Students</span>
+              {selectedStudents.length > 0 && (
+                <span className="ml-1 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-semibold">
+                  {selectedStudents.length}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setActiveTab("history")}
+              className={`
+                flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg
+                text-sm font-medium transition-all duration-200 ease-in-out
+                ${activeTab === "history"
+                  ? "bg-white text-primary shadow-sm ring-1 ring-slate-200"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+                }
+              `}
+            >
+              <History className={`h-4 w-4 ${activeTab === "history" ? "text-emerald-600" : "text-slate-500"}`} />
+              <span>History</span>
+              {history.length > 0 && (
+                <span className="ml-1 bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full font-semibold">
+                  {history.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
 
         {/* Promote Tab */}
-        <TabsContent value="promote">
+        <TabsContent value="promote" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -398,7 +466,7 @@ export default function StudentPromotion() {
                   </div>
                 </div>
                 <div className="text-sm text-gray-600">
-                  {students.length} student(s) in selected section
+                  Showing {paginatedStudents.length} of {filteredStudents.length} student(s)
                 </div>
               </div>
 
@@ -409,7 +477,7 @@ export default function StudentPromotion() {
                     <TableRow>
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedStudents.length === filteredStudents.length && filteredStudents.length > 0}
+                          checked={selectedStudents.length === paginatedStudents.length && paginatedStudents.length > 0}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
@@ -437,7 +505,7 @@ export default function StudentPromotion() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredStudents.map((student) => (
+                      paginatedStudents.map((student) => (
                         <TableRow key={student.student_id}>
                           <TableCell>
                             <Checkbox
@@ -459,6 +527,33 @@ export default function StudentPromotion() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination Controls */}
+              {totalStudentPages > 1 && (
+                <div className="flex items-center justify-between mt-4 px-2">
+                  <div className="text-sm text-gray-600">
+                    Page {studentsPage} of {totalStudentPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setStudentsPage(p => Math.max(1, p - 1))}
+                      disabled={studentsPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setStudentsPage(p => Math.min(totalStudentPages, p + 1))}
+                      disabled={studentsPage === totalStudentPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Promotion Options */}
               <div className="mt-4 space-y-4">
@@ -541,7 +636,7 @@ export default function StudentPromotion() {
         </TabsContent>
 
         {/* Graduate Tab */}
-        <TabsContent value="graduate">
+        <TabsContent value="graduate" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -592,7 +687,7 @@ export default function StudentPromotion() {
         </TabsContent>
 
         {/* History Tab */}
-        <TabsContent value="history">
+        <TabsContent value="history" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -606,59 +701,88 @@ export default function StudentPromotion() {
                   No promotion history yet
                 </div>
               ) : (
-                <div className="rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Student</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>From</TableHead>
-                        <TableHead>To</TableHead>
-                        <TableHead>Promoted By</TableHead>
-                        <TableHead>Notes</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {history.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>{new Date(item.promotion_date).toLocaleDateString()}</TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{item.student_name}</div>
-                              <div className="text-xs text-gray-500">{item.studentID}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={item.promotion_type === "graduation" ? "default" : "secondary"}>
-                              {item.promotion_type === "graduation" ? "Graduated" : "Promoted"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {item.old_program_code ? (
-                              <span className="text-sm">
-                                {item.old_program_code} - Yr {item.old_year_level} {item.old_section}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">-</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            {item.new_program_code ? (
-                              <span className="text-sm">
-                                {item.new_program_code} - Yr {item.new_year_level} {item.new_section}
-                              </span>
-                            ) : (
-                              <span className="text-gray-400">Alumni</span>
-                            )}
-                          </TableCell>
-                          <TableCell>{item.promoted_by_name}</TableCell>
-                          <TableCell className="text-sm text-gray-600">{item.notes}</TableCell>
+                <>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Student</TableHead>
+                          <TableHead>Type</TableHead>
+                          <TableHead>From</TableHead>
+                          <TableHead>To</TableHead>
+                          <TableHead>Promoted By</TableHead>
+                          <TableHead>Notes</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {paginatedHistory.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>{new Date(item.promotion_date).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                              <div>
+                                <div className="font-medium">{item.student_name}</div>
+                                <div className="text-xs text-gray-500">{item.studentID}</div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant={item.promotion_type === "graduation" ? "default" : "secondary"}>
+                                {item.promotion_type === "graduation" ? "Graduated" : "Promoted"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              {item.old_program_code ? (
+                                <span className="text-sm">
+                                  {item.old_program_code} - Yr {item.old_year_level} {item.old_section}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {item.new_program_code ? (
+                                <span className="text-sm">
+                                  {item.new_program_code} - Yr {item.new_year_level} {item.new_section}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">Alumni</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{item.promoted_by_name}</TableCell>
+                            <TableCell className="text-sm text-gray-600">{item.notes}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  
+                  {/* History Pagination */}
+                  {totalHistoryPages > 1 && (
+                    <div className="flex items-center justify-between mt-4 px-2">
+                      <div className="text-sm text-gray-600">
+                        Page {historyPage} of {totalHistoryPages}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                          disabled={historyPage === 1}
+                        >
+                          Previous
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setHistoryPage(p => Math.min(totalHistoryPages, p + 1))}
+                          disabled={historyPage === totalHistoryPages}
+                        >
+                          Next
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </CardContent>
           </Card>
