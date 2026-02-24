@@ -71,14 +71,15 @@ const registerUser = async (userData) => {
       case "student":
         await queryDatabase(
           db,
-          `INSERT INTO students (user_id, studentID, program_id, contact_number, subjects)
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO students (user_id, studentID, program_id, contact_number, subjects, image)
+           VALUES (?, ?, ?, ?, ?, ?)`,
           [
             userId,
             student_id,
             program_id,
             userData.contactNumber || "",
             userData.subjects || "",
+            userData.profilePicture || null,
           ]
         );
         break;
@@ -191,6 +192,19 @@ const loginUser = async (email, password) => {
     const token = generateToken(user.id);
     console.log('[LOGIN DEBUG] Login successful for user:', user.id);
 
+    // Get profile picture for students
+    let profilePicture = null;
+    if (user.role === 'student') {
+      const studentData = await queryDatabase(
+        db,
+        "SELECT image FROM students WHERE user_id = ?",
+        [user.id]
+      );
+      if (studentData.length > 0) {
+        profilePicture = studentData[0].image;
+      }
+    }
+
     return {
       success: true,
       message: "Login successful",
@@ -202,6 +216,7 @@ const loginUser = async (email, password) => {
         fullName: user.full_name,
         role: user.role,
         status: user.status,
+        profilePicture: profilePicture,
       },
     };
   } catch (error) {
@@ -236,6 +251,19 @@ const verifyUserToken = async (token) => {
       return { success: false, message: "Account is not active" };
     }
 
+    // Get profile picture for students
+    let profilePicture = null;
+    if (user.role === 'student') {
+      const studentData = await queryDatabase(
+        db,
+        "SELECT image FROM students WHERE user_id = ?",
+        [user.id]
+      );
+      if (studentData.length > 0) {
+        profilePicture = studentData[0].image;
+      }
+    }
+
     return {
       success: true,
       user: {
@@ -243,6 +271,8 @@ const verifyUserToken = async (token) => {
         email: user.email,
         fullName: user.full_name,
         role: user.role,
+        status: user.status,
+        profilePicture: profilePicture,
       },
     };
   } catch (error) {

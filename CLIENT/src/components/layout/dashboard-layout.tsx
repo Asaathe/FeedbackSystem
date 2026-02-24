@@ -20,6 +20,7 @@ import {
   Book
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
+import { formatImageUrl } from "../../utils/imageUtils";
 
 import {
   DropdownMenu,
@@ -41,6 +42,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children, currentPage, onNavigate, onLogout, role }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userName, setUserName] = useState<string>("");
+  const [profilePicture, setProfilePicture] = useState<string>("");
 
   useEffect(() => {
     const fetchUserName = async () => {
@@ -56,6 +58,11 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
           if (data.success && data.user) {
             // Handle both snake_case and camelCase field names
             setUserName(data.user.full_name || data.user.fullName || '');
+            // Set profile picture if available
+            const pic = data.user.profilePicture || data.user.image || '';
+            if (pic) {
+              setProfilePicture(pic);
+            }
           }
         } catch (error) {
           console.error('Failed to fetch user name:', error);
@@ -199,9 +206,17 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="flex items-center gap-2 hover:bg-green-50">
                   <Avatar className="w-8 h-8">
-                    <AvatarFallback className="bg-green-500 text-white text-xs">
-                      {roleInitials}
-                    </AvatarFallback>
+                    {profilePicture ? (
+                      <img
+                        src={formatImageUrl(profilePicture)}
+                        alt="Profile"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <AvatarFallback className="bg-green-500 text-white text-xs">
+                        {roleInitials}
+                      </AvatarFallback>
+                    )}
                   </Avatar>
                   <div className="hidden md:flex flex-col items-start">
                     <span className="text-sm">{getUserName()}</span>

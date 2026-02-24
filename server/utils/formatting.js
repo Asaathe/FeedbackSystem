@@ -103,6 +103,11 @@ const formatUserResponse = (user) => {
     createdAt: user.registration_date || user.created_at,
   };
 
+  // Add profile picture if it exists
+  if (user.profilePicture !== undefined) {
+    formatted.profilePicture = user.profilePicture;
+  }
+
   // Add lastLogin only if it exists in the user object
   if (user.last_login !== undefined) {
     formatted.lastLogin = user.last_login;

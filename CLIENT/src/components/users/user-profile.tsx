@@ -5,6 +5,7 @@ import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Badge } from "../ui/badge";
+import { formatImageUrl } from "../../utils/imageUtils";
 import {
   User,
   Mail,
@@ -31,6 +32,7 @@ interface UserData {
   fullName: string;
   role: string;
   status: string;
+  profilePicture?: string;
   // Student fields
   studentId?: string;
   courseYrSection?: string;
@@ -61,6 +63,7 @@ const mapApiToUserData = (apiUser: Record<string, any>): UserData => {
     fullName: apiUser.full_name || apiUser.fullName,
     role: apiUser.role,
     status: apiUser.status,
+    profilePicture: apiUser.profilePicture || apiUser.image || null,
     // Student fields
     studentId: apiUser.studentID || apiUser.studentId,
     courseYrSection: apiUser.course_yr_section || apiUser.courseYrSection,
@@ -230,10 +233,18 @@ export function UserProfile() {
             {/* Profile Picture Section */}
             <div className="flex items-center gap-6 pb-6 border-b border-gray-200">
               <div className="relative">
-                <Avatar className="w-24 h-24">
-                  <AvatarFallback className="bg-green-100 text-green-700 text-2xl">
-                    {roleInitials}
-                  </AvatarFallback>
+                <Avatar className="w-24 h-24 border-4 border-green-100 shadow-md">
+                  {userData.profilePicture ? (
+                    <img
+                      src={formatImageUrl(userData.profilePicture)}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-green-100 text-green-700 text-2xl">
+                      {roleInitials}
+                    </AvatarFallback>
+                  )}
                 </Avatar>
                 {isEditing && (
                   <Button

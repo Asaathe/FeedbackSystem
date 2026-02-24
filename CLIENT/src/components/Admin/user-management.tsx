@@ -4,7 +4,8 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
-import { Search, UserPlus, Filter, MoreVertical, Trash2, CheckCircle, XCircle, Edit, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, UserPlus, Filter, MoreVertical, Trash2, CheckCircle, XCircle, Edit, ChevronLeft, ChevronRight, X, Upload, Info } from "lucide-react";
+import { formatImageUrl } from "../../utils/imageUtils";
 import {
   Table,
   TableBody,
@@ -401,6 +402,7 @@ export function UserManagement() {
       // Re-fetch users to update the list
       await fetchUsers(searchQuery, roleFilter, statusFilter);
       toast.success('User added successfully. Account is pending approval.');
+      setIsAddUserOpen(false);
 
       // Reset form
       setNewUser({
@@ -599,6 +601,7 @@ export function UserManagement() {
       await fetchUsers(searchQuery, roleFilter, statusFilter);
       toast.success('User updated successfully');
       setIsEditMode(false);
+      setIsViewDetailsOpen(false);
     } catch (error) {
       console.error('Error updating user:', error);
       toast.error((error as Error).message || 'Failed to update user');
@@ -908,53 +911,96 @@ export function UserManagement() {
 
                 {/* Profile Picture Upload */}
                 <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <Avatar className="w-20 h-20 border-2 border-gray-200">
+                  <div className="relative group">
+                    <Avatar className="w-24 h-24 border-4 border-green-100 shadow-md">
                       {newUser.profilePicture ? (
                         <img
-                          src={newUser.profilePicture}
+                          src={formatImageUrl(newUser.profilePicture)}
                           alt="Profile preview"
                           className="w-full h-full object-cover"
                         />
                       ) : (
-                        <AvatarFallback className="bg-gray-100 text-gray-500 text-xl">
-                          {newUser.fullName ? newUser.fullName.split(' ').map((n: string) => n[0]).join('') : '?'}
+                        <AvatarFallback className="bg-gradient-to-br from-green-50 to-lime-50 text-green-600 text-2xl font-semibold">
+                          {newUser.fullName ? newUser.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : '?'}
                         </AvatarFallback>
                       )}
                     </Avatar>
+                    {newUser.profilePicture && (
+                      <button
+                        type="button"
+                        onClick={() => setNewUser({ ...newUser, profilePicture: '' })}
+                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
                   </div>
                   <div className="flex-1">
-                    <Label htmlFor="profilePicture" className="cursor-pointer">
-                      <div className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                          <polyline points="17 8 12 3 7 8"></polyline>
-                          <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                        <span className="text-sm font-medium">Upload Photo</span>
-                      </div>
-                    </Label>
-                    <input
-                      id="profilePicture"
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setNewUser({ ...newUser, profilePicture: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Recommended: 2x2 inch photo (JPG, PNG)</p>
+                    <div className="relative">
+                      <input
+                        id="profilePicture"
+                        type="file"
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            // Validate file size (max 2MB)
+                            if (file.size > 2 * 1024 * 1024) {
+                              toast.error('Image size must be less than 2MB');
+                              return;
+                            }
+                            // Validate file type
+                            if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+                              toast.error('Only JPG, PNG, and WebP images are allowed');
+                              return;
+                            }
+                            
+                            // Upload file to server
+                            try {
+                              const token = sessionStorage.getItem('authToken');
+                              const formData = new FormData();
+                              formData.append('image', file);
+                              
+                              const response = await fetch('http://localhost:5000/api/users/upload-profile-image', {
+                                method: 'POST',
+                                headers: {
+                                  'Authorization': `Bearer ${token}`,
+                                },
+                                body: formData,
+                              });
+                              
+                              const result = await response.json();
+                              
+                              if (result.success) {
+                                // Use the server返回的图片URL
+                                setNewUser({ ...newUser, profilePicture: result.imageUrl });
+                                toast.success('Profile photo uploaded successfully');
+                              } else {
+                                toast.error(result.message || 'Failed to upload image');
+                              }
+                            } catch (error) {
+                              console.error('Error uploading image:', error);
+                              toast.error('Failed to upload image');
+                            }
+                          }
+                        }}
+                      />
+                      <Label htmlFor="profilePicture" className="cursor-pointer">
+                        <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-lime-500 hover:from-green-600 hover:to-lime-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg">
+                          <Upload className="w-4 h-4" />
+                          <span className="text-sm font-medium">Choose Photo</span>
+                        </div>
+                      </Label>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                      <Info className="w-3 h-3" />
+                      Recommended: 2x2 inch photo (JPG, PNG, WebP - max 2MB)
+                    </p>
                   </div>
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 pt-4">
                   <div className="grid gap-2">
                     <Label htmlFor="fullName">Full Name *</Label>
                     <Input
@@ -1162,7 +1208,7 @@ export function UserManagement() {
                       <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
                         {user.profilePicture ? (
                           <img
-                            src={user.profilePicture}
+                            src={formatImageUrl(user.profilePicture)}
                             alt={user.fullName || user.name}
                             className="w-full h-full object-cover"
                           />
@@ -1276,7 +1322,7 @@ export function UserManagement() {
                         <Avatar>
                           {user.profilePicture ? (
                             <img
-                              src={user.profilePicture}
+                              src={formatImageUrl(user.profilePicture)}
                               alt={user.fullName || user.name}
                               className="w-full h-full object-cover"
                             />
@@ -1425,61 +1471,100 @@ export function UserManagement() {
               <div className="flex items-center justify-between gap-4 pb-4 border-b">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <Avatar className="w-16 h-16">
+                    <Avatar className="w-20 h-20 border-4 border-green-100 shadow-md">
                       {isEditMode ? (
                         editUser.profilePicture ? (
                           <img
-                            src={editUser.profilePicture}
+                            src={formatImageUrl(editUser.profilePicture)}
                             alt="Profile preview"
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <AvatarFallback className="bg-green-100 text-green-700 text-xl">
-                            {editUser.fullName ? editUser.fullName.split(' ').map((n: string) => n[0]).join('') : '?'}
+                          <AvatarFallback className="bg-gradient-to-br from-green-50 to-lime-50 text-green-600 text-xl font-semibold">
+                            {editUser.fullName ? editUser.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : '?'}
                           </AvatarFallback>
                         )
                       ) : (
                         selectedUser.profilePicture ? (
                           <img
-                            src={selectedUser.profilePicture}
+                            src={formatImageUrl(selectedUser.profilePicture)}
                             alt="Profile"
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <AvatarFallback className="bg-green-100 text-green-700 text-xl">
-                            {selectedUser.name?.split(' ').map((n: string) => n[0]).join('') || ''}
+                          <AvatarFallback className="bg-gradient-to-br from-green-50 to-lime-50 text-green-600 text-xl font-semibold">
+                            {selectedUser.name?.split(' ').map((n: string) => n[0]).join('').substring(0, 2) || '?'}
                           </AvatarFallback>
                         )
                       )}
                     </Avatar>
                     {isEditMode && (
-                      <Label htmlFor="editProfilePicture" className="absolute -bottom-1 -right-1 cursor-pointer bg-blue-500 hover:bg-blue-600 text-white rounded-full p-1.5 shadow-md transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                          <polyline points="17 8 12 3 7 8"></polyline>
-                          <line x1="12" y1="3" x2="12" y2="15"></line>
-                        </svg>
-                      </Label>
+                      <>
+                        <Label htmlFor="editProfilePicture" className="absolute -bottom-1 -right-1 cursor-pointer bg-green-500 hover:bg-green-600 text-white rounded-full p-2 shadow-lg transition-colors">
+                          <Upload className="w-4 h-4" />
+                        </Label>
+                        {editUser.profilePicture && (
+                          <button
+                            type="button"
+                            onClick={() => setEditUser({ ...editUser, profilePicture: '' })}
+                            className="absolute -top-1 -right-1 bg-red-500 hover:bg-red-600 text-white rounded-full p-1 shadow-lg transition-colors"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        )}
+                      </>
                     )}
                     <input
                       id="editProfilePicture"
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/jpg,image/png,image/webp"
                       className="hidden"
-                      onChange={(e) => {
+                      onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setEditUser({ ...editUser, profilePicture: reader.result as string });
-                          };
-                          reader.readAsDataURL(file);
+                          // Validate file size (max 2MB)
+                          if (file.size > 2 * 1024 * 1024) {
+                            toast.error('Image size must be less than 2MB');
+                            return;
+                          }
+                          // Validate file type
+                          if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+                            toast.error('Only JPG, PNG, and WebP images are allowed');
+                            return;
+                          }
+                          
+                          // Upload file to server
+                          try {
+                            const token = sessionStorage.getItem('authToken');
+                            const formData = new FormData();
+                            formData.append('image', file);
+                            
+                            const response = await fetch('http://localhost:5000/api/users/upload-profile-image', {
+                              method: 'POST',
+                              headers: {
+                                'Authorization': `Bearer ${token}`,
+                              },
+                              body: formData,
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.success) {
+                              setEditUser({ ...editUser, profilePicture: result.imageUrl });
+                              toast.success('Profile photo uploaded successfully');
+                            } else {
+                              toast.error(result.message || 'Failed to upload image');
+                            }
+                          } catch (error) {
+                            console.error('Error uploading image:', error);
+                            toast.error('Failed to upload image');
+                          }
                         }
                       }}
                     />
                   </div>
                   <div>
-                    <h3 className="text-xl">{isEditMode ? editUser.fullName : selectedUser.name}</h3>
+                    <h3 className="text-xl font-semibold">{isEditMode ? editUser.fullName : selectedUser.name}</h3>
                     <p className="text-gray-600">{isEditMode ? editUser.email : selectedUser.email}</p>
                   </div>
                 </div>
@@ -1556,7 +1641,7 @@ export function UserManagement() {
 
               {/* Edit Mode */}
               {isEditMode && (
-                <div className="grid gap-4">
+                <div className="grid gap-4 pt-4">
                   {/* Basic Information */}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="grid gap-2">

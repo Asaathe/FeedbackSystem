@@ -80,7 +80,7 @@ const getFilteredUsers = async (filters) => {
       query = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status,
-          s.studentID, s.program_id, s.contact_number,
+          s.studentID, s.program_id, s.contact_number, s.image as profilePicture,
           cm.course_section, cm.department as course_department
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
@@ -115,10 +115,13 @@ const getFilteredUsers = async (filters) => {
         WHERE ${whereClause}
       `;
     } else {
+      // Default query - include profile picture from students table for all users
       query = `
         SELECT 
-          u.id, u.email, u.full_name, u.role, u.status
+          u.id, u.email, u.full_name, u.role, u.status,
+          s.image as profilePicture
         FROM Users u
+        LEFT JOIN students s ON u.id = s.user_id
         WHERE ${whereClause}
       `;
     }
@@ -304,7 +307,7 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          s.studentID, s.program_id, s.contact_number,
+          s.studentID, s.program_id, s.contact_number, s.image as profilePicture,
           cm.course_section, cm.department as course_department
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
@@ -359,7 +362,7 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          s.studentID, s.program_id, s.contact_number,
+          s.studentID, s.program_id, s.contact_number, s.image as profilePicture,
           cm.course_section, cm.department as course_department
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id

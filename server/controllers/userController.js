@@ -3,6 +3,8 @@ const { body, validationResult } = require("express-validator");
 const userService = require("../services/userService");
 const db = require("../config/database");
 const { queryDatabase } = require("../utils/helpers");
+const fs = require("fs");
+const path = require("path");
 
 /**
  * Get filtered users
@@ -278,9 +280,44 @@ const updateUser = async (req, res) => {
           studentUpdateFields.push("contact_number = ?");
           studentUpdateValues.push(phoneNumber);
         }
+        if (profilePicture === '') {
+          // User wants to remove the profile picture
+          studentUpdateFields.push("image = ?");
+          studentUpdateValues.push(null);
+          
+          // Delete old image if exists
+          if (studentRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', studentRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
+              } catch (err) {
+                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+              }
+            }
+          }
+        } else if (profilePicture) {
+          studentUpdateFields.push("image = ?");
+          studentUpdateValues.push(profilePicture);
+        }
 
         if (studentUpdateFields.length > 0) {
           studentUpdateValues.push(id);
+          
+          // Delete old image if exists and new image is being uploaded
+          if (profilePicture && studentRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', studentRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
+              } catch (err) {
+                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+              }
+            }
+          }
+          
           await queryDatabase(
             db,
             `UPDATE students SET ${studentUpdateFields.join(", ")} WHERE user_id = ?`,
@@ -291,9 +328,9 @@ const updateUser = async (req, res) => {
         // Create new student record
         await queryDatabase(
           db,
-          `INSERT INTO students (user_id, studentID, program_id, contact_number)
-           VALUES (?, ?, ?, ?)`,
-          [id, studentId || null, program_id || null, phoneNumber || null]
+          `INSERT INTO students (user_id, studentID, program_id, contact_number, image)
+           VALUES (?, ?, ?, ?, ?)`,
+          [id, studentId || null, program_id || null, phoneNumber || null, profilePicture || null]
         );
       }
     } else if (role === 'instructor') {
