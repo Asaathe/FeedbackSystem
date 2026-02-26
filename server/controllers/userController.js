@@ -208,6 +208,7 @@ const updateUser = async (req, res) => {
       companyName,
       graduationYear,
       status,
+      schoolRole,
     } = req.body;
 
     // First check if user exists
@@ -354,6 +355,45 @@ const updateUser = async (req, res) => {
           instructorUpdateFields.push("department = ?");
           instructorUpdateValues.push(department);
         }
+        if (schoolRole !== undefined) {
+          instructorUpdateFields.push("school_role = ?");
+          instructorUpdateValues.push(schoolRole);
+        }
+        // Handle profile picture - same as student
+        if (profilePicture === '') {
+          // User wants to remove the profile picture
+          instructorUpdateFields.push("image = ?");
+          instructorUpdateValues.push(null);
+          
+          // Delete old image if exists
+          if (instructorRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', instructorRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
+              } catch (err) {
+                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+              }
+            }
+          }
+        } else if (profilePicture) {
+          instructorUpdateFields.push("image = ?");
+          instructorUpdateValues.push(profilePicture);
+          
+          // Delete old image if exists and new image is being uploaded
+          if (instructorRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', instructorRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
+              } catch (err) {
+                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+              }
+            }
+          }
+        }
 
         if (instructorUpdateFields.length > 0) {
           instructorUpdateValues.push(id);
@@ -367,9 +407,9 @@ const updateUser = async (req, res) => {
         // Create new instructor record
         await queryDatabase(
           db,
-          `INSERT INTO instructors (user_id, instructor_id, department)
-           VALUES (?, ?, ?)`,
-          [id, instructorId || employeeId || null, department || null]
+          `INSERT INTO instructors (user_id, instructor_id, department, school_role, image)
+           VALUES (?, ?, ?, ?, ?)`,
+          [id, instructorId || employeeId || null, department || null, schoolRole || null, profilePicture || null]
         );
       }
     } else if (role === 'alumni') {

@@ -103,9 +103,20 @@ const formatUserResponse = (user) => {
     createdAt: user.registration_date || user.created_at,
   };
 
-  // Add profile picture if it exists
-  if (user.profilePicture !== undefined) {
+  // Add profile picture - handle both student and instructor images from combined queries
+  // Use role to determine which image to use
+  if (user.role === 'instructor' && user.profilePicture !== undefined) {
+    // For instructors, use the profilePicture from instructors table (already aliased)
     formatted.profilePicture = user.profilePicture;
+  } else if (user.role === 'student' && user.profilePicture !== undefined) {
+    // For students, use the profilePicture from students table (already aliased)
+    formatted.profilePicture = user.profilePicture;
+  } else if (user.instructor_image !== undefined) {
+    // Fallback to instructor image
+    formatted.profilePicture = user.instructor_image;
+  } else if (user.student_image !== undefined) {
+    // Fallback to student image
+    formatted.profilePicture = user.student_image;
   }
 
   // Add lastLogin only if it exists in the user object
@@ -126,8 +137,19 @@ const formatUserResponse = (user) => {
   // Add role-specific fields for instructors
   if (user.role === 'instructor') {
     if (user.instructor_id !== undefined) formatted.instructorId = user.instructor_id;
-    if (user.department !== undefined) formatted.department = user.department;
-    if (user.profilePicture !== undefined) formatted.profilePicture = user.profilePicture;
+    // Use instructor_department from the joined query, fallback to department
+    if (user.instructor_department !== undefined) {
+      formatted.department = user.instructor_department;
+    } else if (user.department !== undefined) {
+      formatted.department = user.department;
+    }
+    // Handle profile picture - check multiple sources
+    if (user.profilePicture !== undefined) {
+      formatted.profilePicture = user.profilePicture;
+    } else if (user.instructor_image !== undefined) {
+      formatted.profilePicture = user.instructor_image;
+    }
+    if (user.school_role !== undefined) formatted.schoolRole = user.school_role;
   }
 
   // Add role-specific fields for alumni

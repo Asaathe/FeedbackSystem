@@ -759,7 +759,7 @@ const deleteForm = async (formId, userId) => {
     // Check if user owns the form
     const forms = await queryDatabase(
       db,
-      "SELECT created_by FROM Forms WHERE id = ?",
+      "SELECT created_by, image_url FROM Forms WHERE id = ?",
       [formId]
     );
 
@@ -769,6 +769,22 @@ const deleteForm = async (formId, userId) => {
 
     if (forms[0].created_by !== userId) {
       return { success: false, message: "Access denied" };
+    }
+
+    // Delete the form image if it exists
+    const imageUrl = forms[0].image_url;
+    if (imageUrl) {
+      const fs = require('fs');
+      const path = require('path');
+      const fullImagePath = path.join(__dirname, '../public', imageUrl);
+      if (fs.existsSync(fullImagePath)) {
+        try {
+          fs.unlinkSync(fullImagePath);
+          console.log('[DELETE] Form image deleted:', fullImagePath);
+        } catch (err) {
+          console.error('[DELETE] Failed to delete form image:', err);
+        }
+      }
     }
 
     // Delete form (cascade will handle related records)

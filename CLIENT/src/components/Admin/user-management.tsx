@@ -79,6 +79,7 @@ interface User {
   employeeId?: string;
   graduationYear?: string;
   profilePicture?: string;
+  schoolRole?: string;
 }
 
 export function UserManagement() {
@@ -138,7 +139,8 @@ export function UserManagement() {
     program_id: '',
     employeeId: '',
     companyName: '',
-    graduationYear: ''
+    graduationYear: '',
+    schoolRole: ''
   });
 
   // Form state for editing existing user
@@ -156,7 +158,8 @@ export function UserManagement() {
     program_id: '',
     employeeId: '',
     companyName: '',
-    graduationYear: ''
+    graduationYear: '',
+    schoolRole: ''
   });
   
   // Add a state for showing pending users section
@@ -371,7 +374,8 @@ export function UserManagement() {
           program_id: newUser.program_id ? parseInt(newUser.program_id) : null
         }),
         ...(newUser.role.toLowerCase() === 'instructor' && {
-          employeeId: newUser.employeeId
+          employeeId: newUser.employeeId,
+          schoolRole: newUser.schoolRole || undefined
         }),
         ...(newUser.role.toLowerCase() === 'staff' && {
           employeeId: newUser.employeeId
@@ -418,7 +422,8 @@ export function UserManagement() {
         program_id: '',
         employeeId: '',
         companyName: '',
-        graduationYear: ''
+        graduationYear: '',
+        schoolRole: ''
       });
       setIsAddUserOpen(false);
     } catch (error) {
@@ -519,7 +524,8 @@ export function UserManagement() {
       program_id: user.program_id ? String(user.program_id) : '',
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
-      graduationYear: user.graduationYear || ''
+      graduationYear: user.graduationYear || '',
+      schoolRole: user.schoolRole || ''
     });
     setIsEditMode(false);
     setIsViewDetailsOpen(true);
@@ -541,7 +547,8 @@ export function UserManagement() {
       program_id: user.program_id ? String(user.program_id) : '',
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
-      graduationYear: user.graduationYear || ''
+      graduationYear: user.graduationYear || '',
+      schoolRole: user.schoolRole || ''
     });
     setIsEditUserOpen(true);
   };
@@ -570,7 +577,8 @@ export function UserManagement() {
           program_id: editUser.program_id ? parseInt(editUser.program_id) : null
         }),
         ...(editUser.role.toLowerCase() === 'instructor' && {
-          instructorId: editUser.employeeId
+          instructorId: editUser.employeeId,
+          schoolRole: editUser.schoolRole || undefined
         }),
         ...(editUser.role.toLowerCase() === 'staff' && {
           employeeId: editUser.employeeId
@@ -624,7 +632,8 @@ export function UserManagement() {
         program_id: selectedUser.program_id ? String(selectedUser.program_id) : '',
         employeeId: selectedUser.employeeId || '',
         companyName: selectedUser.companyName || '',
-        graduationYear: selectedUser.graduationYear || ''
+        graduationYear: selectedUser.graduationYear || '',
+        schoolRole: selectedUser.schoolRole || ''
       });
     }
     setIsEditMode(false);
@@ -733,14 +742,20 @@ export function UserManagement() {
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Computer Science">Computer Science</SelectItem>
-                  <SelectItem value="Information Technology">Information Technology</SelectItem>
-                  <SelectItem value="Business Administration">Business Administration</SelectItem>
-                  <SelectItem value="Engineering">Engineering</SelectItem>
-                  <SelectItem value="Education">Education</SelectItem>
-                  <SelectItem value="Arts and Sciences">Arts and Sciences</SelectItem>
+                  <SelectItem value="Senior High">Senior High</SelectItem>
+                  <SelectItem value="College">College</SelectItem>
+                  <SelectItem value="Both">Both</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="schoolRole">School Role</Label>
+              <Input
+                id="schoolRole"
+                placeholder="e.g., IT Instructor, DEAN, Program Head"
+                value={newUser.schoolRole}
+                onChange={(e) => setNewUser({ ...newUser, schoolRole: e.target.value })}
+              />
             </div>
           </>
         );
@@ -837,14 +852,20 @@ export function UserManagement() {
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Computer Science">Computer Science</SelectItem>
-                  <SelectItem value="Information Technology">Information Technology</SelectItem>
-                  <SelectItem value="Business Administration">Business Administration</SelectItem>
-                  <SelectItem value="Engineering">Engineering</SelectItem>
-                  <SelectItem value="Education">Education</SelectItem>
-                  <SelectItem value="Arts and Sciences">Arts and Sciences</SelectItem>
+                  <SelectItem value="Senior High">Senior High</SelectItem>
+                  <SelectItem value="College">College</SelectItem>
+                  <SelectItem value="Both">Both</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="schoolRole">School Role</Label>
+              <Input
+                id="schoolRole"
+                placeholder="e.g., IT Instructor, DEAN, Program Head"
+                value={editUser.schoolRole}
+                onChange={(e) => setEditUser({ ...editUser, schoolRole: e.target.value })}
+              />
             </div>
           </>
         );
@@ -962,7 +983,10 @@ export function UserManagement() {
                               const formData = new FormData();
                               formData.append('image', file);
                               
-                              const response = await fetch('http://localhost:5000/api/users/upload-profile-image', {
+                              // Send role as query parameter for proper folder routing
+                              const roleParam = `?role=${encodeURIComponent(newUser.role || 'profiles')}`;
+                              
+                              const response = await fetch(`http://localhost:5000/api/users/upload-profile-image${roleParam}`, {
                                 method: 'POST',
                                 headers: {
                                   'Authorization': `Bearer ${token}`,
@@ -1539,7 +1563,10 @@ export function UserManagement() {
                             const formData = new FormData();
                             formData.append('image', file);
                             
-                            const response = await fetch('http://localhost:5000/api/users/upload-profile-image', {
+                            // Send role as query parameter for proper folder routing
+                            const roleParam = `?role=${encodeURIComponent(editUser.role || 'profiles')}`;
+                            
+                            const response = await fetch(`http://localhost:5000/api/users/upload-profile-image${roleParam}`, {
                               method: 'POST',
                               headers: {
                                 'Authorization': `Bearer ${token}`,

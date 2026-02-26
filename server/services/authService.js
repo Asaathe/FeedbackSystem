@@ -20,12 +20,16 @@ const registerUser = async (userData) => {
       student_id,
       program_id,
       instructor_id,
+      employeeId,
       department,
       company_name,
       industry,
       degree,
       alumni_company_name,
     } = userData;
+
+    // Use employeeId as instructor_id if instructor_id is not provided
+    const effectiveInstructorId = instructor_id || employeeId;
 
     // Validate input
     if (!isValidEmail(email)) {
@@ -87,9 +91,9 @@ const registerUser = async (userData) => {
       case "instructor":
         await queryDatabase(
           db,
-          `INSERT INTO instructors (user_id, instructor_id, department, subject_taught)
-           VALUES (?, ?, ?, ?)`,
-          [userId, instructor_id, department, userData.subjectTaught || ""]
+          `INSERT INTO instructors (user_id, instructor_id, department, subject_taught, school_role, image)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [userId, effectiveInstructorId, department, userData.subjectTaught || "", userData.schoolRole || null, userData.profilePicture || null]
         );
         break;
 

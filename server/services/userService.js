@@ -91,7 +91,7 @@ const getFilteredUsers = async (filters) => {
       query = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status,
-          i.instructor_id, i.department, i.subject_taught
+          i.instructor_id, i.department, i.subject_taught, i.school_role, i.image as profilePicture
         FROM Users u
         LEFT JOIN instructors i ON u.id = i.user_id
         WHERE ${whereClause}
@@ -115,13 +115,15 @@ const getFilteredUsers = async (filters) => {
         WHERE ${whereClause}
       `;
     } else {
-      // Default query - include profile picture from students table for all users
+      // Default query - include profile picture from both students and instructors table for all users
       query = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status,
-          s.image as profilePicture
+          s.image as student_image,
+          i.image as instructor_image
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
+        LEFT JOIN instructors i ON u.id = i.user_id
         WHERE ${whereClause}
       `;
     }
@@ -337,7 +339,7 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          i.instructor_id, i.department, i.subject_taught, i.image as profilePicture
+          i.instructor_id, i.department, i.subject_taught, i.image as profilePicture, i.school_role
         FROM Users u
         LEFT JOIN instructors i ON u.id = i.user_id
         ${instructorWhereClause}
@@ -358,15 +360,18 @@ const getAllUsers = async (filters = {}) => {
         },
       };
     } else {
-      // Default query for other roles or no specific role - include student data for all users
+      // Default query for other roles or no specific role - include student and instructor data for all users
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          s.studentID, s.program_id, s.contact_number, s.image as profilePicture,
-          cm.course_section, cm.department as course_department
+          s.studentID, s.program_id, s.contact_number,
+          COALESCE(i.image, s.image) as profilePicture,
+          cm.course_section, cm.department as course_department,
+          i.instructor_id, i.department as instructor_department, i.school_role
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN course_management cm ON s.program_id = cm.id
+        LEFT JOIN instructors i ON u.id = i.user_id
         ${whereClause}
         ORDER BY u.registration_date DESC
         LIMIT ? OFFSET ?
@@ -418,6 +423,55 @@ const updateUserStatus = async (userId, status) => {
  */
 const deleteUser = async (userId) => {
   try {
+    // Get user info to find profile picture
+    const users = await queryDatabase(db, "SELECT role FROM Users WHERE id = ?", [userId]);
+    
+    if (users.length === 0) {
+      return { success: false, message: "User not found" };
+    }
+    
+    const userRole = users[0].role;
+    let imagePath = null;
+    
+    // Get the profile picture path based on role
+    if (userRole === 'student') {
+      const students = await queryDatabase(db, "SELECT image FROM students WHERE user_id = ?", [userId]);
+      if (students.length > 0 && students[0].image) {
+        imagePath = students[0].image;
+      }
+    } else if (userRole === 'instructor') {
+      const instructors = await queryDatabase(db, "SELECT image FROM instructors WHERE user_id = ?", [userId]);
+      if (instructors.length > 0 && instructors[0].image) {
+        imagePath = instructors[0].image;
+      }
+    } else if (userRole === 'alumni') {
+      const alumni = await queryDatabase(db, "SELECT image FROM alumni WHERE user_id = ?", [userId]);
+      if (alumni.length > 0 && alumni[0].image) {
+        imagePath = alumni[0].image;
+      }
+    } else if (userRole === 'employer') {
+      const employers = await queryDatabase(db, "SELECT image FROM employers WHERE user_id = ?", [userId]);
+      if (employers.length > 0 && employers[0].image) {
+        imagePath = employers[0].image;
+      }
+    }
+    
+    // Delete the profile image file if it exists
+    if (imagePath) {
+      const fs = require('fs');
+      const path = require('path');
+      const fullImagePath = path.join(__dirname, '../public', imagePath);
+      if (fs.existsSync(fullImagePath)) {
+        try {
+          fs.unlinkSync(fullImagePath);
+          console.log('[DELETE] Profile image deleted:', fullImagePath);
+        } catch (err) {
+          console.error('[DELETE] Failed to delete profile image:', err);
+        }
+      }
+    }
+    
+    // Delete the user (cascade will handle related records)
     await queryDatabase(db, "DELETE FROM Users WHERE id = ?", [userId]);
 
     return { success: true, message: "User deleted successfully" };
