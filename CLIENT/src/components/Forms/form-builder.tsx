@@ -90,6 +90,16 @@ interface FormBuilderProps {
   isCustomFormTab?: boolean;
 }
 
+// Form types for evaluation
+const formTypes = [
+  { value: "general", label: "General Feedback", description: "Standard feedback form with various question types" },
+  { value: "subject-evaluation", label: "Subject Evaluation", description: "Star rating only - for instructor/subject evaluation" },
+  { value: "course-evaluation", label: "Course Evaluation", description: "Evaluate courses and learning experience" },
+  { value: "event-feedback", label: "Event Feedback", description: "Gather feedback for events" },
+  { value: "exit-survey", label: "Exit Survey", description: "Alumni exit survey" },
+  { value: "self-assessment", label: "Self Assessment", description: "Personal evaluation form" },
+];
+
 const questionTypes: QuestionTypeConfig[] = [
   { value: "text", label: "Short Text", icon: Type },
   { value: "textarea", label: "Long Text", icon: AlignLeft },
@@ -100,11 +110,24 @@ const questionTypes: QuestionTypeConfig[] = [
   { value: "linear-scale", label: "Linear Scale", icon: Sliders },
 ];
 
+// Star rating only question types for subject evaluation
+const ratingOnlyQuestionTypes: QuestionTypeConfig[] = [
+  { value: "rating", label: "Star Rating", icon: Star },
+];
+
 export function FormBuilder({
   onBack,
   formId,
   isCustomFormTab,
 }: FormBuilderProps) {
+  // Form Type State
+  const [formType, setFormType] = useState<string>("general");
+  
+  // Get available question types based on form type
+  const availableQuestionTypes = formType === "subject-evaluation" 
+    ? ratingOnlyQuestionTypes 
+    : questionTypes;
+
   // Form Settings Hook
   const {
     formTitle,
@@ -1947,6 +1970,46 @@ export function FormBuilder({
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {/* Form Type Selector */}
+                  <div className="space-y-2">
+                    <Label>Form Type</Label>
+                    <p className="text-xs text-gray-500">
+                      Select "Subject Evaluation" to use star rating questions only
+                    </p>
+                    <Select
+                      value={formType}
+                      onValueChange={(value) => {
+                        setFormType(value);
+                        // If switching to subject-evaluation, auto-add a star rating question if none exist
+                        if (value === "subject-evaluation" && questions.length === 0) {
+                          addQuestion("rating");
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Select form type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {formTypes.map((type) => (
+                          <SelectItem key={type.value} value={type.value}>
+                            <div className="flex flex-col">
+                              <span>{type.label}</span>
+                              <span className="text-xs text-gray-500">{type.description}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {formType === "subject-evaluation" && (
+                      <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md">
+                        <Star className="w-4 h-4 text-blue-500" />
+                        <span className="text-xs text-blue-700">
+                          Only star rating questions are available for Subject Evaluation forms
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </CardContent>
               </CollapsibleContent>
             </Card>
@@ -2017,7 +2080,7 @@ export function FormBuilder({
                     questions={sectionQuestions}
                     index={sectionIndex}
                     isActive={activeSection === section.id}
-                    questionTypes={questionTypes}
+                    questionTypes={availableQuestionTypes}
                     activeQuestion={activeQuestion}
                     onUpdateSection={updateSection}
                     onDeleteSection={deleteSection}
@@ -2050,7 +2113,7 @@ export function FormBuilder({
                       question={question}
                       index={standaloneIndex}
                       isActive={activeQuestion === question.id}
-                      questionTypes={questionTypes}
+                      questionTypes={availableQuestionTypes}
                       onUpdate={updateQuestion}
                       onDelete={deleteQuestion}
                       onDuplicate={duplicateQuestion}
@@ -2074,7 +2137,7 @@ export function FormBuilder({
             <CardContent className="pt-6">
               <div className="flex flex-col items-center gap-3 py-4">
                 <div className="flex flex-wrap gap-2 justify-center">
-                  {questionTypes.map((type) => {
+                  {availableQuestionTypes.map((type) => {
                     const Icon = type.icon;
                     return (
                       <Button

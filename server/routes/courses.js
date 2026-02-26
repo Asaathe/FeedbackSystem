@@ -14,4 +14,13 @@ router.patch("/sections/:id/toggle", verifyToken, requireAdmin, courseController
 router.put("/sections/:id", verifyToken, requireAdmin, courseController.updateSection);
 router.delete("/sections/:id", verifyToken, requireAdmin, courseController.deleteSection);
 
+// Assign student to section
+router.post("/sections/:id/students", verifyToken, requireAdmin, courseController.assignStudentToSection);
+
+// Remove student from section
+router.delete("/sections/:id/students/:studentId", verifyToken, requireAdmin, courseController.removeStudentFromSection);
+
+// Get students in a section
+router.get("/sections/:id/students", verifyToken, courseController.getSectionStudents);
+
 module.exports = router;

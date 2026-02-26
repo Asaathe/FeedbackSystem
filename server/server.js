@@ -16,6 +16,7 @@ const courseManagementRoutes = require("./routes/courseManagement");
 const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
 const studentPromotionRoutes = require("./routes/studentPromotion");
+const subjectEvaluationRoutes = require("./routes/subjectEvaluation");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -111,6 +112,7 @@ app.use("/api/programs", courseManagementRoutes);
 app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
+app.use("/api/subject-evaluation", subjectEvaluationRoutes);
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));

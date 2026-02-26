@@ -127,6 +127,7 @@ const formatUserResponse = (user) => {
   if (user.role === 'instructor') {
     if (user.instructor_id !== undefined) formatted.instructorId = user.instructor_id;
     if (user.department !== undefined) formatted.department = user.department;
+    if (user.profilePicture !== undefined) formatted.profilePicture = user.profilePicture;
   }
 
   // Add role-specific fields for alumni

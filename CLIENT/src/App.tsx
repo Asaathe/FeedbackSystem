@@ -99,6 +99,18 @@ const ChangePassword = lazy(() =>
   }))
 );
 
+const SubjectEvaluation = lazy(() =>
+  import("./components/Admin/subject-evaluation").then((m) => ({
+    default: m.SubjectEvaluation,
+  }))
+);
+
+const SubjectAssignment = lazy(() =>
+  import("./components/Admin/subject-assignment").then((m) => ({
+    default: m.SubjectAssignment,
+  }))
+);
+
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -297,6 +309,10 @@ export default function App() {
           return <CourseManagement />;
         case "student-promotion":
           return <StudentPromotion />;
+        case "subjecteval":
+          return <SubjectEvaluation onNavigate={setCurrentPage} />;
+        case "subjectassign":
+          return <SubjectAssignment onNavigate={setCurrentPage} />;
        
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;

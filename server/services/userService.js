@@ -337,7 +337,7 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          i.instructor_id, i.department, i.subject_taught
+          i.instructor_id, i.department, i.subject_taught, i.image as profilePicture
         FROM Users u
         LEFT JOIN instructors i ON u.id = i.user_id
         ${instructorWhereClause}
