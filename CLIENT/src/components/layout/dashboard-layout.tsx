@@ -134,6 +134,13 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'submit-feedback', label: 'Alumni Feedback', icon: FileText },
         { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
       ]
+    : role === 'student'
+    ? [
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
+        { id: 'submit-feedback', label: 'Submit Feedback', icon: FileText },
+        { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
+      ]
     : [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'submit-feedback', label: 'Submit Feedback', icon: FileText },

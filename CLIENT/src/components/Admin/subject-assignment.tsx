@@ -113,6 +113,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   // Student selection state
   const [assignDialogOpen, setAssignDialogOpen] = useState(false);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>("");
+  const [subjectInstructorId, setSubjectInstructorId] = useState<string>("");
   const [selectedProgramId, setSelectedProgramId] = useState<string>("");
   
   // Subject detail view state
@@ -473,16 +474,22 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       const errors: string[] = [];
 
       for (const student of programStudents) {
+        // Use subject_instructor_id (new format) if available, otherwise use course_section_id (legacy)
+        const enrollmentData = subjectInstructorId ? {
+          student_id: student.user_id,
+          subject_instructor_id: parseInt(subjectInstructorId)
+        } : {
+          student_id: student.user_id,
+          course_section_id: parseInt(selectedSubjectId)
+        };
+        
         const response = await fetch('http://localhost:5000/api/subject-evaluation/student-enrollments', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
-          body: JSON.stringify({
-            student_id: student.user_id,
-            course_section_id: parseInt(selectedSubjectId)
-          })
+          body: JSON.stringify(enrollmentData)
         });
 
         const data = await response.json();

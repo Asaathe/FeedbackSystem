@@ -111,6 +111,12 @@ const SubjectAssignment = lazy(() =>
   }))
 );
 
+const StudentSubjectEvaluation = lazy(() =>
+  import("./components/Dashboards/student-subject-evaluation").then((m) => ({
+    default: m.StudentSubjectEvaluation,
+  }))
+);
+
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -374,6 +380,8 @@ export default function App() {
     switch (currentPage) {
       case "dashboard":
         return <StudentDashboard onNavigate={setCurrentPage} />;
+      case "subjecteval":
+        return <StudentSubjectEvaluation onNavigate={setCurrentPage} />;
       case "submit-feedback":
         return <FeedbackSubmission userRole={userRole} />;
       case "my-submissions":

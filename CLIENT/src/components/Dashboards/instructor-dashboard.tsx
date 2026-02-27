@@ -2,22 +2,35 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { BookOpen, Eye, Users, Star, MessageSquare, Loader2 } from "lucide-react";
+import { BookOpen, Eye, Users, Star, MessageSquare, Loader2, ChevronLeft, X } from "lucide-react";
 import { Progress } from "../ui/progress";
 import { toast } from "sonner";
 
 interface Subject {
+  subject_instructor_id: number;
   form_id: number;
+  subject_id: number;
+  subject_code: string;
   form_name: string;
   description: string;
   category: string;
   status: string;
+  semester: string;
+  academic_year: number;
   response_count: number;
   start_date: string;
   end_date: string;
   shared_at: string;
   avg_rating: number;
   total_responses: number;
+}
+
+interface FeedbackResponse {
+  id: number;
+  response_data: string;
+  submitted_at: string;
+  student_name: string;
+  student_email: string;
 }
 
 interface Instructor {
@@ -50,6 +63,9 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
     avg_rating: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
+  const [feedbackResponses, setFeedbackResponses] = useState<FeedbackResponse[]>([]);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
 
   useEffect(() => {
     fetchInstructorData();
@@ -96,6 +112,33 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
     }
   };
 
+  const fetchFeedbackResponses = async (subjectId: number) => {
+    setLoadingFeedback(true);
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/${subjectId}/feedback`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        setFeedbackResponses(data.feedback || []);
+      }
+    } catch (error) {
+      console.error('Error fetching feedback:', error);
+      toast.error('Failed to load feedback responses');
+    } finally {
+      setLoadingFeedback(false);
+    }
+  };
+
+  const handleSubjectClick = async (subject: Subject) => {
+    setSelectedSubject(subject);
+    await fetchFeedbackResponses(subject.subject_id);
+  };
+
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
@@ -114,6 +157,14 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
     return stars;
   };
 
+  const parseResponseData = (data: string) => {
+    try {
+      return JSON.parse(data);
+    } catch {
+      return {};
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -121,6 +172,78 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
           <Loader2 className="w-12 h-12 animate-spin text-green-500 mx-auto mb-4" />
           <p className="text-gray-600">Loading your dashboard...</p>
         </div>
+      </div>
+    );
+  }
+
+  // If a subject is selected, show the feedback view
+  if (selectedSubject) {
+    return (
+      <div className="space-y-6">
+        <Button 
+          variant="ghost" 
+          onClick={() => setSelectedSubject(null)}
+          className="mb-4"
+        >
+          <ChevronLeft className="w-4 h-4 mr-2" />
+          Back to Subjects
+        </Button>
+
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">{selectedSubject.form_name}</CardTitle>
+                <p className="text-gray-500 mt-1">
+                  {selectedSubject.subject_code} • {selectedSubject.semester} Semester {selectedSubject.academic_year}
+                </p>
+              </div>
+              <Badge variant="outline" className={selectedSubject.status === 'active' ? 'border-green-200 text-green-700' : 'border-gray-200'}>
+                {selectedSubject.status}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingFeedback ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+              </div>
+            ) : feedbackResponses.length > 0 ? (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Feedback Responses ({feedbackResponses.length})</h3>
+                {feedbackResponses.map((response) => (
+                  <div 
+                    key={response.id} 
+                    className="p-4 rounded-lg border border-gray-200 bg-white"
+                  >
+                    <div className="flex items-start justify-between mb-2">
+                      <div>
+                        <p className="font-medium">{response.student_name}</p>
+                        <p className="text-sm text-gray-500">{response.student_email}</p>
+                      </div>
+                      <p className="text-sm text-gray-400">
+                        {new Date(response.submitted_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <div className="mt-3 p-3 bg-gray-50 rounded">
+                      {Object.entries(parseResponseData(response.response_data)).map(([key, value]) => (
+                        <div key={key} className="mb-2">
+                          <span className="text-gray-600 capitalize">{key.replace(/_/g, ' ')}: </span>
+                          <span className="text-gray-800">{String(value)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No feedback responses yet</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -183,80 +306,62 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
         </Card>
       </div>
 
-      {/* My Subjects */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>My Subjects</CardTitle>
-            <Button 
-              variant="outline" 
-              className="border-green-200 hover:bg-green-50"
-              onClick={() => onNavigate?.('my-feedback')}
-            >
-              View All Feedback
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {subjects.length > 0 ? (
-            <div className="space-y-4">
-              {subjects.map((subject) => (
-                <div 
-                  key={subject.form_id}
-                  className="p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3>{subject.form_name}</h3>
-                        <Badge 
-                          variant="outline" 
-                          className={subject.status === 'active' ? 'border-green-200 text-green-700' : 'border-gray-200'}
-                        >
-                          {subject.status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600">{subject.description || 'No description'}</p>
-                    </div>
+      {/* My Subjects as Cards */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">My Subjects</h2>
+        {subjects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subjects.map((subject) => (
+              <Card 
+                key={subject.subject_instructor_id}
+                className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer"
+                onClick={() => handleSubjectClick(subject)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg line-clamp-1">{subject.form_name}</CardTitle>
+                    <Badge variant="outline" className={subject.status === 'active' ? 'border-green-200 text-green-700' : 'border-gray-200'}>
+                      {subject.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-500">{subject.subject_code}</p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                    {subject.description || 'No description'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">
+                      {subject.semester} {subject.academic_year}
+                    </span>
                     <div className="flex items-center gap-1">
-                      <span className="text-2xl">⭐</span>
-                      <span className="text-xl">
+                      <Star className="w-4 h-4 text-yellow-500" />
+                      <span className="font-medium">
                         {subject.avg_rating ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
                       </span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4 mb-3">
-                    <div>
-                      <p className="text-sm text-gray-600">Responses</p>
-                      <p className="text-lg font-medium">{subject.total_responses || 0} / {subject.response_count || 0}</p>
-                      <Progress 
-                        value={subject.response_count > 0 ? ((subject.total_responses || 0) / subject.response_count) * 100 : 0} 
-                        className="mt-1 h-2" 
-                      />
-                    </div>
-                    <div className="flex items-end justify-end">
-                      <Button 
-                        size="sm" 
-                        className="bg-green-500 hover:bg-green-600"
-                        onClick={() => onNavigate?.('my-feedback')}
-                      >
-                        <Eye className="w-4 h-4 mr-2" />
-                        View Feedback
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8">
+                  <Button 
+                    size="sm" 
+                    className="w-full mt-4 bg-green-500 hover:bg-green-600"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Feedback
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="border-green-100">
+            <CardContent className="py-12 text-center">
               <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
               <p className="text-gray-500">No subjects assigned yet</p>
               <p className="text-gray-400 text-sm">Subjects will appear here when assigned by admin</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }
