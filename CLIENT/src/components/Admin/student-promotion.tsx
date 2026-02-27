@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { toast } from "sonner";
 import { 
   GraduationCap, 
@@ -15,7 +16,8 @@ import {
   Award,
   ChevronDown,
   ChevronUp,
-  RefreshCw
+  RefreshCw,
+  TrendingUp
 } from "lucide-react";
 import {
   Table,
@@ -65,6 +67,7 @@ interface Student {
   section: string;
   course_section: string;
   department: string;
+  profile_image?: string;
 }
 
 interface Program {
@@ -322,7 +325,6 @@ export default function StudentPromotion() {
       const term = searchTerm.toLowerCase();
       return (
         student.full_name.toLowerCase().includes(term) ||
-        student.email.toLowerCase().includes(term) ||
         student.studentID?.toLowerCase().includes(term)
       );
     }
@@ -360,10 +362,15 @@ export default function StudentPromotion() {
 
   return (
     <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-white to-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
         <div className="flex items-center gap-3">
-          <GraduationCap className="h-8 w-8 text-primary" />
-          <h1 className="text-2xl font-bold">Student Promotion</h1>
+          <div className="p-2 bg-blue-100 rounded-lg">
+            <GraduationCap className="h-8 w-8 text-blue-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">Student Promotion</h1>
+            <p className="text-sm text-slate-500">Manage student promotions, graduation and track history</p>
+          </div>
         </div>
       </div>
 
@@ -382,7 +389,7 @@ export default function StudentPromotion() {
                 }
               `}
             >
-              <ArrowRight className={`h-4 w-4 ${activeTab === "promote" ? "text-blue-600" : "text-slate-500"}`} />
+              <TrendingUp className={`h-4 w-4 ${activeTab === "promote" ? "text-blue-600" : "text-slate-500"}`} />
               <span>Promote Students</span>
             </button>
             <button
@@ -428,8 +435,8 @@ export default function StudentPromotion() {
 
         {/* Promote Tab */}
         <TabsContent value="promote" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Card>
-            <CardHeader>
+          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-slate-100 pb-4">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Select Students for Promotion
@@ -437,7 +444,7 @@ export default function StudentPromotion() {
             </CardHeader>
             <CardContent>
               {/* Course Section Filter */}
-              <div className="flex flex-wrap gap-4 mb-4 items-end">
+              <div className="flex flex-wrap gap-4 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="w-64">
                   <label className="text-sm font-medium mb-2 block">Select Course & Section</label>
                   <Select value={selectedCourseSection} onValueChange={handleCourseSectionChange}>
@@ -458,7 +465,7 @@ export default function StudentPromotion() {
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                     <Input
-                      placeholder="Search by name, email, or student ID..."
+                      placeholder="Search by name or student ID..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                       className="pl-10"
@@ -471,19 +478,18 @@ export default function StudentPromotion() {
               </div>
 
               {/* Students Table */}
-              <div className="rounded-md border">
+              <div className="rounded-md border overflow-hidden">
                 <Table>
-                  <TableHeader>
-                    <TableRow>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow className="bg-slate-50 hover:bg-slate-50">
                       <TableHead className="w-12">
                         <Checkbox
                           checked={selectedStudents.length === paginatedStudents.length && paginatedStudents.length > 0}
                           onCheckedChange={handleSelectAll}
                         />
                       </TableHead>
-                      <TableHead>Student ID</TableHead>
                       <TableHead>Name</TableHead>
-                      <TableHead>Email</TableHead>
+                      <TableHead>Student ID</TableHead>
                       <TableHead>Program</TableHead>
                       <TableHead>Year</TableHead>
                       <TableHead>Section</TableHead>
@@ -506,19 +512,28 @@ export default function StudentPromotion() {
                       </TableRow>
                     ) : (
                       paginatedStudents.map((student) => (
-                        <TableRow key={student.student_id}>
+                        <TableRow key={student.student_id} className="hover:bg-slate-50 transition-colors">
                           <TableCell>
                             <Checkbox
                               checked={selectedStudents.includes(student.student_id)}
                               onCheckedChange={() => handleSelectStudent(student.student_id)}
                             />
                           </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={student.profile_image} alt={student.full_name} />
+                                <AvatarFallback className="text-xs">
+                                  {student.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              {student.full_name}
+                            </div>
+                          </TableCell>
                           <TableCell className="font-medium">{student.studentID || "N/A"}</TableCell>
-                          <TableCell>{student.full_name}</TableCell>
-                          <TableCell>{student.email}</TableCell>
                           <TableCell>{student.program_code}</TableCell>
                           <TableCell>
-                            <Badge variant="outline">Year {student.year_level}</Badge>
+                            <Badge variant="outline">{student.year_level}</Badge>
                           </TableCell>
                           <TableCell>{student.section}</TableCell>
                         </TableRow>
@@ -637,8 +652,8 @@ export default function StudentPromotion() {
 
         {/* Graduate Tab */}
         <TabsContent value="graduate" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Card>
-            <CardHeader>
+          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-amber-50 to-white border-b border-slate-100 pb-4">
               <CardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5" />
                 Graduate Students to Alumni
@@ -688,8 +703,8 @@ export default function StudentPromotion() {
 
         {/* History Tab */}
         <TabsContent value="history" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
-          <Card>
-            <CardHeader>
+          <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+            <CardHeader className="bg-gradient-to-r from-emerald-50 to-white border-b border-slate-100 pb-4">
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
                 Promotion History
@@ -702,9 +717,9 @@ export default function StudentPromotion() {
                 </div>
               ) : (
                 <>
-                  <div className="rounded-md border">
+                  <div className="rounded-md border overflow-hidden">
                     <Table>
-                      <TableHeader>
+                      <TableHeader className="bg-slate-50">
                         <TableRow>
                           <TableHead>Date</TableHead>
                           <TableHead>Student</TableHead>
@@ -717,7 +732,7 @@ export default function StudentPromotion() {
                       </TableHeader>
                       <TableBody>
                         {paginatedHistory.map((item) => (
-                          <TableRow key={item.id}>
+                          <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
                             <TableCell>{new Date(item.promotion_date).toLocaleDateString()}</TableCell>
                             <TableCell>
                               <div>

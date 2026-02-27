@@ -19,6 +19,7 @@ const getEligibleStudents = async (filters = {}) => {
         u.status as user_status,
         s.id as student_id,
         s.studentID,
+        s.image as profile_image,
         s.program_id,
         s.academic_year,
         cm.program_name,
