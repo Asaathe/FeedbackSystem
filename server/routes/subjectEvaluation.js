@@ -163,82 +163,33 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
  */
 router.get("/course-sections", verifyToken, async (req, res) => {
   try {
-    // First check if course_sections table exists
-    const checkTableQuery = `
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
-      WHERE table_schema = DATABASE() 
-      AND table_name = 'course_sections'
+    // Fetch from subjects table - include instructor_id from subjects table as fallback
+    const query = `
+      SELECT 
+        s.id,
+        s.subject_code,
+        s.subject_name,
+        s.subject_code as course_code,
+        s.subject_name as course_name,
+        s.section,
+        s.year_level,
+        s.department,
+        COALESCE(si.instructor_id, s.instructor_id) as instructor_id,
+        s.status,
+        u.full_name as instructor_name
+      FROM subjects s
+      LEFT JOIN subject_instructors si ON s.id = si.subject_id
+      LEFT JOIN users u ON COALESCE(si.instructor_id, s.instructor_id) = u.id
+      WHERE s.status = 'active'
+      ORDER BY s.subject_code, s.year_level, s.section
     `;
     
-    db.query(checkTableQuery, (err, results) => {
-      if (err || results[0].count === 0) {
-        // Table doesn't exist, create it without foreign keys
-        const createTableQuery = `
-          CREATE TABLE IF NOT EXISTS course_sections (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            course_code VARCHAR(50) NOT NULL,
-            course_name VARCHAR(255) NOT NULL,
-            section VARCHAR(10),
-            year_level INT,
-            department VARCHAR(100),
-            instructor_id INT,
-            student_id INT,
-            status ENUM('active', 'inactive') DEFAULT 'active',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            INDEX idx_course_code (course_code),
-            INDEX idx_instructor_id (instructor_id)
-          ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
-        `;
-        
-        db.query(createTableQuery, (err) => {
-          if (err) {
-            console.error("Error creating course_sections table:", err);
-            return res.status(200).json({ success: true, sections: [] });
-          }
-          return res.status(200).json({ success: true, sections: [] });
-        });
-      } else {
-        // Table exists - check if columns need to be modified (for older tables with foreign keys)
-        const alterQuery = `
-          ALTER TABLE course_sections 
-          MODIFY COLUMN instructor_id INT NULL,
-          MODIFY COLUMN section VARCHAR(10) NULL,
-          MODIFY COLUMN year_level INT NULL,
-          ADD COLUMN IF NOT EXISTS student_id INT NULL AFTER instructor_id
-        `;
-        
-        db.query(alterQuery, (err) => {
-          // Ignore errors if columns already exist or have different types
-          
-          // Fetch data
-          const query = `
-            SELECT 
-              cs.id,
-              cs.course_code,
-              cs.course_name,
-              cs.section,
-              cs.year_level,
-              cs.department,
-              cs.instructor_id,
-              cs.status,
-              u.full_name as instructor_name
-            FROM course_sections cs
-            LEFT JOIN users u ON cs.instructor_id = u.id
-            WHERE cs.status = 'active'
-            ORDER BY cs.course_code, cs.year_level, cs.section
-          `;
-          
-          db.query(query, (err, sections) => {
-            if (err) {
-              console.error("Error fetching course sections:", err);
-              return res.status(200).json({ success: true, sections: [] });
-            }
-            return res.status(200).json({ success: true, sections: sections || [] });
-          });
-        });
+    db.query(query, (err, sections) => {
+      if (err) {
+        console.error("Error fetching course sections:", err);
+        return res.status(200).json({ success: true, sections: [] });
       }
+      return res.status(200).json({ success: true, sections: sections || [] });
     });
   } catch (error) {
     console.error("Get course sections error:", error);
@@ -259,10 +210,10 @@ router.post("/course-sections", verifyToken, requireAdmin, async (req, res) => {
     }
     
     const query = `
-      INSERT INTO course_sections (course_code, course_name, status) 
-      VALUES (?, ?, 'active')
+      INSERT INTO subjects (subject_code, subject_name, section, year_level, department, status) 
+      VALUES (?, ?, ?, ?, ?, 'active')
     `;
-    db.query(query, [course_code, course_name], (err, result) => {
+    db.query(query, [course_code, course_name, section || null, year_level || null, department || 'General'], (err, result) => {
       if (err) {
         console.error("Error creating course section:", err);
         return res.status(500).json({ success: false, message: "Failed to create subject" });
@@ -289,8 +240,8 @@ router.put("/course-sections/:id", verifyToken, requireAdmin, async (req, res) =
     }
     
     const query = `
-      UPDATE course_sections 
-      SET course_code = ?, course_name = ? 
+      UPDATE subjects 
+      SET subject_code = ?, subject_name = ? 
       WHERE id = ?
     `;
     db.query(query, [course_code, course_name, id], (err, result) => {
@@ -317,7 +268,7 @@ router.delete("/course-sections/:id", verifyToken, requireAdmin, async (req, res
   try {
     const { id } = req.params;
     
-    const query = `DELETE FROM course_sections WHERE id = ?`;
+    const query = `DELETE FROM subjects WHERE id = ?`;
     db.query(query, [id], (err, result) => {
       if (err) {
         console.error("Error deleting course section:", err);
@@ -340,7 +291,7 @@ router.delete("/course-sections/:id", verifyToken, requireAdmin, async (req, res
  */
 router.get("/instructors", verifyToken, requireAdmin, async (req, res) => {
   try {
-    // Get instructors with subject count from course_sections
+    // Get instructors with subject count from subjects table
     const query = `
       SELECT 
         u.id as user_id,
@@ -349,7 +300,7 @@ router.get("/instructors", verifyToken, requireAdmin, async (req, res) => {
         i.department,
         i.instructor_id,
         i.image,
-        (SELECT COUNT(*) FROM course_sections cs WHERE cs.instructor_id = u.id AND cs.status = 'active') as total_subjects,
+        (SELECT COUNT(*) FROM subjects s WHERE s.instructor_id = u.id AND s.status = 'active') as total_subjects,
         0 as total_feedbacks,
         0.0 as avg_rating
       FROM users u
@@ -415,21 +366,21 @@ router.get("/instructors/:instructorId/subjects", verifyToken, async (req, res) 
         });
       }
 
-      // Get subjects from course_sections table
+      // Get subjects from subjects table
       const subjectsQuery = `
         SELECT 
-          cs.id as section_id,
-          cs.course_name as subject_name,
-          cs.course_code as subject_code,
-          cs.section,
-          cs.year_level,
-          cs.department,
-          (SELECT COUNT(*) FROM course_sections cs2 WHERE cs2.instructor_id = cs.instructor_id AND cs2.status = 'active') as student_count,
+          s.id as section_id,
+          s.subject_name,
+          s.subject_code,
+          s.section,
+          s.year_level,
+          s.department,
+          (SELECT COUNT(*) FROM subject_instructors si2 WHERE si2.subject_id = s.id AND si2.status = 'active') as student_count,
           0 as feedback_count,
           0.0 as avg_rating
-        FROM course_sections cs
-        WHERE cs.instructor_id = ? AND cs.status = 'active'
-        ORDER BY cs.course_code ASC
+        FROM subjects s
+        WHERE s.instructor_id = ? AND s.status = 'active'
+        ORDER BY s.subject_code ASC
       `;
 
       db.query(subjectsQuery, [instructorId], (err, subjectResults) => {
@@ -562,7 +513,7 @@ router.get("/my-stats", verifyToken, async (req, res) => {
   try {
     const instructorId = req.userId;
     
-    // Get stats using both new schema (subject_instructors) and legacy (course_sections)
+    // Get stats using subjects and subject_instructors tables
     const statsQuery = `
       SELECT 
         COALESCE(
@@ -572,9 +523,9 @@ router.get("/my-stats", verifyToken, async (req, res) => {
            WHERE si.instructor_id = ?), 0) +
         COALESCE(
           (SELECT COUNT(DISTINCT se.student_id) 
-           FROM student_enrollments se
-           INNER JOIN course_sections cs ON se.course_section_id = cs.id
-           WHERE cs.instructor_id = ?), 0) as total_students,
+           FROM subject_enrollments se
+           INNER JOIN subjects s ON se.subject_id = s.id
+           WHERE s.instructor_id = ?), 0) as total_students,
         
         COALESCE(
           (SELECT COUNT(*) 
@@ -582,8 +533,8 @@ router.get("/my-stats", verifyToken, async (req, res) => {
            WHERE si.instructor_id = ? AND si.status = 'active'), 0) +
         COALESCE(
           (SELECT COUNT(*) 
-           FROM course_sections cs
-           WHERE cs.instructor_id = ? AND cs.status = 'active'), 0) as total_courses,
+           FROM subjects s
+           WHERE s.instructor_id = ? AND s.status = 'active'), 0) as total_courses,
         
         COALESCE(
           (SELECT SUM(total_responses) 
@@ -626,7 +577,7 @@ router.get("/my-stats", verifyToken, async (req, res) => {
 });
 
 // ============================================================
-// Instructor Courses Routes (links instructors to course_sections)
+// Instructor Courses Routes (links instructors to subjects)
 // ============================================================
 
 /**
@@ -635,73 +586,61 @@ router.get("/my-stats", verifyToken, async (req, res) => {
  */
 router.get("/instructor-courses", verifyToken, async (req, res) => {
   try {
-    // Check if course_sections table exists
-    const checkTableQuery = `
-      SELECT COUNT(*) as count 
-      FROM information_schema.tables 
-      WHERE table_schema = DATABASE() 
-      AND table_name = 'course_sections'
+    // Use subjects table directly - instructor_id is stored in subjects
+    const query = `
+      SELECT 
+        s.id,
+        s.subject_code,
+        s.subject_name,
+        s.section,
+        s.year_level,
+        s.department,
+        s.instructor_id,
+        u.full_name as instructor_name,
+        (SELECT COUNT(*) FROM subjects s2 WHERE s2.instructor_id = s.instructor_id AND s2.status = 'active') as instructor_count
+      FROM subjects s
+      LEFT JOIN users u ON s.instructor_id = u.id
+      WHERE s.status = 'active'
+      ORDER BY s.subject_code, s.year_level, s.section
     `;
     
-    db.query(checkTableQuery, (err, results) => {
-      if (err || results[0].count === 0) {
+    db.query(query, (err, courses) => {
+      if (err) {
+        console.error("Error fetching instructor courses:", err);
         return res.status(200).json({ success: true, courses: [] });
       }
       
-      // Use course_sections table directly - instructor_id is stored in course_sections
-      const query = `
-        SELECT 
-          cs.id,
-          cs.course_code,
-          cs.course_name,
-          cs.section,
-          cs.year_level,
-          cs.department,
-          cs.instructor_id,
-          u.full_name as instructor_name,
-          (SELECT COUNT(*) FROM course_sections cs2 WHERE cs2.instructor_id = cs.instructor_id AND cs2.status = 'active') as instructor_count
-        FROM course_sections cs
-        LEFT JOIN users u ON cs.instructor_id = u.id
-        WHERE cs.status = 'active'
-        ORDER BY cs.course_code, cs.year_level, cs.section
-      `;
-      
-      db.query(query, (err, courses) => {
-        if (err) {
-          console.error("Error fetching instructor courses:", err);
-          return res.status(200).json({ success: true, courses: [] });
-        }
-        
-        // Group by instructor
-        const instructorCoursesMap = {};
-        courses.forEach(c => {
-          if (c.instructor_id) {
-            if (!instructorCoursesMap[c.instructor_id]) {
-              instructorCoursesMap[c.instructor_id] = [];
-            }
-            instructorCoursesMap[c.instructor_id].push({
-              id: c.id,
-              instructor_id: c.instructor_id,
-              course_code: c.course_code,
-              course_name: c.course_name,
-              section: c.section,
-              year_level: c.year_level,
-              department: c.department,
-              student_id: null
-            });
+      // Group by instructor
+      const instructorCoursesMap = {};
+      courses.forEach(c => {
+        if (c.instructor_id) {
+          if (!instructorCoursesMap[c.instructor_id]) {
+            instructorCoursesMap[c.instructor_id] = [];
           }
-        });
-        
-        // Convert to array format for frontend
-        const result = [];
-        Object.keys(instructorCoursesMap).forEach(instructorId => {
-          instructorCoursesMap[instructorId].forEach(ic => {
-            result.push(ic);
+          instructorCoursesMap[c.instructor_id].push({
+            id: c.id,
+            instructor_id: c.instructor_id,
+            subject_code: c.subject_code,
+            subject_name: c.subject_name,
+            course_code: c.subject_code,
+            course_name: c.subject_name,
+            section: c.section,
+            year_level: c.year_level,
+            department: c.department,
+            student_id: null
           });
-        });
-        
-        return res.status(200).json({ success: true, courses: result });
+        }
       });
+      
+      // Convert to array format for frontend
+      const result = [];
+      Object.keys(instructorCoursesMap).forEach(instructorId => {
+        instructorCoursesMap[instructorId].forEach(ic => {
+          result.push(ic);
+        });
+      });
+      
+      return res.status(200).json({ success: true, courses: result });
     });
   } catch (error) {
     console.error("Get instructor courses error:", error);
@@ -710,9 +649,9 @@ router.get("/instructor-courses", verifyToken, async (req, res) => {
 });
 
 /**
- * Assign subject (course_section) to instructor
+ * Assign subject to instructor
  * POST /api/subject-evaluation/instructor-courses
- * Now updates course_sections table directly with instructor_id
+ * Updates subjects table with instructor_id
  */
 router.post("/instructor-courses", verifyToken, requireAdmin, async (req, res) => {
   try {
@@ -722,8 +661,8 @@ router.post("/instructor-courses", verifyToken, requireAdmin, async (req, res) =
       return res.status(400).json({ success: false, message: "Instructor ID and Subject ID are required" });
     }
     
-    // Update course_sections table with instructor_id
-    const query = "UPDATE course_sections SET instructor_id = ? WHERE id = ?";
+    // Update subjects table with instructor_id
+    const query = "UPDATE subjects SET instructor_id = ? WHERE id = ?";
     db.query(query, [instructor_id, course_section_id], (err, result) => {
       if (err) return res.status(500).json({ success: false, message: "Database error" });
       if (result.affectedRows === 0) return res.status(404).json({ success: false, message: "Subject not found" });
@@ -738,14 +677,14 @@ router.post("/instructor-courses", verifyToken, requireAdmin, async (req, res) =
 /**
  * Remove instructor from subject
  * DELETE /api/subject-evaluation/instructor-courses/:courseId
- * Sets instructor_id to NULL in course_sections
+ * Sets instructor_id to NULL in subjects
  */
 router.delete("/instructor-courses/:courseId", verifyToken, requireAdmin, async (req, res) => {
   try {
     const { courseId } = req.params;
     
-    // Set instructor_id to NULL in course_sections
-    const query = "UPDATE course_sections SET instructor_id = NULL WHERE id = ?";
+    // Set instructor_id to NULL in subjects
+    const query = "UPDATE subjects SET instructor_id = NULL WHERE id = ?";
     db.query(query, [courseId], (err, result) => {
       if (err) return res.status(500).json({ success: false, message: "Failed to remove instructor" });
       if (result.affectedRows === 0) return res.status(404).json({ success: false, message: "Subject not found" });
@@ -766,64 +705,38 @@ router.delete("/instructor-courses/:courseId", verifyToken, requireAdmin, async 
 /**
  * Get all student enrollments
  * GET /api/subject-evaluation/student-enrollments
- * Fetches from both student_subjects (new) and student_enrollments (legacy)
+ * Uses subject_enrollments table with direct subject references
  */
 router.get("/student-enrollments", verifyToken, async (req, res) => {
   try {
-    // First try to get from student_subjects table (new format)
-    const newQuery = `
-      SELECT 
-        ss.id,
-        ss.student_id,
-        ss.subject_instructor_id,
-        s.subject_code,
-        s.subject_name,
-        s.department as subject_department,
-        si.semester,
-        si.academic_year,
-        u.full_name as student_name,
-        u.email as student_email
-      FROM student_subjects ss
-      INNER JOIN subject_instructors si ON ss.subject_instructor_id = si.id
-      INNER JOIN subjects s ON si.subject_id = s.id
-      LEFT JOIN users u ON ss.student_id = u.id
-      ORDER BY u.full_name, s.subject_code
-    `;
-    
-    // Also get from student_enrollments table (legacy format)
-    const legacyQuery = `
+    // Get from subject_enrollments table (direct subject references)
+    const query = `
       SELECT 
         se.id,
         se.student_id,
-        se.course_section_id as subject_instructor_id,
-        cs.course_code as subject_code,
-        cs.course_name as subject_name,
-        cs.department as subject_department,
-        '' as semester,
-        '' as academic_year,
+        se.subject_id,
+        s.subject_code,
+        s.subject_name,
+        s.section,
+        s.year_level,
+        s.department as subject_department,
+        s.instructor_id,
         u.full_name as student_name,
-        u.email as student_email
-      FROM student_enrollments se
-      INNER JOIN course_sections cs ON se.course_section_id = cs.id
+        u.email as student_email,
+        se.enrolled_at
+      FROM subject_enrollments se
+      INNER JOIN subjects s ON se.subject_id = s.id
       LEFT JOIN users u ON se.student_id = u.id
-      ORDER BY u.full_name, cs.course_code
+      ORDER BY u.full_name, s.subject_code
     `;
     
-    // Run both queries
-    db.query(newQuery, (err, newEnrollments) => {
+    db.query(query, (err, enrollments) => {
       if (err) {
-        console.error("Error fetching new enrollments:", err);
+        console.error("Error fetching enrollments:", err);
+        return res.status(200).json({ success: true, enrollments: [] });
       }
       
-      db.query(legacyQuery, (err2, legacyEnrollments) => {
-        if (err2) {
-          console.error("Error fetching legacy enrollments:", err2);
-        }
-        
-        // Combine results
-        const allEnrollments = [...(newEnrollments || []), ...(legacyEnrollments || [])];
-        return res.status(200).json({ success: true, enrollments: allEnrollments });
-      });
+      return res.status(200).json({ success: true, enrollments: enrollments || [] });
     });
   } catch (error) {
     console.error("Get enrollments error:", error);
@@ -839,137 +752,49 @@ router.get("/student-enrollments", verifyToken, async (req, res) => {
  */
 router.post("/student-enrollments", verifyToken, requireAdmin, async (req, res) => {
   try {
-    const { student_id, subject_instructor_id, course_section_id, academic_year } = req.body;
+    const { student_id, subject_instructor_id, course_section_id, subject_id, academic_year } = req.body;
     const year = academic_year || new Date().getFullYear().toString();
     
-    // New format: using subject_instructors table directly
-    if (subject_instructor_id) {
-      // First, get the student's internal ID from the students table
-      const getStudentQuery = "SELECT id FROM students WHERE user_id = ?";
-      db.query(getStudentQuery, [student_id], (studentErr, studentResults) => {
-        let studentDbId = null;
-        
-        if (studentErr || studentResults.length === 0) {
-          // Student not in students table - create a record or use user_id directly
-          console.log("Student not found in students table, creating record or using user_id");
-          
-          // Try to create a student record
-          const insertStudentQuery = "INSERT INTO students (user_id, studentID) VALUES (?, ?)";
-          db.query(insertStudentQuery, [student_id, `STUDENT-${student_id}`], (insertErr, insertResult) => {
-            if (insertErr) {
-              console.error("Error creating student record:", insertErr);
-              // Use user_id directly as fallback
-              studentDbId = student_id;
-              doEnrollment();
-            } else {
-              studentDbId = insertResult.insertId;
-              doEnrollment();
-            }
-          });
-        } else {
-          studentDbId = studentResults[0].id;
-          doEnrollment();
-        }
-        
-        function doEnrollment() {
-          const query = "INSERT INTO student_subjects (student_id, subject_instructor_id, academic_year) VALUES (?, ?, ?)";
-          db.query(query, [studentDbId, subject_instructor_id, year], (err, result) => {
-            if (err) {
-              if (err.code === 'ER_DUP_ENTRY') {
-                return res.status(400).json({ success: false, message: "Student already enrolled in this subject" });
-              }
-              console.error("Error enrolling student:", err);
-              return res.status(500).json({ success: false, message: "Database error" });
-            }
-            return res.status(201).json({ success: true, message: "Student enrolled successfully" });
-          });
-        }
-      });
-      return;
+    // Validate required field
+    if (!student_id) {
+      return res.status(400).json({ success: false, message: "Student ID is required" });
     }
     
-    // Legacy format: using course_section_id
-    if (course_section_id) {
-      // First, get the course section details
-      const getCSQuery = "SELECT * FROM course_sections WHERE id = ?";
-      db.query(getCSQuery, [course_section_id], (csErr, csResults) => {
-        if (csErr || csResults.length === 0) {
-          console.error("Error fetching course section:", csErr);
-          return res.status(400).json({ success: false, message: "Course section not found" });
+    // Determine which ID to use for enrollment
+    let enrollSubjectId = null;
+    
+    if (subject_id) {
+      // Use subject_id directly (new format with subjects table)
+      enrollSubjectId = subject_id;
+    } else if (course_section_id) {
+      // Use course_section_id - but now this maps to subjects table
+      enrollSubjectId = course_section_id;
+    } else if (subject_instructor_id) {
+      // Use subject_instructor_id - need to get the subject_id from subject_instructors
+      const getSiQuery = "SELECT subject_id FROM subject_instructors WHERE id = ?";
+      db.query(getSiQuery, [subject_instructor_id], (siErr, siResults) => {
+        if (siErr || siResults.length === 0) {
+          return res.status(400).json({ success: false, message: "Subject instructor not found" });
         }
-        
-        const courseSection = csResults[0];
-        
-        // Check if a subject with this code already exists in subjects table
-        const checkSubjectQuery = "SELECT id FROM subjects WHERE subject_code = ?";
-        db.query(checkSubjectQuery, [courseSection.course_code], (subjErr, subjResults) => {
-          let subjectId;
-          let existingSiId = null;
-          
-          if (subjResults.length > 0) {
-            // Subject exists, get its ID
-            subjectId = subjResults[0].id;
-            
-            // Check if subject_instructor exists (only if there's a valid instructor)
-            if (courseSection.instructor_id && courseSection.instructor_id > 0) {
-              const checkSIQuery = "SELECT id FROM subject_instructors WHERE subject_id = ? AND instructor_id = ? LIMIT 1";
-              db.query(checkSIQuery, [subjectId, courseSection.instructor_id], (siErr, siResults) => {
-                if (siResults && siResults.length > 0) {
-                  existingSiId = siResults[0].id;
-                }
-                enrollStudentInSubject(courseSection, subjectId, existingSiId, student_id, course_section_id, year, res);
-              });
-            } else {
-              // No instructor assigned, use legacy enrollment only
-              enrollLegacyOnly(student_id, course_section_id, res);
-            }
-          } else {
-            // Create new subject in subjects table
-            const insertSubjectQuery = "INSERT INTO subjects (subject_code, subject_name, department, units, status) VALUES (?, ?, COALESCE(?, 'General'), 3, 'active')";
-            db.query(insertSubjectQuery, [courseSection.course_code, courseSection.course_name, courseSection.department], (insertSubjErr, insertResult) => {
-              if (insertSubjErr) {
-                console.error("Error creating subject:", insertSubjErr);
-                // Try to continue with legacy enrollment
-              }
-              
-              if (insertResult && insertResult.insertId) {
-                subjectId = insertResult.insertId;
-                
-                // Only create subject_instructor if there's a valid instructor_id
-                if (courseSection.instructor_id && courseSection.instructor_id > 0) {
-                  const insertSIQuery = "INSERT INTO subject_instructors (subject_id, instructor_id, semester, academic_year, course_section_id, status) VALUES (?, ?, '1st', ?, ?, 'active')";
-                  db.query(insertSIQuery, [subjectId, courseSection.instructor_id, year, course_section_id], (insertSIErr, insertSIResult) => {
-                    if (insertSIErr) {
-                      console.error("Error creating subject_instructor:", insertSIErr);
-                    }
-                    
-                    const siId = insertSIResult ? insertSIResult.insertId : null;
-                    enrollStudentInSubject(courseSection, subjectId, siId, student_id, course_section_id, year, res);
-                  });
-                } else {
-                  // No instructor, use legacy enrollment only
-                  enrollLegacyOnly(student_id, course_section_id, res);
-                }
-              } else {
-                // Fall back to legacy enrollment
-                enrollLegacyOnly(student_id, course_section_id, res);
-              }
-            });
-          }
-        });
+        enrollSubjectInDb(siResults[0].subject_id, student_id, year, res);
       });
       return;
+    } else {
+      return res.status(400).json({ success: false, message: "Either subject_id, course_section_id, or subject_instructor_id is required" });
     }
     
-    return res.status(400).json({ success: false, message: "Either subject_instructor_id or course_section_id is required" });
+    // If we have the subject ID, proceed with enrollment
+    if (enrollSubjectId) {
+      enrollSubjectInDb(enrollSubjectId, student_id, year, res);
+    }
   } catch (error) {
     console.error("Enroll student error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 
-// Helper function to enroll student in subject (new tables)
-function enrollStudentInSubject(courseSection, subjectId, subjectInstructorId, studentId, courseSectionId, year, res) {
+// Helper function to enroll student in subject
+function enrollSubjectInDb(subjectId, studentId, year, res) {
   // First, get the student's id from the students table using user_id
   const getStudentQuery = "SELECT id FROM students WHERE user_id = ?";
   db.query(getStudentQuery, [studentId], (studentErr, studentResults) => {
@@ -982,53 +807,41 @@ function enrollStudentInSubject(courseSection, subjectId, subjectInstructorId, s
       db.query(insertStudentQuery, [studentId, `STUDENT-${studentId}`], (insertErr, insertResult) => {
         if (insertErr) {
           console.error("Error creating student record:", insertErr);
-          // Fall back to legacy enrollment only
-          return enrollLegacyOnly(studentId, courseSectionId, res);
+          // Try to enroll using subject_enrollments
+          doEnrollDirectly();
+        } else {
+          studentDbId = insertResult.insertId;
+          doEnroll();
         }
-        studentDbId = insertResult.insertId;
-        doEnrollment();
       });
     } else {
       studentDbId = studentResults[0].id;
-      doEnrollment();
+      doEnroll();
     }
     
-    function doEnrollment() {
-      if (subjectInstructorId) {
-        // Enroll in student_subjects table using students.id
-        const enrollQuery = "INSERT INTO student_subjects (student_id, subject_instructor_id, academic_year) VALUES (?, ?, ?)";
-        db.query(enrollQuery, [studentDbId, subjectInstructorId, year], (enrollErr) => {
-          if (enrollErr && enrollErr.code !== 'ER_DUP_ENTRY') {
-            console.error("Error in student_subjects enrollment:", enrollErr);
-          }
-          
-          // Also add to legacy table using users.id
-          const legacyQuery = "INSERT IGNORE INTO student_enrollments (student_id, course_section_id) VALUES (?, ?)";
-          db.query(legacyQuery, [studentId, courseSectionId], (legacyErr) => {
-            if (legacyErr && legacyErr.code !== 'ER_DUP_ENTRY') {
-              console.error("Error in legacy enrollment:", legacyErr);
-            }
-            
-            return res.status(201).json({ success: true, message: "Student enrolled successfully" });
-          });
-        });
-      } else {
-        // No subject_instructor, use legacy only
-        enrollLegacyOnly(studentId, courseSectionId, res);
-      }
+    function doEnrollDirectly() {
+      // Use subject_enrollments table (has subject_id column)
+      const enrollQuery = "INSERT IGNORE INTO subject_enrollments (student_id, subject_id, enrolled_at) VALUES (?, ?, NOW())";
+      db.query(enrollQuery, [studentId, subjectId], (enrollErr) => {
+        if (enrollErr && enrollErr.code !== 'ER_DUP_ENTRY') {
+          console.error("Error in direct enrollment:", enrollErr);
+          return res.status(500).json({ success: false, message: "Failed to enroll student" });
+        }
+        return res.status(201).json({ success: true, message: "Student enrolled successfully" });
+      });
     }
-  });
-}
-
-// Fallback to legacy enrollment only
-function enrollLegacyOnly(studentId, courseSectionId, res) {
-  const legacyQuery = "INSERT IGNORE INTO student_enrollments (student_id, course_section_id) VALUES (?, ?)";
-  db.query(legacyQuery, [studentId, courseSectionId], (legacyErr) => {
-    if (legacyErr && legacyErr.code !== 'ER_DUP_ENTRY') {
-      console.error("Error in legacy enrollment:", legacyErr);
-      return res.status(201).json({ success: true, message: "Student enrolled (legacy)" });
+    
+    function doEnroll() {
+      // Use subject_enrollments table (has subject_id column)
+      const enrollQuery = "INSERT IGNORE INTO subject_enrollments (student_id, subject_id, enrolled_at) VALUES (?, ?, NOW())";
+      db.query(enrollQuery, [studentId, subjectId], (legacyErr) => {
+        if (legacyErr && legacyErr.code !== 'ER_DUP_ENTRY') {
+          console.error("Error in subject_enrollments enrollment:", legacyErr);
+        }
+        
+        return res.status(201).json({ success: true, message: "Student enrolled successfully" });
+      });
     }
-    return res.status(201).json({ success: true, message: "Student enrolled successfully" });
   });
 }
 
@@ -1039,18 +852,33 @@ function enrollLegacyOnly(studentId, courseSectionId, res) {
 router.delete("/student-enrollments/:enrollmentId", verifyToken, requireAdmin, async (req, res) => {
   try {
     const { enrollmentId } = req.params;
+    const parsedId = parseInt(enrollmentId);
     
-    // Delete from student_subjects table
-    const query = "DELETE FROM student_subjects WHERE id = ?";
-    db.query(query, [enrollmentId], (err, result) => {
-      if (err) {
-        console.error("Error removing enrollment:", err);
-        return res.status(500).json({ success: false, message: "Failed to remove enrollment" });
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ success: false, message: "Invalid enrollment ID" });
+    }
+    
+    // Delete from both tables
+    // First try student_subjects (uses students.id)
+    const deleteSSQuery = "DELETE FROM student_subjects WHERE id = ?";
+    db.query(deleteSSQuery, [parsedId], (ssErr, ssResult) => {
+      if (ssErr) {
+        console.error("Error removing from student_subjects:", ssErr);
       }
-      if (result.affectedRows === 0) {
-        return res.status(404).json({ success: false, message: "Enrollment not found" });
-      }
-      return res.status(200).json({ success: true, message: "Student removed from subject" });
+      
+      // Delete from subject_enrollments table
+    const deleteSEQuery = "DELETE FROM subject_enrollments WHERE id = ? OR subject_id = ?";
+    db.query(deleteSEQuery, [parsedId, parsedId], (seErr, seResult) => {
+        if (seErr) {
+          console.error("Error removing from subject_enrollments:", seErr);
+        }
+        
+        if (ssResult.affectedRows === 0 && seResult.affectedRows === 0) {
+          return res.status(404).json({ success: false, message: "Enrollment not found" });
+        }
+        
+        return res.status(200).json({ success: true, message: "Student removed from subject" });
+      });
     });
   } catch (error) {
     console.error("Remove enrollment error:", error);
@@ -1060,8 +888,7 @@ router.delete("/student-enrollments/:enrollmentId", verifyToken, requireAdmin, a
 
 // ============================================================
 // Student Subject Evaluation - Get Student's Enrolled Subjects
-// Supports both new tables (subjects, subject_instructors, student_subjects)
-// and legacy tables (course_sections with student_id)
+// Uses subjects and subject_enrollments tables
 // ============================================================
 
 /**
@@ -1137,27 +964,27 @@ function getInstructorSubjects(instructorId, res) {
       image: null
     };
     
-    // Get subjects from course_sections (legacy) - this is what admin uses
+    // Get subjects from subjects table for this instructor
     const query = `
       SELECT 
-        cs.id as subject_instructor_id,
-        cs.id as form_id,
-        cs.id as subject_id,
-        cs.course_code as subject_code,
-        cs.course_name as form_name,
-        cs.department as description,
-        cs.department as category,
-        cs.status,
-        cs.section as semester,
-        cs.year_level as academic_year,
+        s.id as subject_instructor_id,
+        s.id as form_id,
+        s.id as subject_id,
+        s.subject_code,
+        s.subject_name as form_name,
+        s.department as description,
+        s.department as category,
+        s.status,
+        s.section as semester,
+        s.year_level as academic_year,
         0 as response_count,
         0 as total_responses,
-        cs.created_at as shared_at,
-        cs.created_at as start_date,
-        cs.created_at as end_date,
+        s.created_at as shared_at,
+        s.created_at as start_date,
+        s.created_at as end_date,
         0.0 as avg_rating
-      FROM course_sections cs
-      WHERE cs.instructor_id = ?
+      FROM subjects s
+      WHERE s.instructor_id = ?
     `;
     
     db.query(query, [instructorId, instructorId], (err, subjects) => {
@@ -1234,71 +1061,97 @@ function runStudentSubjectsQueries(studentDbId, userId, res) {
 }
 
 function runLegacyQueries(userId, res, existingSubjects = []) {
-  // Method 2: Get subjects from course_sections table (legacy with student_id)
-  const legacyQuery = `
+  // Get subjects from subjects table
+  const subjectsQuery = `
     SELECT 
-      cs.id as subject_id,
-      cs.course_code as subject_code,
-      cs.course_name as subject_name,
-      cs.department,
+      s.id as subject_id,
+      s.subject_code,
+      s.subject_name,
+      s.department,
       3.0 as units,
-      cs.id as subject_instructor_id,
+      s.id as subject_instructor_id,
       '' as semester,
       '' as academic_year,
-      cs.id as course_section_id,
-      cs.instructor_id,
+      s.id as course_section_id,
+      s.instructor_id,
       u.full_name as instructor_name,
       u.email as instructor_email,
       inst.department as instructor_department,
       inst.image as instructor_image,
-      cs.id as enrollment_id,
-      cs.created_at as enrolled_at
-    FROM course_sections cs
-    LEFT JOIN users u ON cs.instructor_id = u.id
+      s.id as enrollment_id,
+      s.created_at as enrolled_at
+    FROM subjects s
+    LEFT JOIN users u ON s.instructor_id = u.id
     LEFT JOIN instructors inst ON u.id = inst.user_id
-    WHERE cs.student_id = ? AND cs.status = 'active'
-    ORDER BY cs.course_code
+    WHERE s.status = 'active'
+    ORDER BY s.subject_code
   `;
   
-  // Method 3: Get from student_enrollments table
-  const altLegacyQuery = `
+  // Get from subject_enrollments table
+  const newFormatQuery = `
     SELECT 
-      cs.id as subject_id,
-      cs.course_code as subject_code,
-      cs.course_name as subject_name,
-      cs.department,
+      s.id as subject_id,
+      s.subject_code,
+      s.subject_name,
+      s.department,
       3.0 as units,
-      cs.id as subject_instructor_id,
+      s.id as subject_instructor_id,
       '' as semester,
       '' as academic_year,
-      cs.id as course_section_id,
-      cs.instructor_id,
+      s.id as course_section_id,
+      s.instructor_id,
+      u.full_name as instructor_name,
+      u.email as instructor_email,
+      inst.department as instructor_department,
+      inst.image as instructor_image,
+      s.id as enrollment_id,
+      s.created_at as enrolled_at
+    FROM subjects s
+    LEFT JOIN users u ON s.instructor_id = u.id
+    LEFT JOIN instructors inst ON u.id = inst.user_id
+    WHERE s.status = 'active'
+    ORDER BY s.subject_code
+  `;
+   
+  // Method 3: Get from subject_enrollments table
+  const altNewFormatQuery = `
+    SELECT 
+      s.id as subject_id,
+      s.subject_code,
+      s.subject_name,
+      s.department,
+      3.0 as units,
+      s.id as subject_instructor_id,
+      '' as semester,
+      '' as academic_year,
+      s.id as course_section_id,
+      s.instructor_id,
       u.full_name as instructor_name,
       u.email as instructor_email,
       inst.department as instructor_department,
       inst.image as instructor_image,
       se.id as enrollment_id,
       se.enrolled_at
-    FROM student_enrollments se
-    INNER JOIN course_sections cs ON se.course_section_id = cs.id
-    LEFT JOIN users u ON cs.instructor_id = u.id
+    FROM subject_enrollments se
+    INNER JOIN subjects s ON se.subject_id = s.id
+    LEFT JOIN users u ON s.instructor_id = u.id
     LEFT JOIN instructors inst ON u.id = inst.user_id
-    WHERE se.student_id = ? AND cs.status = 'active'
-    ORDER BY cs.course_code
+    WHERE se.student_id = ? AND s.status = 'active'
+    ORDER BY s.subject_code
   `;
   
-  // Run legacy queries
-  db.query(legacyQuery, [userId], (err2, legacySubjects) => {
-    if (err2) console.error("Error fetching legacy subjects:", err2);
+  // Run queries
+  db.query(subjectsQuery, [userId], (err2, legacySubjects) => {
+    if (err2) console.error("Error fetching subjects:", err2);
     
-    db.query(altLegacyQuery, [userId], (err3, altLegacySubjects) => {
-      if (err3) console.error("Error fetching alt legacy subjects:", err3);
+    db.query(altNewFormatQuery, [userId], (err3, altLegacySubjects) => {
+      if (err3) console.error("Error fetching alt subjects:", err3);
       
       // Combine results from all methods
       let allSubjects = [...existingSubjects];
       const existingIds = new Set(existingSubjects.map(s => s.subject_id));
       
-      // Add legacy format subjects (course_sections with student_id)
+      // Add subjects from subjects table
       if (legacySubjects && legacySubjects.length > 0) {
         legacySubjects.forEach(subject => {
           if (!existingIds.has(subject.subject_id)) {
@@ -1308,7 +1161,7 @@ function runLegacyQueries(userId, res, existingSubjects = []) {
         });
       }
       
-      // Add alt legacy format subjects (student_enrollments)
+      // Add alt format subjects (subject_enrollments)
       if (altLegacySubjects && altLegacySubjects.length > 0) {
         altLegacySubjects.forEach(subject => {
           if (!existingIds.has(subject.subject_id)) {

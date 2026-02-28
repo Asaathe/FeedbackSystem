@@ -1,77 +1,38 @@
 // Course Sections Controller
+// Now uses subjects table instead of course_sections
 const db = require("../config/database");
 
 /**
- * Get all course sections
+ * Get all course sections (from subjects table)
  */
 const getAllSections = async (req, res) => {
   try {
-    // First, try to get with the new schema (for subject evaluation)
-    const newSchemaQuery = "SELECT * FROM course_sections WHERE status = 'active' ORDER BY course_code, section";
-    db.query(newSchemaQuery, (err, results) => {
+    // Get from subjects table
+    const query = "SELECT * FROM subjects WHERE status = 'active' ORDER BY subject_code, section";
+    db.query(query, (err, results) => {
       if (err) {
-        // If new schema fails, try old schema
-        const oldSchemaQuery = "SELECT * FROM course_sections WHERE is_active = TRUE ORDER BY category, subcategory, value";
-        db.query(oldSchemaQuery, (oldErr, oldResults) => {
-          if (oldErr) {
-            console.error("Error fetching course sections:", oldErr);
-            return res.status(500).json({
-              success: false,
-              message: "Failed to fetch course sections",
-            });
-          }
-
-          // Group by category
-          const grouped = oldResults.reduce((acc, section) => {
-            if (!acc[section.category]) {
-              acc[section.category] = [];
-            }
-            acc[section.category].push(section);
-            return acc;
-          }, {});
-
-          return res.status(200).json({
-            success: true,
-            courses: oldResults,
-            grouped,
-          });
-        });
-      } else if (results.length > 0) {
-        // New schema has data
-        return res.status(200).json({
-          success: true,
-          courses: results,
-          grouped: results,
-        });
-      } else {
-        // New schema exists but empty, try old schema
-        const oldSchemaQuery = "SELECT * FROM course_sections WHERE is_active = TRUE ORDER BY category, subcategory, value";
-        db.query(oldSchemaQuery, (oldErr, oldResults) => {
-          if (oldErr) {
-            console.error("Error fetching course sections:", oldErr);
-            return res.status(200).json({
-              success: true,
-              courses: [],
-              grouped: {},
-            });
-          }
-
-          // Group by category
-          const grouped = oldResults.reduce((acc, section) => {
-            if (!acc[section.category]) {
-              acc[section.category] = [];
-            }
-            acc[section.category].push(section);
-            return acc;
-          }, {});
-
-          return res.status(200).json({
-            success: true,
-            courses: oldResults,
-            grouped,
-          });
+        console.error("Error fetching course sections:", err);
+        return res.status(500).json({
+          success: false,
+          message: "Failed to fetch course sections",
         });
       }
+
+      // Group by department or subject_code
+      const grouped = results.reduce((acc, section) => {
+        const key = section.department || 'General';
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(section);
+        return acc;
+      }, {});
+
+      return res.status(200).json({
+        success: true,
+        courses: results,
+        grouped,
+      });
     });
   } catch (error) {
     console.error("Get all sections error:", error);
@@ -84,7 +45,7 @@ const getAllSections = async (req, res) => {
 };
 
 /**
- * Create a new course section
+ * Create a new course section (inserts into subjects table)
  */
 const createSection = async (req, res) => {
   try {
@@ -93,54 +54,40 @@ const createSection = async (req, res) => {
     // DEBUG: Log incoming request body
     console.log("[DEBUG] Create Section - Request body:", JSON.stringify(req.body, null, 2));
 
-    // Check if it's using new schema (with course_code)
-    if (course_code) {
-      const query = "INSERT INTO course_sections (course_code, course_name, section, year_level, department, instructor_id, status) VALUES (?, ?, ?, ?, ?, ?, 'active')";
-      db.query(query, [course_code, course_name || '', section || 'A', year_level || 1, department || 'College', instructor_id || 0], (err, result) => {
-        if (err) {
-          console.error("Error creating course section:", err);
-          return res.status(500).json({
-            success: false,
-            message: "Failed to create course section",
-          });
-        }
+    // Map old schema fields to new schema if needed
+    const subjectCode = course_code || value;
+    const subjectName = course_name || label;
+    const dept = department || category || 'General';
 
-        return res.status(201).json({
-          success: true,
-          message: "Course section created successfully",
-          id: result.insertId,
-        });
-      });
-    } else if (!value || !label || !category) {
+    if (!subjectCode || !subjectName) {
       return res.status(400).json({
         success: false,
-        message: "Value, label, and category are required",
-      });
-    } else {
-      // Old schema
-      const query = "INSERT INTO course_sections (value, label, category, subcategory) VALUES (?, ?, ?, ?)";
-      db.query(query, [value, label, category, subcategory || null], (err, result) => {
-        if (err) {
-          console.error("Error creating course section:", err);
-          if (err.code === "ER_DUP_ENTRY") {
-            return res.status(400).json({
-              success: false,
-              message: "Course section already exists",
-            });
-          }
-          return res.status(500).json({
-            success: false,
-            message: "Failed to create course section",
-          });
-        }
-
-        return res.status(201).json({
-          success: true,
-          message: "Course section created successfully",
-          id: result.insertId,
-        });
+        message: "Subject code and name are required",
       });
     }
+
+    const query = "INSERT INTO subjects (subject_code, subject_name, section, year_level, department, status) VALUES (?, ?, ?, ?, ?, 'active')";
+    db.query(query, [subjectCode, subjectName, section || 'A', year_level || 1, dept || 'General'], (err, result) => {
+      if (err) {
+        console.error("Error creating course section:", err);
+        if (err.code === "ER_DUP_ENTRY") {
+          return res.status(400).json({
+            success: false,
+            message: "Course section already exists",
+          });
+        }
+        return res.status(500).json({
+          success: false,
+          message: "Failed to create course section",
+        });
+      }
+
+      return res.status(201).json({
+        success: true,
+        message: "Course section created successfully",
+        id: result.insertId,
+      });
+    });
   } catch (error) {
     console.error("Create section error:", error);
     return res.status(500).json({
@@ -151,15 +98,16 @@ const createSection = async (req, res) => {
 };
 
 /**
- * Update a course section
+ * Update a course section (updates subjects table)
  */
 const updateSection = async (req, res) => {
   try {
     const { id } = req.params;
-    const { value, label, category, subcategory, is_active } = req.body;
+    const { course_code, course_name, section, year_level, department, status } = req.body;
 
-    const query = "UPDATE course_sections SET value = ?, label = ?, category = ?, subcategory = ?, is_active = ? WHERE id = ?";
-    db.query(query, [value, label, category, subcategory || null, is_active, id], (err, result) => {
+    // Map to subjects table fields
+    const query = "UPDATE subjects SET subject_code = ?, subject_name = ?, section = ?, year_level = ?, department = ?, status = ? WHERE id = ?";
+    db.query(query, [course_code, course_name, section, year_level, department, status || 'active', id], (err, result) => {
       if (err) {
         console.error("Error updating course section:", err);
         return res.status(500).json({
@@ -197,7 +145,7 @@ const toggleSectionStatus = async (req, res) => {
     const { id } = req.params;
 
     // First get the current status
-    const selectQuery = "SELECT is_active FROM course_sections WHERE id = ?";
+    const selectQuery = "SELECT status FROM subjects WHERE id = ?";
     db.query(selectQuery, [id], (err, results) => {
       if (err) {
         console.error("Error fetching course section:", err);
@@ -214,10 +162,10 @@ const toggleSectionStatus = async (req, res) => {
         });
       }
 
-      const currentStatus = results[0].is_active;
-      const newStatus = currentStatus ? 0 : 1;
+      const currentStatus = results[0].status;
+      const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
 
-      const updateQuery = "UPDATE course_sections SET is_active = ? WHERE id = ?";
+      const updateQuery = "UPDATE subjects SET status = ? WHERE id = ?";
       db.query(updateQuery, [newStatus, id], (err, result) => {
         if (err) {
           console.error("Error toggling course section status:", err);
@@ -229,7 +177,7 @@ const toggleSectionStatus = async (req, res) => {
 
         return res.status(200).json({
           success: true,
-          message: newStatus ? "Course section activated successfully" : "Course section deactivated successfully",
+          message: newStatus === 'active' ? "Course section activated successfully" : "Course section deactivated successfully",
         });
       });
     });
@@ -243,13 +191,13 @@ const toggleSectionStatus = async (req, res) => {
 };
 
 /**
- * Delete a course section (soft delete - set is_active to false)
+ * Delete a course section (soft delete - set status to inactive)
  */
 const deleteSection = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const query = "UPDATE course_sections SET is_active = FALSE WHERE id = ?";
+    const query = "UPDATE subjects SET status = 'inactive' WHERE id = ?";
     db.query(query, [id], (err, result) => {
       if (err) {
         console.error("Error deleting course section:", err);
@@ -281,7 +229,7 @@ const deleteSection = async (req, res) => {
 };
 
 /**
- * Assign student to section (for subject evaluation)
+ * Assign student to section (uses student_enrollments table)
  */
 const assignStudentToSection = async (req, res) => {
   try {
@@ -295,8 +243,9 @@ const assignStudentToSection = async (req, res) => {
       });
     }
 
-    // Check if student is already assigned
-    const checkQuery = "SELECT id FROM course_sections WHERE id = ? AND student_id = ?";
+    // Use student_enrollments table instead of course_sections
+    // First check if enrollment already exists
+    const checkQuery = "SELECT id FROM student_enrollments WHERE subject_id = ? AND student_id = ?";
     db.query(checkQuery, [id, student_id], (checkErr, checkResults) => {
       if (checkErr) {
         console.error("Error checking existing assignment:", checkErr);
@@ -304,36 +253,17 @@ const assignStudentToSection = async (req, res) => {
       }
 
       if (checkResults.length > 0) {
-        return res.status(400).json({ success: false, message: "Student already assigned to this section" });
+        return res.status(400).json({ success: false, message: "Student already enrolled in this section" });
       }
 
-      // Try to update existing row first
-      const updateQuery = "UPDATE course_sections SET student_id = ? WHERE id = ?";
-      db.query(updateQuery, [student_id, id], (updateErr, result) => {
-        if (updateErr) {
-          console.error("Error assigning student:", updateErr);
-          // Try inserting a new row instead
-          const insertQuery = "INSERT INTO course_sections (course_code, course_name, section, year_level, department, instructor_id, student_id, form_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')";
-          db.query(insertQuery, ['', '', 'A', 1, 'College', 0, student_id, form_id || null], (insertErr) => {
-            if (insertErr) {
-              console.error("Error inserting student:", insertErr);
-              return res.status(500).json({ success: false, message: "Failed to assign student" });
-            }
-            return res.status(201).json({ success: true, message: "Student assigned successfully" });
-          });
-        } else if (result.affectedRows > 0) {
-          return res.status(200).json({ success: true, message: "Student assigned successfully" });
-        } else {
-          // No row to update, try insert
-          const insertQuery = "INSERT INTO course_sections (course_code, course_name, section, year_level, department, instructor_id, student_id, form_id, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')";
-          db.query(insertQuery, ['', '', 'A', 1, 'College', 0, student_id, form_id || null], (insertErr) => {
-            if (insertErr) {
-              console.error("Error inserting student:", insertErr);
-              return res.status(500).json({ success: false, message: "Failed to assign student" });
-            }
-            return res.status(201).json({ success: true, message: "Student assigned successfully" });
-          });
+      // Insert into student_enrollments
+      const insertQuery = "INSERT INTO student_enrollments (student_id, subject_id, status) VALUES (?, ?, 'enrolled')";
+      db.query(insertQuery, [student_id, id], (insertErr, result) => {
+        if (insertErr) {
+          console.error("Error enrolling student:", insertErr);
+          return res.status(500).json({ success: false, message: "Failed to enroll student" });
         }
+        return res.status(201).json({ success: true, message: "Student enrolled successfully" });
       });
     });
   } catch (error) {
@@ -343,13 +273,14 @@ const assignStudentToSection = async (req, res) => {
 };
 
 /**
- * Remove student from section
+ * Remove student from section (uses student_enrollments table)
  */
 const removeStudentFromSection = async (req, res) => {
   try {
     const { id, studentId } = req.params;
 
-    const query = "UPDATE course_sections SET student_id = NULL WHERE id = ? AND student_id = ?";
+    // Delete from student_enrollments
+    const query = "DELETE FROM student_enrollments WHERE subject_id = ? AND student_id = ?";
     db.query(query, [id, studentId], (err, result) => {
       if (err) {
         console.error("Error removing student:", err);
@@ -357,7 +288,7 @@ const removeStudentFromSection = async (req, res) => {
       }
 
       if (result.affectedRows === 0) {
-        return res.status(404).json({ success: false, message: "Assignment not found" });
+        return res.status(404).json({ success: false, message: "Enrollment not found" });
       }
 
       return res.status(200).json({ success: true, message: "Student removed successfully" });
@@ -369,18 +300,19 @@ const removeStudentFromSection = async (req, res) => {
 };
 
 /**
- * Get students in a section
+ * Get students in a section (uses student_enrollments and subjects tables)
  */
 const getSectionStudents = async (req, res) => {
   try {
     const { id } = req.params;
 
+    // Get students from student_enrollments
     const query = `
       SELECT u.id as user_id, u.full_name, u.email, s.studentID 
-      FROM course_sections cs
-      INNER JOIN users u ON cs.student_id = u.id
+      FROM student_enrollments se
+      INNER JOIN users u ON se.student_id = u.id
       LEFT JOIN students s ON u.id = s.user_id
-      WHERE cs.id = ?
+      WHERE se.subject_id = ?
     `;
     db.query(query, [id], (err, results) => {
       if (err) {

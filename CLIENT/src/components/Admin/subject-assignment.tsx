@@ -49,8 +49,8 @@ interface Instructor {
 
 interface CourseSection {
   id: number;
-  course_code: string;
-  course_name: string;
+  subject_code: string;
+  subject_name: string;
   section: string;
   year_level: number;
   department: string;
@@ -75,13 +75,14 @@ interface Student {
   studentID: string;
   program_id?: number;
   year_level?: number;
+  profilePicture?: string;
 }
 
 interface InstructorCourse {
   id: number;
   instructor_id: number;
-  course_code: string;
-  course_name: string;
+  subject_code: string;
+  subject_name: string;
   section: string;
   year_level: number;
   department: string;
@@ -90,9 +91,14 @@ interface InstructorCourse {
 interface SubjectStudent {
   id: number;
   student_id: number;
-  course_section_id: number;
+  subject_id: number;
+  subject_instructor_id?: number;
+  course_section_id?: number;
   student_name: string;
   student_email: string;
+  studentID?: string;
+  program_id?: number;
+  profilePicture?: string;
 }
 
 interface SubjectAssignmentProps {
@@ -118,19 +124,23 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   
   // Subject detail view state
   const [selectedSubject, setSelectedSubject] = useState<CourseSection | null>(null);
+  const [selectedEnrolledSection, setSelectedEnrolledSection] = useState<Program | null>(null);
   
   // Form state
   const [newCourseSection, setNewCourseSection] = useState({
-    course_code: "",
-    course_name: ""
+    subject_code: "",
+    subject_name: "",
+    section: "",
+    year_level: "",
+    department: ""
   });
 
   // Edit subject state
   const [editSubjectDialogOpen, setEditSubjectDialogOpen] = useState(false);
   const [editingSubject, setEditingSubject] = useState<CourseSection | null>(null);
   const [editSubjectForm, setEditSubjectForm] = useState({
-    course_code: "",
-    course_name: ""
+    subject_code: "",
+    subject_name: ""
   });
 
   // Delete subject state
@@ -140,6 +150,10 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   // Unenroll student state
   const [unenrollDialogOpen, setUnenrollDialogOpen] = useState(false);
   const [unenrollingStudent, setUnenrollingStudent] = useState<SubjectStudent | null>(null);
+
+  // Remove enrolled section state
+  const [removeSectionDialogOpen, setRemoveSectionDialogOpen] = useState(false);
+  const [removingSection, setRemovingSection] = useState<Program | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -182,12 +196,12 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       if (sectionsData.success) {
         const sectionsList = (sectionsData.sections || []).map((s: any) => ({
           id: s.id,
-          course_code: s.course_code,
-          course_name: s.course_name,
+          subject_code: s.subject_code || s.course_code,
+          subject_name: s.subject_name || s.course_name,
           section: s.section,
           year_level: s.year_level,
           department: s.department,
-          display_label: `${s.course_code} - ${s.course_name}`,
+          display_label: `${s.subject_code || s.course_code} - ${s.subject_name || s.course_name}`,
           instructor_id: s.instructor_id,
           instructor_name: s.instructor_name
         }));
@@ -221,11 +235,12 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       if (studentsData.success) {
         const studentList = (studentsData.users || []).map((u: any) => ({
           user_id: u.id,
-          full_name: u.full_name,
+          full_name: u.fullName || u.full_name || 'Unknown',
           email: u.email,
           studentID: u.studentID || '',
           program_id: u.programId, // Fixed: server returns programId not program_id
-          year_level: u.year_level
+          year_level: u.year_level,
+          profilePicture: u.profilePicture || null
         }));
         setStudents(studentList);
       }
@@ -259,8 +274,8 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
   // Create a new course section
   const handleCreateCourseSection = async () => {
-    if (!newCourseSection.course_code || !newCourseSection.course_name) {
-      toast.error('Please fill in course code and name');
+    if (!newCourseSection.subject_code || !newCourseSection.subject_name) {
+      toast.error('Please fill in subject code and name');
       return;
     }
 
@@ -280,7 +295,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       if (data.success) {
         toast.success('Subject created successfully');
         fetchData();
-        setNewCourseSection({ course_code: "", course_name: "" });
+        setNewCourseSection({ subject_code: "", subject_name: "", section: "", year_level: "", department: "" });
       } else {
         toast.error(data.message || 'Failed to create subject');
       }
@@ -294,15 +309,15 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   const handleOpenEditSubject = (subject: CourseSection) => {
     setEditingSubject(subject);
     setEditSubjectForm({
-      course_code: subject.course_code,
-      course_name: subject.course_name
+      subject_code: subject.subject_code,
+      subject_name: subject.subject_name
     });
     setEditSubjectDialogOpen(true);
   };
 
   // Update subject
   const handleUpdateSubject = async () => {
-    if (!editingSubject || !editSubjectForm.course_code || !editSubjectForm.course_name) {
+    if (!editingSubject || !editSubjectForm.subject_code || !editSubjectForm.subject_name) {
       toast.error('Please fill in course code and name');
       return;
     }
@@ -394,6 +409,63 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
     }
   };
 
+  // Remove all students in a program from subject
+  const handleRemoveEnrolledSection = async () => {
+    if (!removingSection || !selectedSubject) return;
+
+    try {
+      const token = sessionStorage.getItem('authToken');
+      
+      // Get enrollments for this subject AND matching the selected program/section
+      const removingSectionKey = `${removingSection.program_code}-${removingSection.year_level}-${removingSection.section}`;
+      
+      // Find students in this subject with matching program
+      const sectionEnrollments = subjectStudents.filter(ss => {
+        const enrollmentMatchesSubject = ss.subject_id === selectedSubject.id || ss.course_section_id === selectedSubject.id;
+        if (!enrollmentMatchesSubject) return false;
+        
+        // Find the student and check if their program matches
+        const student = students.find(s => s.user_id === ss.student_id);
+        if (!student || !student.program_id) return false;
+        
+        const studentProgram = programs.find(p => p.id === student.program_id);
+        if (!studentProgram) return false;
+        
+        const studentSectionKey = `${studentProgram.program_code}-${studentProgram.year_level}-${studentProgram.section}`;
+        return studentSectionKey === removingSectionKey;
+      });
+      
+      console.log('Removing enrollments:', sectionEnrollments);
+      console.log('Selected subject id:', selectedSubject.id);
+      
+      if (sectionEnrollments.length === 0) {
+        toast.error('No enrollments found for this subject');
+        return;
+      }
+      
+      let removed = 0;
+      for (const enrollment of sectionEnrollments) {
+        console.log('Deleting enrollment:', enrollment.id);
+        const response = await fetch(`http://localhost:5000/api/subject-evaluation/student-enrollments/${enrollment.id}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await response.json();
+        console.log('Delete response:', data);
+        if (data.success) removed++;
+      }
+      
+      toast.success(`${removed} students removed from subject`);
+      fetchData();
+      setRemoveSectionDialogOpen(false);
+      setRemovingSection(null);
+      setSelectedEnrolledSection(null);
+    } catch (error) {
+      console.error('Error removing section:', error);
+      toast.error('Failed to remove section');
+    }
+  };
+
   // Assign course section to instructor
   const handleAssignCourse = async () => {
     if (!selectedInstructor || !selectedSubjectId) {
@@ -460,11 +532,29 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       return;
     }
 
-    // Get students from this program
-    const programStudents = students.filter(s => s.program_id === parseInt(selectedProgramId));
+    // Get students from this program (matching program_id AND year_level)
+    const selectedProgram = programs.find(p => p.id === parseInt(selectedProgramId));
+    const programStudents = students.filter(s => {
+      // First try to match both program_id and year_level
+      if (selectedProgram && s.program_id && s.year_level) {
+        return s.program_id === parseInt(selectedProgramId) && s.year_level === selectedProgram.year_level;
+      }
+      // Fallback: just match program_id if year_level data is missing
+      return s.program_id === parseInt(selectedProgramId);
+    });
+
+    // Debug: Show count before enrolling
+    console.log('Selected Program:', selectedProgram);
+    console.log('Program Students Count:', programStudents.length);
+    console.log('Sample student program_ids:', students.slice(0, 5).map(s => ({ program_id: s.program_id, year_level: s.year_level, name: s.full_name })));
     
     if (programStudents.length === 0) {
-      toast.error('No students found in this program. Make sure students have program assigned.');
+      const selectedProgram = programs.find(p => p.id === parseInt(selectedProgramId));
+      if (selectedProgram) {
+        toast.error(`No students found in ${selectedProgram.program_code} Year ${selectedProgram.year_level}. Check if students have the correct program and year level assigned.`);
+      } else {
+        toast.error('No students found in this program. Make sure students have program assigned.');
+      }
       return;
     }
 
@@ -531,30 +621,96 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
   // Get unique sections enrolled in a subject
   const getSubjectEnrolledSections = (subjectId: number) => {
-    const enrolledStudents = subjectStudents.filter(ss => ss.course_section_id === subjectId);
+    // Support both subject_id (new) and course_section_id (legacy)
+    const enrolledStudents = subjectStudents.filter(ss => ss.subject_id === subjectId || ss.course_section_id === subjectId);
     const studentIds = enrolledStudents.map(ss => ss.student_id);
     const studentsInSubject = students.filter(s => studentIds.includes(s.user_id));
     
     const sectionsMap = new Map();
+    
+    // First, add sections for students with program_id
     studentsInSubject.forEach(student => {
       if (student.program_id) {
         const program = programs.find(p => p.id === student.program_id);
         if (program) {
           const sectionKey = `${program.program_code}-${program.year_level}-${program.section}`;
           if (!sectionsMap.has(sectionKey)) {
-            sectionsMap.set(sectionKey, program);
+            sectionsMap.set(sectionKey, { ...program });
           }
         }
       }
     });
     
+    // If no sections found, create a placeholder for students without program
+    if (sectionsMap.size === 0 && studentsInSubject.length > 0) {
+      sectionsMap.set('unassigned', {
+        id: 0,
+        program_code: 'UNK',
+        program_name: 'Unassigned Program',
+        year_level: 1,
+        section: '-',
+        department: 'N/A'
+      });
+    }
+    
     return Array.from(sectionsMap.values());
+  };
+
+  // Get total number of enrolled students in a subject
+  const getEnrolledStudentCount = (subjectId: number): number => {
+    // Support both subject_id (new) and course_section_id (legacy)
+    const enrolledStudents = subjectStudents.filter(ss => ss.subject_id === subjectId || ss.course_section_id === subjectId);
+    return enrolledStudents.length;
   };
 
   const getInstructorName = (instructorId: number | undefined) => {
     if (!instructorId) return "No instructor";
     const instructor = instructors.find(i => i.user_id === instructorId);
     return instructor ? instructor.full_name : "Unknown";
+  };
+
+  // Get students enrolled in a specific program/section for a subject
+  const getStudentsByEnrolledSection = (subjectId: number, program: Program | null): SubjectStudent[] => {
+    if (!program) return [];
+    
+    // Support both subject_id (new) and course_section_id (legacy)
+    const subjectEnrollments = subjectStudents.filter(ss => ss.subject_id === subjectId || ss.course_section_id === subjectId);
+    
+    // Filter by matching program_code, year_level, and section
+    const programKey = `${program.program_code}-${program.year_level}-${program.section}`;
+    
+    const filteredEnrollments = subjectEnrollments.filter(enrollment => {
+      const student = students.find(s => s.user_id === enrollment.student_id);
+      if (!student || !student.program_id) return false;
+      
+      const studentProgram = programs.find(p => p.id === student.program_id);
+      if (!studentProgram) return false;
+      
+      const studentProgramKey = `${studentProgram.program_code}-${studentProgram.year_level}-${studentProgram.section}`;
+      return studentProgramKey === programKey;
+    });
+    
+    const studentIds = filteredEnrollments.map(ss => ss.student_id);
+    
+    // Build maps for quick lookup of student details from ALL students
+    const studentDetailsMap = new Map<number, { profilePicture?: string; studentID?: string }>();
+    students.forEach(s => {
+      // Match by user_id directly
+      studentDetailsMap.set(s.user_id, {
+        profilePicture: s.profilePicture || undefined,
+        studentID: s.studentID || undefined
+      });
+    });
+    
+    // Return filtered enrollments with student details merged
+    return filteredEnrollments.map(enrollment => {
+      const details = studentDetailsMap.get(enrollment.student_id) || {};
+      return {
+        ...enrollment,
+        profilePicture: details.profilePicture,
+        studentID: details.studentID || enrollment.studentID
+      };
+    });
   };
 
   // Get unique programs
@@ -609,7 +765,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
             )}
             
             <div className="flex-1">
-              <h2 className="text-2xl font-bold">{selectedSubject.course_code} - {selectedSubject.course_name}</h2>
+              <h2 className="text-2xl font-bold">{selectedSubject.subject_code} - {selectedSubject.subject_name}</h2>
               <p className="text-gray-600 flex items-center gap-2">
                 <Users className="w-4 h-4" />
                 Instructor: {getInstructorName(selectedSubject.instructor_id)}
@@ -617,22 +773,6 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
             </div>
             
             <div className="flex gap-2">
-              <Button 
-                variant="outline" 
-                onClick={() => handleOpenEditSubject(selectedSubject)}
-                className="border-green-200 hover:bg-green-50"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-              <Button 
-                variant="outline" 
-                onClick={() => handleOpenDeleteSubject(selectedSubject)}
-                className="border-red-200 text-red-600 hover:bg-red-50"
-              >
-                <Trash2 className="w-4 h-4 mr-2" />
-                Delete
-              </Button>
               <Button onClick={() => { setSelectedProgramId(""); setAssignDialogOpen(true); }} className="bg-green-500 hover:bg-green-600">
                 <School className="w-4 h-4 mr-2" />
                 Enroll by Program
@@ -651,15 +791,22 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
           </CardHeader>
           <CardContent>
             {enrolledSections.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {enrolledSections.map((program) => (
-                  <div key={`${program.program_code}-${program.year_level}-${program.section}`} className="flex items-center gap-3 p-3 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 transition-colors">
+                  <div 
+                    key={`${program.program_code}-${program.year_level}-${program.section}`} 
+                    className="flex items-center gap-3 p-3 rounded-lg border border-green-200 bg-green-50 hover:bg-green-100 transition-colors cursor-pointer"
+                    onClick={() => setSelectedEnrolledSection(program)}
+                  >
                     <div className="w-10 h-10 rounded-full bg-green-500 flex items-center justify-center text-white font-medium">
                       {program.program_code.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{program.program_code} - {program.year_level}{program.section}</p>
                       <p className="text-sm text-gray-500 truncate">{program.program_name}</p>
+                    </div>
+                    <div className="text-sm text-green-600">
+                      {getStudentsByEnrolledSection(selectedSubject.id, program).length}
                     </div>
                   </div>
                 ))}
@@ -670,9 +817,95 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
           </CardContent>
         </Card>
 
+        {/* Enrolled Students in Section View */}
+        {selectedEnrolledSection && (
+          <Card className="border-blue-200">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <GraduationCap className="w-5 h-5" />
+                  Students in {selectedEnrolledSection.program_code} - Year {selectedEnrolledSection.year_level} Section {selectedEnrolledSection.section}
+                </CardTitle>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    className="border-red-200 text-red-600 hover:bg-red-50"
+                    onClick={() => {
+                      setRemovingSection(selectedEnrolledSection);
+                      setRemoveSectionDialogOpen(true);
+                    }}
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Remove Section
+                  </Button>
+                  <Button variant="ghost" onClick={() => setSelectedEnrolledSection(null)}>
+                    <X className="w-4 h-4 mr-2" />
+                    Close
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const sectionStudents = getStudentsByEnrolledSection(selectedSubject.id, selectedEnrolledSection);
+                return sectionStudents.length > 0 ? (
+                  <div className="space-y-2">
+                    {sectionStudents.map((student) => (
+                      <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border border-gray-200 bg-gray-50">
+                        <div className="flex items-center gap-3">
+                          {student.profilePicture ? (
+                            <Avatar className="w-8 h-8">
+                              <AvatarImage src={student.profilePicture} alt={student.student_name || 'Student'} />
+                              <AvatarFallback className="bg-blue-500 text-white text-sm">
+                                {student.student_name ? student.student_name.charAt(0).toUpperCase() : '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                          ) : (
+                            <Avatar className="w-8 h-8">
+                              <AvatarFallback className="bg-blue-500 text-white text-sm">
+                                {student.student_name ? student.student_name.charAt(0).toUpperCase() : '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div>
+                            <p className="font-medium text-sm">{student.student_name || 'Unknown Student'}</p>
+                            <p className="text-xs text-gray-500">{student.student_email}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {(() => {
+                            const studentEnrollment = subjectStudents.find(
+                              ss => (ss.subject_id === selectedSubject.id || ss.course_section_id === selectedSubject.id) && ss.student_id === student.student_id
+                            );
+                            return studentEnrollment ? (
+                              <Button 
+                                variant="ghost" 
+                                size="icon"
+                                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => {
+                                  setUnenrollingStudent(studentEnrollment);
+                                  setUnenrollDialogOpen(true);
+                                }}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            ) : null;
+                          })()}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 text-center py-8">No students found in this section</p>
+                );
+              })()}
+            </CardContent>
+          </Card>
+        )}
+
         {/* Enroll by Program Dialog */}
         <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-          <DialogContent>
+          <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Enroll Students by Program</DialogTitle>
               <DialogDescription>Select a program to enroll all its students to this subject</DialogDescription>
@@ -683,7 +916,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                 <Select value={selectedProgramId} onValueChange={setSelectedProgramId}>
                   <SelectTrigger><SelectValue placeholder="Select a program" /></SelectTrigger>
                   <SelectContent>
-                    {getUniquePrograms().map((program) => (
+                    {programs.map((program) => (
                       <SelectItem key={program.id} value={program.id.toString()}>
                         {program.program_code} - {program.program_name} (Year {program.year_level} - Section {program.section})
                       </SelectItem>
@@ -696,7 +929,18 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                 <div className="p-3 bg-blue-50 rounded-lg">
                   <p className="text-sm text-blue-800">
                     <Users className="w-4 h-4 inline mr-1" />
-                    {students.filter(s => s.program_id === parseInt(selectedProgramId)).length} students will be enrolled
+                    {(() => {
+                      const selectedProgram = programs.find(p => p.id === parseInt(selectedProgramId));
+                      const count = students.filter(s => {
+                        // First try to match both program_id and year_level
+                        if (selectedProgram && s.program_id && s.year_level) {
+                          return s.program_id === parseInt(selectedProgramId) && s.year_level === selectedProgram.year_level;
+                        }
+                        // Fallback: just match program_id if year_level data is missing
+                        return s.program_id === parseInt(selectedProgramId);
+                      }).length;
+                      return count;
+                    })()} students will be enrolled
                   </p>
                 </div>
               )}
@@ -728,6 +972,26 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Remove Section Dialog */}
+        <Dialog open={removeSectionDialogOpen} onOpenChange={setRemoveSectionDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Remove Enrolled Section</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to remove all students in {removingSection?.program_code} - Year {removingSection?.year_level} Section {removingSection?.section} from this subject? This will unenroll all {getStudentsByEnrolledSection(selectedSubject.id, removingSection!).length} students.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setRemoveSectionDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleRemoveEnrolledSection}>
+                Remove All
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
@@ -751,19 +1015,19 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
         <CardContent>
           <div className="flex gap-4 items-end">
             <div className="flex-1">
-              <Label>Course Code</Label>
+              <Label>Subject Code</Label>
               <Input 
                 placeholder="e.g. IT144" 
-                value={newCourseSection.course_code}
-                onChange={(e) => setNewCourseSection({...newCourseSection, course_code: e.target.value.toUpperCase()})}
+                value={newCourseSection.subject_code}
+                onChange={(e) => setNewCourseSection({...newCourseSection, subject_code: e.target.value.toUpperCase()})}
               />
             </div>
             <div className="flex-1">
-              <Label>Course Name</Label>
+              <Label>Subject Name</Label>
               <Input 
                 placeholder="e.g. System Architecture" 
-                value={newCourseSection.course_name}
-                onChange={(e) => setNewCourseSection({...newCourseSection, course_name: e.target.value})}
+                value={newCourseSection.subject_name}
+                onChange={(e) => setNewCourseSection({...newCourseSection, subject_name: e.target.value})}
               />
             </div>
             <Button onClick={handleCreateCourseSection} className="bg-green-500 hover:bg-green-600">
@@ -811,8 +1075,8 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                         {getInstructorCourses(instructor.user_id).map((ic) => (
                           <div key={ic.id} className="p-2 rounded bg-gray-50 border border-gray-200 flex justify-between items-center">
                             <div>
-                              <p className="font-medium text-sm">{ic.course_code}</p>
-                              <p className="text-xs text-gray-500">{ic.course_name}</p>
+                              <p className="font-medium text-sm">{ic.subject_code}</p>
+                              <p className="text-xs text-gray-500">{ic.subject_name}</p>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => handleRemoveCourse(ic.id)}>
                               <Trash2 className="w-4 h-4 text-red-500" />
@@ -831,7 +1095,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                           Add Subject
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Assign Subject to {selectedInstructor?.full_name}</DialogTitle>
                           <DialogDescription>Select a subject from the list</DialogDescription>
@@ -844,7 +1108,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                               <SelectContent>
                                 {courseSections.map((section) => (
                                   <SelectItem key={section.id} value={section.id.toString()}>
-                                    {section.course_code} - {section.course_name}
+                                    {section.subject_code} - {section.subject_name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -868,7 +1132,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
         <TabsContent value="students" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courseSections.map((subject) => {
-              const enrolledCount = getSubjectEnrolledSections(subject.id).length;
+              const enrolledCount = getEnrolledStudentCount(subject.id);
               
               return (
                 <Card 
@@ -878,8 +1142,8 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                   <CardHeader className="pb-2">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 cursor-pointer" onClick={() => handleSubjectClick(subject)}>
-                        <CardTitle className="text-lg">{subject.course_code}</CardTitle>
-                        <p className="text-sm text-gray-600">{subject.course_name}</p>
+                        <CardTitle className="text-lg">{subject.subject_code}</CardTitle>
+                        <p className="text-sm text-gray-600">{subject.subject_name}</p>
                       </div>
                       <div className="flex gap-1">
                         <Button 
@@ -937,23 +1201,23 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit Subject</DialogTitle>
-            <DialogDescription>Update the course details</DialogDescription>
+            <DialogDescription>Update the subject details</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label>Course Code</Label>
+              <Label>Subject Code</Label>
               <Input 
                 placeholder="e.g. IT144" 
-                value={editSubjectForm.course_code}
-                onChange={(e) => setEditSubjectForm({...editSubjectForm, course_code: e.target.value.toUpperCase()})}
+                value={editSubjectForm.subject_code}
+                onChange={(e) => setEditSubjectForm({...editSubjectForm, subject_code: e.target.value.toUpperCase()})}
               />
             </div>
             <div className="space-y-2">
-              <Label>Course Name</Label>
+              <Label>Subject Name</Label>
               <Input 
                 placeholder="e.g. System Architecture" 
-                value={editSubjectForm.course_name}
-                onChange={(e) => setEditSubjectForm({...editSubjectForm, course_name: e.target.value})}
+                value={editSubjectForm.subject_name}
+                onChange={(e) => setEditSubjectForm({...editSubjectForm, subject_name: e.target.value})}
               />
             </div>
             <Button onClick={handleUpdateSubject} className="w-full">
@@ -970,7 +1234,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
           <DialogHeader>
             <DialogTitle>Delete Subject</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete {deletingSubject?.course_code} - {deletingSubject?.course_name}?
+              Are you sure you want to delete {deletingSubject?.subject_code} - {deletingSubject?.subject_name}?
               This action cannot be undone and will remove all enrollments.
             </DialogDescription>
           </DialogHeader>
