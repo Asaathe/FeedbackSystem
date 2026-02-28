@@ -298,6 +298,7 @@ router.get("/instructors", verifyToken, requireAdmin, async (req, res) => {
         u.full_name,
         u.email,
         i.department,
+        i.school_role,
         i.instructor_id,
         i.image,
         (SELECT COUNT(*) FROM subjects s WHERE s.instructor_id = u.id AND s.status = 'active') as total_subjects,

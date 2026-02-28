@@ -21,6 +21,7 @@ interface Instructor {
   full_name: string;
   email: string;
   department: string;
+  school_role: string;
   instructor_id: string;
   image: string | null;
   total_subjects: number;
@@ -184,7 +185,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
   const filteredInstructors = instructors.filter(instructor =>
     instructor.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    instructor.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    instructor.school_role?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     instructor.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -339,7 +340,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </Avatar>
           <div>
             <h2 className="text-2xl font-bold">{selectedInstructor.full_name}</h2>
-            <p className="text-gray-600">{selectedInstructor.department} • {selectedInstructor.email}</p>
+            <p className="text-gray-600">{selectedInstructor.school_role} • {selectedInstructor.email}</p>
           </div>
         </div>
 
@@ -489,7 +490,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                 </Avatar>
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-lg truncate">{instructor.full_name}</CardTitle>
-                  <p className="text-sm text-gray-600 truncate">{instructor.department || 'No Department'}</p>
+                  <p className="text-sm text-gray-600 truncate">{instructor.school_role || 'No School Role'}</p>
                 </div>
               </CardHeader>
               <CardContent>
