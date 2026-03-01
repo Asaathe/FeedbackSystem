@@ -1368,31 +1368,31 @@ export function UserManagement() {
                   value="all" 
                   className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
                 >
-                  All ({tabCounts.all})
+                  All
                 </TabsTrigger>
                 <TabsTrigger 
                   value="student" 
                   className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
                 >
-                  Students ({tabCounts.student})
+                  Students
                 </TabsTrigger>
                 <TabsTrigger 
                   value="instructor" 
                   className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
                 >
-                  Instructors ({tabCounts.instructor})
+                  Instructors
                 </TabsTrigger>
                 <TabsTrigger 
                   value="alumni" 
                   className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
                 >
-                  Alumni ({tabCounts.alumni})
+                  Alumni
                 </TabsTrigger>
                 <TabsTrigger 
                   value="employer" 
                   className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
                 >
-                  Employers ({tabCounts.employer})
+                  Employers
                 </TabsTrigger>
             </TabsList>
         </div>
