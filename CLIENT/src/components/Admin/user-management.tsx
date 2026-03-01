@@ -1735,115 +1735,117 @@ export function UserManagement() {
 
               {/* Edit Mode */}
               {isEditMode && (
-                <div className="grid gap-4 pt-4">
-                  {/* Basic Information */}
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-fullName">Full Name *</Label>
-                      <Input
-                        id="edit-fullName"
-                        placeholder="John Doe"
-                        value={editUser.fullName}
-                        onChange={(e) => setEditUser({ ...editUser, fullName: e.target.value })}
-                      />
+                <div className="space-y-4 py-4">
+                  {/* Basic Information Section */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <div className="w-1 h-4 bg-green-500 rounded-full" />
+                      <h4 className="text-sm text-gray-700">Basic Information</h4>
                     </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-email">Email *</Label>
-                      <Input
-                        id="edit-email"
-                        type="email"
-                        placeholder="john.doe@university.edu"
-                        value={editUser.email}
-                        onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
-                      />
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-fullName">Full Name *</Label>
+                        <Input
+                          id="edit-fullName"
+                          placeholder="John Doe"
+                          value={editUser.fullName}
+                          onChange={(e) => setEditUser({ ...editUser, fullName: e.target.value })}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-email">Email *</Label>
+                        <Input
+                          id="edit-email"
+                          type="email"
+                          placeholder="john.doe@university.edu"
+                          value={editUser.email}
+                          onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-role">Role *</Label>
-                      <Select value={editUser.role} onValueChange={(value) => setEditUser({ ...editUser, role: value })}>
-                        <SelectTrigger id="edit-role">
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Student">Student</SelectItem>
-                          <SelectItem value="Instructor">Instructor</SelectItem>
-                          <SelectItem value="Alumni">Alumni</SelectItem>
-                          <SelectItem value="Employer">Employer</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  {/* Role Selection */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <div className="w-1 h-4 bg-green-500 rounded-full" />
+                      <h4 className="text-sm text-gray-700">Role & Access</h4>
                     </div>
-                    {(editUser.role.toLowerCase() === 'student' || editUser.role.toLowerCase() === 'instructor') && (
+
+                    <div className="grid gap-4 sm:grid-cols-2">
                       <div className="grid gap-2">
-                        <Label htmlFor="edit-department">Department *</Label>
-                        <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
-                          <SelectTrigger id="edit-department">
-                            <SelectValue placeholder="Select department" />
+                        <Label htmlFor="edit-role">User Role *</Label>
+                        <Select value={editUser.role} onValueChange={(value) => setEditUser({ ...editUser, role: value })}>
+                          <SelectTrigger id="edit-role">
+                            <SelectValue placeholder="Select user role" />
                           </SelectTrigger>
                           <SelectContent>
-                            {editUser.role.toLowerCase() === 'student' ? (
-                              <>
-                                <SelectItem value="College">College</SelectItem>
-                                <SelectItem value="Senior High">Senior High</SelectItem>
-                              </>
-                            ) : (
-                              <>
-                                <SelectItem value="Computer Science">Computer Science</SelectItem>
-                                <SelectItem value="Information Technology">Information Technology</SelectItem>
-                                <SelectItem value="Business Administration">Business Administration</SelectItem>
-                                <SelectItem value="Engineering">Engineering</SelectItem>
-                                <SelectItem value="Education">Education</SelectItem>
-                                <SelectItem value="Arts and Sciences">Arts and Sciences</SelectItem>
-                              </>
-                            )}
+                            <SelectItem value="Student">Student</SelectItem>
+                            <SelectItem value="Instructor">Instructor</SelectItem>
+                            <SelectItem value="Alumni">Alumni</SelectItem>
+                            <SelectItem value="Employer">Employer</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
-                    )}
-                  </div>
-
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-status">Status *</Label>
-                      <Select value={editUser.status} onValueChange={(value) => setEditUser({ ...editUser, status: value })}>
-                        <SelectTrigger id="edit-status">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="active">Active</SelectItem>
-                          <SelectItem value="pending">Pending</SelectItem>
-                          <SelectItem value="inactive">Inactive</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-status">Status *</Label>
+                        <Select value={editUser.status} onValueChange={(value) => setEditUser({ ...editUser, status: value })}>
+                          <SelectTrigger id="edit-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="active">Active</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="inactive">Inactive</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
 
                   {/* Role-specific fields */}
-                  {renderEditRoleSpecificFields()}
+                  {editUser.role && (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 pb-2 border-b">
+                        <div className="w-1 h-4 bg-green-500 rounded-full" />
+                        <h4 className="text-sm text-gray-700">{editUser.role} Details</h4>
+                      </div>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {renderEditRoleSpecificFields()}
+                      </div>
+                    </div>
+                  )}
 
-                  {/* Optional fields */}
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  {/* Optional Information */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 pb-2 border-b">
+                      <div className="w-1 h-4 bg-gray-300 rounded-full" />
+                      <h4 className="text-sm text-gray-700">Optional Information</h4>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label htmlFor="edit-phoneNumber">Phone Number</Label>
+                        <Input
+                          id="edit-phoneNumber"
+                          placeholder="+63 912 345 6789"
+                          value={editUser.phoneNumber}
+                          onChange={(e) => setEditUser({ ...editUser, phoneNumber: e.target.value })}
+                        />
+                      </div>
+                    </div>
+
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-phoneNumber">Phone Number</Label>
-                      <Input
-                        id="edit-phoneNumber"
-                        placeholder="+1 234 567 8900"
-                        value={editUser.phoneNumber}
-                        onChange={(e) => setEditUser({ ...editUser, phoneNumber: e.target.value })}
+                      <Label htmlFor="edit-address">Address</Label>
+                      <Textarea
+                        id="edit-address"
+                        placeholder="Enter address"
+                        value={editUser.address}
+                        onChange={(e) => setEditUser({ ...editUser, address: e.target.value })}
+                        rows={2}
                       />
                     </div>
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-address">Address</Label>
-                    <Textarea
-                      id="edit-address"
-                      placeholder="Enter address"
-                      value={editUser.address}
-                      onChange={(e) => setEditUser({ ...editUser, address: e.target.value })}
-                      rows={2}
-                    />
                   </div>
                 </div>
               )}
