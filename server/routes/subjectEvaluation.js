@@ -203,9 +203,14 @@ router.get("/course-sections", verifyToken, async (req, res) => {
  */
 router.post("/course-sections", verifyToken, requireAdmin, async (req, res) => {
   try {
-    const { course_code, course_name, section, year_level, department } = req.body;
+    // Accept both course_code/course_name and subject_code/subject_name
+    const { course_code, course_name, subject_code, subject_name, section, year_level, department } = req.body;
     
-    if (!course_code || !course_name) {
+    // Use either naming convention
+    const code = course_code || subject_code;
+    const name = course_name || subject_name;
+    
+    if (!code || !name) {
       return res.status(400).json({ success: false, message: "Course code and name are required" });
     }
     
@@ -213,7 +218,7 @@ router.post("/course-sections", verifyToken, requireAdmin, async (req, res) => {
       INSERT INTO subjects (subject_code, subject_name, section, year_level, department, status) 
       VALUES (?, ?, ?, ?, ?, 'active')
     `;
-    db.query(query, [course_code, course_name, section || null, year_level || null, department || 'General'], (err, result) => {
+    db.query(query, [code, name, section || null, year_level || null, department || 'General'], (err, result) => {
       if (err) {
         console.error("Error creating course section:", err);
         return res.status(500).json({ success: false, message: "Failed to create subject" });
@@ -233,9 +238,14 @@ router.post("/course-sections", verifyToken, requireAdmin, async (req, res) => {
 router.put("/course-sections/:id", verifyToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { course_code, course_name } = req.body;
+    // Accept both course_code/course_name and subject_code/subject_name
+    const { course_code, course_name, subject_code, subject_name } = req.body;
     
-    if (!course_code || !course_name) {
+    // Use either naming convention
+    const code = course_code || subject_code;
+    const name = course_name || subject_name;
+    
+    if (!code || !name) {
       return res.status(400).json({ success: false, message: "Course code and name are required" });
     }
     
@@ -244,7 +254,7 @@ router.put("/course-sections/:id", verifyToken, requireAdmin, async (req, res) =
       SET subject_code = ?, subject_name = ? 
       WHERE id = ?
     `;
-    db.query(query, [course_code, course_name, id], (err, result) => {
+    db.query(query, [code, name, id], (err, result) => {
       if (err) {
         console.error("Error updating course section:", err);
         return res.status(500).json({ success: false, message: "Failed to update subject" });

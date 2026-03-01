@@ -93,3 +93,22 @@ export interface FormFilters {
   department?: string;
   company?: string;
 }
+
+// Evaluation Form Types
+export interface EvaluationSubject {
+  id: number;
+  subject_code: string;
+  subject_name: string;
+  department: string;
+  instructor_name?: string;
+  instructor_id?: number;
+  total_students?: number;
+}
+
+export interface EvaluationInstructor {
+  id: number;
+  full_name: string;
+  department: string;
+  total_subjects: number;
+  image?: string;
+}

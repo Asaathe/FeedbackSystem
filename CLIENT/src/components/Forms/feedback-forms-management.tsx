@@ -14,6 +14,8 @@ import {
   Star,
   Send,
   X,
+  ClipboardList,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -28,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "../ui/dialog";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
@@ -62,7 +65,7 @@ import { isAuthenticated, getUserRole } from "../../utils/auth";
 import { formatImageUrl, EnhancedImage } from "../../utils/imageUtils";
 
 interface FeedbackFormsManagementProps {
-  onNavigateToBuilder?: (formId?: string) => void;
+  onNavigateToBuilder?: (formId?: string, formType?: 'custom' | 'evaluation') => void;
   onNavigateToResponses?: (formId: string) => void;
 }
 
@@ -72,11 +75,6 @@ const targetAudienceOptions = [
   "Alumni",
   "Instructors",
 ];
-
-interface FeedbackFormsManagementProps {
-  onNavigateToBuilder?: (formId?: string) => void;
-  onNavigateToEdit?: (formId: string) => void;
-}
 
 export function FeedbackFormsManagement({
   onNavigateToBuilder,
@@ -93,6 +91,7 @@ export function FeedbackFormsManagement({
   const [categories, setCategories] = useState<FormCategory[]>([]);
   const [loadingCategoryOperation, setLoadingCategoryOperation] =
     useState(false);
+  const [formTypeSelectionOpen, setFormTypeSelectionOpen] = useState(false);
 
   // Load question count cache from localStorage on component mount
   const [formQuestionCache, setFormQuestionCache] = useState<
@@ -304,6 +303,17 @@ export function FeedbackFormsManagement({
       console.error("Error loading form for preview:", error);
       toast.error("Failed to load form for preview");
     }
+  };
+
+  // Handler for creating a new form (opens type selection modal)
+  const handleCreateNewForm = () => {
+    setFormTypeSelectionOpen(true);
+  };
+
+  // Handler for selecting form type
+  const handleSelectFormType = (formType: 'custom' | 'evaluation') => {
+    setFormTypeSelectionOpen(false);
+    onNavigateToBuilder?.(undefined, formType);
   };
 
   const handleDuplicateForm = async (formId: string) => {
@@ -563,13 +573,58 @@ export function FeedbackFormsManagement({
         <div className="flex gap-2">
           <Button
             className="bg-green-500 hover:bg-green-600"
-            onClick={() => onNavigateToBuilder?.()}
+            onClick={handleCreateNewForm}
           >
             <Plus className="w-4 h-4 mr-2" />
             Create New Form
           </Button>
         </div>
       </div>
+
+      {/* Form Type Selection Modal */}
+      <Dialog open={formTypeSelectionOpen} onOpenChange={setFormTypeSelectionOpen}>
+        <DialogContent className="max-w-md">
+          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogClose>
+          <DialogHeader>
+            <DialogTitle>Create New Form</DialogTitle>
+            <DialogDescription>
+              Select the type of form you want to create
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-4 py-4">
+            {/* Custom Form Option */}
+            <button
+              onClick={() => handleSelectFormType('custom')}
+              className="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left group"
+            >
+              <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-green-200">
+                <ClipboardList className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">Custom Form</h3>
+                <p className="text-sm text-gray-500">Traditional feedback form with custom questions</p>
+              </div>
+            </button>
+
+            {/* Evaluation Form Option */}
+            <button
+              onClick={() => handleSelectFormType('evaluation')}
+              className="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left group"
+            >
+              <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-purple-200">
+                <ClipboardCheck className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900">Evaluation Form</h3>
+                <p className="text-sm text-gray-500">Subject &amp; Instructor Evaluation</p>
+              </div>
+            </button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
@@ -1058,7 +1113,7 @@ export function FeedbackFormsManagement({
                 </p>
                 <Button
                   className="bg-green-500 hover:bg-green-600"
-                  onClick={() => onNavigateToBuilder?.()}
+                  onClick={handleCreateNewForm}
                 >
                   <Plus className="w-4 h-4 mr-2" />
                   Create New Form
@@ -1073,11 +1128,17 @@ export function FeedbackFormsManagement({
                   >
                     {/* Image or Placeholder */}
                     <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100 flex items-center justify-center">
-                      <EnhancedImage
-                        src={form.image_url}
-                        alt={form.title || "Form image"}
-                        className="w-full h-full object-contain"
-                      />
+                      {form.image_url ? (
+                        <EnhancedImage
+                          src={formatImageUrl(form.image_url)}
+                          alt={form.title || "Form image"}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-green-600">
+                          <FileText className="w-12 h-12 opacity-50" />
+                        </div>
+                      )}
                     </div>
 
                     <CardHeader className="pb-2">
@@ -1217,11 +1278,17 @@ export function FeedbackFormsManagement({
                   >
                     {/* Add image display here */}
                     <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                      <EnhancedImage
-                        src={template.image_url}
-                        alt={template.title || "Template image"}
-                        className="w-full h-full object-contain"
-                      />
+                      {template.image_url ? (
+                        <EnhancedImage
+                          src={formatImageUrl(template.image_url)}
+                          alt={template.title || "Template image"}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-purple-600">
+                          <FileText className="w-12 h-12 opacity-50" />
+                        </div>
+                      )}
                     </div>
 
                     <CardHeader className="pb-2">

@@ -88,6 +88,7 @@ interface FormBuilderProps {
   onBack: () => void;
   formId?: string;
   isCustomFormTab?: boolean;
+  formType?: 'custom' | 'evaluation';
 }
 
 // Form types for evaluation
@@ -119,12 +120,16 @@ export function FormBuilder({
   onBack,
   formId,
   isCustomFormTab,
+  formType: initialFormType,
 }: FormBuilderProps) {
-  // Form Type State
-  const [formType, setFormType] = useState<string>("general");
+  // Form Type State - use prop if provided (for evaluation forms), otherwise default to general
+  const [formType, setFormType] = useState<string>(initialFormType === 'evaluation' ? 'subject-evaluation' : 'general');
+  
+  // Check if this is an evaluation form
+  const isEvaluationForm = initialFormType === 'evaluation' || formType === 'subject-evaluation';
   
   // Get available question types based on form type
-  const availableQuestionTypes = formType === "subject-evaluation" 
+  const availableQuestionTypes = isEvaluationForm 
     ? ratingOnlyQuestionTypes 
     : questionTypes;
 
@@ -1970,46 +1975,6 @@ export function FormBuilder({
                       </SelectContent>
                     </Select>
                   </div>
-
-                  {/* Form Type Selector */}
-                  <div className="space-y-2">
-                    <Label>Form Type</Label>
-                    <p className="text-xs text-gray-500">
-                      Select "Subject Evaluation" to use star rating questions only
-                    </p>
-                    <Select
-                      value={formType}
-                      onValueChange={(value) => {
-                        setFormType(value);
-                        // If switching to subject-evaluation, auto-add a star rating question if none exist
-                        if (value === "subject-evaluation" && questions.length === 0) {
-                          addQuestion("rating");
-                        }
-                      }}
-                    >
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Select form type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {formTypes.map((type) => (
-                          <SelectItem key={type.value} value={type.value}>
-                            <div className="flex flex-col">
-                              <span>{type.label}</span>
-                              <span className="text-xs text-gray-500">{type.description}</span>
-                            </div>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {formType === "subject-evaluation" && (
-                      <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md">
-                        <Star className="w-4 h-4 text-blue-500" />
-                        <span className="text-xs text-blue-700">
-                          Only star rating questions are available for Subject Evaluation forms
-                        </span>
-                      </div>
-                    )}
-                  </div>
                 </CardContent>
               </CollapsibleContent>
             </Card>
@@ -2069,6 +2034,11 @@ export function FormBuilder({
             
             // Render in sorted order
             items.forEach((item) => {
+              // Skip sections for evaluation forms
+              if (item.type === 'section' && isEvaluationForm) {
+                return;
+              }
+              
               if (item.type === 'section') {
                 const section = item.data;
                 const sectionQuestions = questions.filter(q => q.sectionId === section.id);
@@ -2151,17 +2121,22 @@ export function FormBuilder({
                       </Button>
                     );
                   })}
-                  <Button
-                    variant="outline"
-                    onClick={() => addSection("New Section")}
-                    className="hover:bg-blue-50 hover:border-blue-400"
-                  >
-                    <Layers className="w-4 h-4 mr-2" />
-                    Add Section
-                  </Button>
+                  {/* Only show Add Section for non-evaluation forms */}
+                  {!isEvaluationForm && (
+                    <Button
+                      variant="outline"
+                      onClick={() => addSection("New Section")}
+                      className="hover:bg-blue-50 hover:border-blue-400"
+                    >
+                      <Layers className="w-4 h-4 mr-2" />
+                      Add Section
+                    </Button>
+                  )}
                 </div>
                 <p className="text-sm text-gray-500">
-                  Click a question type to add it to your form, or add a section to group related questions
+                  {isEvaluationForm 
+                    ? "Click a star rating question type to add it to your evaluation form"
+                    : "Click a question type to add it to your form, or add a section to group related questions"}
                 </p>
               </div>
             </CardContent>

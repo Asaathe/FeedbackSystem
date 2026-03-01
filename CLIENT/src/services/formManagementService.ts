@@ -1,6 +1,9 @@
 // Form Management Service
 // Handles CRUD operations for forms via API
 
+// Import types from form types module
+import { EvaluationSubject, EvaluationInstructor } from '../components/Forms/types/form';
+
 // Debug mode - set to true to enable detailed logging
 const DEBUG_MODE = false;
 
@@ -1423,5 +1426,99 @@ export const getFormResponses = async (formId: string): Promise<{ success: boole
   } catch (error) {
     logError('Exception in getFormResponses:', error);
     return { success: false, responses: [], message: 'An error occurred while fetching form responses' };
+  }
+};
+
+// ============================================================
+// Evaluation Form Service Functions
+// ============================================================
+
+export const getEvaluationSubjects = async (): Promise<{ success: boolean; subjects: EvaluationSubject[]; message?: string }> => {
+  logDebug('getEvaluationSubjects called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, subjects: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/subject-evaluation/subjects';
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, subjects: [], message: 'Failed to fetch subjects' };
+    }
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (result.success && result.subjects) {
+      return {
+        success: true,
+        subjects: result.subjects,
+        message: 'Subjects fetched successfully'
+      };
+    } else {
+      return { success: false, subjects: [], message: result.message || 'Failed to fetch subjects' };
+    }
+  } catch (error) {
+    logError('Exception in getEvaluationSubjects:', error);
+    return { success: false, subjects: [], message: 'An error occurred while fetching subjects' };
+  }
+};
+
+export const getEvaluationInstructors = async (): Promise<{ success: boolean; instructors: EvaluationInstructor[]; message?: string }> => {
+  logDebug('getEvaluationInstructors called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, instructors: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/subject-evaluation/instructors';
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    logDebug('Response status:', response.status, response.statusText);
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, instructors: [], message: 'Failed to fetch instructors' };
+    }
+
+    const result = await response.json();
+    logDebug('Response data:', result);
+
+    if (result.success && result.instructors) {
+      return {
+        success: true,
+        instructors: result.instructors,
+        message: 'Instructors fetched successfully'
+      };
+    } else {
+      return { success: false, instructors: [], message: result.message || 'Failed to fetch instructors' };
+    }
+  } catch (error) {
+    logError('Exception in getEvaluationInstructors:', error);
+    return { success: false, instructors: [], message: 'An error occurred while fetching instructors' };
   }
 };

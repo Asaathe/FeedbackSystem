@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -27,6 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../ui/select";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "../ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -185,6 +191,19 @@ export function UserManagement() {
   const [pendingPage, setPendingPage] = useState(1);
   const pendingItemsPerPage = 3; // Show fewer in pending section
 
+  // Active tab state for role-based filtering
+  type UserRoleTab = 'all' | 'student' | 'instructor' | 'alumni' | 'employer';
+  const [activeTab, setActiveTab] = useState<UserRoleTab>('all');
+
+  // Memoized tab counts for performance
+  const tabCounts = useMemo(() => ({
+    all: users.length,
+    student: users.filter(u => u.role?.toLowerCase() === 'student').length,
+    instructor: users.filter(u => u.role?.toLowerCase() === 'instructor').length,
+    alumni: users.filter(u => u.role?.toLowerCase() === 'alumni').length,
+    employer: users.filter(u => u.role?.toLowerCase() === 'employer').length,
+  }), [users]);
+
   // Fetch users from API
   const fetchUsers = async (search = '', role = 'all', status = 'all', page = 1, limit = 1000) => {
     try {
@@ -246,13 +265,31 @@ export function UserManagement() {
   }, [searchQuery, roleFilter, statusFilter]);
 
   
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = (user.fullName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-                          (user.email?.toLowerCase() || '').includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === 'all' || (user.role?.toLowerCase() || '') === roleFilter.toLowerCase();
-    const matchesStatus = statusFilter === 'all' || (user.status?.toLowerCase() || '') === statusFilter.toLowerCase();
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  // Helper function to extract surname from full name
+  const getSurname = (fullName: string | undefined): string => {
+    if (!fullName) return '';
+    
+    // Handle "Lastname, Firstname" format
+    if (fullName.includes(',')) {
+      return fullName.split(',')[0].trim().toLowerCase();
+    }
+    
+    // Handle "Firstname Lastname" format - extract last word as surname
+    const parts = fullName.trim().split(/\s+/);
+    return parts[parts.length - 1].toLowerCase();
+  };
+
+  const filteredUsers = users
+    .filter(user => {
+      // Filter by active tab (role)
+      const matchesTab = activeTab === 'all' || (user.role?.toLowerCase() || '') === activeTab.toLowerCase();
+      const matchesSearch = (user.fullName?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+                            (user.email?.toLowerCase() || '').includes(searchQuery.toLowerCase());
+      const matchesRole = roleFilter === 'all' || (user.role?.toLowerCase() || '') === roleFilter.toLowerCase();
+      const matchesStatus = statusFilter === 'all' || (user.status?.toLowerCase() || '') === statusFilter.toLowerCase();
+      return matchesTab && matchesSearch && matchesRole && matchesStatus;
+    })
+    .sort((a, b) => getSurname(a.fullName).localeCompare(getSurname(b.fullName)));
 
   // Pagination calculations
   const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
@@ -261,7 +298,9 @@ export function UserManagement() {
   const pendingCount = users.filter(u => u.status === 'pending').length;
 
   // Pending users pagination
-  const pendingUsers = users.filter(u => u.status === 'pending');
+  const pendingUsers = users
+    .filter(u => u.status === 'pending')
+    .sort((a, b) => getSurname(a.fullName).localeCompare(getSurname(b.fullName)));
   const totalPendingPages = Math.ceil(pendingUsers.length / pendingItemsPerPage);
   const paginatedPendingUsers = pendingUsers.slice((pendingPage - 1) * pendingItemsPerPage, pendingPage * pendingItemsPerPage);
 
@@ -1320,14 +1359,50 @@ export function UserManagement() {
         </Card>
       )}
 
-      {/* Users Table */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <CardTitle>All Users ({filteredUsers.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto scrollbar-modern">
-            <Table>
+      {/* Tab Bar and Table wrapped in Tabs */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as UserRoleTab)} className="w-full">
+        {/* Tab Bar - Separated from Table */}
+        <div className="mb-4">
+            <TabsList className="flex w-full bg-gray-100/80 p-1 gap-1">
+                <TabsTrigger 
+                  value="all" 
+                  className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
+                >
+                  All ({tabCounts.all})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="student" 
+                  className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
+                >
+                  Students ({tabCounts.student})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="instructor" 
+                  className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
+                >
+                  Instructors ({tabCounts.instructor})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="alumni" 
+                  className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
+                >
+                  Alumni ({tabCounts.alumni})
+                </TabsTrigger>
+                <TabsTrigger 
+                  value="employer" 
+                  className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
+                >
+                  Employers ({tabCounts.employer})
+                </TabsTrigger>
+            </TabsList>
+        </div>
+
+        {/* Users Table */}
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+              <TabsContent value={activeTab} className="mt-0">
+              <div className="overflow-x-auto scrollbar-modern">
+                <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead className="min-w-[200px]">User</TableHead>
@@ -1382,16 +1457,6 @@ export function UserManagement() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          {/* ============================================================ */}
-                          {/* TODO: BACKEND - User Actions */}
-                          {/* ============================================================ */}
-                          {/* View Details: Show full user information */}
-                          {/* Approve/Reject: Only shown for pending users */}
-                          {/* Send Email: Optional - trigger email notification */}
-                          {/* Change Role: PATCH /api/users/:id { role: 'new_role' } */}
-                          {/* Remove User: DELETE /api/users/:id */}
-                          {/* ============================================================ */}
-                          
                           {user.status === 'pending' && (
                             <>
                               <DropdownMenuItem
@@ -1427,55 +1492,57 @@ export function UserManagement() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
-          </div>
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="w-4 h-4" />
-                Previous
-              </Button>
-
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1)
-                  .filter(page => {
-                    const start = Math.max(1, currentPage - 2);
-                    const end = Math.min(totalPages, currentPage + 2);
-                    return page >= start && page <= end;
-                  })
-                  .map(page => (
-                    <Button
-                      key={page}
-                      variant={page === currentPage ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setCurrentPage(page)}
-                      className={page === currentPage ? "bg-green-500 hover:bg-green-600" : ""}
-                    >
-                      {page}
-                    </Button>
-                  ))}
+                </Table>
               </div>
 
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </div>
-          )}
-        </CardContent>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Previous
+                  </Button>
+
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(page => {
+                        const start = Math.max(1, currentPage - 2);
+                        const end = Math.min(totalPages, currentPage + 2);
+                        return page >= start && page <= end;
+                      })
+                      .map(page => (
+                        <Button
+                          key={page}
+                          variant={page === currentPage ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          className={page === currentPage ? "bg-green-500 hover:bg-green-600" : ""}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+              </TabsContent>
+            </CardContent>
       </Card>
+      </Tabs>
 
       {/* View/Edit User Details Dialog */}
       <Dialog open={isViewDetailsOpen} onOpenChange={(open) => {

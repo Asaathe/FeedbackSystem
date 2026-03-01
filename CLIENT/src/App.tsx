@@ -127,6 +127,7 @@ export default function App() {
     undefined
   );
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
+  const [formType, setFormType] = useState<'custom' | 'evaluation'>('custom');
   const [viewingResponsesFormId, setViewingResponsesFormId] = useState<string | undefined>(
     undefined
   );
@@ -231,10 +232,11 @@ export default function App() {
   };
 
   // Navigate to form builder with form ID
-  const handleNavigateToFormBuilder = (formId?: string, isTemplate: boolean = false) => {
-    console.log('Navigating to form builder with:', { formId, isTemplate });
+  const handleNavigateToFormBuilder = (formId?: string, isTemplate: boolean = false, formTypeParam?: 'custom' | 'evaluation') => {
+    console.log('Navigating to form builder with:', { formId, isTemplate, formType: formTypeParam });
     setEditingFormId(formId);
     setIsEditingTemplate(isTemplate);
+    setFormType(formTypeParam || 'custom');
     setCurrentPage("form-builder");
   };
 
@@ -242,6 +244,7 @@ export default function App() {
   const handleBackFromFormBuilder = () => {
     setEditingFormId(undefined);
     setIsEditingTemplate(false);
+    setFormType('custom');
     setCurrentPage("forms");
   };
 
@@ -288,8 +291,8 @@ export default function App() {
         case "forms":
           return (
             <FeedbackFormsManagement
-              onNavigateToBuilder={(formId) => {
-                handleNavigateToFormBuilder(formId, false);
+              onNavigateToBuilder={(formId, formType) => {
+                handleNavigateToFormBuilder(formId, false, formType);
               }}
               onNavigateToResponses={handleNavigateToResponsesViewer}
             />
@@ -300,6 +303,7 @@ export default function App() {
               onBack={handleBackFromFormBuilder}
               formId={editingFormId}
               isCustomFormTab={!isEditingTemplate}
+              formType={formType}
             />
           );
         case "form-responses":
