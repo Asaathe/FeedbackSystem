@@ -104,6 +104,232 @@ router.post("/subject-instructors", verifyToken, requireAdmin, async (req, res) 
 });
 
 /**
+ * Assign form to subject (deploy evaluation form to all instructors of a subject)
+ * PUT /api/subject-evaluation/subjects/:subjectId/assign-form
+ */
+router.put("/subjects/:subjectId/assign-form", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    const { form_id, evaluation_type, start_date, end_date } = req.body;
+    
+    if (!form_id) {
+      return res.status(400).json({ success: false, message: "Form ID is required" });
+    }
+    
+    // First, check if subject_instructors exist for this subject
+    const checkQuery = `SELECT id, course_section_id FROM subject_instructors WHERE subject_id = ?`;
+    
+    db.query(checkQuery, [subjectId], (err, results) => {
+      if (err) {
+        console.error("Error checking subject_instructors:", err);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+      
+      if (results.length > 0) {
+        // Subject instructors already exist - update them with the form
+        const updateQuery = `
+          UPDATE subject_instructors 
+          SET form_id = ?, evaluation_type = ?, start_date = ?, end_date = ?, updated_at = NOW()
+          WHERE subject_id = ?
+        `;
+        
+        db.query(updateQuery, [form_id, evaluation_type || 'both', start_date || null, end_date || null, subjectId], (err, updateResult) => {
+          if (err) {
+            console.error("Error assigning form:", err);
+            return res.status(500).json({ success: false, message: "Database error" });
+          }
+          return res.status(200).json({ success: true, message: "Form assigned to existing subject-instructor(s)" });
+        });
+      } else {
+        // No subject_instructors exist - create one using the subject's instructor_id
+        const getInstructorQuery = `SELECT instructor_id FROM subjects WHERE id = ?`;
+        db.query(getInstructorQuery, [subjectId], (err2, subjResults) => {
+          if (err2) {
+            console.error("Error getting subject:", err2);
+            return res.status(500).json({ success: false, message: "Database error" });
+          }
+          
+          if (subjResults.length === 0 || !subjResults[0].instructor_id) {
+            return res.status(404).json({ success: false, message: "No instructors assigned to this subject" });
+          }
+          
+          // Find any existing course_section for this subject's year/section, or use a default
+          const findCourseQuery = `SELECT id FROM course_management WHERE year_level = 4 AND section = 'A' LIMIT 1`;
+          
+          db.query(findCourseQuery, [], (err3, courseResults) => {
+            if (err3) {
+              console.error("Error finding course:", err3);
+              return res.status(500).json({ success: false, message: "Database error" });
+            }
+            
+            const courseSectionId = courseResults.length > 0 ? courseResults[0].id : 1; // Default to id 1
+            
+            // Create subject_instructor
+            const insertQuery = `
+              INSERT INTO subject_instructors (subject_id, instructor_id, course_section_id, semester, academic_year, form_id, evaluation_type, status)
+              VALUES (?, ?, ?, '1st', '2024-2025', ?, ?, 'active')
+            `;
+            
+            db.query(insertQuery, [subjectId, subjResults[0].instructor_id, courseSectionId, form_id, evaluation_type || 'both'], (err4, insertResult) => {
+              if (err4) {
+                console.error("Error creating subject_instructor:", err4);
+                return res.status(500).json({ success: false, message: "Database error" });
+              }
+              return res.status(200).json({ success: true, message: "Form assigned to subject (new instructor created)" });
+            });
+          });
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Assign form error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+/**
+ * Assign form to subject-instructor (deploy evaluation form)
+ * PUT /api/subject-evaluation/subject-instructors/:id/assign-form
+ */
+router.put("/subject-instructors/:id/assign-form", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { form_id, evaluation_type, start_date, end_date } = req.body;
+    
+    if (!form_id) {
+      return res.status(400).json({ success: false, message: "Form ID is required" });
+    }
+    
+    const query = `
+      UPDATE subject_instructors 
+      SET form_id = ?, evaluation_type = ?, start_date = ?, end_date = ?, updated_at = NOW()
+      WHERE id = ?
+    `;
+    
+    db.query(query, [form_id, evaluation_type || 'both', start_date || null, end_date || null, id], (err, result) => {
+      if (err) {
+        console.error("Error assigning form:", err);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "Subject-instructor not found" });
+      }
+      return res.status(200).json({ success: true, message: "Form assigned successfully" });
+    });
+  } catch (error) {
+    console.error("Assign form error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+/**
+ * Submit evaluation response
+ * POST /api/subject-evaluation/evaluation-submissions
+ */
+router.post("/evaluation-submissions", verifyToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { subject_instructor_id, student_subject_id, form_id, response_data, subject_rating, instructor_rating } = req.body;
+    
+    if (!subject_instructor_id || !form_id || !response_data) {
+      return res.status(400).json({ success: false, message: "Missing required fields" });
+    }
+    
+    // First, save the form response
+    const insertResponseQuery = `
+      INSERT INTO form_responses (form_id, user_id, response_data) 
+      VALUES (?, ?, ?)
+    `;
+    
+    db.query(insertResponseQuery, [form_id, userId, JSON.stringify(response_data)], (err, responseResult) => {
+      if (err) {
+        console.error("Error saving response:", err);
+        return res.status(500).json({ success: false, message: "Failed to save response" });
+      }
+      
+      const responseId = responseResult.insertId;
+      
+      // Get student_subject details if not provided
+      let studentSubjectId = student_subject_id;
+      let studentId = userId;
+      
+      if (!studentSubjectId) {
+        // Try to find the student's subject enrollment
+        const findEnrollmentQuery = `
+          SELECT id, student_id FROM student_subjects 
+          WHERE subject_instructor_id = ? AND student_id = ?
+          LIMIT 1
+        `;
+        db.query(findEnrollmentQuery, [subject_instructor_id, userId], (enrollErr, enrollResults) => {
+          if (enrollErr || !enrollResults.length) {
+            // Insert into student_subjects if not found
+            const insertStudentSubjectQuery = `
+              INSERT INTO student_subjects (student_id, subject_instructor_id, academic_year)
+              VALUES (?, ?, ?)
+            `;
+            db.query(insertStudentSubjectQuery, [userId, subject_instructor_id, new Date().getFullYear().toString() + '-' + (new Date().getFullYear() + 1).toString()], (insertErr, insertResult) => {
+              studentSubjectId = insertResult.insertId;
+              saveSubmission();
+            });
+          } else {
+            studentSubjectId = enrollResults[0].id;
+            studentId = enrollResults[0].student_id;
+            saveSubmission();
+          }
+        });
+      } else {
+        saveSubmission();
+      }
+      
+      function saveSubmission() {
+        // Get subject_instructor details
+        const getSiQuery = `
+          SELECT subject_id, instructor_id, semester, academic_year 
+          FROM subject_instructors WHERE id = ?
+        `;
+        db.query(getSiQuery, [subject_instructor_id], (siErr, siResults) => {
+          if (siErr || !siResults.length) {
+            return res.status(404).json({ success: false, message: "Subject-instructor not found" });
+          }
+          
+          const si = siResults[0];
+          
+          // Insert into subject_evaluation_submissions (new table)
+          const insertSubmissionQuery = `
+            INSERT INTO subject_evaluation_submissions 
+            (response_id, student_subject_id, subject_instructor_id, subject_id, instructor_id, student_id, semester, academic_year, evaluation_type, subject_rating, instructor_rating)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `;
+          
+          db.query(insertSubmissionQuery, [
+            responseId, 
+            studentSubjectId || null, 
+            subject_instructor_id, 
+            si.subject_id, 
+            si.instructor_id, 
+            studentId,
+            si.semester, 
+            si.academic_year,
+            subject_rating ? 'subject' : (instructor_rating ? 'instructor' : 'both'),
+            subject_rating || null,
+            instructor_rating || null
+          ], (subErr, subResult) => {
+            if (subErr) {
+              console.error("Error saving submission:", subErr);
+              return res.status(500).json({ success: false, message: "Failed to save submission" });
+            }
+            return res.status(201).json({ success: true, message: "Evaluation submitted successfully" });
+          });
+        });
+      }
+    });
+  } catch (error) {
+    console.error("Submit evaluation error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
+/**
  * Get subject-instructor assignments
  * GET /api/subject-evaluation/subject-instructors
  */
@@ -111,7 +337,8 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
   try {
     const { subject_id, instructor_id } = req.query;
     
-    let conditions = ["si.status = 'active'"];
+    // First try to get from subject_instructors table
+    let conditions = [];
     let params = [];
     
     if (subject_id) {
@@ -127,15 +354,24 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
     
     const query = `
       SELECT 
-        si.*,
+        si.id,
+        si.subject_id,
+        si.instructor_id,
+        si.semester,
+        si.academic_year,
+        si.status,
+        si.form_id,
         s.subject_code,
         s.subject_name,
         s.department,
         u.full_name as instructor_name,
-        u.email as instructor_email
+        u.email as instructor_email,
+        f.title as form_title,
+        f.description as form_description
       FROM subject_instructors si
       INNER JOIN subjects s ON si.subject_id = s.id
       LEFT JOIN users u ON si.instructor_id = u.id
+      LEFT JOIN forms f ON si.form_id = f.id
       ${whereClause}
       ORDER BY s.subject_code, si.semester, si.academic_year
     `;
@@ -143,13 +379,57 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
     db.query(query, params, (err, results) => {
       if (err) {
         console.error("Error fetching subject-instructors:", err);
-        return res.status(200).json({ success: true, data: [] });
+        return res.status(200).json({ success: true, subjectInstructors: [] });
       }
-      return res.status(200).json({ success: true, data: results || [] });
+      
+      // If no results from subject_instructors, try to get from subjects table directly
+      if (!results || results.length === 0) {
+        const subjectsQuery = `
+          SELECT 
+            s.id as subject_id,
+            s.instructor_id,
+            s.subject_code,
+            s.subject_name,
+            s.department,
+            u.full_name as instructor_name,
+            u.email as instructor_email,
+            '1st' as semester,
+            DATE_FORMAT(NOW(), '%Y') as academic_year,
+            'active' as status
+          FROM subjects s
+          LEFT JOIN users u ON s.instructor_id = u.id
+          WHERE s.instructor_id IS NOT NULL AND s.status = 'active'
+          ORDER BY s.subject_code
+        `;
+        
+        db.query(subjectsQuery, [], (subjErr, subjResults) => {
+          if (subjErr) {
+            console.error("Error fetching subjects:", subjErr);
+            return res.status(200).json({ success: true, subjectInstructors: [] });
+          }
+          // Map subjects to match the subject_instructors structure
+          const mappedResults = subjResults.map((s) => ({
+            id: s.subject_id, // Use subject_id as id
+            subject_id: s.subject_id,
+            instructor_id: s.instructor_id,
+            semester: s.semester,
+            academic_year: s.academic_year,
+            status: s.status,
+            subject_code: s.subject_code,
+            subject_name: s.subject_name,
+            department: s.department,
+            instructor_name: s.instructor_name,
+            instructor_email: s.instructor_email,
+          }));
+          return res.status(200).json({ success: true, subjectInstructors: mappedResults || [] });
+        });
+      } else {
+        return res.status(200).json({ success: true, subjectInstructors: results || [] });
+      }
     });
   } catch (error) {
     console.error("Get subject-instructors error:", error);
-    return res.status(200).json({ success: true, data: [] });
+    return res.status(200).json({ success: true, subjectInstructors: [] });
   }
 });
 
@@ -301,7 +581,7 @@ router.delete("/course-sections/:id", verifyToken, requireAdmin, async (req, res
  */
 router.get("/instructors", verifyToken, requireAdmin, async (req, res) => {
   try {
-    // Get instructors with subject count from subjects table
+    // Get instructors with subject count and feedback stats from subject_instructors table
     const query = `
       SELECT 
         u.id as user_id,
@@ -311,9 +591,24 @@ router.get("/instructors", verifyToken, requireAdmin, async (req, res) => {
         i.school_role,
         i.instructor_id,
         i.image,
-        (SELECT COUNT(*) FROM subjects s WHERE s.instructor_id = u.id AND s.status = 'active') as total_subjects,
-        0 as total_feedbacks,
-        0.0 as avg_rating
+        COALESCE(
+          (SELECT COUNT(DISTINCT si.id) 
+           FROM subject_instructors si 
+           WHERE si.instructor_id = u.id AND si.status = 'active'),
+          0
+        ) as total_subjects,
+        COALESCE(
+          (SELECT COUNT(*) 
+           FROM subject_evaluation_submissions ses 
+           WHERE ses.instructor_id = u.id),
+          0
+        ) as total_feedbacks,
+        COALESCE(
+          (SELECT AVG((COALESCE(ses.subject_rating, 0) + COALESCE(ses.instructor_rating, 0)) / 2) 
+           FROM subject_evaluation_submissions ses 
+           WHERE ses.instructor_id = u.id),
+          0
+        ) as avg_rating
       FROM users u
       INNER JOIN instructors i ON u.id = i.user_id
       WHERE u.role = 'instructor' AND u.status = 'active'
@@ -377,20 +672,28 @@ router.get("/instructors/:instructorId/subjects", verifyToken, async (req, res) 
         });
       }
 
-      // Get subjects from subjects table
+      // Get subjects from subject_instructors table (primary) and subjects table (fallback)
+      // This ensures we get all subjects assigned to the instructor
       const subjectsQuery = `
         SELECT 
-          s.id as section_id,
+          COALESCE(si.id, s.id) as section_id,
           s.subject_name,
           s.subject_code,
           s.section,
           s.year_level,
           s.department,
-          (SELECT COUNT(*) FROM subject_instructors si2 WHERE si2.subject_id = s.id AND si2.status = 'active') as student_count,
-          0 as feedback_count,
-          0.0 as avg_rating
-        FROM subjects s
-        WHERE s.instructor_id = ? AND s.status = 'active'
+          (SELECT COUNT(*) FROM student_subjects ss WHERE ss.subject_instructor_id = si.id) as student_count,
+          (SELECT COUNT(*) FROM subject_evaluation_submissions ses WHERE ses.subject_instructor_id = si.id) as feedback_count,
+          COALESCE(
+            (SELECT AVG((COALESCE(ses.subject_rating, 0) + COALESCE(ses.instructor_rating, 0)) / 2) 
+             FROM subject_evaluation_submissions ses 
+             WHERE ses.subject_instructor_id = si.id), 
+            0
+          ) as avg_rating
+        FROM subject_instructors si
+        INNER JOIN subjects s ON si.subject_id = s.id
+        WHERE si.instructor_id = ? AND si.status = 'active'
+        GROUP BY si.id, s.id, s.subject_name, s.subject_code, s.section, s.year_level, s.department
         ORDER BY s.subject_code ASC
       `;
 
@@ -404,11 +707,46 @@ router.get("/instructors/:instructorId/subjects", verifyToken, async (req, res) 
           });
         }
 
-        return res.status(200).json({
-          success: true,
-          instructor: instructorResults[0],
-          subjects: subjectResults || [],
-        });
+        // If no results from subject_instructors, try fallback to subjects table
+        if (!subjectResults || subjectResults.length === 0) {
+          const fallbackQuery = `
+            SELECT 
+              s.id as section_id,
+              s.subject_name,
+              s.subject_code,
+              s.section,
+              s.year_level,
+              s.department,
+              0 as student_count,
+              0 as feedback_count,
+              0.0 as avg_rating
+            FROM subjects s
+            WHERE s.instructor_id = ? AND s.status = 'active'
+            ORDER BY s.subject_code ASC
+          `;
+          
+          db.query(fallbackQuery, [instructorId], (fbErr, fbResults) => {
+            if (fbErr) {
+              console.error("Error fetching fallback subjects:", fbErr);
+              return res.status(200).json({
+                success: true,
+                instructor: instructorResults[0],
+                subjects: [],
+              });
+            }
+            return res.status(200).json({
+              success: true,
+              instructor: instructorResults[0],
+              subjects: fbResults || [],
+            });
+          });
+        } else {
+          return res.status(200).json({
+            success: true,
+            instructor: instructorResults[0],
+            subjects: subjectResults || [],
+          });
+        }
       });
     });
   } catch (error) {
@@ -429,81 +767,134 @@ router.get("/subjects/:subjectId/feedback", verifyToken, async (req, res) => {
   try {
     const { subjectId } = req.params;
     
-    // Get form responses for this subject
-    const query = `
-      SELECT 
-        fr.id as response_id,
-        fr.response_data,
-        fr.submitted_at,
-        u.full_name as student_name,
-        u.email as student_email
-      FROM form_responses fr
-      LEFT JOIN users u ON fr.user_id = u.id
-      WHERE fr.form_id = ?
-      ORDER BY fr.submitted_at DESC
+    // First, get the subject_instructors and their form_ids for this subject
+    const getSiQuery = `
+      SELECT id, form_id, instructor_id 
+      FROM subject_instructors 
+      WHERE subject_id = ? AND status = 'active'
     `;
     
-    db.query(query, [subjectId], (err, results) => {
-      if (err) {
-        console.error("Error fetching feedback:", err);
+    db.query(getSiQuery, [subjectId], (siErr, siResults) => {
+      if (siErr) {
+        console.error("Error fetching subject_instructors:", siErr);
         return res.status(200).json({
           success: true,
           feedback: [],
           statistics: { total_responses: 0, avg_rating: 0, rating_distribution: {5:0,4:0,3:0,2:0,1:0} },
         });
       }
-
-      // Calculate statistics
-      const ratings = [];
-      const feedbackData = results.map(r => {
-        let parsedData = r.response_data;
-        if (typeof parsedData === 'string') {
-          try {
-            parsedData = JSON.parse(parsedData);
-          } catch (e) {
-            parsedData = [parsedData];
-          }
-        }
-        
-        // Extract rating values
-        if (Array.isArray(parsedData)) {
-          parsedData.forEach(val => {
-            const numVal = parseFloat(val);
-            if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
-              ratings.push(numVal);
-            }
+      
+      // If no subject_instructors found, return empty
+      if (!siResults || siResults.length === 0) {
+        return res.status(200).json({
+          success: true,
+          feedback: [],
+          statistics: { total_responses: 0, avg_rating: 0, rating_distribution: {5:0,4:0,3:0,2:0,1:0} },
+        });
+      }
+      
+      const formIds = siResults.map(si => si.form_id).filter(f => f);
+      const siIds = siResults.map(si => si.id);
+      
+      // If no forms assigned, return empty
+      if (formIds.length === 0) {
+        return res.status(200).json({
+          success: true,
+          feedback: [],
+          statistics: { total_responses: 0, avg_rating: 0, rating_distribution: {5:0,4:0,3:0,2:0,1:0} },
+        });
+      }
+      
+      // Get form responses for these forms
+      const placeholders = formIds.map(() => '?').join(',');
+      const query = `
+        SELECT 
+          fr.id as response_id,
+          fr.response_data,
+          fr.submitted_at,
+          u.full_name as student_name,
+          u.email as student_email,
+          ses.subject_rating,
+          ses.instructor_rating
+        FROM form_responses fr
+        LEFT JOIN users u ON fr.user_id = u.id
+        LEFT JOIN subject_evaluation_submissions ses ON fr.id = ses.response_id
+        WHERE fr.form_id IN (${placeholders})
+        ORDER BY fr.submitted_at DESC
+      `;
+      
+      db.query(query, formIds, (err, results) => {
+        if (err) {
+          console.error("Error fetching feedback:", err);
+          return res.status(200).json({
+            success: true,
+            feedback: [],
+            statistics: { total_responses: 0, avg_rating: 0, rating_distribution: {5:0,4:0,3:0,2:0,1:0} },
           });
         }
-        
-        return {
-          response_id: r.response_id,
-          response_data: parsedData,
-          submitted_at: r.submitted_at,
-          student_name: r.student_name || 'Anonymous',
-          student_email: r.student_email
+
+        // Calculate statistics from subject_evaluation_submissions ratings
+        const ratings = [];
+        const feedbackData = results.map(r => {
+          let parsedData = r.response_data;
+          if (typeof parsedData === 'string') {
+            try {
+              parsedData = JSON.parse(parsedData);
+            } catch (e) {
+              parsedData = [parsedData];
+            }
+          }
+          
+          // Extract rating values from response_data
+          if (Array.isArray(parsedData)) {
+            parsedData.forEach(val => {
+              const numVal = parseFloat(val);
+              if (!isNaN(numVal) && numVal >= 1 && numVal <= 5) {
+                ratings.push(numVal);
+              }
+            });
+          }
+          
+          // Also add explicit ratings from subject_evaluation_submissions
+          if (r.subject_rating) {
+            const sr = parseFloat(r.subject_rating);
+            if (!isNaN(sr) && sr >= 1 && sr <= 5) ratings.push(sr);
+          }
+          if (r.instructor_rating) {
+            const ir = parseFloat(r.instructor_rating);
+            if (!isNaN(ir) && ir >= 1 && ir <= 5) ratings.push(ir);
+          }
+          
+          return {
+            response_id: r.response_id,
+            response_data: parsedData,
+            submitted_at: r.submitted_at,
+            student_name: r.student_name || 'Anonymous',
+            student_email: r.student_email
+          };
+        });
+
+        const avgRating = ratings.length > 0 
+          ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(2) 
+          : 0;
+
+        const ratingDistribution = {
+          5: ratings.filter(r => r === 5).length,
+          4: ratings.filter(r => r === 4).length,
+          3: ratings.filter(r => r === 3).length,
+          2: ratings.filter(r => r === 2).length,
+          1: ratings.filter(r => r === 1).length,
         };
-      });
 
-      const avgRating = ratings.length > 0 
-        ? (ratings.reduce((a, b) => a + b, 0) / ratings.length).toFixed(2) 
-        : 0;
-
-      const ratingDistribution = {
-        5: ratings.filter(r => r === 5).length,
-        4: ratings.filter(r => r === 4).length,
-        3: ratings.filter(r => r === 3).length,
-        2: ratings.filter(r => r === 2).length,
-        1: ratings.filter(r => r === 1).length,
-      };
-
-      return res.status(200).json({
-        success: true,
-        feedback: feedbackData,
-        statistics: {
-          total_responses: results.length,
-          avg_rating: avgRating,
-          rating_distribution: ratingDistribution,
-        },
+        return res.status(200).json({
+          success: true,
+          feedback: feedbackData,
+          statistics: {
+            total_responses: results.length,
+            avg_rating: avgRating,
+            rating_distribution: ratingDistribution,
+          },
+        });
       });
     });
   } catch (error) {
@@ -939,6 +1330,74 @@ router.get("/my-subjects", verifyToken, async (req, res) => {
   } catch (error) {
     console.error("Get my subjects error:", error);
     return res.status(200).json({ success: true, subjects: [] });
+  }
+});
+
+/**
+ * Get student's assigned evaluations
+ * GET /api/subject-evaluation/my-evaluations
+ * Returns subject-instructor pairs that have forms assigned for the student to evaluate
+ */
+router.get("/my-evaluations", verifyToken, async (req, res) => {
+  try {
+    const userId = req.userId || (req.user && req.user.id);
+    
+    // Get user's role
+    const userQuery = "SELECT role FROM users WHERE id = ?";
+    db.query(userQuery, [userId], (err, userResults) => {
+      if (err || userResults.length === 0) {
+        return res.status(200).json({ success: true, evaluations: [] });
+      }
+      
+      const userRole = userResults[0].role;
+      
+      // Only students can access this endpoint
+      if (userRole !== 'student') {
+        return res.status(200).json({ success: true, evaluations: [] });
+      }
+      
+      // Get student's enrolled subjects with assigned forms
+      const query = `
+        SELECT 
+          si.id as subject_instructor_id,
+          si.form_id,
+          si.evaluation_type,
+          si.start_date,
+          si.end_date,
+          s.id as subject_id,
+          s.subject_code,
+          s.subject_name,
+          s.department,
+          si.instructor_id,
+          u.full_name as instructor_name,
+          u.email as instructor_email,
+          si.semester,
+          si.academic_year,
+          f.title as form_title,
+          f.description as form_description,
+          f.category as form_category,
+          CASE WHEN ses.id IS NOT NULL THEN true ELSE false END as is_submitted
+        FROM subject_enrollments se
+        INNER JOIN subject_instructors si ON se.subject_id = si.subject_id
+        INNER JOIN subjects s ON si.subject_id = s.id
+        LEFT JOIN users u ON si.instructor_id = u.id
+        LEFT JOIN forms f ON si.form_id = f.id
+        LEFT JOIN subject_evaluation_submissions ses ON ses.subject_instructor_id = si.id AND ses.student_id = ?
+        WHERE se.student_id = ? AND si.form_id IS NOT NULL AND si.status = 'active'
+        ORDER BY s.subject_code, si.semester
+      `;
+      
+      db.query(query, [userId, userId], (queryErr, results) => {
+        if (queryErr) {
+          console.error("Error fetching evaluations:", queryErr);
+          return res.status(200).json({ success: true, evaluations: [] });
+        }
+        return res.status(200).json({ success: true, evaluations: results || [] });
+      });
+    });
+  } catch (error) {
+    console.error("Get my evaluations error:", error);
+    return res.status(200).json({ success: true, evaluations: [] });
   }
 });
 

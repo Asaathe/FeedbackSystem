@@ -105,6 +105,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'student-promotion', label: 'Student Promotion', icon: GraduationCap },
         { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
         { id: 'subjectassign', label: 'Subject Assignment', icon: Book },
+        { id: 'settings', label: 'System Settings', icon: Settings },
 
       ]
     : role === 'employer'

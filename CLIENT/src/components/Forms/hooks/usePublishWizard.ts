@@ -1,6 +1,6 @@
 import { useState, useCallback } from "react";
 
-export function usePublishWizard(totalSteps: number = 4) {
+export function usePublishWizard(totalSteps: number = 3) {
   const [currentWizardStep, setCurrentWizardStep] = useState(1);
 
   const nextWizardStep = useCallback(() => {

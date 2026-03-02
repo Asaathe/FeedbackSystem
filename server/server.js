@@ -17,6 +17,7 @@ const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
 const studentPromotionRoutes = require("./routes/studentPromotion");
 const subjectEvaluationRoutes = require("./routes/subjectEvaluation");
+const settingsRoutes = require("./routes/settings");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -68,13 +69,13 @@ const authLimiter = rateLimit({
 
 const formLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
-  max: 100,
+  max: 500,
   message: { success: false, message: "Too many form submissions" },
 });
 
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100,
+  max: 500,
   skipSuccessfulRequests: true,
 });
 
@@ -113,6 +114,7 @@ app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
 app.use("/api/subject-evaluation", subjectEvaluationRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));

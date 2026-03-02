@@ -111,6 +111,12 @@ const SubjectAssignment = lazy(() =>
   }))
 );
 
+const SystemSettings = lazy(() =>
+  import("./components/Admin/system-settings").then((m) => ({
+    default: m.SystemSettings,
+  }))
+);
+
 const StudentSubjectEvaluation = lazy(() =>
   import("./components/Dashboards/student-subject-evaluation").then((m) => ({
     default: m.StudentSubjectEvaluation,
@@ -323,6 +329,8 @@ export default function App() {
           return <SubjectEvaluation onNavigate={setCurrentPage} />;
         case "subjectassign":
           return <SubjectAssignment onNavigate={setCurrentPage} />;
+        case "settings":
+          return <SystemSettings onNavigate={setCurrentPage} />;
        
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;

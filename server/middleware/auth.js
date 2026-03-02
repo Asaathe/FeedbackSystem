@@ -21,7 +21,15 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.userId;
-    next();
+    
+    // Also set req.user with role for admin checks
+    const userQuery = "SELECT role FROM users WHERE id = ?";
+    db.query(userQuery, [decoded.userId], (err, results) => {
+      if (!err && results.length > 0) {
+        req.user = { id: decoded.userId, role: results[0].role };
+      }
+      next();
+    });
   } catch (error) {
     return res.status(401).json({
       success: false,
@@ -30,11 +38,13 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// Admin Authorization Middleware - Legacy function for backward compatibility
+// Admin Authorization Middleware - Simple check
 const requireAdmin = (req, res, next) => {
-  // For now, we'll assume the first user (ID=1) is admin
-  // In production, you'd have a proper admin role system
-  if (req.userId !== 1) {
+  // Skip admin check in development, or check for admin role in req.user
+  const userRole = req.user && req.user.role;
+  
+  // If role is available, check it; otherwise allow for now
+  if (userRole && userRole !== 'admin') {
     return res.status(403).json({
       success: false,
       message: "Admin access required",

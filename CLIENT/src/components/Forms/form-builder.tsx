@@ -74,6 +74,7 @@ import { QuestionCard } from "./components/QuestionCard";
 import { SectionCard } from "./components/SectionCard";
 import { RecipientSelector } from "./components/RecipientSelector";
 import { CategoryManager } from "./components/CategoryManager";
+import { EvaluationTargetSelector } from "./components/EvaluationTargetSelector";
 
 // Types
 import { QuestionTypeConfig, FormQuestion, FormSection, Instructor } from "./types/form";
@@ -83,6 +84,7 @@ import { cleanQuestions, getDepartmentFromSection, formatUserDetails } from "./u
 
 // AI Service
 import { generateQuestionsWithAI, GeneratedQuestion } from "../../services/aiQuestionService";
+import { deployEvaluationForm } from "../../services/formManagementService";
 
 interface FormBuilderProps {
   onBack: () => void;
@@ -127,7 +129,11 @@ export function FormBuilder({
   
   // Check if this is an evaluation form
   const isEvaluationForm = initialFormType === 'evaluation' || formType === 'subject-evaluation';
-  
+
+  // Evaluation form state: target selection
+  const [evalType, setEvalType] = useState<'subject' | 'instructor'>('subject');
+  const [selectedEvalTargets, setSelectedEvalTargets] = useState<number[]>([]);
+
   // Get available question types based on form type
   const availableQuestionTypes = isEvaluationForm 
     ? ratingOnlyQuestionTypes 
@@ -166,6 +172,8 @@ export function FormBuilder({
     aiDescription,
     setAiDescription,
   } = useFormSettings({ formId });
+
+  // Import deployEvaluationForm function directly for evaluation forms
 
   // Questions Hook
   const {
@@ -230,11 +238,14 @@ export function FormBuilder({
   // Wizard Hook
   const {
     currentWizardStep,
-    totalWizardSteps,
+    totalWizardSteps: wizardTotalSteps,
     nextWizardStep,
     prevWizardStep,
     resetWizard,
   } = usePublishWizard(4);
+
+  // Dynamic total steps: evaluation forms have 3 steps, custom forms have 4
+  const totalWizardSteps = isEvaluationForm ? 3 : wizardTotalSteps;
 
   // Dialog States
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
@@ -668,76 +679,96 @@ export function FormBuilder({
     if (result && result.success) {
       const currentFormId = result.formId;
 
-      // Check if specific recipients are selected (not all recipients)
-      const hasSpecificRecipients =
-        selectedRecipients.size > 0 &&
-        selectedRecipients.size < recipients.length;
-
+      // For evaluation forms, deploy to selected subject-instructor combinations
       let deployResult;
-      if (hasSpecificRecipients) {
-        // Assign to specific users
-        // Combine date and time for start and end dates
-        const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
-          ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
-          : submissionSchedule.startDate;
-        const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
-          ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
-          : submissionSchedule.endDate;
-
-        console.log("📋 Assigning to specific users with schedule:", {
-          submissionSchedule,
-          startDateTime,
-          endDateTime,
+      if (isEvaluationForm && selectedEvalTargets.length > 0) {
+        // Deploy evaluation form to selected targets
+        console.log("📋 Deploying evaluation form to:", {
+          formId: currentFormId,
+          targets: selectedEvalTargets,
+          evaluationType: evalType,
+          schedule: submissionSchedule
         });
 
-        deployResult = await assignToUsers(
+        deployResult = await deployEvaluationForm(
           currentFormId,
-          Array.from(selectedRecipients),
-          formTarget,
-          submissionSchedule.startDate,
-          submissionSchedule.endDate,
-          submissionSchedule.startTime,
-          submissionSchedule.endTime,
-          selectedDepartment,
-          selectedCourseYearSection
+          selectedEvalTargets,
+          evalType,
+          { 
+            startDate: submissionSchedule.startDate, 
+            endDate: submissionSchedule.endDate 
+          }
         );
       } else {
-        // Deploy to group
-        // Combine date and time for start and end dates
-        console.log("📋 Before combining dates:", {
-          submissionSchedule,
-          hasStartDate: !!submissionSchedule.startDate,
-          hasStartTime: !!submissionSchedule.startTime,
-          hasEndDate: !!submissionSchedule.endDate,
-          hasEndTime: !!submissionSchedule.endTime,
-        });
+        const hasSpecificRecipients =
+          selectedRecipients.size > 0 &&
+          selectedRecipients.size < recipients.length;
 
-        const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
-          ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
-          : submissionSchedule.startDate;
-        const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
-          ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
-          : submissionSchedule.endDate;
+        if (hasSpecificRecipients) {
+          // Assign to specific users
+          // Combine date and time for start and end dates
+          const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
+            ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
+            : submissionSchedule.startDate;
+          const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
+            ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
+            : submissionSchedule.endDate;
 
-        console.log("📋 Publishing form with schedule:", {
-          submissionSchedule,
-          startDateTime,
-          endDateTime,
-        });
+          console.log("📋 Assigning to specific users with schedule:", {
+            submissionSchedule,
+            startDateTime,
+            endDateTime,
+          });
 
-        deployResult = await deployToGroup(
-          currentFormId,
-          formTarget,
-          submissionSchedule.startDate,
-          submissionSchedule.endDate,
-          submissionSchedule.startTime,
-          submissionSchedule.endTime,
-          selectedDepartment,
-          selectedCourseYearSection
-        );
+          deployResult = await assignToUsers(
+            currentFormId,
+            Array.from(selectedRecipients),
+            formTarget,
+            submissionSchedule.startDate,
+            submissionSchedule.endDate,
+            submissionSchedule.startTime,
+            submissionSchedule.endTime,
+            selectedDepartment,
+            selectedCourseYearSection
+          );
+        } else {
+          // Deploy to group
+          // Combine date and time for start and end dates
+          console.log("📋 Before combining dates:", {
+            submissionSchedule,
+            hasStartDate: !!submissionSchedule.startDate,
+            hasStartTime: !!submissionSchedule.startTime,
+            hasEndDate: !!submissionSchedule.endDate,
+            hasEndTime: !!submissionSchedule.endTime,
+          });
+
+          const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
+            ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
+            : submissionSchedule.startDate;
+          const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
+            ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
+            : submissionSchedule.endDate;
+
+          console.log("📋 Publishing form with schedule:", {
+            submissionSchedule,
+            startDateTime,
+            endDateTime,
+          });
+
+          deployResult = await deployToGroup(
+            currentFormId,
+            formTarget,
+            submissionSchedule.startDate,
+            submissionSchedule.endDate,
+            submissionSchedule.startTime,
+            submissionSchedule.endTime,
+            selectedDepartment,
+            selectedCourseYearSection
+          );
+        }
       }
 
-      if (deployResult.success) {
+      if (deployResult && deployResult.success) {
         setPublishDialogOpen(false);
         // Update original state to match current state after publishing
         setOriginalFormState({
@@ -1196,7 +1227,8 @@ export function FormBuilder({
                         <h3 className="text-lg font-semibold">
                           {currentWizardStep === 1 && "Target Audience"}
                           {currentWizardStep === 2 && "Schedule (Optional)"}
-                          {currentWizardStep === 3 && "Share Responses"}
+                          {currentWizardStep === 3 && !isEvaluationForm && "Share Responses"}
+                          {currentWizardStep === 3 && isEvaluationForm && "Summary & Publish"}
                           {currentWizardStep === 4 && "Summary & Publish"}
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
@@ -1204,17 +1236,28 @@ export function FormBuilder({
                             "Select who will receive this feedback form"}
                           {currentWizardStep === 2 &&
                             "Set when respondents can submit their feedback"}
-                          {currentWizardStep === 3 &&
+                          {currentWizardStep === 3 && !isEvaluationForm &&
                             "Select instructors to share responses with"}
+                          {currentWizardStep === 3 && isEvaluationForm &&
+                            "Review your evaluation settings and publish"}
                           {currentWizardStep === 4 &&
                             "Review your settings and publish the form"}
                         </p>
                       </div>
                     </DialogHeader>
                     <div className="space-y-6 py-4">
-                      {/* Step 1: Target Audience */}
+                      {/* Step 1: Target Audience - Different for evaluation vs custom forms */}
                       {currentWizardStep === 1 && (
-                        <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
+                        <>
+                          {isEvaluationForm ? (
+                            <EvaluationTargetSelector
+                              evaluationType={evalType}
+                              onEvaluationTypeChange={setEvalType}
+                              selectedIds={selectedEvalTargets}
+                              onSelectionChange={setSelectedEvalTargets}
+                            />
+                          ) : (
+                            <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">
                           <CardHeader className="pb-3">
                             <div className="flex items-center gap-2 text-blue-700">
                               <Target className="w-4 h-4" />
@@ -1390,6 +1433,8 @@ export function FormBuilder({
                             )}
                           </CardContent>
                         </Card>
+                          )}
+                        </>
                       )}
 
                       {/* Step 2: Schedule */}
@@ -1524,8 +1569,8 @@ export function FormBuilder({
                         </Card>
                       )}
 
-                      {/* Step 3: Share Responses */}
-                      {currentWizardStep === 3 && (
+                      {/* Step 3: Share Responses - Only for non-evaluation forms */}
+                      {currentWizardStep === 3 && !isEvaluationForm && (
                         <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-yellow-50">
                           <CardHeader className="pb-3">
                             <div className="flex items-center gap-2 text-orange-700">
@@ -1711,10 +1756,16 @@ export function FormBuilder({
                               schedule or proceed to summary.
                             </p>
                           )}
-                          {currentWizardStep === 3 && (
+                          {currentWizardStep === 3 && !isEvaluationForm && (
                             <p className="text-sm text-orange-900">
                               <strong>Optional:</strong> Select instructors
                               to share responses with or proceed to summary.
+                            </p>
+                          )}
+                          {currentWizardStep === 3 && isEvaluationForm && (
+                            <p className="text-sm text-green-900">
+                              <strong>Ready to publish!</strong> Review your
+                              evaluation settings and publish the form.
                             </p>
                           )}
                           {currentWizardStep === 4 && (

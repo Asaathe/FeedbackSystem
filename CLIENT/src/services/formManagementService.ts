@@ -1522,3 +1522,123 @@ export const getEvaluationInstructors = async (): Promise<{ success: boolean; in
     return { success: false, instructors: [], message: 'An error occurred while fetching instructors' };
   }
 };
+
+// Deploy evaluation form to subjects
+export const deployEvaluationForm = async (
+  formId: string,
+  subjectIds: number[],
+  evaluationType: 'subject' | 'instructor' | 'both',
+  schedule?: { startDate?: string; endDate?: string }
+): Promise<{ success: boolean; message: string }> => {
+  logDebug('deployEvaluationForm called with formId:', formId, 'subjectIds:', subjectIds);
+  
+  try {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      return { success: false, message: 'Authentication required' };
+    }
+    
+    // Deploy to each subject (will handle subject_instructors on server side)
+    const results = [];
+    for (const subjectId of subjectIds) {
+      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/${subjectId}/assign-form`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          form_id: formId,
+          evaluation_type: evaluationType,
+          start_date: schedule?.startDate,
+          end_date: schedule?.endDate,
+        }),
+      });
+      
+      const data = await response.json();
+      results.push({ subjectId, success: data.success, message: data.message });
+    }
+    
+    const allSuccess = results.every(r => r.success);
+    if (allSuccess) {
+      return { success: true, message: `Evaluation form deployed to ${subjectIds.length} subject(s)` };
+    } else {
+      const failed = results.filter(r => !r.success).length;
+      return { success: false, message: `Deployed to ${subjectIds.length - failed}/${subjectIds.length} subjects` };
+    }
+  } catch (error) {
+    logError('Exception in deployEvaluationForm:', error);
+    return { success: false, message: 'An error occurred while deploying the evaluation form' };
+  }
+};
+
+// Submit evaluation response
+export const submitEvaluation = async (
+  subjectInstructorId: number,
+  formId: string,
+  responseData: any,
+  subjectRating?: number,
+  instructorRating?: number
+): Promise<{ success: boolean; message: string }> => {
+  logDebug('submitEvaluation called with subjectInstructorId:', subjectInstructorId, 'formId:', formId);
+  
+  try {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      return { success: false, message: 'Authentication required' };
+    }
+    
+    const response = await fetch('http://localhost:5000/api/subject-evaluation/evaluation-submissions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        subject_instructor_id: subjectInstructorId,
+        form_id: formId,
+        response_data: responseData,
+        subject_rating: subjectRating,
+        instructor_rating: instructorRating,
+      }),
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      return { success: true, message: 'Evaluation submitted successfully' };
+    } else {
+      return { success: false, message: data.message || 'Failed to submit evaluation' };
+    }
+  } catch (error) {
+    logError('Exception in submitEvaluation:', error);
+    return { success: false, message: 'An error occurred while submitting evaluation' };
+  }
+};
+
+// Get student's assigned evaluations
+export const getMyEvaluations = async (): Promise<{ success: boolean; evaluations: any[]; message: string }> => {
+  logDebug('getMyEvaluations called');
+  
+  try {
+    const token = sessionStorage.getItem('authToken');
+    if (!token) {
+      return { success: false, evaluations: [], message: 'Authentication required' };
+    }
+    
+    const response = await fetch('http://localhost:5000/api/subject-evaluation/my-evaluations', {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    });
+    
+    const data = await response.json();
+    if (data.success) {
+      return { success: true, evaluations: data.evaluations || [], message: 'Evaluations fetched successfully' };
+    } else {
+      return { success: false, evaluations: [], message: data.message || 'Failed to fetch evaluations' };
+    }
+  } catch (error) {
+    logError('Exception in getMyEvaluations:', error);
+    return { success: false, evaluations: [], message: 'An error occurred while fetching evaluations' };
+  }
+};

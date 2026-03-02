@@ -10,9 +10,11 @@ import {
   FileText,
   Clock,
   CheckCircle,
-  Send
+  Send,
+  X
 } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface Subject {
   subject_id: number;
@@ -41,6 +43,8 @@ interface PublishedForm {
   target_audience: string;
   dueDate?: string;
   assignment_status: string;
+  form_id?: number;
+  is_submitted?: boolean;
 }
 
 interface StudentSubjectEvaluationProps {
@@ -54,6 +58,28 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
   const [loading, setLoading] = useState(true);
   const [loadingForms, setLoadingForms] = useState(false);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
+  const [evaluationDialogOpen, setEvaluationDialogOpen] = useState(false);
+  const [selectedForm, setSelectedForm] = useState<PublishedForm | null>(null);
+  const [formQuestions, setFormQuestions] = useState<any[]>([]);
+  const [formResponses, setFormResponses] = useState<Record<number, any>>({});
+  const [loadingForm, setLoadingForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Helper function to render subject info with proper type handling
+  const renderSubjectInfo = () => {
+    const subject = selectedSubject;
+    if (!subject || !subject.subject_name) return null;
+    return (
+      <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-100">
+        <p className="font-medium text-green-800">
+          {subject.subject_name} ({subject.subject_code})
+        </p>
+        <p className="text-sm text-green-600">
+          Instructor: {subject.instructor_name || 'Not Assigned'}
+        </p>
+      </div>
+    );
+  };
 
   useEffect(() => {
     fetchMySubjects();
@@ -120,31 +146,31 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         return;
       }
 
-      // Get all assigned forms for students
-      const response = await fetch('http://localhost:5000/api/users/assigned-forms', {
+      // Get evaluation forms assigned to this student for this subject
+      // Use the new API that returns subject-specific evaluations
+      const response = await fetch('http://localhost:5000/api/subject-evaluation/my-evaluations', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
       const data = await response.json();
-      if (data.success && data.forms) {
-        // Filter forms that are for students and match the course
-        const studentForms = data.forms.filter((form: PublishedForm) => {
-          const target = form.target_audience || '';
-          const isStudentForm = target === 'Students' || target.startsWith('Students - ');
-          // For now, show all student forms - could be filtered by course_code in future
-          return isStudentForm;
+      if (data.success && data.evaluations) {
+        // Filter evaluations that match the current subject
+        const subjectEvaluations = data.evaluations.filter((eval_item: any) => {
+          return eval_item.subject_id === subject.subject_id && eval_item.form_id;
         });
 
-        setAvailableForms(studentForms.map((form: any) => ({
-          id: form.id.toString(),
-          title: form.title,
-          description: form.description,
-          category: form.category,
-          target_audience: form.target_audience,
-          dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString() : undefined,
-          assignment_status: form.assignment_status || 'pending'
+        setAvailableForms(subjectEvaluations.map((eval_item: any) => ({
+          id: eval_item.subject_instructor_id.toString(), // Use subject_instructor_id as id
+          title: eval_item.form_title || 'Subject Evaluation',
+          description: eval_item.form_description || 'Please evaluate this subject',
+          category: eval_item.form_category || 'Evaluation',
+          target_audience: 'Student Subject Evaluation',
+          dueDate: eval_item.end_date ? new Date(eval_item.end_date).toLocaleDateString() : undefined,
+          assignment_status: eval_item.is_submitted ? 'completed' : 'pending',
+          form_id: eval_item.form_id, // Store form_id for submission
+          is_submitted: eval_item.is_submitted
         })));
       }
     } catch (error) {
@@ -165,9 +191,106 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     setAvailableForms([]);
   };
 
-  const handleStartEvaluation = (formId: string) => {
-    // Navigate to feedback submission with the form
-    onNavigate?.('submit-feedback');
+  const handleStartEvaluation = async (formId: string) => {
+    // Find the form in availableForms
+    const form = availableForms.find(f => f.id === formId);
+    alert("Starting evaluation, form ID: " + formId);
+    console.log("Starting evaluation with formId:", formId, "form:", form);
+    if (!form) {
+      toast.error('Form not found');
+      return;
+    }
+
+    if (!form.form_id) {
+      toast.error('No form assigned to this evaluation');
+      return;
+    }
+
+    setSelectedForm(form);
+    setFormResponses({});
+    setFormQuestions([]);
+    setLoadingForm(true);
+    setEvaluationDialogOpen(true);
+    
+    // Force re-render by using setTimeout
+    setTimeout(() => {
+      alert("Dialog should open now. State: evaluationDialogOpen=true");
+    }, 100);
+    
+    // Fetch form details and questions
+    try {
+      const token = sessionStorage.getItem('authToken');
+      console.log("Fetching form from:", `http://localhost:5000/api/forms/${form.form_id}`);
+      const response = await fetch(`http://localhost:5000/api/forms/${form.form_id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+       
+      const data = await response.json();
+      console.log("Form response data:", data);
+      if (data.success && data.form) {
+        setFormQuestions(data.form.questions || []);
+        console.log("Form questions:", data.form.questions);
+      } else {
+        console.error("Form fetch failed:", data);
+        toast.error(data.message || 'Failed to load form');
+      }
+    } catch (error) {
+      console.error('Error loading form:', error);
+      toast.error('Failed to load form');
+    } finally {
+      setLoadingForm(false);
+    }
+  };
+
+  const handleResponseChange = (questionId: number, value: any) => {
+    setFormResponses(prev => ({
+      ...prev,
+      [questionId]: value
+    }));
+  };
+
+  const handleSubmitEvaluation = async () => {
+    if (!selectedForm || !selectedSubject || !selectedForm.form_id) {
+      toast.error('Missing form or subject information');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch('http://localhost:5000/api/subject-evaluation/evaluation-submissions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          form_id: selectedForm.form_id,
+          subject_id: selectedSubject.subject_id,
+          subject_instructor_id: parseInt(selectedForm.id),
+          responses: formResponses
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Evaluation submitted successfully!');
+        setEvaluationDialogOpen(false);
+        // Refresh the forms list
+        if (selectedSubject) {
+          await fetchFormsForSubject(selectedSubject);
+        }
+      } else {
+        toast.error(data.message || 'Failed to submit evaluation');
+      }
+    } catch (error) {
+      console.error('Error submitting evaluation:', error);
+      toast.error('Failed to submit evaluation');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const getInitials = (name: string | null) => {
@@ -427,6 +550,173 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
           </CardContent>
         </Card>
       )}
+
+      {/* Modern Evaluation Form Dialog */}
+      <Dialog open={evaluationDialogOpen} onOpenChange={setEvaluationDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-600 to-emerald-500 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white">{selectedForm?.title}</h2>
+                <p className="text-green-100 text-sm mt-1">{selectedSubject && 'subject_name' in selectedSubject ? (selectedSubject as any).subject_name : ''} - {selectedSubject && 'subject_code' in selectedSubject ? (selectedSubject as any).subject_code : ''}</p>
+              </div>
+            </div>
+            
+            {/* Progress bar */}
+            <div className="mt-4">
+              <div className="flex justify-between text-green-100 text-xs mb-1">
+                <span>Progress</span>
+                <span>{Object.keys(formResponses).length} of {formQuestions.length} answered</span>
+              </div>
+              <div className="h-2 bg-white/30 rounded-full overflow-hidden">
+                <div 
+                  className="h-full bg-white rounded-full transition-all duration-300"
+                  style={{ width: `${formQuestions.length > 0 ? (Object.keys(formResponses).length / formQuestions.length) * 100 : 0}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Content */}
+          <div className="overflow-y-auto p-6 max-h-[60vh]">
+            {loadingForm ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
+                <p className="mt-4 text-gray-500">Loading evaluation form...</p>
+              </div>
+            ) : formQuestions.length > 0 ? (
+              <div className="space-y-8">
+                {formQuestions.map((question: any, index: number) => (
+                  <div 
+                    key={question.id || index} 
+                    className={`transition-all duration-300 ${
+                      formResponses[question.id] ? 'opacity-100' : 'opacity-80'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3 mb-4">
+                      <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-semibold text-sm">
+                        {index + 1}
+                      </span>
+                      <h3 className="text-lg font-medium text-gray-800 pt-1">
+                        {question.question || question.text}
+                      </h3>
+                    </div>
+                    
+                    {/* Rating Question */}
+                    {(question.type === 'rating' || question.question_type === 'rating') && (
+                      <div className="ml-11">
+                        <div className="flex gap-2 flex-wrap">
+                          {[1, 2, 3, 4, 5].map((rating) => (
+                            <button
+                              key={rating}
+                              type="button"
+                              onClick={() => handleResponseChange(question.id, rating)}
+                              className={`w-14 h-14 rounded-xl font-bold text-lg transition-all duration-200 transform hover:scale-105 ${
+                                formResponses[question.id] === rating
+                                  ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
+                                  : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-600'
+                              }`}
+                            >
+                              {rating}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="flex justify-between mt-2 text-xs text-gray-400">
+                          <span>Poor</span>
+                          <span>Excellent</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Text Question */}
+                    {(question.type === 'text' || question.question_type === 'text') && (
+                      <div className="ml-11">
+                        <textarea
+                          value={formResponses[question.id] || ''}
+                          onChange={(e) => handleResponseChange(question.id, e.target.value)}
+                          placeholder="Type your answer here..."
+                          className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-0 transition-colors bg-gray-50"
+                          rows={4}
+                        />
+                      </div>
+                    )}
+                    
+                    {/* Multiple Choice Question */}
+                    {((question.type === 'multiple_choice' || question.question_type === 'multiple_choice') && question.options) && (
+                      <div className="ml-11 space-y-3">
+                        {question.options.map((option: any, optIndex: number) => (
+                          <label
+                            key={optIndex}
+                            className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                              formResponses[question.id] === (option.option_text || option)
+                                ? 'border-green-500 bg-green-50 shadow-sm'
+                                : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 ${
+                              formResponses[question.id] === (option.option_text || option)
+                                ? 'border-green-500 bg-green-500'
+                                : 'border-gray-300'
+                            }`}>
+                              {formResponses[question.id] === (option.option_text || option) && (
+                                <div className="w-2 h-2 rounded-full bg-white" />
+                              )}
+                            </div>
+                            <input
+                              type="radio"
+                              name={`question_${question.id}`}
+                              value={option.option_text || option}
+                              checked={formResponses[question.id] === (option.option_text || option)}
+                              onChange={() => handleResponseChange(question.id, option.option_text || option)}
+                              className="sr-only"
+                            />
+                            <span className="text-gray-700 font-medium">{option.option_text || option}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+                  <FileText className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500 text-lg">No questions found in this form</p>
+                <p className="text-gray-400 text-sm mt-1">Please contact your administrator</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer */}
+          <div className="border-t bg-gray-50 px-6 py-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-500">
+                Your responses are anonymous
+              </p>
+              <Button
+                onClick={handleSubmitEvaluation}
+                disabled={submitting || Object.keys(formResponses).length === 0}
+                className="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed px-8"
+              >
+                {submitting ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                    Submitting...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Submit Evaluation
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
