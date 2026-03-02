@@ -3,6 +3,7 @@ const express = require("express");
 const router = express.Router();
 const { verifyToken, requireAdmin } = require("../middleware/auth");
 const db = require("../config/database");
+const { getCurrentSettings, getYearLevelRange, getDepartmentFromYearLevel } = require("../utils/settingsHelper");
 
 // ============================================================
 // Subject Management (New Schema - Recommended)
@@ -335,7 +336,20 @@ router.post("/evaluation-submissions", verifyToken, async (req, res) => {
  */
 router.get("/subject-instructors", verifyToken, async (req, res) => {
   try {
-    const { subject_id, instructor_id } = req.query;
+    const { subject_id, instructor_id, department, current } = req.query;
+    
+    // Get current semester/academic year if requested
+    let currentSettings = null;
+    let fallbackSettings = { college: { semester: '1st', academic_year: '2025-2026' }, seniorHigh: { semester: '1st', academic_year: '2025-2026' } };
+    
+    try {
+      if (current === 'true') {
+        currentSettings = await getCurrentSettings();
+      }
+      fallbackSettings = await getCurrentSettings();
+    } catch (e) {
+      console.error("Error getting settings:", e);
+    }
     
     // First try to get from subject_instructors table
     let conditions = [];
@@ -348,6 +362,17 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
     if (instructor_id) {
       conditions.push("si.instructor_id = ?");
       params.push(instructor_id);
+    }
+    if (department) {
+      conditions.push("s.department = ?");
+      params.push(department);
+    }
+    
+    // Filter by current semester/academic year if requested
+    if (currentSettings) {
+      // Add OR condition for both departments
+      conditions.push(`(si.academic_year = ? OR si.academic_year = ?)`);
+      params.push(currentSettings.college.academic_year, currentSettings.seniorHigh.academic_year);
     }
     
     const whereClause = conditions.length > 0 ? "WHERE " + conditions.join(" AND ") : "";
@@ -384,6 +409,15 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
       
       // If no results from subject_instructors, try to get from subjects table directly
       if (!results || results.length === 0) {
+        // Use pre-fetched settings
+        const semester = fallbackSettings.college.semester;
+        const academicYear = fallbackSettings.college.academic_year;
+        
+        let deptFilter = "";
+        if (department) {
+          deptFilter = " AND s.department = ?";
+        }
+        
         const subjectsQuery = `
           SELECT 
             s.id as subject_id,
@@ -393,16 +427,16 @@ router.get("/subject-instructors", verifyToken, async (req, res) => {
             s.department,
             u.full_name as instructor_name,
             u.email as instructor_email,
-            '1st' as semester,
-            DATE_FORMAT(NOW(), '%Y') as academic_year,
+            ? as semester,
+            ? as academic_year,
             'active' as status
           FROM subjects s
           LEFT JOIN users u ON s.instructor_id = u.id
-          WHERE s.instructor_id IS NOT NULL AND s.status = 'active'
+          WHERE s.instructor_id IS NOT NULL AND s.status = 'active'${deptFilter}
           ORDER BY s.subject_code
         `;
         
-        db.query(subjectsQuery, [], (subjErr, subjResults) => {
+        db.query(subjectsQuery, [semester, academicYear, department || ''], (subjErr, subjResults) => {
           if (subjErr) {
             console.error("Error fetching subjects:", subjErr);
             return res.status(200).json({ success: true, subjectInstructors: [] });
@@ -1302,6 +1336,17 @@ router.delete("/student-enrollments/:enrollmentId", verifyToken, requireAdmin, a
 router.get("/my-subjects", verifyToken, async (req, res) => {
   try {
     const userId = req.userId || (req.user && req.user.id);
+    const { current } = req.query;
+    
+    // Get current settings if requested
+    let currentSettings = null;
+    if (current === 'true') {
+      try {
+        currentSettings = await getCurrentSettings();
+      } catch (e) {
+        console.error("Error getting settings:", e);
+      }
+    }
     
     // Get user role from database since JWT might not have it
     const userQuery = "SELECT role FROM users WHERE id = ?";

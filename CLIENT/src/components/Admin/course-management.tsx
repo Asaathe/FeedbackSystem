@@ -3,7 +3,12 @@ import { Button } from "../ui/button";
 import { InputField } from "../ui/input-field";
 import { SelectField } from "../ui/select-field";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, GraduationCap, Building2 } from "lucide-react";
+
+interface SystemSettings {
+  college: { semester: string; academic_year: string };
+  seniorHigh: { semester: string; academic_year: string };
+}
 
 interface Program {
   id: number;
@@ -29,6 +34,7 @@ interface ProgramFormData {
 
 export function CourseManagement() {
   const [programs, setPrograms] = useState<Program[]>([]);
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [formData, setFormData] = useState<ProgramFormData>({
     department: "",
@@ -74,7 +80,25 @@ export function CourseManagement() {
   // Fetch programs
   useEffect(() => {
     fetchPrograms();
+    fetchSystemSettings();
   }, []);
+
+  const fetchSystemSettings = async () => {
+    try {
+      const token = sessionStorage.getItem("authToken");
+      const response = await fetch("http://localhost:5000/api/settings/current-semester", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setSystemSettings(data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching system settings:", error);
+    }
+  };
 
   const fetchPrograms = async () => {
     setIsLoading(true);
@@ -274,6 +298,32 @@ export function CourseManagement() {
           Manage programs, year levels, and sections for student registration
         </p>
       </div>
+
+      {/* Current Semester Settings Banner */}
+      {systemSettings && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-100">
+          <div className="flex items-center gap-2 mb-3">
+            <Settings className="w-5 h-5 text-green-600" />
+            <h2 className="font-semibold text-gray-900">Current Academic Settings</h2>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-gray-700">
+                <span className="font-medium">College:</span>{" "}
+                {systemSettings.college.semester} Semester, SY {systemSettings.college.academic_year}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-600" />
+              <span className="text-sm text-gray-700">
+                <span className="font-medium">Senior High:</span>{" "}
+                {systemSettings.seniorHigh.semester} Semester, SY {systemSettings.seniorHigh.academic_year}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">

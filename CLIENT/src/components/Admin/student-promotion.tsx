@@ -17,7 +17,9 @@ import {
   ChevronDown,
   ChevronUp,
   RefreshCw,
-  TrendingUp
+  TrendingUp,
+  Settings,
+  Building2
 } from "lucide-react";
 import {
   Table,
@@ -106,6 +108,7 @@ export default function StudentPromotion() {
   const [students, setStudents] = useState<Student[]>([]);
   const [history, setHistory] = useState<PromotionHistory[]>([]);
   const [loading, setLoading] = useState(false);
+  const [systemSettings, setSystemSettings] = useState<any>(null);
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   
@@ -195,7 +198,23 @@ export default function StudentPromotion() {
   useEffect(() => {
     fetchPrograms();
     fetchHistory();
+    fetchSystemSettings();
   }, []);
+
+  const fetchSystemSettings = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch(`${API_BASE}/settings/current-semester`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setSystemSettings(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching system settings:', error);
+    }
+  };
 
   useEffect(() => {
     fetchStudents(selectedCourseSection);
@@ -373,6 +392,26 @@ export default function StudentPromotion() {
           </div>
         </div>
       </div>
+
+      {/* Current Semester Settings Banner */}
+      {systemSettings && (
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-100">
+          <div className="flex items-center gap-2 mb-2">
+            <Settings className="w-5 h-5 text-green-600" />
+            <span className="font-semibold text-gray-900">Current Academic Settings</span>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+            <div className="flex items-center gap-2">
+              <GraduationCap className="w-4 h-4 text-green-600" />
+              <span>College: {systemSettings.college?.semester} Sem, SY {systemSettings.college?.academic_year}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Building2 className="w-4 h-4 text-purple-600" />
+              <span>Senior High: {systemSettings.seniorHigh?.semester} Sem, SY {systemSettings.seniorHigh?.academic_year}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         {/* Custom Tab Navigation */}

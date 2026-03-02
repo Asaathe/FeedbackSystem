@@ -11,7 +11,8 @@ import {
   Clock,
   CheckCircle,
   Send,
-  X
+  X,
+  Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -64,6 +65,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
   const [formResponses, setFormResponses] = useState<Record<number, any>>({});
   const [loadingForm, setLoadingForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [currentSettings, setCurrentSettings] = useState<any>(null);
 
   // Helper function to render subject info with proper type handling
   const renderSubjectInfo = () => {
@@ -84,7 +86,23 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
   useEffect(() => {
     fetchMySubjects();
     fetchSubmittedFormIds();
+    fetchCurrentSettings();
   }, []);
+
+  const fetchCurrentSettings = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch('http://localhost:5000/api/settings/current-semester', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setCurrentSettings(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching settings:', error);
+    }
+  };
 
   const fetchMySubjects = async () => {
     try {
@@ -481,8 +499,20 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-        <h2 className="text-2xl font-bold">My Subjects</h2>
-        <p className="text-gray-600 mt-1">View your enrolled subjects and submit evaluations</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">My Subjects</h2>
+            <p className="text-gray-600 mt-1">View your enrolled subjects and submit evaluations</p>
+          </div>
+          {currentSettings && (
+            <div className="flex items-center gap-2 bg-white/60 px-3 py-2 rounded-lg">
+              <Calendar className="w-4 h-4 text-green-600" />
+              <span className="text-sm font-medium">
+                {currentSettings.college?.semester || currentSettings.seniorHigh?.semester} Sem, {currentSettings.college?.academic_year || currentSettings.seniorHigh?.academic_year}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Subjects Grid */}
