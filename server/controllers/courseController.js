@@ -49,12 +49,13 @@ const getAllSections = async (req, res) => {
  */
 const createSection = async (req, res) => {
   try {
-    const { value, label, category, subcategory, course_code, course_name, section, year_level, department, instructor_id } = req.body;
+    const { value, label, category, subcategory, course_code, course_name, section, year_level, department, instructor_id, units } = req.body;
 
     // Map old schema fields to new schema if needed
     const subjectCode = course_code || value;
     const subjectName = course_name || label;
     const dept = department || category || 'General';
+    const subjectUnits = units || 3.0;
 
     if (!subjectCode || !subjectName) {
       return res.status(400).json({
@@ -63,8 +64,8 @@ const createSection = async (req, res) => {
       });
     }
 
-    const query = "INSERT INTO subjects (subject_code, subject_name, section, year_level, department, status) VALUES (?, ?, ?, ?, ?, 'active')";
-    db.query(query, [subjectCode, subjectName, section || 'A', year_level || 1, dept || 'General'], (err, result) => {
+    const query = "INSERT INTO subjects (subject_code, subject_name, section, year_level, department, units, status) VALUES (?, ?, ?, ?, ?, ?, 'active')";
+    db.query(query, [subjectCode, subjectName, section || 'A', year_level || 1, dept || 'General', subjectUnits], (err, result) => {
       if (err) {
         console.error("Error creating course section:", err);
         if (err.code === "ER_DUP_ENTRY") {
@@ -100,11 +101,11 @@ const createSection = async (req, res) => {
 const updateSection = async (req, res) => {
   try {
     const { id } = req.params;
-    const { course_code, course_name, section, year_level, department, status } = req.body;
+    const { course_code, course_name, section, year_level, department, status, units } = req.body;
 
     // Map to subjects table fields
-    const query = "UPDATE subjects SET subject_code = ?, subject_name = ?, section = ?, year_level = ?, department = ?, status = ? WHERE id = ?";
-    db.query(query, [course_code, course_name, section, year_level, department, status || 'active', id], (err, result) => {
+    const query = "UPDATE subjects SET subject_code = ?, subject_name = ?, section = ?, year_level = ?, department = ?, status = ?, units = ? WHERE id = ?";
+    db.query(query, [course_code, course_name, section, year_level, department, status || 'active', units || 3.0, id], (err, result) => {
       if (err) {
         console.error("Error updating course section:", err);
         return res.status(500).json({

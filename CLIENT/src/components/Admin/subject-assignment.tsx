@@ -51,9 +51,8 @@ interface CourseSection {
   id: number;
   subject_code: string;
   subject_name: string;
-  section: string;
-  year_level: number;
   department: string;
+  units?: number;
   display_label: string;
   instructor_id?: number;
   instructor_name?: string;
@@ -130,10 +129,16 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   const [newCourseSection, setNewCourseSection] = useState({
     subject_code: "",
     subject_name: "",
-    section: "",
-    year_level: "",
-    department: ""
+    department: "",
+    units: ""
   });
+
+  // Department options
+  const departmentOptions = [
+    "College",
+    "Senior High",
+    "General"
+  ];
 
   // Edit subject state
   const [editSubjectDialogOpen, setEditSubjectDialogOpen] = useState(false);
@@ -198,9 +203,8 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
           id: s.id,
           subject_code: s.subject_code || s.course_code,
           subject_name: s.subject_name || s.course_name,
-          section: s.section,
-          year_level: s.year_level,
           department: s.department,
+          units: s.units,
           display_label: `${s.subject_code || s.course_code} - ${s.subject_name || s.course_name}`,
           instructor_id: s.instructor_id,
           instructor_name: s.instructor_name
@@ -281,13 +285,24 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
     try {
       const token = sessionStorage.getItem('authToken');
+      
+      // Prepare the data - only include actual database fields
+      const subjectData = {
+        subject_code: newCourseSection.subject_code,
+        subject_name: newCourseSection.subject_name,
+        department: newCourseSection.department || 'General',
+        units: parseFloat(newCourseSection.units) || 3.0
+      };
+
+      console.log('Creating subject with data:', subjectData);
+
       const response = await fetch('http://localhost:5000/api/subject-evaluation/course-sections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify(newCourseSection)
+        body: JSON.stringify(subjectData)
       });
 
       const data = await response.json();
@@ -295,7 +310,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       if (data.success) {
         toast.success('Subject created successfully');
         fetchData();
-        setNewCourseSection({ subject_code: "", subject_name: "", section: "", year_level: "", department: "" });
+        setNewCourseSection({ subject_code: "", subject_name: "", department: "", units: "" });
       } else {
         toast.error(data.message || 'Failed to create subject');
       }
@@ -1004,33 +1019,84 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
         <p className="text-gray-600 mt-1">Assign subjects to instructors and students</p>
       </div>
 
-      {/* Create Subject Form */}
-      <Card className="border-blue-100">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="w-5 h-5" />
+      {/* Create Subject Form - Enhanced with all database fields */}
+      <Card className="border-green-100 shadow-md">
+        <CardHeader className="bg-gradient-to-r from-green-50 to-lime-50 rounded-t-lg pb-4">
+          <CardTitle className="flex items-center gap-2 text-green-700">
+            <div className="p-2 bg-green-100 rounded-lg">
+              <Plus className="w-5 h-5" />
+            </div>
             Create New Subject
           </CardTitle>
+          <p className="text-sm text-gray-500 mt-1">Add a new subject with subject code, name, department, and units</p>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 items-end">
-            <div className="flex-1">
-              <Label>Subject Code</Label>
+        <CardContent className="pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Subject Code */}
+            <div className="space-y-2">
+              <Label htmlFor="subject_code" className="text-sm font-medium">Subject Code *</Label>
               <Input 
+                id="subject_code"
                 placeholder="e.g. IT144" 
                 value={newCourseSection.subject_code}
                 onChange={(e) => setNewCourseSection({...newCourseSection, subject_code: e.target.value.toUpperCase()})}
+                className="border-green-200 focus:border-green-500 focus:ring-green-200"
               />
             </div>
-            <div className="flex-1">
-              <Label>Subject Name</Label>
+            
+            {/* Subject Name */}
+            <div className="space-y-2">
+              <Label htmlFor="subject_name" className="text-sm font-medium">Subject Name *</Label>
               <Input 
+                id="subject_name"
                 placeholder="e.g. System Architecture" 
                 value={newCourseSection.subject_name}
                 onChange={(e) => setNewCourseSection({...newCourseSection, subject_name: e.target.value})}
+                className="border-green-200 focus:border-green-500 focus:ring-green-200"
               />
             </div>
-            <Button onClick={handleCreateCourseSection} className="bg-green-500 hover:bg-green-600">
+            
+            {/* Department */}
+            <div className="space-y-2">
+              <Label htmlFor="department" className="text-sm font-medium">Department</Label>
+              <Select 
+                value={newCourseSection.department}
+                onValueChange={(value) => setNewCourseSection({...newCourseSection, department: value})}
+              >
+                <SelectTrigger id="department" className="border-green-200 focus:border-green-500">
+                  <SelectValue placeholder="Select department" />
+                </SelectTrigger>
+                <SelectContent>
+                  {departmentOptions.map((dept) => (
+                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Units */}
+            <div className="space-y-2">
+              <Label htmlFor="units" className="text-sm font-medium">Units</Label>
+              <Input 
+                id="units"
+                type="number"
+                min="0"
+                max="10"
+                step="0.5"
+                placeholder="e.g. 3.0" 
+                value={newCourseSection.units}
+                onChange={(e) => setNewCourseSection({...newCourseSection, units: e.target.value})}
+                className="border-green-200 focus:border-green-500 focus:ring-green-200"
+              />
+            </div>
+          </div>
+
+          {/* Create Button */}
+          <div className="mt-6 flex justify-end">
+            <Button 
+              onClick={handleCreateCourseSection} 
+              className="bg-green-600 hover:bg-green-700 text-white px-6"
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create Subject
             </Button>
@@ -1038,163 +1104,61 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
-      <Tabs defaultValue="instructors" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
-          <TabsTrigger value="instructors" className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4" />
-            Instructor Subjects
-          </TabsTrigger>
-          <TabsTrigger value="students" className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4" />
-            Student Enrollments
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Instructor Tab */}
-        <TabsContent value="instructors" className="space-y-4 mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {instructors.map((instructor) => (
-              <Card key={instructor.user_id} className="border-green-100">
-                <CardHeader className="flex flex-row items-start justify-between pb-2">
-                  <div>
-                    <CardTitle className="text-lg">{instructor.full_name}</CardTitle>
-                    <p className="text-sm text-gray-600">{instructor.department}</p>
+      {/* Subject List */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {courseSections.map((subject) => {
+          return (
+            <Card 
+              key={subject.id} 
+              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all"
+            >
+              <CardHeader className="pb-2">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg">{subject.subject_code}</CardTitle>
+                    <p className="text-sm text-gray-600">{subject.subject_name}</p>
                   </div>
-                  <Badge variant="outline" className="border-green-200">
-                    {getInstructorCourses(instructor.user_id).length}
-                  </Badge>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <p className="text-sm text-gray-600">{instructor.email}</p>
-                    
-                    {/* Subjects List */}
-                    {getInstructorCourses(instructor.user_id).length > 0 ? (
-                      <div className="space-y-2">
-                        {getInstructorCourses(instructor.user_id).map((ic) => (
-                          <div key={ic.id} className="p-2 rounded bg-gray-50 border border-gray-200 flex justify-between items-center">
-                            <div>
-                              <p className="font-medium text-sm">{ic.subject_code}</p>
-                              <p className="text-xs text-gray-500">{ic.subject_name}</p>
-                            </div>
-                            <Button variant="ghost" size="icon" onClick={() => handleRemoveCourse(ic.id)}>
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500 italic">No subjects assigned</p>
-                    )}
-
-                    <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="outline" className="w-full border-green-200 hover:bg-green-50" onClick={() => setSelectedInstructor(instructor)}>
-                          <Plus className="w-4 h-4 mr-2" />
-                          Add Subject
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Assign Subject to {selectedInstructor?.full_name}</DialogTitle>
-                          <DialogDescription>Select a subject from the list</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <div className="space-y-2">
-                            <Label>Select Subject</Label>
-                            <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
-                              <SelectTrigger><SelectValue placeholder="Select a subject" /></SelectTrigger>
-                              <SelectContent>
-                                {courseSections.map((section) => (
-                                  <SelectItem key={section.id} value={section.id.toString()}>
-                                    {section.subject_code} - {section.subject_name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <Button onClick={handleAssignCourse} className="w-full">
-                            <Save className="w-4 h-4 mr-2" />
-                            Assign Subject
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
+                  <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      onClick={() => handleOpenEditSubject(subject)}
+                    >
+                      <Edit className="w-4 h-4" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => handleOpenDeleteSubject(subject)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            ))}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Department: {subject.department || 'General'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600">
+                    <span>Units: {subject.units || '3.0'}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+        {courseSections.length === 0 && (
+          <div className="col-span-full text-center py-12">
+            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No subjects created yet</p>
+            <p className="text-sm text-gray-400">Create a subject above to get started</p>
           </div>
-        </TabsContent>
-
-        {/* Student Tab - Subject Cards */}
-        <TabsContent value="students" className="space-y-4 mt-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {courseSections.map((subject) => {
-              const enrolledCount = getEnrolledStudentCount(subject.id);
-              
-              return (
-                <Card 
-                  key={subject.id} 
-                  className="border-purple-100 hover:border-purple-300 hover:shadow-md transition-all"
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 cursor-pointer" onClick={() => handleSubjectClick(subject)}>
-                        <CardTitle className="text-lg">{subject.subject_code}</CardTitle>
-                        <p className="text-sm text-gray-600">{subject.subject_name}</p>
-                      </div>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenEditSubject(subject);
-                          }}
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleOpenDeleteSubject(subject);
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Users className="w-4 h-4" />
-                        <span>Instructor: {getInstructorName(subject.instructor_id)}</span>
-                      </div>
-                      <Badge variant="outline" className="border-purple-200">
-                        {enrolledCount} Students
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {courseSections.length === 0 && (
-              <div className="col-span-full text-center py-12">
-                <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500">No subjects created yet</p>
-                <p className="text-sm text-gray-400">Create a subject above to get started</p>
-              </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       {/* Edit Subject Dialog */}
       <Dialog open={editSubjectDialogOpen} onOpenChange={setEditSubjectDialogOpen}>
