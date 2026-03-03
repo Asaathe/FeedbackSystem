@@ -292,38 +292,25 @@ const updateUser = async (req, res) => {
             if (fs.existsSync(oldImagePath)) {
               try {
                 fs.unlinkSync(oldImagePath);
-                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
               } catch (err) {
-                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+                console.error('Failed to delete old image:', err);
               }
             }
           }
         } else if (profilePicture) {
-          studentUpdateFields.push("image = ?");
-          studentUpdateValues.push(profilePicture);
-        }
-
-        if (studentUpdateFields.length > 0) {
-          studentUpdateValues.push(id);
-          
           // Delete old image if exists and new image is being uploaded
-          if (profilePicture && studentRecords[0].image) {
+          if (studentRecords[0].image) {
             const oldImagePath = path.join(__dirname, '../public', studentRecords[0].image);
             if (fs.existsSync(oldImagePath)) {
               try {
                 fs.unlinkSync(oldImagePath);
-                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
               } catch (err) {
-                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+                console.error('Failed to delete old image:', err);
               }
             }
           }
-          
-          await queryDatabase(
-            db,
-            `UPDATE students SET ${studentUpdateFields.join(", ")} WHERE user_id = ?`,
-            studentUpdateValues
-          );
+          studentUpdateFields.push("image = ?");
+          studentUpdateValues.push(profilePicture);
         }
       } else {
         // Create new student record
@@ -359,7 +346,6 @@ const updateUser = async (req, res) => {
           instructorUpdateFields.push("school_role = ?");
           instructorUpdateValues.push(schoolRole);
         }
-        // Handle profile picture - same as student
         if (profilePicture === '') {
           // User wants to remove the profile picture
           instructorUpdateFields.push("image = ?");
@@ -371,28 +357,25 @@ const updateUser = async (req, res) => {
             if (fs.existsSync(oldImagePath)) {
               try {
                 fs.unlinkSync(oldImagePath);
-                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
               } catch (err) {
-                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+                console.error('Failed to delete old image:', err);
               }
             }
           }
         } else if (profilePicture) {
-          instructorUpdateFields.push("image = ?");
-          instructorUpdateValues.push(profilePicture);
-          
           // Delete old image if exists and new image is being uploaded
           if (instructorRecords[0].image) {
             const oldImagePath = path.join(__dirname, '../public', instructorRecords[0].image);
             if (fs.existsSync(oldImagePath)) {
               try {
                 fs.unlinkSync(oldImagePath);
-                console.log('[IMAGE DELETE] Old image deleted:', oldImagePath);
               } catch (err) {
-                console.error('[IMAGE DELETE] Failed to delete old image:', err);
+                console.error('Failed to delete old image:', err);
               }
             }
           }
+          instructorUpdateFields.push("image = ?");
+          instructorUpdateValues.push(profilePicture);
         }
 
         if (instructorUpdateFields.length > 0) {

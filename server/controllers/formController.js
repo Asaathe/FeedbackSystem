@@ -83,10 +83,6 @@ const updateForm = async (req, res) => {
     const { id } = req.params;
     const userId = req.userId;
     const updates = req.body;
-    
-    console.log('🔍 SERVER: updateForm called with id:', id);
-    console.log('🔍 SERVER: updates received:', JSON.stringify(updates));
-    console.log('🔍 SERVER: ai_description in updates:', updates.ai_description);
 
     const result = await formService.updateForm(id, updates, userId);
 
@@ -304,19 +300,6 @@ const deleteFormCategory = async (req, res) => {
       const { id } = req.params;
       const { userIds, targetAudience, startDate, endDate, startTime, endTime, department, courseYearSection, targetFilters } = req.body;
 
-      console.log('📋 Server: assignFormToUsers called with:', {
-        id,
-        userIds,
-        targetAudience,
-        startDate,
-        endDate,
-        startTime,
-        endTime,
-        department,
-        courseYearSection,
-        targetFilters,
-      });
-
     const db = require("../config/database");
 
     // Check if form exists
@@ -380,15 +363,6 @@ const deleteFormCategory = async (req, res) => {
     // Format time values to HH:MM:SS format for MySQL TIME type
     const deploymentStartTime = startTime ? (startTime.includes(':') ? (startTime.split(':').length === 2 ? `${startTime}:00` : startTime) : null) : null;
     const deploymentEndTime = endTime ? (endTime.includes(':') ? (endTime.split(':').length === 2 ? `${endTime}:00` : endTime) : null) : null;
-
-    console.log('📋 Server: Deployment values to store:', {
-      deploymentStartDate,
-      deploymentEndDate,
-      deploymentStartTime,
-      deploymentEndTime,
-      formStartDate: form.start_date,
-      formEndDate: form.end_date,
-    });
 
     // Check if deployment already exists for this form
     const existingDeployment = await new Promise((resolve, reject) => {

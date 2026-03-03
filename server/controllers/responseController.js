@@ -129,10 +129,7 @@ const submitFormResponse = async (req, res) => {
     const userId = req.userId;
     const { responses } = req.body;
 
-    console.log("Submit form response - formId:", id, "userId:", userId);
-
     if (!responses || typeof responses !== 'object') {
-      console.log("Invalid responses format:", responses);
       return res.status(400).json({
         success: false,
         message: "Responses are required",
@@ -140,7 +137,6 @@ const submitFormResponse = async (req, res) => {
     }
 
     const result = await responseService.submitFormResponse(id, userId, responses);
-    console.log("Submit response result:", result);
 
     if (result.success) {
       return res.status(201).json(result);

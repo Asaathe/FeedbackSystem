@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -6,17 +6,14 @@ import { Badge } from "../ui/badge";
 import { Checkbox } from "../ui/checkbox";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { toast } from "sonner";
-import { 
-  GraduationCap, 
-  Users, 
-  ArrowRight, 
-  History, 
-  Search, 
+import {
+  GraduationCap,
+  Users,
+  ArrowRight,
+  History,
+  Search,
   Loader2,
   Award,
-  ChevronDown,
-  ChevronUp,
-  RefreshCw,
   TrendingUp,
   Settings,
   Building2
@@ -50,11 +47,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "../ui/tabs";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../ui/collapsible";
 
 interface Student {
   user_id: number;
@@ -100,7 +92,17 @@ interface PromotionHistory {
   promoted_by_name: string;
 }
 
-const API_BASE = "http://localhost:5000/api";
+interface SemesterInfo {
+  semester: string;
+  academic_year: string;
+}
+
+interface SystemSettings {
+  college?: SemesterInfo;
+  seniorHigh?: SemesterInfo;
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5000/api";
 
 export default function StudentPromotion() {
   const [activeTab, setActiveTab] = useState("promote");
@@ -108,22 +110,22 @@ export default function StudentPromotion() {
   const [students, setStudents] = useState<Student[]>([]);
   const [history, setHistory] = useState<PromotionHistory[]>([]);
   const [loading, setLoading] = useState(false);
-  const [systemSettings, setSystemSettings] = useState<any>(null);
+  const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
   const [selectedStudents, setSelectedStudents] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  
+
   // Pagination state
   const [studentsPage, setStudentsPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const itemsPerPage = 15;
-  
+
   // Filter states
   const [selectedCourseSection, setSelectedCourseSection] = useState<string>("all");
   const [selectedTargetProgram, setSelectedTargetProgram] = useState<string>("select");
-  
-  // Special options
-  const [promotionType, setPromotionType] = useState<"regular" | "back" | "irregular">("regular");
-  
+
+  // Promotion notes
+  const [promotionNotes, setPromotionNotes] = useState<string>("");
+
   // Dialog states
   const [graduationDialogOpen, setGraduationDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
@@ -135,8 +137,22 @@ export default function StudentPromotion() {
 
   const token = sessionStorage.getItem('authToken');
 
+  const fetchSystemSettings = useCallback(async () => {
+    try {
+      const response = await fetch(`${API_BASE}/settings/current-semester`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success && data.data) {
+        setSystemSettings(data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching system settings:', error);
+    }
+  }, [token]);
+
   // Fetch all course sections for dropdown
-  const fetchPrograms = async () => {
+  const fetchPrograms = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/students/programs`, {
         headers: {
@@ -150,10 +166,10 @@ export default function StudentPromotion() {
     } catch (error) {
       console.error("Error fetching programs:", error);
     }
-  };
+  }, [token]);
 
   // Fetch students for selected course section
-  const fetchStudents = async (courseSection: string) => {
+  const fetchStudents = useCallback(async (courseSection: string) => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -176,10 +192,10 @@ export default function StudentPromotion() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   // Fetch promotion history
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
       const response = await fetch(`${API_BASE}/students/promotion-history`, {
         headers: {
@@ -193,32 +209,17 @@ export default function StudentPromotion() {
     } catch (error) {
       console.error("Error fetching history:", error);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     fetchPrograms();
     fetchHistory();
     fetchSystemSettings();
-  }, []);
-
-  const fetchSystemSettings = async () => {
-    try {
-      const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`${API_BASE}/settings/current-semester`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      if (data.success && data.data) {
-        setSystemSettings(data.data);
-      }
-    } catch (error) {
-      console.error('Error fetching system settings:', error);
-    }
-  };
+  }, [fetchPrograms, fetchHistory, fetchSystemSettings]);
 
   useEffect(() => {
     fetchStudents(selectedCourseSection);
-  }, [selectedCourseSection]);
+  }, [selectedCourseSection, fetchStudents]);
 
   // Handle course section selection
   const handleCourseSectionChange = (value: string) => {
@@ -229,7 +230,7 @@ export default function StudentPromotion() {
 
   // Handle student selection
   const handleSelectStudent = (studentId: number) => {
-    setSelectedStudents(prev => 
+    setSelectedStudents(prev =>
       prev.includes(studentId)
         ? prev.filter(id => id !== studentId)
         : [...prev, studentId]
@@ -258,12 +259,6 @@ export default function StudentPromotion() {
 
     setLoading(true);
     try {
-      let notes = "";
-      if (promotionType === "back") {
-        notes = "Back student - repeating year";
-      } else if (promotionType === "irregular") {
-        notes = "Irregular student - custom promotion";
-      }
 
       const response = await fetch(`${API_BASE}/students/promote`, {
         method: "POST",
@@ -274,15 +269,16 @@ export default function StudentPromotion() {
         body: JSON.stringify({
           studentIds: selectedStudents,
           newProgramId: parseInt(selectedTargetProgram),
-          notes: notes,
+          notes: promotionNotes,
         }),
       });
       const data = await response.json();
-      
+
       if (data.success) {
         toast.success(`Successfully promoted ${data.promoted} students`);
         setSelectedStudents([]);
         setSelectedTargetProgram("select");
+        setPromotionNotes("");
         fetchStudents(selectedCourseSection);
         fetchHistory();
       } else {
@@ -320,7 +316,7 @@ export default function StudentPromotion() {
         }),
       });
       const data = await response.json();
-      
+
       if (data.success) {
         toast.success(`Successfully graduated ${data.graduated} students`);
         setSelectedStudents([]);
@@ -369,15 +365,7 @@ export default function StudentPromotion() {
     historyPage * itemsPerPage
   );
 
-  // Group students by course_section for display
-  const groupedStudents = filteredStudents.reduce((acc, student) => {
-    const key = student.course_section || `${student.program_code} - ${student.year_level}${student.section}`;
-    if (!acc[key]) {
-      acc[key] = [];
-    }
-    acc[key].push(student);
-    return acc;
-  }, {} as Record<string, Student[]>);
+
 
   return (
     <div className="container mx-auto p-6">
@@ -523,8 +511,12 @@ export default function StudentPromotion() {
                     <TableRow className="bg-slate-50 hover:bg-slate-50">
                       <TableHead className="w-12">
                         <Checkbox
-                          checked={selectedStudents.length === paginatedStudents.length && paginatedStudents.length > 0}
+                          checked={
+                            paginatedStudents.length > 0 &&
+                            paginatedStudents.every(s => selectedStudents.includes(s.student_id))
+                          }
                           onCheckedChange={handleSelectAll}
+                          title="Select all on this page"
                         />
                       </TableHead>
                       <TableHead>Name</TableHead>
@@ -537,16 +529,16 @@ export default function StudentPromotion() {
                   <TableBody>
                     {loading ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={6} className="text-center py-8">
                           <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : filteredStudents.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                          {selectedCourseSection === "all" 
-                            ? "Select a course section to view students" 
-                            : "No students found in this section"}
+                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                          {selectedCourseSection === "all"
+                            ? "No students found. Try selecting a specific course section."
+                            : "No students found in this section."}
                         </TableCell>
                       </TableRow>
                     ) : (
@@ -611,50 +603,10 @@ export default function StudentPromotion() {
 
               {/* Promotion Options */}
               <div className="mt-4 space-y-4">
-                {/* Promotion Type Selection */}
-                <div className="flex flex-wrap gap-4 items-center">
-                  <span className="text-sm font-medium">Promotion Type:</span>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={promotionType === "regular" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPromotionType("regular")}
-                    >
-                      Regular
-                    </Button>
-                    <Button
-                      variant={promotionType === "back" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPromotionType("back")}
-                    >
-                      Back Student (Repeat)
-                    </Button>
-                    <Button
-                      variant={promotionType === "irregular" ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => setPromotionType("irregular")}
-                    >
-                      Irregular
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Info based on promotion type */}
-                {promotionType === "back" && (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
-                    <strong>Back Student:</strong> Student will repeat the current year level.
-                  </div>
-                )}
-                {promotionType === "irregular" && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                    <strong>Irregular Student:</strong> Select any target program/section below.
-                  </div>
-                )}
-
                 {/* Target Program Selection */}
                 <div className="flex flex-wrap gap-4 items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <span className="text-sm">Promote to:</span>
+                    <span className="text-sm font-medium">Promote to:</span>
                     <Select value={selectedTargetProgram} onValueChange={setSelectedTargetProgram}>
                       <SelectTrigger className="w-64">
                         <SelectValue placeholder="Select target program" />
@@ -672,6 +624,18 @@ export default function StudentPromotion() {
                   <div className="text-sm text-gray-600">
                     {selectedStudents.length} student(s) selected
                   </div>
+                </div>
+
+                {/* Notes */}
+                <div>
+                  <label className="text-sm font-medium mb-1 block">Notes <span className="text-gray-400 font-normal">(Optional)</span></label>
+                  <textarea
+                    value={promotionNotes}
+                    onChange={(e) => setPromotionNotes(e.target.value)}
+                    placeholder="e.g. Back student repeating year, irregular enrollment, etc."
+                    rows={2}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
+                  />
                 </div>
 
                 {/* Action Buttons */}
@@ -702,7 +666,7 @@ export default function StudentPromotion() {
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
                 <h4 className="font-semibold text-yellow-800 mb-2">Important Notice</h4>
                 <p className="text-sm text-yellow-700">
-                  Graduating students will be converted to alumni status. Their feedback history will be preserved, 
+                  Graduating students will be converted to alumni status. Their feedback history will be preserved,
                   but they will no longer have access to student features.
                 </p>
               </div>
@@ -809,7 +773,7 @@ export default function StudentPromotion() {
                       </TableBody>
                     </Table>
                   </div>
-                  
+
                   {/* History Pagination */}
                   {totalHistoryPages > 1 && (
                     <div className="flex items-center justify-between mt-4 px-2">
@@ -857,6 +821,8 @@ export default function StudentPromotion() {
               <label className="text-sm font-medium">Graduation Year</label>
               <Input
                 type="number"
+                min={2000}
+                max={new Date().getFullYear() + 5}
                 value={graduationData.graduationYear}
                 onChange={(e) => setGraduationData({ ...graduationData, graduationYear: parseInt(e.target.value) })}
                 className="mt-1"
@@ -907,10 +873,9 @@ export default function StudentPromotion() {
                 </>
               ) : (
                 <>
-                  You are about to promote <strong>{selectedStudents.length}</strong> student(s) to 
+                  You are about to promote <strong>{selectedStudents.length}</strong> student(s) to
                   <strong> {programs.find(p => p.id.toString() === selectedTargetProgram)?.course_section}</strong>.
-                  {promotionType === "back" && " (Back Student - Repeating Year)"}
-                  {promotionType === "irregular" && " (Irregular Student)"}
+                  {promotionNotes && <span className="block mt-1 text-xs text-slate-500">Note: {promotionNotes}</span>}
                 </>
               )}
             </DialogDescription>

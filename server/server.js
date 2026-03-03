@@ -16,7 +16,6 @@ const courseManagementRoutes = require("./routes/courseManagement");
 const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
 const studentPromotionRoutes = require("./routes/studentPromotion");
-const subjectEvaluationRoutes = require("./routes/subjectEvaluation");
 const settingsRoutes = require("./routes/settings");
 
 const app = express();
@@ -113,7 +112,6 @@ app.use("/api/programs", courseManagementRoutes);
 app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
-app.use("/api/subject-evaluation", subjectEvaluationRoutes);
 app.use("/api/settings", settingsRoutes);
 
 // Serve uploaded images statically

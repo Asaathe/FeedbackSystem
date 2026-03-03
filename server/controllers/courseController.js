@@ -51,9 +51,6 @@ const createSection = async (req, res) => {
   try {
     const { value, label, category, subcategory, course_code, course_name, section, year_level, department, instructor_id } = req.body;
 
-    // DEBUG: Log incoming request body
-    console.log("[DEBUG] Create Section - Request body:", JSON.stringify(req.body, null, 2));
-
     // Map old schema fields to new schema if needed
     const subjectCode = course_code || value;
     const subjectName = course_name || label;

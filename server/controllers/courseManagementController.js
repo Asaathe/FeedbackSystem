@@ -37,9 +37,6 @@ const createProgram = async (req, res) => {
   try {
     const { department, program_name, program_code, year_level, section, status } = req.body;
 
-    // DEBUG: Log incoming request body
-    console.log("[DEBUG] Create Program - Request body:", JSON.stringify(req.body, null, 2));
-
     if (!department || !program_name || !program_code || !year_level || !section) {
       return res.status(400).json({
         success: false,
@@ -94,9 +91,6 @@ const updateProgram = async (req, res) => {
   try {
     const { id } = req.params;
     const { department, program_name, program_code, year_level, section, status } = req.body;
-
-    // DEBUG: Log incoming request body
-    console.log("[DEBUG] Update Program - Request body:", JSON.stringify(req.body, null, 2));
 
     // Validate required fields
     if (!department || !program_name || !program_code || !year_level || !section) {
