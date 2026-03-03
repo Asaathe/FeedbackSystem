@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 28, 2026 at 03:11 AM
+-- Generation Time: Mar 03, 2026 at 09:08 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -64,15 +64,6 @@ CREATE TABLE `course_management` (
 -- (See below for the actual view)
 --
 CREATE TABLE `department_evaluation_summary` (
-`department` varchar(100)
-,`semester` enum('1st','2nd','Summer')
-,`academic_year` varchar(9)
-,`total_responses` bigint(21)
-,`total_subjects` bigint(21)
-,`total_instructors` bigint(21)
-,`avg_subject_rating` decimal(13,2)
-,`avg_instructor_rating` decimal(13,2)
-,`overall_rating` decimal(14,2)
 );
 
 -- --------------------------------------------------------
@@ -102,8 +93,9 @@ CREATE TABLE `forms` (
   `title` varchar(255) NOT NULL,
   `description` text DEFAULT NULL,
   `ai_description` text DEFAULT NULL,
-  `type` enum('general','course-evaluation','event-feedback','exit-survey','self-assessment') DEFAULT 'general',
+  `type` enum('evaluation','general') DEFAULT 'general',
   `category` varchar(100) NOT NULL,
+  `subject_id` int(11) DEFAULT NULL,
   `target_audience` varchar(100) NOT NULL,
   `status` enum('draft','active','inactive','archived') NOT NULL DEFAULT 'draft',
   `image_url` varchar(500) DEFAULT NULL,
@@ -116,21 +108,6 @@ CREATE TABLE `forms` (
   `submission_count` int(11) DEFAULT 0,
   `is_anonymous` tinyint(1) DEFAULT 0,
   `deadline` datetime DEFAULT NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `form_analytics`
---
-
-CREATE TABLE `form_analytics` (
-  `id` int(11) NOT NULL,
-  `form_id` int(11) NOT NULL,
-  `metric_type` enum('submission_count','completion_rate','average_rating','response_time') NOT NULL,
-  `metric_value` decimal(10,2) NOT NULL,
-  `metric_date` date NOT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -258,37 +235,10 @@ CREATE TABLE `instructors` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `instructor_courses`
---
-
-CREATE TABLE `instructor_courses` (
-  `id` int(11) NOT NULL,
-  `instructor_id` int(11) NOT NULL,
-  `program_id` int(11) NOT NULL,
-  `student_id` int(11) DEFAULT NULL,
-  `form_id` int(11) DEFAULT NULL,
-  `status` enum('active','inactive') DEFAULT 'active',
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
--- --------------------------------------------------------
-
---
 -- Stand-in structure for view `instructor_evaluation_summary`
 -- (See below for the actual view)
 --
 CREATE TABLE `instructor_evaluation_summary` (
-`instructor_id` int(11)
-,`instructor_name` varchar(255)
-,`instructor_department` varchar(255)
-,`semester` enum('1st','2nd','Summer')
-,`academic_year` varchar(9)
-,`total_responses` bigint(21)
-,`subjects_handled` bigint(21)
-,`avg_subject_rating` decimal(13,2)
-,`avg_instructor_rating` decimal(13,2)
-,`overall_rating` decimal(14,2)
 );
 
 -- --------------------------------------------------------
@@ -419,42 +369,6 @@ CREATE TABLE `students` (
 -- --------------------------------------------------------
 
 --
--- Stand-in structure for view `students_eligible_for_promotion`
--- (See below for the actual view)
---
-CREATE TABLE `students_eligible_for_promotion` (
-`user_id` int(11)
-,`email` varchar(255)
-,`full_name` varchar(255)
-,`user_status` enum('active','inactive','pending')
-,`student_id` int(11)
-,`studentID` varchar(50)
-,`program_id` int(11)
-,`program_name` varchar(255)
-,`program_code` varchar(50)
-,`year_level` int(11)
-,`section` varchar(10)
-,`course_section` varchar(100)
-,`department` enum('College','Senior High')
-,`program_status` enum('active','inactive')
-);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `student_enrollments`
---
-
-CREATE TABLE `student_enrollments` (
-  `id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `course_section_id` int(11) NOT NULL,
-  `enrolled_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `student_promotion_history`
 --
 
@@ -474,20 +388,6 @@ CREATE TABLE `student_promotion_history` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `student_subjects`
---
-
-CREATE TABLE `student_subjects` (
-  `id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL COMMENT 'Reference to students.id',
-  `subject_instructor_id` int(11) NOT NULL,
-  `academic_year` varchar(9) NOT NULL,
-  `enrolled_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
 -- Table structure for table `subjects`
 --
 
@@ -497,103 +397,26 @@ CREATE TABLE `subjects` (
   `subject_name` varchar(255) NOT NULL,
   `department` varchar(100) NOT NULL,
   `units` decimal(3,1) DEFAULT 3.0,
-  `description` text DEFAULT NULL,
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `section` varchar(10) DEFAULT NULL,
-  `year_level` int(11) DEFAULT NULL,
-  `course_section_id` int(11) DEFAULT NULL,
-  `instructor_id` int(11) DEFAULT NULL
+  `instructor_id` int(11) DEFAULT NULL COMMENT 'Legacy - main instructor'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `subject_enrollments`
+-- Table structure for table `system_settings`
 --
 
-CREATE TABLE `subject_enrollments` (
+CREATE TABLE `system_settings` (
   `id` int(11) NOT NULL,
-  `student_id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL,
-  `enrolled_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `subject_evaluations`
---
-
-CREATE TABLE `subject_evaluations` (
-  `id` int(11) NOT NULL,
-  `student_subject_id` int(11) NOT NULL,
-  `form_id` int(11) NOT NULL,
-  `subject_rating` int(11) NOT NULL COMMENT '1-5 star rating for subject',
-  `instructor_rating` int(11) NOT NULL COMMENT '1-5 star rating for instructor',
-  `comments` text DEFAULT NULL,
-  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Stand-in structure for view `subject_evaluation_summary`
--- (See below for the actual view)
---
-CREATE TABLE `subject_evaluation_summary` (
-`subject_instructor_id` int(11)
-,`subject_id` int(11)
-,`subject_code` varchar(20)
-,`subject_name` varchar(255)
-,`department` varchar(100)
-,`instructor_id` int(11)
-,`instructor_name` varchar(255)
-,`course_section_id` int(11)
-,`course_section` varchar(100)
-,`semester` enum('1st','2nd','Summer')
-,`academic_year` varchar(9)
-,`total_responses` bigint(21)
-,`avg_subject_rating` decimal(13,2)
-,`avg_instructor_rating` decimal(13,2)
-,`overall_rating` decimal(14,2)
-);
-
--- --------------------------------------------------------
-
---
--- Table structure for table `subject_instructors`
---
-
-CREATE TABLE `subject_instructors` (
-  `id` int(11) NOT NULL,
-  `subject_id` int(11) NOT NULL,
-  `instructor_id` int(11) NOT NULL,
-  `course_section_id` int(11) NOT NULL,
-  `semester` enum('1st','2nd','Summer') NOT NULL,
-  `academic_year` varchar(9) NOT NULL COMMENT 'e.g., 2025-2026',
-  `form_id` int(11) DEFAULT NULL,
-  `status` enum('active','completed','cancelled') DEFAULT 'active',
+  `setting_key` varchar(50) NOT NULL,
+  `setting_value` varchar(255) NOT NULL,
+  `department` varchar(50) DEFAULT NULL COMMENT 'NULL = applies to all, College/Senior High = specific department',
+  `description` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
--- --------------------------------------------------------
-
---
--- Table structure for table `template_categories`
---
-
-CREATE TABLE `template_categories` (
-  `id` int(11) NOT NULL,
-  `name` varchar(100) NOT NULL,
-  `description` text DEFAULT NULL,
-  `icon` varchar(100) DEFAULT NULL,
-  `color` varchar(20) DEFAULT '#007bff',
-  `sort_order` int(11) DEFAULT 0,
-  `is_active` tinyint(1) DEFAULT 1,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------
@@ -657,24 +480,6 @@ DROP TABLE IF EXISTS `question_details`;
 
 CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `question_details`  AS SELECT `q`.`id` AS `id`, `q`.`form_id` AS `form_id`, `q`.`question_text` AS `question_text`, `q`.`question_type` AS `question_type`, `q`.`description` AS `description`, `q`.`required` AS `required`, `q`.`min_value` AS `min_value`, `q`.`max_value` AS `max_value`, `q`.`order_index` AS `order_index`, group_concat(json_object('id',`qo`.`id`,'option_text',`qo`.`option_text`,'order_index',`qo`.`order_index`) order by `qo`.`order_index` ASC separator ',') AS `options_json` FROM (`questions` `q` left join `question_options` `qo` on(`q`.`id` = `qo`.`question_id`)) GROUP BY `q`.`id` ORDER BY `q`.`form_id` ASC, `q`.`order_index` ASC ;
 
--- --------------------------------------------------------
-
---
--- Structure for view `students_eligible_for_promotion`
---
-DROP TABLE IF EXISTS `students_eligible_for_promotion`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `students_eligible_for_promotion`  AS SELECT `u`.`id` AS `user_id`, `u`.`email` AS `email`, `u`.`full_name` AS `full_name`, `u`.`status` AS `user_status`, `s`.`id` AS `student_id`, `s`.`studentID` AS `studentID`, `s`.`program_id` AS `program_id`, `cm`.`program_name` AS `program_name`, `cm`.`program_code` AS `program_code`, `cm`.`year_level` AS `year_level`, `cm`.`section` AS `section`, `cm`.`course_section` AS `course_section`, `cm`.`department` AS `department`, `cm`.`status` AS `program_status` FROM ((`users` `u` join `students` `s` on(`u`.`id` = `s`.`user_id`)) join `course_management` `cm` on(`s`.`program_id` = `cm`.`id`)) WHERE `u`.`role` = 'student' AND `u`.`status` = 'active' AND `cm`.`status` = 'active' ORDER BY `cm`.`department` ASC, `cm`.`program_code` ASC, `cm`.`year_level` ASC, `cm`.`section` ASC ;
-
--- --------------------------------------------------------
-
---
--- Structure for view `subject_evaluation_summary`
---
-DROP TABLE IF EXISTS `subject_evaluation_summary`;
-
-CREATE ALGORITHM=UNDEFINED DEFINER=`root`@`localhost` SQL SECURITY DEFINER VIEW `subject_evaluation_summary`  AS SELECT `si`.`id` AS `subject_instructor_id`, `si`.`subject_id` AS `subject_id`, `s`.`subject_code` AS `subject_code`, `s`.`subject_name` AS `subject_name`, `s`.`department` AS `department`, `si`.`instructor_id` AS `instructor_id`, `u`.`full_name` AS `instructor_name`, `si`.`course_section_id` AS `course_section_id`, `cm`.`course_section` AS `course_section`, `si`.`semester` AS `semester`, `si`.`academic_year` AS `academic_year`, count(distinct `se`.`id`) AS `total_responses`, round(avg(`se`.`subject_rating`),2) AS `avg_subject_rating`, round(avg(`se`.`instructor_rating`),2) AS `avg_instructor_rating`, round((avg(`se`.`subject_rating`) + avg(`se`.`instructor_rating`)) / 2,2) AS `overall_rating` FROM (((((`subject_instructors` `si` join `subjects` `s` on(`si`.`subject_id` = `s`.`id`)) join `users` `u` on(`si`.`instructor_id` = `u`.`id`)) join `course_management` `cm` on(`si`.`course_section_id` = `cm`.`id`)) left join `student_subjects` `ss` on(`si`.`id` = `ss`.`subject_instructor_id`)) left join `subject_evaluations` `se` on(`ss`.`id` = `se`.`student_subject_id`)) GROUP BY `si`.`id`, `s`.`id`, `u`.`id`, `cm`.`id` ORDER BY `si`.`academic_year` DESC, `si`.`semester` ASC, `s`.`subject_code` ASC ;
-
 --
 -- Indexes for dumped tables
 --
@@ -715,17 +520,8 @@ ALTER TABLE `forms`
   ADD KEY `idx_status` (`status`),
   ADD KEY `idx_is_template` (`is_template`),
   ADD KEY `idx_created_by` (`created_by`),
-  ADD KEY `idx_dates` (`start_date`,`end_date`);
-
---
--- Indexes for table `form_analytics`
---
-ALTER TABLE `form_analytics`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `unique_metric` (`form_id`,`metric_type`,`metric_date`),
-  ADD KEY `idx_form_id` (`form_id`),
-  ADD KEY `idx_metric_type` (`metric_type`),
-  ADD KEY `idx_metric_date` (`metric_date`);
+  ADD KEY `idx_dates` (`start_date`,`end_date`),
+  ADD KEY `idx_subject_id` (`subject_id`);
 
 --
 -- Indexes for table `form_assignments`
@@ -786,14 +582,6 @@ ALTER TABLE `instructors`
   ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
--- Indexes for table `instructor_courses`
---
-ALTER TABLE `instructor_courses`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_instructor_id` (`instructor_id`),
-  ADD KEY `idx_program_id` (`program_id`);
-
---
 -- Indexes for table `questions`
 --
 ALTER TABLE `questions`
@@ -839,14 +627,6 @@ ALTER TABLE `students`
   ADD UNIQUE KEY `user_id` (`user_id`);
 
 --
--- Indexes for table `student_enrollments`
---
-ALTER TABLE `student_enrollments`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_student_id` (`student_id`),
-  ADD KEY `idx_course_section_id` (`course_section_id`);
-
---
 -- Indexes for table `student_promotion_history`
 --
 ALTER TABLE `student_promotion_history`
@@ -859,16 +639,6 @@ ALTER TABLE `student_promotion_history`
   ADD KEY `promoted_by` (`promoted_by`);
 
 --
--- Indexes for table `student_subjects`
---
-ALTER TABLE `student_subjects`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `idx_unique_enrollment` (`student_id`,`subject_instructor_id`,`academic_year`),
-  ADD KEY `idx_student_id` (`student_id`),
-  ADD KEY `idx_subject_instructor_id` (`subject_instructor_id`),
-  ADD KEY `idx_academic_year` (`academic_year`);
-
---
 -- Indexes for table `subjects`
 --
 ALTER TABLE `subjects`
@@ -878,45 +648,11 @@ ALTER TABLE `subjects`
   ADD KEY `idx_status` (`status`);
 
 --
--- Indexes for table `subject_enrollments`
+-- Indexes for table `system_settings`
 --
-ALTER TABLE `subject_enrollments`
+ALTER TABLE `system_settings`
   ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `unique_enrollment` (`student_id`,`course_section_id`),
-  ADD KEY `idx_student_id` (`student_id`),
-  ADD KEY `idx_course_section_id` (`course_section_id`);
-
---
--- Indexes for table `subject_evaluations`
---
-ALTER TABLE `subject_evaluations`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `idx_unique_evaluation` (`student_subject_id`,`form_id`),
-  ADD KEY `idx_student_subject_id` (`student_subject_id`),
-  ADD KEY `idx_form_id` (`form_id`),
-  ADD KEY `idx_submitted_at` (`submitted_at`);
-
---
--- Indexes for table `subject_instructors`
---
-ALTER TABLE `subject_instructors`
-  ADD PRIMARY KEY (`id`),
-  ADD KEY `idx_subject_id` (`subject_id`),
-  ADD KEY `idx_instructor_id` (`instructor_id`),
-  ADD KEY `idx_course_section_id` (`course_section_id`),
-  ADD KEY `idx_semester` (`semester`),
-  ADD KEY `idx_academic_year` (`academic_year`),
-  ADD KEY `idx_status` (`status`),
-  ADD KEY `idx_form_id` (`form_id`);
-
---
--- Indexes for table `template_categories`
---
-ALTER TABLE `template_categories`
-  ADD PRIMARY KEY (`id`),
-  ADD UNIQUE KEY `idx_name` (`name`),
-  ADD KEY `idx_is_active` (`is_active`),
-  ADD KEY `idx_sort_order` (`sort_order`);
+  ADD UNIQUE KEY `unique_setting_department` (`setting_key`,`department`);
 
 --
 -- Indexes for table `users`
@@ -956,12 +692,6 @@ ALTER TABLE `forms`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `form_analytics`
---
-ALTER TABLE `form_analytics`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `form_assignments`
 --
 ALTER TABLE `form_assignments`
@@ -998,12 +728,6 @@ ALTER TABLE `instructors`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `instructor_courses`
---
-ALTER TABLE `instructor_courses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `questions`
 --
 ALTER TABLE `questions`
@@ -1034,21 +758,9 @@ ALTER TABLE `students`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `student_enrollments`
---
-ALTER TABLE `student_enrollments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
 -- AUTO_INCREMENT for table `student_promotion_history`
 --
 ALTER TABLE `student_promotion_history`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `student_subjects`
---
-ALTER TABLE `student_subjects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1058,27 +770,9 @@ ALTER TABLE `subjects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `subject_enrollments`
+-- AUTO_INCREMENT for table `system_settings`
 --
-ALTER TABLE `subject_enrollments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `subject_evaluations`
---
-ALTER TABLE `subject_evaluations`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `subject_instructors`
---
-ALTER TABLE `subject_instructors`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
-
---
--- AUTO_INCREMENT for table `template_categories`
---
-ALTER TABLE `template_categories`
+ALTER TABLE `system_settings`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
@@ -1107,13 +801,8 @@ ALTER TABLE `employers`
 -- Constraints for table `forms`
 --
 ALTER TABLE `forms`
+  ADD CONSTRAINT `fk_forms_subject` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `forms_ibfk_1` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `form_analytics`
---
-ALTER TABLE `form_analytics`
-  ADD CONSTRAINT `form_analytics_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `form_assignments`
@@ -1192,27 +881,6 @@ ALTER TABLE `student_promotion_history`
   ADD CONSTRAINT `student_promotion_history_ibfk_3` FOREIGN KEY (`previous_program_id`) REFERENCES `course_management` (`id`) ON DELETE SET NULL,
   ADD CONSTRAINT `student_promotion_history_ibfk_4` FOREIGN KEY (`new_program_id`) REFERENCES `course_management` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `student_promotion_history_ibfk_5` FOREIGN KEY (`promoted_by`) REFERENCES `users` (`id`);
-
---
--- Constraints for table `student_subjects`
---
-ALTER TABLE `student_subjects`
-  ADD CONSTRAINT `student_subjects_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `students` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `student_subjects_ibfk_2` FOREIGN KEY (`subject_instructor_id`) REFERENCES `subject_instructors` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `subject_evaluations`
---
-ALTER TABLE `subject_evaluations`
-  ADD CONSTRAINT `subject_evaluations_ibfk_1` FOREIGN KEY (`student_subject_id`) REFERENCES `student_subjects` (`id`) ON DELETE CASCADE;
-
---
--- Constraints for table `subject_instructors`
---
-ALTER TABLE `subject_instructors`
-  ADD CONSTRAINT `subject_instructors_ibfk_1` FOREIGN KEY (`subject_id`) REFERENCES `subjects` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `subject_instructors_ibfk_2` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
-  ADD CONSTRAINT `subject_instructors_ibfk_3` FOREIGN KEY (`course_section_id`) REFERENCES `course_management` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;

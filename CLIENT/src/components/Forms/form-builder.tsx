@@ -125,10 +125,10 @@ export function FormBuilder({
   formType: initialFormType,
 }: FormBuilderProps) {
   // Form Type State - use prop if provided (for evaluation forms), otherwise default to general
-  const [formType, setFormType] = useState<string>(initialFormType === 'evaluation' ? 'subject-evaluation' : 'general');
+  const [formType, setFormType] = useState<string>(initialFormType === 'evaluation' ? 'evaluation' : 'general');
   
   // Check if this is an evaluation form
-  const isEvaluationForm = initialFormType === 'evaluation' || formType === 'subject-evaluation';
+  const isEvaluationForm = initialFormType === 'evaluation' || formType === 'evaluation';
 
   // Evaluation form state: target selection
   const [evalType, setEvalType] = useState<'subject' | 'instructor'>('subject');
@@ -171,7 +171,7 @@ export function FormBuilder({
     publishForm,
     aiDescription,
     setAiDescription,
-  } = useFormSettings({ formId });
+  } = useFormSettings({ formId, initialFormType: formType });
 
   // Import deployEvaluationForm function directly for evaluation forms
 

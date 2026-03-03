@@ -47,6 +47,7 @@ export interface CreateFormData {
   description: string;
   category: string;
   targetAudience: string;
+  formType?: string;
   startDate?: string;
   endDate?: string;
   startTime?: string;
@@ -255,6 +256,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       aiDescription: formData.aiDescription,
       category: formData.category,
       targetAudience: formData.targetAudience,
+      formType: formData.formType,
       startDate: formData.startDate,
       endDate: formData.endDate,
       startTime: formData.startTime,
@@ -343,6 +345,12 @@ export const updateForm = async (
     if ('aiDescription' in mappedUpdates) {
       mappedUpdates.ai_description = mappedUpdates.aiDescription;
       delete mappedUpdates.aiDescription;
+    }
+    
+    // Handle formType - convert to type for API
+    if ('formType' in mappedUpdates) {
+      mappedUpdates.type = mappedUpdates.formType;
+      delete mappedUpdates.formType;
     }
     
     console.log('🔍 CLIENT: Mapped updates:', JSON.stringify(mappedUpdates));

@@ -19,9 +19,10 @@ const getDraftStorageKey = (formId?: string) => {
 
 interface UseFormSettingsProps {
   formId?: string;
+  initialFormType?: string;
 }
 
-export function useFormSettings({ formId }: UseFormSettingsProps) {
+export function useFormSettings({ formId, initialFormType }: UseFormSettingsProps) {
   // Form Settings State
   const [formTitle, setFormTitle] = useState("");
   const [formDescription, setFormDescription] = useState("");
@@ -31,6 +32,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [isPublished, setIsPublished] = useState(false);
   const [aiDescription, setAiDescription] = useState("");
+  const [formType, setFormType] = useState<string>(initialFormType || "general");
 
   // Categories State
   const [customCategories, setCustomCategories] = useState<string[]>([]);
@@ -290,6 +292,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           description: formDescription,
           category: formCategory,
           targetAudience: formTarget,
+          formType: formType,
           startDate: submissionSchedule.startDate || undefined,
           endDate: submissionSchedule.endDate || undefined,
           startTime: submissionSchedule.startTime || undefined,
@@ -327,7 +330,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
         setLoading(false);
       }
     },
-    [formTitle, formDescription, formCategory, formTarget, formImage, formId, aiDescription, submissionSchedule]
+    [formTitle, formDescription, formCategory, formTarget, formImage, formId, aiDescription, submissionSchedule, formType]
   );
 
   // Publish Form
@@ -378,6 +381,7 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
           description: formDescription,
           category: formCategory,
           targetAudience: formTarget,
+          formType: formType,
           startDate: submissionSchedule.startDate || undefined,
           endDate: submissionSchedule.endDate || undefined,
           startTime: submissionSchedule.startTime || undefined,
@@ -492,6 +496,8 @@ export function useFormSettings({ formId }: UseFormSettingsProps) {
     setImageFile,
     isPublished,
     setIsPublished,
+    formType,
+    setFormType,
     customCategories,
     setCustomCategories,
     databaseCategories,

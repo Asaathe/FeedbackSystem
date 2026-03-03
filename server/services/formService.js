@@ -279,6 +279,7 @@ const createForm = async (formData, userId) => {
       ai_description,
       category,
       targetAudience,
+      formType,
       startDate,
       endDate,
       startTime,
@@ -290,6 +291,7 @@ const createForm = async (formData, userId) => {
     } = formData;
     
     console.log('🔍 SERVER formService createForm: ai_description received:', ai_description);
+    console.log('🔍 SERVER formService createForm: formType received:', formType);
 
     // Validate form data
     const validation = validateFormData(formData);
@@ -317,15 +319,16 @@ const createForm = async (formData, userId) => {
       db,
       `
       INSERT INTO Forms (
-        title, description, ai_description, category, target_audience, 
+        title, description, ai_description, type, category, target_audience, 
         start_date, end_date, image_url, is_template, 
         status, created_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW(), NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW(), NOW())
     `,
       [
         title,
         description,
         ai_description || null,
+        formType || 'general',
         category,
         targetAudience,
         combinedStartDate,
@@ -454,6 +457,7 @@ const updateForm = async (formId, updates, userId) => {
       "title",
       "description",
       "ai_description",
+      "type",
       "category",
       "target_audience",
       "start_date",
@@ -464,15 +468,18 @@ const updateForm = async (formId, updates, userId) => {
     
     console.log('🔍 SERVER formService: updates object:', JSON.stringify(updates));
     console.log('🔍 SERVER formService: ai_description value:', updates.ai_description);
+    console.log('🔍 SERVER formService: type value:', updates.type || updates.formType);
     
     const updateFields = [];
     const updateValues = [];
 
     for (const field of allowedFields) {
-      if (updates[field] !== undefined) {
-        console.log('🔍 SERVER formService: Adding field to update:', field, '=', updates[field]);
+      // Map formType to type if needed
+      const value = field === 'type' ? (updates.type || updates.formType) : updates[field];
+      if (value !== undefined) {
+        console.log('🔍 SERVER formService: Adding field to update:', field, '=', value);
         updateFields.push(`${field} = ?`);
-        updateValues.push(updates[field]);
+        updateValues.push(value);
       }
     }
 
