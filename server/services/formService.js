@@ -288,10 +288,12 @@ const createForm = async (formData, userId) => {
       sections = [],
       imageUrl,
       isTemplate = false,
+      status = 'draft',
     } = formData;
     
     console.log('🔍 SERVER formService createForm: ai_description received:', ai_description);
     console.log('🔍 SERVER formService createForm: formType received:', formType);
+    console.log('🔍 SERVER formService createForm: status received:', status);
 
     // Validate form data
     const validation = validateFormData(formData);
@@ -322,7 +324,7 @@ const createForm = async (formData, userId) => {
         title, description, ai_description, type, category, target_audience, 
         start_date, end_date, image_url, is_template, 
         status, created_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, NOW(), NOW())
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())
     `,
       [
         title,
@@ -335,6 +337,7 @@ const createForm = async (formData, userId) => {
         combinedEndDate,
         imageUrl || null,
         isTemplate,
+        status,
         userId,
       ]
     );

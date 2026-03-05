@@ -7,8 +7,8 @@ const db = require("../config/database");
  */
 const getAllSections = async (req, res) => {
   try {
-    // Get from subjects table
-    const query = "SELECT * FROM subjects WHERE status = 'active' ORDER BY subject_code, section";
+    // Get from subjects table - without section column
+    const query = "SELECT * FROM subjects WHERE status = 'active' ORDER BY subject_code";
     db.query(query, (err, results) => {
       if (err) {
         console.error("Error fetching course sections:", err);
@@ -64,8 +64,9 @@ const createSection = async (req, res) => {
       });
     }
 
-    const query = "INSERT INTO subjects (subject_code, subject_name, section, year_level, department, units, status) VALUES (?, ?, ?, ?, ?, ?, 'active')";
-    db.query(query, [subjectCode, subjectName, section || 'A', year_level || 1, dept || 'General', subjectUnits], (err, result) => {
+    // Only use columns that exist in the subjects table
+    const query = "INSERT INTO subjects (subject_code, subject_name, department, units, status) VALUES (?, ?, ?, ?, 'active')";
+    db.query(query, [subjectCode, subjectName, dept, subjectUnits], (err, result) => {
       if (err) {
         console.error("Error creating course section:", err);
         if (err.code === "ER_DUP_ENTRY") {

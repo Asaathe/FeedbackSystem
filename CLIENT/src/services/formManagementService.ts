@@ -265,6 +265,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       sections: formData.sections || [],
       imageUrl: formData.imageUrl,
       isTemplate: formData.isTemplate,
+      status: formData.status || 'draft',
     };
 
     logDebug('Making POST request to: /api/forms');
@@ -1549,6 +1550,7 @@ export const deployEvaluationForm = async (
     // Deploy to each subject (will handle subject_instructors on server side)
     const results = [];
     for (const subjectId of subjectIds) {
+      console.log("📋 [deployEvaluationForm] Sending request for subjectId:", subjectId);
       const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/${subjectId}/assign-form`, {
         method: 'PUT',
         headers: {
@@ -1557,6 +1559,7 @@ export const deployEvaluationForm = async (
         },
         body: JSON.stringify({
           form_id: formId,
+          subject_id: subjectId, // Send subject_id in the body
           evaluation_type: evaluationType,
           start_date: schedule?.startDate,
           end_date: schedule?.endDate,

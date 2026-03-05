@@ -133,6 +133,7 @@ export function FormBuilder({
   // Evaluation form state: target selection
   const [evalType, setEvalType] = useState<'subject' | 'instructor'>('subject');
   const [selectedEvalTargets, setSelectedEvalTargets] = useState<number[]>([]);
+  const [selectedEvalTargetItems, setSelectedEvalTargetItems] = useState<any[]>([]);
 
   // Get available question types based on form type
   const availableQuestionTypes = isEvaluationForm 
@@ -233,6 +234,8 @@ export function FormBuilder({
     toggleInstructor,
     assignToUsers,
     deployToGroup,
+    setRecipients,
+    setSelectAllRecipients,
   } = useRecipients();
 
   // Wizard Hook
@@ -1254,7 +1257,22 @@ export function FormBuilder({
                               evaluationType={evalType}
                               onEvaluationTypeChange={setEvalType}
                               selectedIds={selectedEvalTargets}
-                              onSelectionChange={setSelectedEvalTargets}
+                              onSelectionChange={(ids, items) => {
+                                setSelectedEvalTargets(ids);
+                                setSelectedEvalTargetItems(items || []);
+                              }}
+                              onStudentsLoaded={(students) => {
+                                // Convert students to recipient format and update recipients
+                                const studentRecipients = students.map((student: any) => ({
+                                  id: student.id,
+                                  fullName: student.full_name,
+                                  details: `${student.course_section || 'N/A'} - ${student.department || 'N/A'}`,
+                                }));
+                                setRecipients(studentRecipients);
+                                setSelectedRecipients(new Set(studentRecipients.map((r: any) => r.id)));
+                                setSelectAllRecipients(true);
+                                console.log('Loaded recipients from evaluation target:', studentRecipients.length);
+                              }}
                             />
                           ) : (
                             <Card className="border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50">

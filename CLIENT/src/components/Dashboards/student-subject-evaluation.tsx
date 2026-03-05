@@ -12,10 +12,11 @@ import {
   CheckCircle,
   Send,
   X,
-  Calendar
+  Calendar,
+  Star,
+  User
 } from "lucide-react";
 import { toast } from "sonner";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 
 interface Subject {
   subject_id: number;
@@ -46,6 +47,16 @@ interface PublishedForm {
   assignment_status: string;
   form_id?: number;
   is_submitted?: boolean;
+  evaluation_form_id?: number;
+}
+
+interface Question {
+  id?: number;
+  question?: string;
+  text?: string;
+  type?: string;
+  question_type?: string;
+  options?: any[];
 }
 
 interface StudentSubjectEvaluationProps {
@@ -59,29 +70,13 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
   const [loading, setLoading] = useState(true);
   const [loadingForms, setLoadingForms] = useState(false);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
-  const [evaluationDialogOpen, setEvaluationDialogOpen] = useState(false);
+  const [showEvaluationForm, setShowEvaluationForm] = useState(false);
   const [selectedForm, setSelectedForm] = useState<PublishedForm | null>(null);
-  const [formQuestions, setFormQuestions] = useState<any[]>([]);
+  const [formQuestions, setFormQuestions] = useState<Question[]>([]);
   const [formResponses, setFormResponses] = useState<Record<number, any>>({});
   const [loadingForm, setLoadingForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [currentSettings, setCurrentSettings] = useState<any>(null);
-
-  // Helper function to render subject info with proper type handling
-  const renderSubjectInfo = () => {
-    const subject = selectedSubject;
-    if (!subject || !subject.subject_name) return null;
-    return (
-      <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-100">
-        <p className="font-medium text-green-800">
-          {subject.subject_name} ({subject.subject_code})
-        </p>
-        <p className="text-sm text-green-600">
-          Instructor: {subject.instructor_name || 'Not Assigned'}
-        </p>
-      </div>
-    );
-  };
 
   useEffect(() => {
     fetchMySubjects();
@@ -120,7 +115,16 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       });
 
       const data = await response.json();
+      console.log("My Subjects API response:", data);
+      
       if (data.success) {
+        console.log("Subjects received:", data.subjects);
+        if (data.subjects && data.subjects.length > 0) {
+          console.log("First subject instructor data:", {
+            instructor_name: data.subjects[0].instructor_name,
+            instructor_image: data.subjects[0].instructor_image
+          });
+        }
         setSubjects(data.subjects || []);
       } else {
         toast.error(data.message || 'Failed to fetch subjects');
@@ -164,8 +168,6 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         return;
       }
 
-      // Get evaluation forms assigned to this student for this subject
-      // Use the new API that returns subject-specific evaluations
       const response = await fetch('http://localhost:5000/api/subject-evaluation/my-evaluations', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -174,21 +176,21 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
 
       const data = await response.json();
       if (data.success && data.evaluations) {
-        // Filter evaluations that match the current subject
         const subjectEvaluations = data.evaluations.filter((eval_item: any) => {
           return eval_item.subject_id === subject.subject_id && eval_item.form_id;
         });
 
         setAvailableForms(subjectEvaluations.map((eval_item: any) => ({
-          id: eval_item.subject_instructor_id.toString(), // Use subject_instructor_id as id
+          id: eval_item.evaluation_form_id.toString(),
           title: eval_item.form_title || 'Subject Evaluation',
           description: eval_item.form_description || 'Please evaluate this subject',
           category: eval_item.form_category || 'Evaluation',
           target_audience: 'Student Subject Evaluation',
           dueDate: eval_item.end_date ? new Date(eval_item.end_date).toLocaleDateString() : undefined,
           assignment_status: eval_item.is_submitted ? 'completed' : 'pending',
-          form_id: eval_item.form_id, // Store form_id for submission
-          is_submitted: eval_item.is_submitted
+          form_id: eval_item.form_id,
+          is_submitted: eval_item.is_submitted,
+          evaluation_form_id: eval_item.evaluation_form_id
         })));
       }
     } catch (error) {
@@ -207,13 +209,11 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
   const handleBackToSubjects = () => {
     setSelectedSubject(null);
     setAvailableForms([]);
+    setShowEvaluationForm(false);
   };
 
   const handleStartEvaluation = async (formId: string) => {
-    // Find the form in availableForms
     const form = availableForms.find(f => f.id === formId);
-    alert("Starting evaluation, form ID: " + formId);
-    console.log("Starting evaluation with formId:", formId, "form:", form);
     if (!form) {
       toast.error('Form not found');
       return;
@@ -228,17 +228,10 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     setFormResponses({});
     setFormQuestions([]);
     setLoadingForm(true);
-    setEvaluationDialogOpen(true);
+    setShowEvaluationForm(true);
     
-    // Force re-render by using setTimeout
-    setTimeout(() => {
-      alert("Dialog should open now. State: evaluationDialogOpen=true");
-    }, 100);
-    
-    // Fetch form details and questions
     try {
       const token = sessionStorage.getItem('authToken');
-      console.log("Fetching form from:", `http://localhost:5000/api/forms/${form.form_id}`);
       const response = await fetch(`http://localhost:5000/api/forms/${form.form_id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -246,12 +239,14 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       });
        
       const data = await response.json();
-      console.log("Form response data:", data);
+      console.log("Form data received:", data);
+      
       if (data.success && data.form) {
-        setFormQuestions(data.form.questions || []);
-        console.log("Form questions:", data.form.questions);
+        const questions = data.form.questions || [];
+        console.log("Questions count:", questions.length);
+        console.log("Questions:", questions);
+        setFormQuestions(questions);
       } else {
-        console.error("Form fetch failed:", data);
         toast.error(data.message || 'Failed to load form');
       }
     } catch (error) {
@@ -260,6 +255,13 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     } finally {
       setLoadingForm(false);
     }
+  };
+
+  const handleCloseEvaluation = () => {
+    setShowEvaluationForm(false);
+    setSelectedForm(null);
+    setFormQuestions([]);
+    setFormResponses({});
   };
 
   const handleResponseChange = (questionId: number, value: any) => {
@@ -278,6 +280,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     setSubmitting(true);
     try {
       const token = sessionStorage.getItem('authToken');
+      const evaluationFormId = selectedForm.evaluation_form_id || parseInt(selectedForm.id);
       const response = await fetch('http://localhost:5000/api/subject-evaluation/evaluation-submissions', {
         method: 'POST',
         headers: {
@@ -287,7 +290,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         body: JSON.stringify({
           form_id: selectedForm.form_id,
           subject_id: selectedSubject.subject_id,
-          subject_instructor_id: parseInt(selectedForm.id),
+          evaluation_form_id: evaluationFormId,
           responses: formResponses
         }),
       });
@@ -295,8 +298,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       const data = await response.json();
       if (data.success) {
         toast.success('Evaluation submitted successfully!');
-        setEvaluationDialogOpen(false);
-        // Refresh the forms list
+        handleCloseEvaluation();
         if (selectedSubject) {
           await fetchFormsForSubject(selectedSubject);
         }
@@ -321,6 +323,17 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       .substring(0, 2);
   };
 
+  // Helper to get full image URL
+  const getImageUrl = (imagePath: string | null | undefined): string | undefined => {
+    if (!imagePath) return undefined;
+    // If already a full URL, return as is
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    // Otherwise, prepend the server URL
+    return `http://localhost:5000${imagePath}`;
+  };
+
   const isOverdue = (dueDate: string | undefined) => {
     if (!dueDate) return false;
     const date = new Date(dueDate);
@@ -334,6 +347,205 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading your subjects...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // View: Evaluation Form (inline, not popup)
+  if (showEvaluationForm && selectedForm) {
+    const answeredCount = Object.keys(formResponses).length;
+    const progress = formQuestions.length > 0 ? (answeredCount / formQuestions.length) * 100 : 0;
+
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={handleCloseEvaluation}>
+            <ArrowLeft className="w-5 h-5" />
+          </Button>
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold">{selectedForm.title}</h2>
+            <p className="text-gray-600">
+              {selectedSubject?.subject_name} • {selectedSubject?.subject_code}
+            </p>
+          </div>
+        </div>
+
+        {/* Subject & Instructor Info */}
+        <Card className="border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Avatar className="w-16 h-16">
+                {selectedSubject?.instructor_image ? (
+                  <img 
+                    src={selectedSubject.instructor_image} 
+                    alt={selectedSubject.instructor_name || 'Instructor'} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <AvatarFallback className="bg-green-500 text-white text-xl">
+                    {getInitials(selectedSubject?.instructor_name ?? null)}
+                  </AvatarFallback>
+                )}
+              </Avatar>
+              <div>
+                <p className="text-sm text-green-600 font-medium">Evaluating</p>
+                <h3 className="text-xl font-bold text-gray-800">
+                  {selectedSubject?.subject_name}
+                </h3>
+                <p className="text-gray-600">
+                  {selectedSubject?.subject_code} • {selectedSubject?.semester} • {selectedSubject?.academic_year}
+                </p>
+                <div className="flex items-center gap-2 mt-1">
+                  <User className="w-4 h-4 text-gray-500" />
+                  <p className="text-sm text-gray-500">
+                    {selectedSubject?.instructor_name || 'No Instructor Assigned'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Progress */}
+        <Card className="border-green-100">
+          <CardContent className="pt-6">
+            <div className="flex justify-between text-sm mb-2">
+              <span>Progress</span>
+              <span>{answeredCount} of {formQuestions.length} answered</span>
+            </div>
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-green-500 rounded-full transition-all duration-300"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Questions */}
+        {loadingForm ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+            <p className="ml-4 text-gray-600">Loading evaluation form...</p>
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {formQuestions.map((question, index) => (
+              <Card key={question.id || index} className="border-gray-200">
+                <CardContent className="pt-6">
+                  <div className="flex items-start gap-3 mb-4">
+                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-semibold text-sm">
+                      {index + 1}
+                    </span>
+                    <h3 className="text-lg font-medium text-gray-800 pt-1">
+                      {question.question || question.text}
+                    </h3>
+                  </div>
+                  
+                  {/* Rating Question */}
+                  {(question.type === 'rating' || question.question_type === 'rating') && (
+                    <div className="ml-11">
+                      <div className="flex gap-2">
+                        {[1, 2, 3, 4, 5].map((rating) => (
+                          <button
+                            key={rating}
+                            type="button"
+                            onClick={() => handleResponseChange(question.id!, rating)}
+                            className={`p-2 transition-all duration-200 transform hover:scale-110 ${
+                              formResponses[question.id!] >= rating
+                                ? 'text-yellow-400'
+                                : 'text-gray-300 hover:text-yellow-200'
+                            }`}
+                          >
+                            <Star className="w-8 h-8 fill-current" />
+                          </button>
+                        ))}
+                      </div>
+                      <div className="flex justify-between mt-2 text-xs text-gray-400">
+                        <span>Poor</span>
+                        <span>Excellent</span>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Text Question */}
+                  {(question.type === 'text' || question.question_type === 'text') && (
+                    <div className="ml-11">
+                      <textarea
+                        value={formResponses[question.id!] || ''}
+                        onChange={(e) => handleResponseChange(question.id!, e.target.value)}
+                        placeholder="Type your answer here..."
+                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-0 transition-colors bg-gray-50"
+                        rows={4}
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Multiple Choice Question */}
+                  {((question.type === 'multiple_choice' || question.question_type === 'multiple_choice') && question.options) && (
+                    <div className="ml-11 space-y-3">
+                      {question.options.map((option: any, optIndex: number) => {
+                        const optionValue = option.option_text || option;
+                        return (
+                          <label
+                            key={optIndex}
+                            className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                              formResponses[question.id!] === optionValue
+                                ? 'border-green-500 bg-green-50 shadow-sm'
+                                : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                            }`}
+                          >
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 ${
+                              formResponses[question.id!] === optionValue
+                                ? 'border-green-500 bg-green-500'
+                                : 'border-gray-300'
+                            }`}>
+                              {formResponses[question.id!] === optionValue && (
+                                <div className="w-2 h-2 rounded-full bg-white" />
+                              )}
+                            </div>
+                            <input
+                              type="radio"
+                              name={`question_${question.id}`}
+                              value={optionValue}
+                              checked={formResponses[question.id!] === optionValue}
+                              onChange={() => handleResponseChange(question.id!, optionValue)}
+                              className="sr-only"
+                            />
+                            <span className="text-gray-700 font-medium">{optionValue}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex justify-between items-center pt-4 border-t">
+          <p className="text-sm text-gray-500">Your responses are anonymous</p>
+          <Button
+            onClick={handleSubmitEvaluation}
+            disabled={submitting || answeredCount === 0}
+            className="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed px-8"
+          >
+            {submitting ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+                Submitting...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                Submit Evaluation
+              </>
+            )}
+          </Button>
         </div>
       </div>
     );
@@ -524,24 +736,9 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
               className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer"
               onClick={() => handleSubjectClick(subject)}
             >
-              <CardHeader className="flex flex-row items-start gap-4 pb-2">
-                <Avatar className="w-14 h-14">
-                  {subject.instructor_image ? (
-                    <img 
-                      src={subject.instructor_image} 
-                      alt={subject.instructor_name || 'Instructor'} 
-                      className="w-full h-full object-cover" 
-                    />
-                  ) : (
-                    <AvatarFallback className="bg-green-500 text-white text-lg">
-                      {getInitials(subject.instructor_name)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-lg truncate">{subject.subject_name}</CardTitle>
-                  <p className="text-sm text-gray-600 truncate">{subject.subject_code}</p>
-                </div>
+              <CardHeader>
+                <CardTitle className="text-lg">{subject.subject_name}</CardTitle>
+                <p className="text-sm text-gray-500">{subject.subject_code}</p>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -556,10 +753,25 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                   </div>
                   
                   <div className="pt-2 border-t border-gray-100">
-                    <p className="text-xs text-gray-500 mb-1">Instructor</p>
-                    <p className="text-sm font-medium truncate">
-                      {subject.instructor_name || 'Not Assigned'}
-                    </p>
+                    <p className="text-xs text-gray-500 mb-2">Instructor</p>
+                    <div className="flex items-center gap-3">
+                      <Avatar className="w-10 h-10">
+                        {subject.instructor_image ? (
+                          <img 
+                            src={getImageUrl(subject.instructor_image)} 
+                            alt={subject.instructor_name || 'Instructor'} 
+                            className="w-full h-full object-cover" 
+                          />
+                        ) : (
+                          <AvatarFallback className="bg-green-500 text-white text-sm">
+                            {getInitials(subject.instructor_name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <p className="text-sm font-medium truncate">
+                        {subject.instructor_name || 'Not Assigned'}
+                      </p>
+                    </div>
                   </div>
 
                   <Button variant="outline" className="w-full mt-2 border-green-200 hover:bg-green-50">
@@ -580,173 +792,6 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
           </CardContent>
         </Card>
       )}
-
-      {/* Modern Evaluation Form Dialog */}
-      <Dialog open={evaluationDialogOpen} onOpenChange={setEvaluationDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-hidden p-0">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-green-600 to-emerald-500 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-white">{selectedForm?.title}</h2>
-                <p className="text-green-100 text-sm mt-1">{selectedSubject && 'subject_name' in selectedSubject ? (selectedSubject as any).subject_name : ''} - {selectedSubject && 'subject_code' in selectedSubject ? (selectedSubject as any).subject_code : ''}</p>
-              </div>
-            </div>
-            
-            {/* Progress bar */}
-            <div className="mt-4">
-              <div className="flex justify-between text-green-100 text-xs mb-1">
-                <span>Progress</span>
-                <span>{Object.keys(formResponses).length} of {formQuestions.length} answered</span>
-              </div>
-              <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-white rounded-full transition-all duration-300"
-                  style={{ width: `${formQuestions.length > 0 ? (Object.keys(formResponses).length / formQuestions.length) * 100 : 0}%` }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="overflow-y-auto p-6 max-h-[60vh]">
-            {loadingForm ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-12 w-12 border-4 border-green-500 border-t-transparent"></div>
-                <p className="mt-4 text-gray-500">Loading evaluation form...</p>
-              </div>
-            ) : formQuestions.length > 0 ? (
-              <div className="space-y-8">
-                {formQuestions.map((question: any, index: number) => (
-                  <div 
-                    key={question.id || index} 
-                    className={`transition-all duration-300 ${
-                      formResponses[question.id] ? 'opacity-100' : 'opacity-80'
-                    }`}
-                  >
-                    <div className="flex items-start gap-3 mb-4">
-                      <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-semibold text-sm">
-                        {index + 1}
-                      </span>
-                      <h3 className="text-lg font-medium text-gray-800 pt-1">
-                        {question.question || question.text}
-                      </h3>
-                    </div>
-                    
-                    {/* Rating Question */}
-                    {(question.type === 'rating' || question.question_type === 'rating') && (
-                      <div className="ml-11">
-                        <div className="flex gap-2 flex-wrap">
-                          {[1, 2, 3, 4, 5].map((rating) => (
-                            <button
-                              key={rating}
-                              type="button"
-                              onClick={() => handleResponseChange(question.id, rating)}
-                              className={`w-14 h-14 rounded-xl font-bold text-lg transition-all duration-200 transform hover:scale-105 ${
-                                formResponses[question.id] === rating
-                                  ? 'bg-green-500 text-white shadow-lg shadow-green-500/30'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-green-100 hover:text-green-600'
-                              }`}
-                            >
-                              {rating}
-                            </button>
-                          ))}
-                        </div>
-                        <div className="flex justify-between mt-2 text-xs text-gray-400">
-                          <span>Poor</span>
-                          <span>Excellent</span>
-                        </div>
-                      </div>
-                    )}
-                    
-                    {/* Text Question */}
-                    {(question.type === 'text' || question.question_type === 'text') && (
-                      <div className="ml-11">
-                        <textarea
-                          value={formResponses[question.id] || ''}
-                          onChange={(e) => handleResponseChange(question.id, e.target.value)}
-                          placeholder="Type your answer here..."
-                          className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-0 transition-colors bg-gray-50"
-                          rows={4}
-                        />
-                      </div>
-                    )}
-                    
-                    {/* Multiple Choice Question */}
-                    {((question.type === 'multiple_choice' || question.question_type === 'multiple_choice') && question.options) && (
-                      <div className="ml-11 space-y-3">
-                        {question.options.map((option: any, optIndex: number) => (
-                          <label
-                            key={optIndex}
-                            className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
-                              formResponses[question.id] === (option.option_text || option)
-                                ? 'border-green-500 bg-green-50 shadow-sm'
-                                : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
-                            }`}
-                          >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 ${
-                              formResponses[question.id] === (option.option_text || option)
-                                ? 'border-green-500 bg-green-500'
-                                : 'border-gray-300'
-                            }`}>
-                              {formResponses[question.id] === (option.option_text || option) && (
-                                <div className="w-2 h-2 rounded-full bg-white" />
-                              )}
-                            </div>
-                            <input
-                              type="radio"
-                              name={`question_${question.id}`}
-                              value={option.option_text || option}
-                              checked={formResponses[question.id] === (option.option_text || option)}
-                              onChange={() => handleResponseChange(question.id, option.option_text || option)}
-                              className="sr-only"
-                            />
-                            <span className="text-gray-700 font-medium">{option.option_text || option}</span>
-                          </label>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-                  <FileText className="w-8 h-8 text-gray-400" />
-                </div>
-                <p className="text-gray-500 text-lg">No questions found in this form</p>
-                <p className="text-gray-400 text-sm mt-1">Please contact your administrator</p>
-              </div>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="border-t bg-gray-50 px-6 py-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-gray-500">
-                Your responses are anonymous
-              </p>
-              <Button
-                onClick={handleSubmitEvaluation}
-                disabled={submitting || Object.keys(formResponses).length === 0}
-                className="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed px-8"
-              >
-                {submitting ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                    Submitting...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Submit Evaluation
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

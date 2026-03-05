@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Progress } from "../ui/progress";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { 
   BookOpen, 
   Users, 
@@ -12,9 +12,12 @@ import {
   MessageSquare,
   ChevronRight,
   Search,
-  Filter
+  Filter,
+  Loader2,
+  BarChart3
 } from "lucide-react";
 import { toast } from "sonner";
+import { getSubjectEvaluationResults, getEvaluationSummary, getEvaluationResultsBySection } from "../../services/subjectService";
 
 interface Instructor {
   user_id: number;
@@ -30,9 +33,10 @@ interface Instructor {
 }
 
 interface Subject {
+  id: number;
   section_id: number;
-  subject_name: string;
   subject_code: string;
+  subject_name: string;
   section: string;
   year_level: string;
   department: string;
@@ -41,16 +45,14 @@ interface Subject {
   avg_rating: number;
 }
 
-interface FeedbackStats {
+interface SectionResult {
+  respondents: string;
+  total_enrolled: number;
   total_responses: number;
-  avg_rating: number;
-  rating_distribution: {
-    5: number;
-    4: number;
-    3: number;
-    2: number;
-    1: number;
-  };
+  c1: string;
+  c2: string;
+  c3: string;
+  average: string;
 }
 
 interface SubjectEvaluationProps {
@@ -62,15 +64,36 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
-  const [feedbackStats, setFeedbackStats] = useState<FeedbackStats | null>(null);
+  const [responses, setResponses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [currentView, setCurrentView] = useState<'overview' | 'instructors'>('overview');
+  const [summaryResults, setSummaryResults] = useState<any[]>([]);
+  const [sectionResults, setSectionResults] = useState<SectionResult[]>([]);
 
   useEffect(() => {
-    fetchInstructors();
-  }, []);
+    if (currentView === 'overview') {
+      loadSummary();
+    } else {
+      fetchInstructors();
+    }
+  }, [currentView]);
+
+  const loadSummary = async () => {
+    setLoading(true);
+    try {
+      const result = await getEvaluationSummary();
+      if (result.success) {
+        setSummaryResults(result.summary || []);
+      }
+    } catch (error) {
+      console.error("Error loading summary:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchInstructors = async () => {
     try {
@@ -89,7 +112,19 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
       const data = await response.json();
       if (data.success) {
-        setInstructors(data.instructors || []);
+        const mappedInstructors = (data.instructors || []).map((instructor: any) => ({
+          user_id: instructor.user_id,
+          full_name: instructor.full_name,
+          email: instructor.email,
+          department: instructor.department,
+          school_role: instructor.school_role || 'No School Role',
+          instructor_id: instructor.instructor_id,
+          image: instructor.image || null,
+          total_subjects: instructor.total_subjects || 0,
+          total_feedbacks: instructor.total_feedbacks || 0,
+          avg_rating: instructor.avg_rating || 0
+        }));
+        setInstructors(mappedInstructors);
       } else {
         toast.error(data.message || 'Failed to fetch instructors');
       }
@@ -118,7 +153,19 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
       const data = await response.json();
       if (data.success) {
-        setSubjects(data.subjects || []);
+        const mappedSubjects = (data.subjects || []).map((subject: any) => ({
+          id: subject.section_id || subject.id || 0,
+          section_id: subject.section_id || subject.id || 0,
+          subject_name: subject.subject_name || '',
+          subject_code: subject.subject_code || '',
+          section: subject.section || '-',
+          year_level: subject.year_level || '1',
+          department: subject.department || '',
+          student_count: subject.student_count || 0,
+          feedback_count: subject.feedback_count || 0,
+          avg_rating: subject.avg_rating || 0
+        }));
+        setSubjects(mappedSubjects);
       } else {
         toast.error(data.message || 'Failed to fetch subjects');
       }
@@ -133,23 +180,17 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const fetchSubjectFeedback = async (subjectId: number) => {
     setLoadingFeedback(true);
     try {
-      const token = sessionStorage.getItem('authToken');
-      if (!token) {
-        toast.error('No auth token found');
-        return;
+      const [analyticsResult, sectionResult] = await Promise.all([
+        getSubjectEvaluationResults(subjectId.toString()),
+        getEvaluationResultsBySection(subjectId.toString())
+      ]);
+      
+      if (analyticsResult.success) {
+        setResponses(analyticsResult.responses || []);
       }
-
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/${subjectId}/feedback`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-
-      const data = await response.json();
-      if (data.success) {
-        setFeedbackStats(data.statistics);
-      } else {
-        toast.error(data.message || 'Failed to fetch feedback');
+      
+      if (sectionResult.success) {
+        setSectionResults(sectionResult.results || []);
       }
     } catch (error) {
       console.error('Error fetching feedback:', error);
@@ -162,25 +203,25 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const handleInstructorClick = async (instructor: Instructor) => {
     setSelectedInstructor(instructor);
     setSelectedSubject(null);
-    setFeedbackStats(null);
+    setSectionResults([]);
     await fetchInstructorSubjects(instructor.user_id);
   };
 
   const handleSubjectClick = async (subject: Subject) => {
     setSelectedSubject(subject);
-    await fetchSubjectFeedback(subject.section_id);
+    await fetchSubjectFeedback(subject.section_id || subject.id);
   };
 
   const handleBackToInstructors = () => {
     setSelectedInstructor(null);
     setSelectedSubject(null);
-    setFeedbackStats(null);
+    setSectionResults([]);
     setSubjects([]);
   };
 
   const handleBackToSubjects = () => {
     setSelectedSubject(null);
-    setFeedbackStats(null);
+    setSectionResults([]);
   };
 
   const filteredInstructors = instructors.filter(instructor =>
@@ -221,17 +262,15 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+          <Loader2 className="w-12 h-12 animate-spin text-green-500 mx-auto" />
           <p className="mt-4 text-gray-600">Loading subject evaluation data...</p>
         </div>
       </div>
     );
   }
 
-  // View: Subject Feedback Details
-  if (selectedSubject && feedbackStats) {
-    const totalRatings = Object.values(feedbackStats.rating_distribution).reduce((a, b) => a + b, 0);
-    
+  // View: Selected Subject - shows analytics and individual responses
+  if (selectedSubject) {
     return (
       <div className="space-y-6">
         {/* Header */}
@@ -247,80 +286,108 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Individual Responses */}
+        {responses.length > 0 && (
           <Card className="border-green-100">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">Total Responses</CardTitle>
-              <MessageSquare className="w-5 h-5 text-blue-500" />
+            <CardHeader>
+              <CardTitle className="text-lg">Student Responses ({responses.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl">{feedbackStats.total_responses}</div>
-              <p className="text-xs text-gray-600 mt-1">Student feedbacks</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-green-100">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">Average Rating</CardTitle>
-              <Star className="w-5 h-5 text-yellow-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl flex items-center gap-1">
-                {parseFloat(feedbackStats.avg_rating.toString()).toFixed(1)}
-                <span className="text-lg">{renderStars(parseFloat(feedbackStats.avg_rating.toString()))}</span>
+              <div className="space-y-4">
+                {responses.map((response: any, index: number) => (
+                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">
+                          {response.student_name?.charAt(0) || 'S'}
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{response.student_name || 'Anonymous'}</p>
+                          <p className="text-xs text-gray-500">
+                            {response.student_number || 'N/A'} • 
+                            {response.submitted_at ? new Date(response.submitted_at).toLocaleDateString() : 'N/A'}
+                          </p>
+                        </div>
+                      </div>
+                      {response.overall_rating && (
+                        <div className="flex items-center gap-1">
+                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                          <span className="font-medium">{response.overall_rating}</span>
+                        </div>
+                      )}
+                    </div>
+                    {response.responses && (
+                      <div className="text-sm text-gray-600">
+                        <pre className="whitespace-pre-wrap bg-white p-2 rounded border text-xs overflow-x-auto">
+                          {JSON.stringify(response.responses, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-              <Progress value={parseFloat(feedbackStats.avg_rating.toString()) * 20} className="mt-2 h-2" />
             </CardContent>
           </Card>
+        )}
 
-          <Card className="border-green-100">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">Students</CardTitle>
-              <Users className="w-5 h-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl">{selectedSubject.student_count}</div>
-              <p className="text-xs text-gray-600 mt-1">Enrolled students</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Rating Distribution */}
+        {/* Results by Section Table - C1, C2, C3 Format */}
         <Card className="border-green-100">
           <CardHeader>
-            <CardTitle className="text-lg">Rating Distribution</CardTitle>
+            <CardTitle className="text-lg">Evaluation Results by Section</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              {[5, 4, 3, 2, 1].map((rating) => {
-                const count = feedbackStats.rating_distribution[rating as keyof typeof feedbackStats.rating_distribution];
-                const percentage = totalRatings > 0 ? (count / totalRatings) * 100 : 0;
-                
-                return (
-                  <div key={rating} className="flex items-center gap-4">
-                    <div className="w-12 flex items-center gap-1">
-                      <span className="text-yellow-400">★</span>
-                      <span className="text-sm font-medium">{rating}</span>
-                    </div>
-                    <div className="flex-1">
-                      <Progress value={percentage} className="h-3" />
-                    </div>
-                    <div className="w-16 text-right">
-                      <span className="text-sm font-medium">{count}</span>
-                      <span className="text-xs text-gray-500 ml-1">({percentage.toFixed(0)}%)</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            {loadingFeedback ? (
+              <div className="text-center py-8">
+                <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
+                <p className="mt-2 text-gray-600">Loading results...</p>
+              </div>
+            ) : sectionResults.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Respondents</TableHead>
+                    <TableHead className="text-center">Total Enrolled</TableHead>
+                    <TableHead className="text-center">C1</TableHead>
+                    <TableHead className="text-center">C2</TableHead>
+                    <TableHead className="text-center">C3</TableHead>
+                    <TableHead className="text-center">Average</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sectionResults.map((result, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">{result.respondents}</TableCell>
+                      <TableCell className="text-center">
+                        {result.total_responses} / {result.total_enrolled}
+                      </TableCell>
+                      <TableCell className="text-center">{result.c1}</TableCell>
+                      <TableCell className="text-center">{result.c2}</TableCell>
+                      <TableCell className="text-center">{result.c3}</TableCell>
+                      <TableCell className="text-center">
+                        {result.average !== 'N/A' ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-medium">{result.average}</span>
+                          </div>
+                        ) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8">
+                <p className="text-gray-500">No section data available</p>
+                <p className="text-sm text-gray-400 mt-1">Students need to be enrolled in programs for section breakdown</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // View: Subjects List
+  // View: Selected Instructor - shows their subjects
   if (selectedInstructor) {
     return (
       <div className="space-y-6">
@@ -375,10 +442,13 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             </CardHeader>
             <CardContent>
               <div className="text-3xl flex items-center gap-1">
-                {parseFloat(selectedInstructor.avg_rating.toString()).toFixed(1)}
-                <span className="text-lg">{renderStars(parseFloat(selectedInstructor.avg_rating.toString()))}</span>
+                {selectedInstructor.avg_rating !== undefined && selectedInstructor.avg_rating > 0 
+                  ? parseFloat(selectedInstructor.avg_rating.toString()).toFixed(1) 
+                  : 'N/A'}
               </div>
-              <Progress value={parseFloat(selectedInstructor.avg_rating.toString()) * 20} className="mt-2 h-2" />
+              {selectedInstructor.avg_rating !== undefined && selectedInstructor.avg_rating > 0 && (
+                <Progress value={parseFloat(selectedInstructor.avg_rating.toString()) * 20} className="mt-2 h-2" />
+              )}
             </CardContent>
           </Card>
         </div>
@@ -391,7 +461,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           <CardContent>
             {loadingSubjects ? (
               <div className="text-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mx-auto"></div>
+                <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
                 <p className="mt-2 text-gray-600">Loading subjects...</p>
               </div>
             ) : subjects.length > 0 ? (
@@ -423,7 +493,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                       <div className="flex items-center gap-1 ml-auto">
                         <Star className="w-4 h-4 text-yellow-500" />
                         <span className="text-sm font-medium">
-                          {parseFloat(subject.avg_rating.toString()).toFixed(1)}
+                          {parseFloat((subject.avg_rating || 0).toString()).toFixed(1)}
                         </span>
                       </div>
                     </div>
@@ -442,95 +512,163 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     );
   }
 
-  // View: Instructors List
+  // View: Main - Overview or Instructors
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-        <h2 className="text-2xl font-bold">Subject Evaluation</h2>
-        <p className="text-gray-600 mt-1">View instructor performance and feedback results</p>
-      </div>
-
-      {/* Search */}
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search instructors..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          />
-        </div>
-        <Button variant="outline" className="border-green-200">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
-      </div>
-
-      {/* Instructor Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredInstructors.length > 0 ? (
-          filteredInstructors.map((instructor) => (
-            <Card 
-              key={instructor.user_id}
-              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer"
-              onClick={() => handleInstructorClick(instructor)}
-            >
-              <CardHeader className="flex flex-row items-start gap-4 pb-2">
-                <Avatar className="w-14 h-14">
-                  {instructor.image ? (
-                    <img src={instructor.image} alt={instructor.full_name} className="w-full h-full object-cover" />
-                  ) : (
-                    <AvatarFallback className="bg-green-500 text-white text-lg">
-                      {getInitials(instructor.full_name)}
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-lg truncate">{instructor.full_name}</CardTitle>
-                  <p className="text-sm text-gray-600 truncate">{instructor.school_role || 'No School Role'}</p>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <BookOpen className="w-4 h-4" />
-                      <span>{instructor.total_subjects || 0} Subjects</span>
-                    </div>
-                    <div className="flex items-center gap-1 text-sm text-gray-600">
-                      <MessageSquare className="w-4 h-4" />
-                      <span>{instructor.total_feedbacks || 0} Feedbacks</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span className="text-sm font-medium">
-                        {parseFloat(instructor.avg_rating?.toString() || '0').toFixed(1)}
-                      </span>
-                      <span className="text-xs text-gray-500">avg rating</span>
-                    </div>
-                    <Badge variant="outline" className="border-green-200 text-green-700">
-                      Active
-                    </Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : (
-          <div className="col-span-full text-center py-12">
-            <Users className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <p className="text-gray-500 text-lg">No instructors found</p>
-            <p className="text-gray-400 text-sm">Try adjusting your search terms</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-bold">Subject Evaluation Dashboard</h2>
+            <p className="text-gray-600 mt-1">View evaluation results by subject and instructor</p>
           </div>
-        )}
+          <div className="flex gap-2">
+            <Button 
+              variant={currentView === 'overview' ? 'default' : 'outline'} 
+              onClick={() => setCurrentView('overview')}
+              className={currentView === 'overview' ? 'bg-green-600' : ''}
+            >
+              <BarChart3 className="w-4 h-4 mr-2" />
+              Overview
+            </Button>
+            <Button 
+              variant={currentView === 'instructors' ? 'default' : 'outline'} 
+              onClick={() => setCurrentView('instructors')}
+              className={currentView === 'instructors' ? 'bg-green-600' : ''}
+            >
+              <Users className="w-4 h-4 mr-2" />
+              By Instructor
+            </Button>
+          </div>
+        </div>
       </div>
+
+      {currentView === 'overview' ? (
+        // Overview Table
+        <Card className="border-green-100">
+          <CardHeader>
+            <CardTitle className="text-lg">Evaluation Results Summary</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {summaryResults.length === 0 ? (
+              <div className="text-center py-8">
+                <BarChart3 className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No evaluation data available yet.</p>
+                <p className="text-sm text-gray-400 mt-1">Create subjects and evaluation forms to see results here.</p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Subject</TableHead>
+                    <TableHead>Instructor</TableHead>
+                    <TableHead className="text-center">Responses</TableHead>
+                    <TableHead className="text-center">Average</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {summaryResults.map((result, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-medium">
+                        {result.subject_code}<br />
+                        <span className="text-xs text-gray-500">{result.subject_name}</span>
+                      </TableCell>
+                      <TableCell>{result.instructor_name || '-'}</TableCell>
+                      <TableCell className="text-center">{result.total_responses}</TableCell>
+                      <TableCell className="text-center">
+                        {result.average_rating > 0 ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-medium">{parseFloat(result.average_rating.toString()).toFixed(1)}</span>
+                          </div>
+                        ) : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        // Instructor Cards
+        <>
+          {/* Search */}
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search instructors..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              />
+            </div>
+            <Button variant="outline" className="border-green-200">
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+            </Button>
+          </div>
+
+          {/* Instructor Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredInstructors.length === 0 ? (
+              <div className="col-span-full text-center py-12">
+                <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-gray-500">No instructors found</p>
+              </div>
+            ) : (
+              filteredInstructors.map((instructor) => (
+                <Card 
+                  key={instructor.user_id} 
+                  className="border-green-100 hover:border-green-300 cursor-pointer transition-colors"
+                  onClick={() => handleInstructorClick(instructor)}
+                >
+                  <CardContent className="p-6">
+                    <div className="flex items-start gap-4">
+                      <Avatar className="w-14 h-14">
+                        {instructor.image ? (
+                          <img src={instructor.image} alt={instructor.full_name} className="w-full h-full object-cover" />
+                        ) : (
+                          <AvatarFallback className="bg-green-500 text-white text-lg">
+                            {getInitials(instructor.full_name)}
+                          </AvatarFallback>
+                        )}
+                      </Avatar>
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{instructor.full_name}</h3>
+                        <p className="text-sm text-gray-600">{instructor.school_role}</p>
+                        <p className="text-xs text-gray-400">{instructor.email}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <div className="text-xl font-bold text-green-600">{instructor.total_subjects}</div>
+                          <div className="text-xs text-gray-500">Subjects</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold text-blue-600">{instructor.total_feedbacks}</div>
+                          <div className="text-xs text-gray-500">Feedbacks</div>
+                        </div>
+                        <div>
+                          <div className="text-xl font-bold text-yellow-600 flex items-center justify-center gap-1">
+                            {instructor.avg_rating > 0 ? parseFloat(instructor.avg_rating.toString()).toFixed(1) : 'N/A'}
+                            {instructor.avg_rating > 0 && <Star className="w-4 h-4 text-yellow-500" />}
+                          </div>
+                          <div className="text-xs text-gray-500">Avg Rating</div>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }
-
-export default SubjectEvaluation;

@@ -1,0 +1,462 @@
+// Subject Management Service
+// Handles CRUD operations for subjects and evaluation forms
+
+const API_BASE_URL = '/api';
+
+const getAuthHeaders = () => {
+  const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+  return {
+    'Authorization': `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  };
+};
+
+// Subject CRUD Operations
+export const getSubjects = async (search?: string, status?: string, department?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    if (department) params.append('department', department);
+
+    const response = await fetch(`${API_BASE_URL}/subjects?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching subjects:', error);
+    return { success: false, message: 'Failed to fetch subjects', subjects: [] };
+  }
+};
+
+export const getSubject = async (id: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/${id}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching subject:', error);
+    return { success: false, message: 'Failed to fetch subject' };
+  }
+};
+
+export const createSubject = async (subjectData: {
+  subject_code: string;
+  subject_name: string;
+  department?: string;
+  units?: number;
+  description?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(subjectData),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error creating subject:', error);
+    return { success: false, message: 'Failed to create subject' };
+  }
+};
+
+export const updateSubject = async (id: string, updates: Partial<{
+  subject_code: string;
+  subject_name: string;
+  department: string;
+  units: number;
+  description: string;
+  status: string;
+}>) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error updating subject:', error);
+    return { success: false, message: 'Failed to update subject' };
+  }
+};
+
+export const deleteSubject = async (id: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error deleting subject:', error);
+    return { success: false, message: 'Failed to delete subject' };
+  }
+};
+
+// Subject Instructors
+export const getSubjectInstructors = async (subjectId: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/${subjectId}/instructors`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching subject instructors:', error);
+    return { success: false, message: 'Failed to fetch instructors', instructors: [] };
+  }
+};
+
+export const assignInstructorToSubject = async (data: {
+  subject_id: number;
+  instructor_id: number;
+  academic_year?: string;
+  semester?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/instructors`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error assigning instructor:', error);
+    return { success: false, message: 'Failed to assign instructor' };
+  }
+};
+
+export const removeInstructorFromSubject = async (id: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/instructors/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error removing instructor:', error);
+    return { success: false, message: 'Failed to remove instructor' };
+  }
+};
+
+// Subject Students
+export const getSubjectStudents = async (subjectId: string, status?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (status) params.append('status', status);
+
+    const response = await fetch(`${API_BASE_URL}/subjects/${subjectId}/students?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching subject students:', error);
+    return { success: false, message: 'Failed to fetch students', students: [] };
+  }
+};
+
+export const enrollStudent = async (data: {
+  subject_id: number;
+  student_id: number;
+  academic_year?: string;
+  semester?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/students`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error enrolling student:', error);
+    return { success: false, message: 'Failed to enroll student' };
+  }
+};
+
+export const unenrollStudent = async (id: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/students/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error unenrolling student:', error);
+    return { success: false, message: 'Failed to unenroll student' };
+  }
+};
+
+// Available Students and Instructors
+export const getAvailableStudents = async (search?: string, department?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (department) params.append('department', department);
+
+    const response = await fetch(`${API_BASE_URL}/subjects/students/available?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching available students:', error);
+    return { success: false, message: 'Failed to fetch students', students: [] };
+  }
+};
+
+export const getAvailableInstructors = async (search?: string, department?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (department) params.append('department', department);
+
+    const response = await fetch(`${API_BASE_URL}/subjects/instructors/available?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching available instructors:', error);
+    return { success: false, message: 'Failed to fetch instructors', instructors: [] };
+  }
+};
+
+// Evaluation Form Operations
+export const linkEvaluationForm = async (data: {
+  form_id: number;
+  subject_id: number;
+  instructor_id?: number;
+  academic_year?: string;
+  semester?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/link`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error linking evaluation form:', error);
+    return { success: false, message: 'Failed to link evaluation form' };
+  }
+};
+
+export const unlinkEvaluationForm = async (id: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/unlink/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error unlinking evaluation form:', error);
+    return { success: false, message: 'Failed to unlink evaluation form' };
+  }
+};
+
+export const getSubjectEvaluationForms = async (subjectId: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/subject/${subjectId}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching evaluation forms:', error);
+    return { success: false, message: 'Failed to fetch evaluation forms', forms: [] };
+  }
+};
+
+export const getStudentEvaluationForms = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/my-evaluations`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching student evaluations:', error);
+    return { success: false, message: 'Failed to fetch evaluations', forms: [] };
+  }
+};
+
+export const submitEvaluationResponse = async (data: {
+  evaluation_form_id: number;
+  responses: Record<string, number>;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/submit`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error submitting evaluation:', error);
+    return { success: false, message: 'Failed to submit evaluation' };
+  }
+};
+
+export const getSubjectEvaluationResults = async (subjectId: string, academic_year?: string, semester?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (academic_year) params.append('academic_year', academic_year);
+    if (semester) params.append('semester', semester);
+
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/results/${subjectId}?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching evaluation results:', error);
+    return { success: false, message: 'Failed to fetch results' };
+  }
+};
+
+export const getEvaluationSummary = async (academic_year?: string, semester?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (academic_year) params.append('academic_year', academic_year);
+    if (semester) params.append('semester', semester);
+
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/summary?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching evaluation summary:', error);
+    return { success: false, message: 'Failed to fetch summary', summary: [] };
+  }
+};
+
+export const getInstructorEvaluationResults = async (instructorId: string, academic_year?: string, semester?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (academic_year) params.append('academic_year', academic_year);
+    if (semester) params.append('semester', semester);
+
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/instructor/${instructorId}?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching instructor results:', error);
+    return { success: false, message: 'Failed to fetch results' };
+  }
+};
+
+// Get evaluation results by section with question category averages (C1, C2, C3)
+export const getEvaluationResultsBySection = async (subjectId: string, academic_year?: string, semester?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (academic_year) params.append('academic_year', academic_year);
+    if (semester) params.append('semester', semester);
+
+    const response = await fetch(`${API_BASE_URL}/evaluation-forms/results-by-section/${subjectId}?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching evaluation results by section:', error);
+    return { success: false, message: 'Failed to fetch results', results: [] };
+  }
+};
+
+// Programs API
+export const getPrograms = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/programs`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching programs:', error);
+    return { success: false, message: 'Failed to fetch programs', programs: [] };
+  }
+};
+
+// Get students by program for bulk enrollment
+export const getStudentsByProgram = async (programId: string, academicYear?: string, semester?: string) => {
+  try {
+    const params = new URLSearchParams();
+    if (academicYear) params.append('academic_year', academicYear);
+    if (semester) params.append('semester', semester);
+
+    const response = await fetch(`${API_BASE_URL}/programs/${programId}/students?${params}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching program students:', error);
+    return { success: false, message: 'Failed to fetch students', students: [] };
+  }
+};
+
+// Bulk enroll students by program
+export const bulkEnrollStudents = async (data: {
+  subject_id: number;
+  program_id: number;
+  academic_year?: string;
+  semester?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/students/bulk`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error bulk enrolling students:', error);
+    return { success: false, message: 'Failed to bulk enroll students' };
+  }
+};

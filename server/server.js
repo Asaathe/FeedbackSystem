@@ -114,6 +114,18 @@ app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
 app.use("/api/settings", settingsRoutes);
 
+// Subject Evaluation routes (for subject-assignment)
+const subjectEvaluationRoutes = require("./routes/subjectEvaluation");
+app.use("/api/subject-evaluation", subjectEvaluationRoutes);
+
+// Subject Management routes
+const subjectRoutes = require("./routes/subjects");
+app.use("/api/subjects", subjectRoutes);
+
+// Evaluation Form routes
+const evaluationFormRoutes = require("./routes/evaluationForms");
+app.use("/api/evaluation-forms", evaluationFormRoutes);
+
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 

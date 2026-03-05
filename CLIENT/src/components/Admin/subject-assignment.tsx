@@ -34,7 +34,8 @@ import {
   School,
   Edit,
   X,
-  Image
+  Image,
+  Search
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -133,11 +134,24 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
     units: ""
   });
 
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Filter subjects based on search
+  const filteredSubjects = courseSections.filter(subject => {
+    const query = searchQuery.toLowerCase();
+    return (
+      subject.subject_code?.toLowerCase().includes(query) ||
+      subject.subject_name?.toLowerCase().includes(query) ||
+      subject.department?.toLowerCase().includes(query)
+    );
+  });
+
   // Department options
   const departmentOptions = [
     "College",
     "Senior High",
-    "General"
+   
   ];
 
   // Edit subject state
@@ -159,6 +173,10 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   // Remove enrolled section state
   const [removeSectionDialogOpen, setRemoveSectionDialogOpen] = useState(false);
   const [removingSection, setRemovingSection] = useState<Program | null>(null);
+
+  // Assign instructor dialog state
+  const [assignInstructorDialogOpen, setAssignInstructorDialogOpen] = useState(false);
+  const [assigningInstructorSubject, setAssigningInstructorSubject] = useState<CourseSection | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -199,7 +217,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       console.log('Course sections data:', sectionsData);
       
       if (sectionsData.success) {
-        const sectionsList = (sectionsData.sections || []).map((s: any) => ({
+        const sectionsList = (sectionsData.courses || []).map((s: any) => ({
           id: s.id,
           subject_code: s.subject_code || s.course_code,
           subject_name: s.subject_name || s.course_name,
@@ -288,8 +306,8 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       
       // Prepare the data - only include actual database fields
       const subjectData = {
-        subject_code: newCourseSection.subject_code,
-        subject_name: newCourseSection.subject_name,
+        course_code: newCourseSection.subject_code,
+        course_name: newCourseSection.subject_name,
         department: newCourseSection.department || 'General',
         units: parseFloat(newCourseSection.units) || 3.0
       };
@@ -788,9 +806,13 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
             </div>
             
             <div className="flex gap-2">
-              <Button onClick={() => { setSelectedProgramId(""); setAssignDialogOpen(true); }} className="bg-green-500 hover:bg-green-600">
+              <Button onClick={() => { setAssigningInstructorSubject(selectedSubject); setAssignInstructorDialogOpen(true); }} className="bg-green-500 hover:bg-green-600">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Assign Instructor
+              </Button>
+              <Button onClick={() => { setSelectedProgramId(""); setAssignDialogOpen(true); }} className="bg-blue-500 hover:bg-blue-600">
                 <School className="w-4 h-4 mr-2" />
-                Enroll by Program
+                Enroll Students
               </Button>
             </div>
           </div>
@@ -1105,24 +1127,78 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       </Card>
 
       {/* Subject List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {courseSections.map((subject) => {
-          return (
+      <div className="space-y-4">
+        {/* Search Bar */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder="Search subjects by code, name, or department..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 border-green-200 focus:border-green-500"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredSubjects.map((subject) => (
             <Card 
               key={subject.id} 
-              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all"
+              className="border-0 shadow-md hover:shadow-xl transition-all duration-300 bg-gradient-to-br from-white to-green-50 overflow-hidden group"
+              onClick={() => handleSubjectClick(subject)}
             >
-              <CardHeader className="pb-2">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <CardTitle className="text-lg">{subject.subject_code}</CardTitle>
-                    <p className="text-sm text-gray-600">{subject.subject_name}</p>
+              {/* Card Header - Colored top bar */}
+              <div className="h-2 bg-gradient-to-r from-green-400 to-emerald-500"></div>
+              
+              <CardHeader className="pb-3 pt-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
+                    <BookOpen className="w-6 h-6 text-green-600" />
                   </div>
-                  <div className="flex gap-1">
+                  <div className="flex-1">
+                    <CardTitle className="text-xl font-bold text-gray-800 group-hover:text-green-700 transition-colors">
+                      {subject.subject_code}
+                    </CardTitle>
+                    <p className="text-sm text-gray-500 truncate">{subject.subject_name}</p>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent className="pb-3">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-sm text-gray-600 bg-white/60 px-3 py-2 rounded-lg">
+                    <span className="w-2 h-2 rounded-full bg-green-400"></span>
+                    <span className="font-medium">Department:</span>
+                    <span className="text-gray-700">{subject.department || 'General'}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm text-gray-600 bg-white/60 px-3 py-2 rounded-lg">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                    <span className="font-medium">Units:</span>
+                    <span className="text-gray-700">{subject.units || '3.0'}</span>
+                  </div>
+                </div>
+              </CardContent>
+              
+              {/* Card Footer with Actions */}
+              <div className="px-4 pb-4 pt-2 mt-auto">
+                <div className="flex items-center justify-between border-t border-green-100 pt-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-green-600 hover:text-green-700 hover:bg-green-50 font-medium"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSubjectClick(subject);
+                    }}
+                  >
+                    View Details
+                  </Button>
+                  <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                      className="h-8 w-8 text-gray-400 hover:text-blue-600 hover:bg-blue-50"
                       onClick={() => handleOpenEditSubject(subject)}
                     >
                       <Edit className="w-4 h-4" />
@@ -1130,34 +1206,33 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="h-8 w-8 text-gray-400 hover:text-red-600 hover:bg-red-50"
                       onClick={() => handleOpenDeleteSubject(subject)}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>Department: {subject.department || 'General'}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span>Units: {subject.units || '3.0'}</span>
-                  </div>
-                </div>
-              </CardContent>
+              </div>
             </Card>
-          );
-        })}
-        {courseSections.length === 0 && (
-          <div className="col-span-full text-center py-12">
-            <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500">No subjects created yet</p>
-            <p className="text-sm text-gray-400">Create a subject above to get started</p>
-          </div>
-        )}
+          ))}
+          {filteredSubjects.length === 0 && (
+            <div className="col-span-full text-center py-12">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              {searchQuery ? (
+                <>
+                  <p className="text-gray-500">No subjects found matching "{searchQuery}"</p>
+                  <p className="text-sm text-gray-400">Try a different search term</p>
+                </>
+              ) : (
+                <>
+                  <p className="text-gray-500">No subjects created yet</p>
+                  <p className="text-sm text-gray-400">Create a subject above to get started</p>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Edit Subject Dialog */}
@@ -1209,6 +1284,54 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
             <Button variant="destructive" onClick={handleDeleteSubject}>
               <Trash2 className="w-4 h-4 mr-2" />
               Delete
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Assign Instructor Dialog */}
+      <Dialog open={assignInstructorDialogOpen} onOpenChange={setAssignInstructorDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Instructor to {assigningInstructorSubject ? assigningInstructorSubject.subject_code : ''}</DialogTitle>
+            <DialogDescription>Select an instructor to teach this subject</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Instructor</Label>
+              <Select 
+                value={selectedInstructor?.user_id?.toString() || ""} 
+                onValueChange={(value) => {
+                  const instructor = instructors.find(i => i.user_id === parseInt(value));
+                  setSelectedInstructor(instructor || null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an instructor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {instructors.map((instructor) => (
+                    <SelectItem key={instructor.user_id} value={instructor.user_id.toString()}>
+                      {instructor.full_name} - {instructor.department}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              onClick={() => {
+                if (selectedInstructor && assigningInstructorSubject) {
+                  setSelectedSubjectId(assigningInstructorSubject.id.toString());
+                  handleAssignCourse();
+                  setAssignInstructorDialogOpen(false);
+                } else {
+                  toast.error('Please select an instructor');
+                }
+              }} 
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              Assign Instructor
             </Button>
           </div>
         </DialogContent>

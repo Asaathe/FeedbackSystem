@@ -104,7 +104,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'courses', label: 'Course Management', icon: BookOpen },
         { id: 'student-promotion', label: 'Student Promotion', icon: GraduationCap },
         { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
-        { id: 'subjectassign', label: 'Subject Assignment', icon: Book },
+        { id: 'subjects', label: 'Subject Management', icon: Book },
         { id: 'settings', label: 'System Settings', icon: Settings },
 
       ]
