@@ -47,12 +47,13 @@ interface Subject {
 
 interface SectionResult {
   respondents: string;
-  total_enrolled: number;
+  total_enrolled: string;
   total_responses: number;
-  c1: string;
-  c2: string;
-  c3: string;
+  q1: string;
+  q2: string;
+  q3: string;
   average: string;
+  question_averages?: Record<string, string>;
 }
 
 interface SubjectEvaluationProps {
@@ -286,51 +287,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </div>
         </div>
 
-        {/* Individual Responses */}
-        {responses.length > 0 && (
-          <Card className="border-green-100">
-            <CardHeader>
-              <CardTitle className="text-lg">Student Responses ({responses.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {responses.map((response: any, index: number) => (
-                  <div key={index} className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center text-sm font-medium">
-                          {response.student_name?.charAt(0) || 'S'}
-                        </div>
-                        <div>
-                          <p className="font-medium text-sm">{response.student_name || 'Anonymous'}</p>
-                          <p className="text-xs text-gray-500">
-                            {response.student_number || 'N/A'} • 
-                            {response.submitted_at ? new Date(response.submitted_at).toLocaleDateString() : 'N/A'}
-                          </p>
-                        </div>
-                      </div>
-                      {response.overall_rating && (
-                        <div className="flex items-center gap-1">
-                          <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                          <span className="font-medium">{response.overall_rating}</span>
-                        </div>
-                      )}
-                    </div>
-                    {response.responses && (
-                      <div className="text-sm text-gray-600">
-                        <pre className="whitespace-pre-wrap bg-white p-2 rounded border text-xs overflow-x-auto">
-                          {JSON.stringify(response.responses, null, 2)}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Results by Section Table - C1, C2, C3 Format */}
+        {/* Results by Section Table - Q1, Q2, Q3 Format */}
         <Card className="border-green-100">
           <CardHeader>
             <CardTitle className="text-lg">Evaluation Results by Section</CardTitle>
@@ -346,10 +303,10 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Respondents</TableHead>
-                    <TableHead className="text-center">Total Enrolled</TableHead>
-                    <TableHead className="text-center">C1</TableHead>
-                    <TableHead className="text-center">C2</TableHead>
-                    <TableHead className="text-center">C3</TableHead>
+                    <TableHead className="text-center">Respondents / Enrolled</TableHead>
+                    <TableHead className="text-center">Q1</TableHead>
+                    <TableHead className="text-center">Q2</TableHead>
+                    <TableHead className="text-center">Q3</TableHead>
                     <TableHead className="text-center">Average</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -358,11 +315,26 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                     <TableRow key={index}>
                       <TableCell className="font-medium">{result.respondents}</TableCell>
                       <TableCell className="text-center">
-                        {result.total_responses} / {result.total_enrolled}
+                        {result.total_enrolled}
                       </TableCell>
-                      <TableCell className="text-center">{result.c1}</TableCell>
-                      <TableCell className="text-center">{result.c2}</TableCell>
-                      <TableCell className="text-center">{result.c3}</TableCell>
+                      <TableCell className="text-center">
+                        {result.question_averages ? 
+                          (Object.keys(result.question_averages).length > 0 ? 
+                            Object.values(result.question_averages)[0] : '-') : 
+                          (result.q1 || '-')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {result.question_averages ? 
+                          (Object.keys(result.question_averages).length > 1 ? 
+                            Object.values(result.question_averages)[1] : '-') : 
+                          (result.q2 || '-')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {result.question_averages ? 
+                          (Object.keys(result.question_averages).length > 2 ? 
+                            Object.values(result.question_averages)[2] : '-') : 
+                          (result.q3 || '-')}
+                      </TableCell>
                       <TableCell className="text-center">
                         {result.average !== 'N/A' ? (
                           <div className="flex items-center justify-center gap-1">

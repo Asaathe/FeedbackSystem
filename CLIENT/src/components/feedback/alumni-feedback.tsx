@@ -290,7 +290,7 @@ export function AlumniFeedback({ onBack }: AlumniFeedbackProps = {}) {
               <div className="space-y-2">
                 <Label>Industry *</Label>
                 <Select
-                  value={answers[`${question.id}_industry`]}
+                  value={answers[`${question.id}_industry`] || ""}
                   onValueChange={(value) => setAnswers({ ...answers, [`${question.id}_industry`]: value })}
                 >
                   <SelectTrigger>
@@ -340,7 +340,7 @@ export function AlumniFeedback({ onBack }: AlumniFeedbackProps = {}) {
       case 'multiple-choice':
         return (
           <RadioGroup
-            value={answers[question.id]}
+            value={answers[question.id] || ""}
             onValueChange={(value) => setAnswers({ ...answers, [question.id]: value })}
           >
             <div className="space-y-3">

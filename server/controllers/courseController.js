@@ -104,9 +104,9 @@ const updateSection = async (req, res) => {
     const { id } = req.params;
     const { course_code, course_name, section, year_level, department, status, units } = req.body;
 
-    // Map to subjects table fields
-    const query = "UPDATE subjects SET subject_code = ?, subject_name = ?, section = ?, year_level = ?, department = ?, status = ?, units = ? WHERE id = ?";
-    db.query(query, [course_code, course_name, section, year_level, department, status || 'active', units || 3.0, id], (err, result) => {
+    // Only update fields that exist in subjects table: subject_code, subject_name, department, units, status
+    const query = "UPDATE subjects SET subject_code = ?, subject_name = ?, department = ?, status = ?, units = ? WHERE id = ?";
+    db.query(query, [course_code, course_name, department, status || 'active', units || 3.0, id], (err, result) => {
       if (err) {
         console.error("Error updating course section:", err);
         return res.status(500).json({

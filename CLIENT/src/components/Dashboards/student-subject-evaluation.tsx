@@ -377,10 +377,10 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <Avatar className="w-16 h-16">
-                {selectedSubject?.instructor_image ? (
+                {getImageUrl(selectedSubject?.instructor_image) ? (
                   <img 
-                    src={selectedSubject.instructor_image} 
-                    alt={selectedSubject.instructor_name || 'Instructor'} 
+                    src={getImageUrl(selectedSubject?.instructor_image) || ''} 
+                    alt={selectedSubject?.instructor_name || 'Instructor'} 
                     className="w-full h-full object-cover" 
                   />
                 ) : (
@@ -576,10 +576,10 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
           <CardContent>
             <div className="flex items-center gap-4">
               <Avatar className="w-14 h-14">
-                {selectedSubject.instructor_image ? (
+                {getImageUrl(selectedSubject?.instructor_image) ? (
                   <img 
-                    src={selectedSubject.instructor_image} 
-                    alt={selectedSubject.instructor_name || 'Instructor'} 
+                    src={getImageUrl(selectedSubject?.instructor_image) || ''} 
+                    alt={selectedSubject?.instructor_name || 'Instructor'} 
                     className="w-full h-full object-cover" 
                   />
                 ) : (
@@ -756,7 +756,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                     <p className="text-xs text-gray-500 mb-2">Instructor</p>
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10">
-                        {subject.instructor_image ? (
+                        {getImageUrl(subject.instructor_image) ? (
                           <img 
                             src={getImageUrl(subject.instructor_image)} 
                             alt={subject.instructor_name || 'Instructor'} 

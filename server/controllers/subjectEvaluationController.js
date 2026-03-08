@@ -122,23 +122,24 @@ const getMySubjects = async (req, res) => {
           se.status as enrollment_status,
           se.created_at as enrolled_at,
           COALESCE(si.id, ic.id) as subject_instructor_id,
-          COALESCE(si.instructor_id, ic.instructor_id, inst.id) as instructor_id,
-          COALESCE(u.full_name, u2.full_name) as instructor_name,
-          COALESCE(u.email, u2.email) as instructor_email,
+          COALESCE(inst.id, inst2.id) as instructor_record_id,
+          COALESCE(si.instructor_id, ic.instructor_id) as instructor_user_id,
+          COALESCE(u.full_name, u2.full_name, usr.full_name) as instructor_name,
+          COALESCE(u.email, u2.email, usr.email) as instructor_email,
           COALESCE(inst.department, inst2.department) as instructor_department,
           COALESCE(inst.image, inst2.image) as instructor_image
         FROM student_enrollments se
         INNER JOIN subjects s ON se.subject_id = s.id
-        -- Try subject_instructors first
-        LEFT JOIN subject_instructors si ON s.id = si.subject_id 
-          AND (si.academic_year = ? OR si.academic_year IS NULL)
-          AND (si.semester = ? OR si.semester IS NULL)
-        LEFT JOIN instructors inst ON si.instructor_id = inst.id
+        -- Try subject_instructors first (si.instructor_id is a user_id)
+        LEFT JOIN subject_instructors si ON s.id = si.subject_id
+        LEFT JOIN instructors inst ON si.instructor_id = inst.user_id
         LEFT JOIN users u ON inst.user_id = u.id
-        -- Also try instructor_courses
+        -- Also try instructor_courses (ic.instructor_id is a user_id)
         LEFT JOIN instructor_courses ic ON s.id = ic.subject_id
-        LEFT JOIN instructors inst2 ON ic.instructor_id = inst2.id
+        LEFT JOIN instructors inst2 ON ic.instructor_id = inst2.user_id
         LEFT JOIN users u2 ON inst2.user_id = u2.id
+        -- Also try direct user lookup for cases where instructor_id is a user_id
+        LEFT JOIN users usr ON COALESCE(si.instructor_id, ic.instructor_id) = usr.id
         WHERE se.student_id = ? 
           AND se.status = 'enrolled'
           AND s.status = 'active'
@@ -150,16 +151,18 @@ const getMySubjects = async (req, res) => {
       console.log("Semester:", semester, "Academic Year:", academicYear);
       console.log("Query:", query);
       
-      db.query(query, [academicYear, semester, userId], (err, results) => {
+      db.query(query, [userId], (err, results) => {
         if (err) {
           console.error("Error fetching student subjects:", err);
           return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
         }
         
         console.log("Query results:", results);
+        
         if (results && results.length > 0) {
           console.log("First result instructor fields:", {
-            instructor_id: results[0].instructor_id,
+            instructor_id: results[0].instructor_user_id,
+            instructor_record_id: results[0].instructor_record_id,
             instructor_name: results[0].instructor_name,
             instructor_image: results[0].instructor_image,
             subject_instructor_id: results[0].subject_instructor_id
@@ -177,7 +180,7 @@ const getMySubjects = async (req, res) => {
           semester: semester,
           academic_year: academicYear,
           course_section_id: row.subject_id,
-          instructor_id: row.instructor_id || null,
+          instructor_id: row.instructor_user_id || row.instructor_record_id || null,
           instructor_name: row.instructor_name || null,
           instructor_email: row.instructor_email || null,
           instructor_department: row.instructor_department || null,
@@ -186,7 +189,7 @@ const getMySubjects = async (req, res) => {
           enrolled_at: row.enrolled_at
         }));
         
-        return res.status(200).json({ success: true, subjects });
+        return res.status(200).json({ success: true, subjects, debug: { instructor_image: results[0]?.instructor_image } });
       });
     });
   } catch (error) {

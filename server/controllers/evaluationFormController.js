@@ -720,6 +720,42 @@ const getEvaluationResultsBySection = async (req, res) => {
           return res.status(500).json({ success: false, message: "Failed to fetch responses" });
         }
 
+        // If no program groups created (no enrolled students), create groups from responses
+        if (Object.keys(programGroups).length === 0 && responses.length > 0) {
+          const hasProgramInfo = responses.some(r => r.program_id);
+          
+          if (hasProgramInfo) {
+            // Group responses by their program info
+            responses.forEach(response => {
+              const key = response.program_id ? `${response.program_name || 'Unknown'} - Year ${response.year_level || '1'}${response.section ? ' Section ' + response.section : ''}` : 'General';
+              if (!programGroups[key]) {
+                programGroups[key] = {
+                  program_name: key,
+                  student_ids: [],
+                  total_enrolled: 0
+                };
+              }
+              if (!programGroups[key].student_ids.includes(response.student_id)) {
+                programGroups[key].student_ids.push(response.student_id);
+                programGroups[key].total_enrolled++;
+              }
+            });
+          } else {
+            // No program info - create a single "General" group with all responses
+            programGroups['General'] = {
+              program_name: 'General',
+              student_ids: [],
+              total_enrolled: 0
+            };
+            responses.forEach(response => {
+              if (!programGroups['General'].student_ids.includes(response.student_id)) {
+                programGroups['General'].student_ids.push(response.student_id);
+                programGroups['General'].total_enrolled++;
+              }
+            });
+          }
+        }
+
         // Group responses by program and calculate averages
         const results = Object.keys(programGroups).map(key => {
           const group = programGroups[key];
@@ -786,6 +822,9 @@ const getEvaluationResultsBySection = async (req, res) => {
             c1: c1,
             c2: c2,
             c3: c3,
+            q1: c1,
+            q2: c2,
+            q3: c3,
             average: average > 0 ? average.toFixed(1) : 'N/A'
           };
         });

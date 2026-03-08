@@ -50,7 +50,7 @@ export function InstructorFeedback() {
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <Select value={selectedForm} onValueChange={setSelectedForm}>
+              <Select value={selectedForm || ""} onValueChange={setSelectedForm}>
                 <SelectTrigger>
                   <Filter className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Filter by form" />

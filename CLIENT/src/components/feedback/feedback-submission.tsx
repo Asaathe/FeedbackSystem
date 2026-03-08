@@ -498,7 +498,7 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
       case "dropdown":
         return (
           <Select
-            value={answers[question.id]}
+            value={answers[question.id] || ""}
             onValueChange={(value) =>
               setAnswers({ ...answers, [question.id]: value })
             }
@@ -936,6 +936,8 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
       <Dialog open={showSuccessModal} onOpenChange={(open) => !open && setShowSuccessModal(false)}>
         <DialogContent className="w-[calc(100%-2rem)] sm:max-w-lg">
           <DialogHeader className="text-center">
+            <DialogTitle></DialogTitle>
+            <DialogDescription></DialogDescription>
             <div className="flex flex-col items-center">
               {/* Animated checkmark circle */}
               <div className="mb-2 relative">
