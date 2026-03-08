@@ -265,18 +265,35 @@ export function UserManagement() {
   }, [searchQuery, roleFilter, statusFilter]);
 
   
-  // Helper function to extract surname from full name
+  // Helper function to extract surname from full name (ignoring suffixes like Jr., Sr., II, III, IV)
   const getSurname = (fullName: string | undefined): string => {
     if (!fullName) return '';
     
+    // List of suffixes to remove for proper alphabetical sorting
+    const suffixes = ['jr.', 'jr', 'sr.', 'sr', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+    
+    // First, normalize the name to lowercase for comparison
+    let nameToProcess = fullName.toLowerCase().trim();
+    
     // Handle "Lastname, Firstname" format
-    if (fullName.includes(',')) {
-      return fullName.split(',')[0].trim().toLowerCase();
+    if (nameToProcess.includes(',')) {
+      const parts = nameToProcess.split(',');
+      let surname = parts[0].trim();
+      
+      // Remove any suffix from the surname
+      const surnameParts = surname.split(/\s+/);
+      const cleanParts = surnameParts.filter(part => !suffixes.includes(part));
+      return cleanParts.join(' ');
     }
     
-    // Handle "Firstname Lastname" format - extract last word as surname
-    const parts = fullName.trim().split(/\s+/);
-    return parts[parts.length - 1].toLowerCase();
+    // Handle "Firstname Lastname" format - extract last word as surname, ignoring suffixes
+    const parts = nameToProcess.split(/\s+/);
+    
+    // Filter out suffixes from the entire name first
+    const cleanParts = parts.filter(part => !suffixes.includes(part));
+    
+    // Now get the last word (surname) from the cleaned parts
+    return cleanParts[cleanParts.length - 1] || '';
   };
 
   const filteredUsers = users
