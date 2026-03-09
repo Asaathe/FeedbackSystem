@@ -740,22 +740,24 @@ export function UserManagement() {
       case 'Student':
         return (
           <>
-            <div className="grid gap-2">
-              <Label htmlFor="studentId">Student ID *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="studentId" className="text-xs font-medium text-gray-600">Student ID <span className="text-red-500">*</span></Label>
               <Input
                 id="studentId"
+                placeholder="e.g., 2024-0001"
                 value={newUser.studentId}
                 onChange={(e) => setNewUser({ ...newUser, studentId: e.target.value })}
+                className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="course_year_section">Program *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="course_year_section" className="text-xs font-medium text-gray-600">Program <span className="text-red-500">*</span></Label>
               <Select 
                 value={newUser.program_id} 
                 onValueChange={(value) => setNewUser({ ...newUser, program_id: value })}
               >
-                <SelectTrigger id="course_year_section">
-                  <SelectValue placeholder={isLoadingPrograms ? "Loading programs..." : "Select program"} />
+                <SelectTrigger id="course_year_section" className="h-10 border-gray-200 focus:border-green-500">
+                  <SelectValue placeholder={isLoadingPrograms ? "Loading..." : "Select program"} />
                 </SelectTrigger>
                 <SelectContent>
                   {programs.map((program) => (
@@ -766,10 +768,10 @@ export function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="department">Department *</Label>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="department" className="text-xs font-medium text-gray-600">Department <span className="text-red-500">*</span></Label>
               <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
-                <SelectTrigger id="department">
+                <SelectTrigger id="department" className="h-10 border-gray-200 focus:border-green-500">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -783,18 +785,20 @@ export function UserManagement() {
       case 'Instructor':
         return (
           <>
-            <div className="grid gap-2">
-              <Label htmlFor="employeeId">Employee ID *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="employeeId" className="text-xs font-medium text-gray-600">Employee ID <span className="text-red-500">*</span></Label>
               <Input
                 id="employeeId"
+                placeholder="e.g., INS-001"
                 value={newUser.employeeId}
                 onChange={(e) => setNewUser({ ...newUser, employeeId: e.target.value })}
+                className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="department">Department *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="department" className="text-xs font-medium text-gray-600">Department <span className="text-red-500">*</span></Label>
               <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
-                <SelectTrigger id="department">
+                <SelectTrigger id="department" className="h-10 border-gray-200 focus:border-green-500">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -804,37 +808,42 @@ export function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="schoolRole">School Role</Label>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="schoolRole" className="text-xs font-medium text-gray-600">School Role</Label>
               <Input
                 id="schoolRole"
                 placeholder="e.g., IT Instructor, DEAN, Program Head"
                 value={newUser.schoolRole}
                 onChange={(e) => setNewUser({ ...newUser, schoolRole: e.target.value })}
+                className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
           </>
         );
       case 'Employer':
         return (
-          <div className="grid gap-2">
-            <Label htmlFor="companyName">Company Name *</Label>
+          <div className="grid gap-1.5 sm:col-span-2">
+            <Label htmlFor="companyName" className="text-xs font-medium text-gray-600">Company Name <span className="text-red-500">*</span></Label>
             <Input
               id="companyName"
+              placeholder="e.g., Tech Corp Inc."
               value={newUser.companyName}
               onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
+              className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
             />
           </div>
         );
       case 'Alumni':
         return (
-          <div className="grid gap-2">
-            <Label htmlFor="graduationYear">Graduation Year *</Label>
+          <div className="grid gap-1.5 sm:col-span-2">
+            <Label htmlFor="graduationYear" className="text-xs font-medium text-gray-600">Graduation Year <span className="text-red-500">*</span></Label>
             <Input
               id="graduationYear"
               type="number"
+              placeholder="e.g., 2020"
               value={newUser.graduationYear}
               onChange={(e) => setNewUser({ ...newUser, graduationYear: e.target.value })}
+              className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
             />
           </div>
         );
@@ -848,23 +857,24 @@ export function UserManagement() {
       case 'Student':
         return (
           <>
-            <div className="grid gap-2">
-              <Label htmlFor="studentId">Student ID *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="studentId" className="text-xs font-medium text-gray-600">Student ID <span className="text-red-500">*</span></Label>
               <Input
                 id="studentId"
                 placeholder="e.g., 2024-0001"
                 value={editUser.studentId}
                 onChange={(e) => setEditUser({ ...editUser, studentId: e.target.value })}
+                className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="course_year_section">Program *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="course_year_section" className="text-xs font-medium text-gray-600">Program <span className="text-red-500">*</span></Label>
               <Select 
                 value={editUser.program_id} 
                 onValueChange={(value) => setEditUser({ ...editUser, program_id: value })}
               >
-                <SelectTrigger id="course_year_section">
-                  <SelectValue placeholder={isLoadingPrograms ? "Loading programs..." : "Select program"} />
+                <SelectTrigger id="course_year_section" className="h-10 border-gray-200 focus:border-green-500">
+                  <SelectValue placeholder={isLoadingPrograms ? "Loading..." : "Select program"} />
                 </SelectTrigger>
                 <SelectContent>
                   {programs.map((program) => (
@@ -875,10 +885,10 @@ export function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="department">Department *</Label>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="department" className="text-xs font-medium text-gray-600">Department <span className="text-red-500">*</span></Label>
               <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
-                <SelectTrigger id="department">
+                <SelectTrigger id="department" className="h-10 border-gray-200 focus:border-green-500">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -892,19 +902,20 @@ export function UserManagement() {
       case 'Instructor':
         return (
           <>
-            <div className="grid gap-2">
-              <Label htmlFor="employeeId">Employee ID *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="employeeId" className="text-xs font-medium text-gray-600">Employee ID <span className="text-red-500">*</span></Label>
               <Input
                 id="employeeId"
                 placeholder="e.g., INS-001"
                 value={editUser.employeeId}
                 onChange={(e) => setEditUser({ ...editUser, employeeId: e.target.value })}
+                className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="department">Department *</Label>
+            <div className="grid gap-1.5">
+              <Label htmlFor="department" className="text-xs font-medium text-gray-600">Department <span className="text-red-500">*</span></Label>
               <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
-                <SelectTrigger id="department">
+                <SelectTrigger id="department" className="h-10 border-gray-200 focus:border-green-500">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
@@ -914,39 +925,42 @@ export function UserManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-2">
-              <Label htmlFor="schoolRole">School Role</Label>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="schoolRole" className="text-xs font-medium text-gray-600">School Role</Label>
               <Input
                 id="schoolRole"
                 placeholder="e.g., IT Instructor, DEAN, Program Head"
                 value={editUser.schoolRole}
                 onChange={(e) => setEditUser({ ...editUser, schoolRole: e.target.value })}
+                className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
           </>
         );
       case 'Employer':
         return (
-          <div className="grid gap-2">
-            <Label htmlFor="companyName">Company Name *</Label>
+          <div className="grid gap-1.5 sm:col-span-2">
+            <Label htmlFor="companyName" className="text-xs font-medium text-gray-600">Company Name <span className="text-red-500">*</span></Label>
             <Input
               id="companyName"
               placeholder="e.g., Tech Corp Inc."
               value={editUser.companyName}
               onChange={(e) => setEditUser({ ...editUser, companyName: e.target.value })}
+              className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
             />
           </div>
         );
       case 'Alumni':
         return (
-          <div className="grid gap-2">
-            <Label htmlFor="graduationYear">Graduation Year *</Label>
+          <div className="grid gap-1.5 sm:col-span-2">
+            <Label htmlFor="graduationYear" className="text-xs font-medium text-gray-600">Graduation Year <span className="text-red-500">*</span></Label>
             <Input
               id="graduationYear"
               placeholder="e.g., 2020"
               type="number"
               value={editUser.graduationYear}
               onChange={(e) => setEditUser({ ...editUser, graduationYear: e.target.value })}
+              className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
             />
           </div>
         );
@@ -971,217 +985,241 @@ export function UserManagement() {
               Add User
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-modern">
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
             <DialogHeader>
-              <DialogTitle>Add New User</DialogTitle>
+              <DialogTitle className="flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-green-600" />
+                Add New User
+              </DialogTitle>
               <DialogDescription>
                 Create a new user account. The account will be pending until approved by admin.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {/* Basic Information Section */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <div className="w-1 h-4 bg-green-500 rounded-full" />
-                  <h4 className="text-sm text-gray-700">Basic Information</h4>
-                </div>
-
-                {/* Profile Picture Upload */}
-                <div className="flex items-center gap-4">
-                  <div className="relative group">
-                    <Avatar className="w-24 h-24 border-4 border-green-100 shadow-md">
-                      {newUser.profilePicture ? (
-                        <img
-                          src={formatImageUrl(newUser.profilePicture)}
-                          alt="Profile preview"
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <AvatarFallback className="bg-gradient-to-br from-green-50 to-lime-50 text-green-600 text-2xl font-semibold">
-                          {newUser.fullName ? newUser.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2) : '?'}
-                        </AvatarFallback>
-                      )}
-                    </Avatar>
-                    {newUser.profilePicture && (
-                      <button
-                        type="button"
-                        onClick={() => setNewUser({ ...newUser, profilePicture: '' })}
-                        className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="relative">
-                      <input
-                        id="profilePicture"
-                        type="file"
-                        accept="image/jpeg,image/jpg,image/png,image/webp"
-                        className="hidden"
-                        onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (file) {
-                            // Validate file size (max 2MB)
-                            if (file.size > 2 * 1024 * 1024) {
-                              toast.error('Image size must be less than 2MB');
-                              return;
-                            }
-                            // Validate file type
-                            if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
-                              toast.error('Only JPG, PNG, and WebP images are allowed');
-                              return;
-                            }
-                            
-                            // Upload file to server
-                            try {
-                              const token = sessionStorage.getItem('authToken');
-                              const formData = new FormData();
-                              formData.append('image', file);
-                              
-                              // Send role as query parameter for proper folder routing
-                              const roleParam = `?role=${encodeURIComponent(newUser.role || 'profiles')}`;
-                              
-                              const response = await fetch(`http://localhost:5000/api/users/upload-profile-image${roleParam}`, {
-                                method: 'POST',
-                                headers: {
-                                  'Authorization': `Bearer ${token}`,
-                                },
-                                body: formData,
-                              });
-                              
-                              const result = await response.json();
-                              
-                              if (result.success) {
-                                // Use the server返回的图片URL
-                                setNewUser({ ...newUser, profilePicture: result.imageUrl });
-                                toast.success('Profile photo uploaded successfully');
-                              } else {
-                                toast.error(result.message || 'Failed to upload image');
-                              }
-                            } catch (error) {
-                              console.error('Error uploading image:', error);
-                              toast.error('Failed to upload image');
-                            }
-                          }
-                        }}
+            <div className="space-y-6 py-4">
+              {/* Profile Picture Section */}
+              <div className="flex items-center gap-6 p-4 bg-gradient-to-r from-green-50/50 to-lime-50/50 rounded-xl border border-green-100">
+                <div className="relative group flex-shrink-0">
+                  <Avatar className="w-20 h-20 border-4 border-green-200 shadow-md">
+                    {newUser.profilePicture ? (
+                      <img
+                        src={formatImageUrl(newUser.profilePicture)}
+                        alt="Profile preview"
+                        className="w-full h-full object-cover"
                       />
-                      <Label htmlFor="profilePicture" className="cursor-pointer">
-                        <div className="flex items-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-lime-500 hover:from-green-600 hover:to-lime-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg">
-                          <Upload className="w-4 h-4" />
-                          <span className="text-sm font-medium">Choose Photo</span>
-                        </div>
-                      </Label>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                      <Info className="w-3 h-3" />
-                      Recommended: 2x2 inch photo (JPG, PNG, WebP - max 2MB)
-                    </p>
-                  </div>
+                    ) : (
+                      <AvatarFallback className="bg-gradient-to-br from-green-100 to-lime-100 text-green-600 text-xl font-semibold">
+                        {newUser.fullName ? newUser.fullName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase() : '?'}
+                      </AvatarFallback>
+                    )}
+                  </Avatar>
+                  {newUser.profilePicture && (
+                    <button
+                      type="button"
+                      onClick={() => setNewUser({ ...newUser, profilePicture: '' })}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1.5 shadow-lg hover:bg-red-600 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
                 </div>
+                <div className="flex-1 min-w-0">
+                  <input
+                    id="profilePicture"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        if (file.size > 2 * 1024 * 1024) {
+                          toast.error('Image size must be less than 2MB');
+                          return;
+                        }
+                        if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+                          toast.error('Only JPG, PNG, and WebP images are allowed');
+                          return;
+                        }
+                        try {
+                          const token = sessionStorage.getItem('authToken');
+                          const formData = new FormData();
+                          formData.append('image', file);
+                          const roleParam = `?role=${encodeURIComponent(newUser.role || 'profiles')}`;
+                          const response = await fetch(`http://localhost:5000/api/users/upload-profile-image${roleParam}`, {
+                            method: 'POST',
+                            headers: { 'Authorization': `Bearer ${token}` },
+                            body: formData,
+                          });
+                          const result = await response.json();
+                          if (result.success) {
+                            setNewUser({ ...newUser, profilePicture: result.imageUrl });
+                            toast.success('Profile photo uploaded');
+                          } else {
+                            toast.error(result.message || 'Failed to upload image');
+                          }
+                        } catch (error) {
+                          console.error('Error uploading image:', error);
+                          toast.error('Failed to upload image');
+                        }
+                      }
+                    }}
+                  />
+                  <Label htmlFor="profilePicture" className="cursor-pointer inline-flex">
+                    <div className="flex items-center gap-2 px-4 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg text-sm font-medium">
+                      <Upload className="w-4 h-4" />
+                      Upload Photo
+                    </div>
+                  </Label>
+                  <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                    <Info className="w-3 h-3" />
+                    JPG, PNG, WebP - Max 2MB
+                  </p>
+                </div>
+              </div>
 
-                <div className="grid gap-4 sm:grid-cols-2 pt-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="fullName">Full Name *</Label>
+              {/* Personal Information Section */}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-800">Personal Information</h4>
+                </div>
+                
+                <div className="grid gap-4 sm:grid-cols-2 pl-10">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="fullName" className="text-xs font-medium text-gray-600">Full Name <span className="text-red-500">*</span></Label>
                     <Input
                       id="fullName"
+                      placeholder="Juan dela Cruz"
                       value={newUser.fullName}
                       onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
+                      className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     />
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email *</Label>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="email" className="text-xs font-medium text-gray-600">Email Address <span className="text-red-500">*</span></Label>
                     <Input
                       id="email"
                       type="email"
+                      placeholder="juan@example.com"
                       value={newUser.email}
                       onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                      className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                     />
                   </div>
                 </div>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="password">Password *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={newUser.password}
-                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                <div className="grid gap-1.5 sm:grid-cols-2 pl-10">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="password" className="text-xs font-medium text-gray-600">Password <span className="text-red-500">*</span></Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="••••••••"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="phoneNumber" className="text-xs font-medium text-gray-600">Phone Number</Label>
+                    <Input
+                      id="phoneNumber"
+                      placeholder="+63 912 345 6789"
+                      value={newUser.phoneNumber}
+                      onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
+                      className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid gap-1.5 pl-10">
+                  <Label htmlFor="address" className="text-xs font-medium text-gray-600">Address</Label>
+                  <Textarea
+                    id="address"
+                    placeholder="Enter address (optional)"
+                    value={newUser.address}
+                    onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
+                    rows={2}
+                    className="border-gray-200 focus:border-green-500 focus:ring-green-500 resize-none"
                   />
                 </div>
               </div>
 
-              {/* Role Selection */}
+              {/* Role Selection Section */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <div className="w-1 h-4 bg-green-500 rounded-full" />
-                  <h4 className="text-sm text-gray-700">Role & Access</h4>
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-800">User Role <span className="text-red-500">*</span></h4>
                 </div>
-                
-                <div className="grid gap-2">
-                  <Label htmlFor="role">User Role *</Label>
-                  <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
-                    <SelectTrigger id="role">
-                      <SelectValue placeholder="Select user role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Student">Student</SelectItem>
-                      <SelectItem value="Instructor">Instructor</SelectItem>
-                      <SelectItem value="Alumni">Alumni</SelectItem>
-                      <SelectItem value="Employer">Employer</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                <div className="grid gap-3 sm:grid-cols-2 pl-10">
+                  {[
+                    { value: 'Student', label: 'Student', icon: 'M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253', desc: 'Current enrolled students' },
+                    { value: 'Instructor', label: 'Instructor', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', desc: 'Faculty and staff members' },
+                    { value: 'Alumni', label: 'Alumni', icon: 'M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z', desc: 'Graduated former students' },
+                    { value: 'Employer', label: 'Employer', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', desc: 'Company recruiters' }
+                  ].map((role) => (
+                    <label
+                      key={role.value}
+                      className={`relative flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        newUser.role === role.value
+                          ? 'border-green-500 bg-green-50'
+                          : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="role"
+                        value={role.value}
+                        checked={newUser.role === role.value}
+                        onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                        className="sr-only"
+                      />
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        newUser.role === role.value ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
+                      }`}>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={role.icon} />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium ${
+                          newUser.role === role.value ? 'text-green-700' : 'text-gray-700'
+                        }`}>{role.label}</p>
+                        <p className="text-xs text-gray-500 truncate">{role.desc}</p>
+                      </div>
+                      {newUser.role === role.value && (
+                        <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </label>
+                  ))}
                 </div>
               </div>
 
               {/* Role-specific fields */}
               {newUser.role && (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-2 pb-2 border-b">
-                    <div className="w-1 h-4 bg-green-500 rounded-full" />
-                    <h4 className="text-sm text-gray-700">{newUser.role} Details</h4>
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                      <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                    </div>
+                    <h4 className="text-sm font-semibold text-gray-800">{newUser.role} Details</h4>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 pl-10">
                     {renderRoleSpecificFields()}
                   </div>
                 </div>
               )}
-
-              {/* Optional Information */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 pb-2 border-b">
-                  <div className="w-1 h-4 bg-gray-300 rounded-full" />
-                  <h4 className="text-sm text-gray-700">Optional Information</h4>
-                </div>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="phoneNumber">Phone Number</Label>
-                    <Input
-                      id="phoneNumber"
-                      placeholder="+63 912 345 6789"
-                      value={newUser.phoneNumber}
-                      onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="address">Address</Label>
-                  <Textarea
-                    id="address"
-                    value={newUser.address}
-                    onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
-                    rows={2}
-                  />
-                </div>
-              </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddUserOpen(false)}>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setIsAddUserOpen(false)} className="border-gray-300 hover:bg-gray-50">
                 Cancel
               </Button>
-              <Button className="bg-green-500 hover:bg-green-600" onClick={handleAddUser}>
+              <Button className="bg-green-500 hover:bg-green-600 px-6" onClick={handleAddUser}>
+                <UserPlus className="w-4 h-4 mr-2" />
                 Add User
               </Button>
             </DialogFooter>
@@ -1473,18 +1511,18 @@ export function UserManagement() {
                             <MoreVertical className="w-4 h-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
+                        <DropdownMenuContent align="end" className="w-48">
                           {user.status === 'pending' && (
                             <>
                               <DropdownMenuItem
-                                className="text-green-600"
+                                className="text-green-600 focus:text-green-600 focus:bg-green-50"
                                 onClick={() => handleApproveClick(user)}
                               >
                                 <CheckCircle className="w-4 h-4 mr-2" />
                                 Approve Account
                               </DropdownMenuItem>
                               <DropdownMenuItem
-                                className="text-red-600"
+                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
                                 onClick={() => handleRejectClick(user)}
                               >
                                 <XCircle className="w-4 h-4 mr-2" />
@@ -1494,12 +1532,12 @@ export function UserManagement() {
                             </>
                           )}
                           
-                          <DropdownMenuItem onClick={() => handleViewDetails(user)}>
+                          <DropdownMenuItem className="focus:bg-gray-50" onClick={() => handleViewDetails(user)}>
                             <Edit className="w-4 h-4 mr-2" />
                             View/Edit Details
                           </DropdownMenuItem>
 
-                          <DropdownMenuItem className="text-red-600" onClick={() => handleRemoveUser(user.id)}>
+                          <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => handleRemoveUser(user.id)}>
                             <Trash2 className="w-4 h-4 mr-2" />
                             Remove User
                           </DropdownMenuItem>
@@ -1566,9 +1604,16 @@ export function UserManagement() {
         setIsViewDetailsOpen(open);
         if (!open) setIsEditMode(false); // Reset edit mode when closing
       }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-modern">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
           <DialogHeader>
-            <DialogTitle>{isEditMode ? 'Edit User' : 'User Details'}</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              {isEditMode ? (
+                <Edit className="w-5 h-5 text-green-600" />
+              ) : (
+                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+              )}
+              {isEditMode ? 'Edit User' : 'User Details'}
+            </DialogTitle>
             <DialogDescription>
               {isEditMode ? 'Update user account information' : 'View and manage user account details'}
             </DialogDescription>
@@ -1752,32 +1797,36 @@ export function UserManagement() {
 
               {/* Edit Mode */}
               {isEditMode && (
-                <div className="space-y-4 py-4">
-                  {/* Basic Information Section */}
+                <div className="space-y-6 py-4">
+                  {/* Personal Information Section */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b">
-                      <div className="w-1 h-4 bg-green-500 rounded-full" />
-                      <h4 className="text-sm text-gray-700">Basic Information</h4>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                      </div>
+                      <h4 className="text-sm font-semibold text-gray-800">Personal Information</h4>
                     </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-fullName">Full Name *</Label>
+                    
+                    <div className="grid gap-4 sm:grid-cols-2 pl-10">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-fullName" className="text-xs font-medium text-gray-600">Full Name <span className="text-red-500">*</span></Label>
                         <Input
                           id="edit-fullName"
                           placeholder="John Doe"
                           value={editUser.fullName}
                           onChange={(e) => setEditUser({ ...editUser, fullName: e.target.value })}
+                          className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                         />
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-email">Email *</Label>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-email" className="text-xs font-medium text-gray-600">Email Address <span className="text-red-500">*</span></Label>
                         <Input
                           id="edit-email"
                           type="email"
                           placeholder="john.doe@university.edu"
                           value={editUser.email}
                           onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                          className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                         />
                       </div>
                     </div>
@@ -1785,16 +1834,18 @@ export function UserManagement() {
 
                   {/* Role Selection */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b">
-                      <div className="w-1 h-4 bg-green-500 rounded-full" />
-                      <h4 className="text-sm text-gray-700">Role & Access</h4>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                      </div>
+                      <h4 className="text-sm font-semibold text-gray-800">Role & Access</h4>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-role">User Role *</Label>
+                    <div className="grid gap-4 sm:grid-cols-2 pl-10">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-role" className="text-xs font-medium text-gray-600">User Role <span className="text-red-500">*</span></Label>
                         <Select value={editUser.role} onValueChange={(value) => setEditUser({ ...editUser, role: value })}>
-                          <SelectTrigger id="edit-role">
+                          <SelectTrigger id="edit-role" className="h-10 border-gray-200 focus:border-green-500">
                             <SelectValue placeholder="Select user role" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1805,10 +1856,10 @@ export function UserManagement() {
                           </SelectContent>
                         </Select>
                       </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-status">Status *</Label>
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-status" className="text-xs font-medium text-gray-600">Status <span className="text-red-500">*</span></Label>
                         <Select value={editUser.status} onValueChange={(value) => setEditUser({ ...editUser, status: value })}>
-                          <SelectTrigger id="edit-status">
+                          <SelectTrigger id="edit-status" className="h-10 border-gray-200 focus:border-green-500">
                             <SelectValue placeholder="Select status" />
                           </SelectTrigger>
                           <SelectContent>
@@ -1824,11 +1875,13 @@ export function UserManagement() {
                   {/* Role-specific fields */}
                   {editUser.role && (
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2 pb-2 border-b">
-                        <div className="w-1 h-4 bg-green-500 rounded-full" />
-                        <h4 className="text-sm text-gray-700">{editUser.role} Details</h4>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                          <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" /></svg>
+                        </div>
+                        <h4 className="text-sm font-semibold text-gray-800">{editUser.role} Details</h4>
                       </div>
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-2 pl-10">
                         {renderEditRoleSpecificFields()}
                       </div>
                     </div>
@@ -1836,31 +1889,35 @@ export function UserManagement() {
 
                   {/* Optional Information */}
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 pb-2 border-b">
-                      <div className="w-1 h-4 bg-gray-300 rounded-full" />
-                      <h4 className="text-sm text-gray-700">Optional Information</h4>
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
+                        <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </div>
+                      <h4 className="text-sm font-semibold text-gray-800">Optional Information</h4>
                     </div>
 
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label htmlFor="edit-phoneNumber">Phone Number</Label>
+                    <div className="grid gap-4 sm:grid-cols-2 pl-10">
+                      <div className="grid gap-1.5">
+                        <Label htmlFor="edit-phoneNumber" className="text-xs font-medium text-gray-600">Phone Number</Label>
                         <Input
                           id="edit-phoneNumber"
                           placeholder="+63 912 345 6789"
                           value={editUser.phoneNumber}
                           onChange={(e) => setEditUser({ ...editUser, phoneNumber: e.target.value })}
+                          className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
                         />
                       </div>
                     </div>
 
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-address">Address</Label>
+                    <div className="grid gap-1.5 pl-10">
+                      <Label htmlFor="edit-address" className="text-xs font-medium text-gray-600">Address</Label>
                       <Textarea
                         id="edit-address"
                         placeholder="Enter address"
                         value={editUser.address}
                         onChange={(e) => setEditUser({ ...editUser, address: e.target.value })}
                         rows={2}
+                        className="border-gray-200 focus:border-green-500 focus:ring-green-500 resize-none"
                       />
                     </div>
                   </div>

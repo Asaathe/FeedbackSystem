@@ -4197,6 +4197,29 @@
     scrollbar-color: #10b9814d transparent !important;
   }
 
+  /* Ghost scrollbar - barely visible */
+  .scrollbar-ghost::-webkit-scrollbar {
+    width: 3px !important;
+  }
+
+  .scrollbar-ghost::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  .scrollbar-ghost::-webkit-scrollbar-thumb {
+    background-color: #10b9811a !important;
+    border-radius: 10px !important;
+  }
+
+  .scrollbar-ghost::-webkit-scrollbar-thumb:hover {
+    background-color: #10b98133 !important;
+  }
+
+  .scrollbar-ghost {
+    scrollbar-width: thin !important;
+    scrollbar-color: #10b9811a transparent !important;
+  }
+
   @keyframes shimmer {
     0% {
       background-position: -200% 0;
