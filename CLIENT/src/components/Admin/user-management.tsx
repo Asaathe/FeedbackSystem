@@ -1380,7 +1380,7 @@ export function UserManagement() {
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as UserRoleTab)} className="w-full">
         {/* Tab Bar - Separated from Table */}
         <div className="mb-4">
-            <TabsList className="flex w-full bg-gray-100/80 p-1 gap-1">
+              <TabsList className="flex w-full bg-gray-100/80 p-1 gap-1 border-2 border-green-100 rounded-md">
                 <TabsTrigger 
                   value="all" 
                   className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
