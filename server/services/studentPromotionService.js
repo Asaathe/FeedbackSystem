@@ -185,10 +185,13 @@ const promoteStudents = async (studentIds, newProgramId, promotedBy, notes = '')
     
     for (const studentId of studentIds) {
       try {
-        // Get current student data
+        // Get current student data with user status and role
         const students = await queryDatabase(
           db,
-          'SELECT s.*, u.id as user_id FROM students s INNER JOIN users u ON s.user_id = u.id WHERE s.id = ?',
+          `SELECT s.*, u.id as user_id, u.status as user_status, u.role as user_role 
+           FROM students s 
+           INNER JOIN users u ON s.user_id = u.id 
+           WHERE s.id = ?`,
           [studentId]
         );
         
@@ -199,6 +202,33 @@ const promoteStudents = async (studentIds, newProgramId, promotedBy, notes = '')
         
         const student = students[0];
         const previousProgramId = student.program_id;
+        
+        // VALIDATION 1: Check if student is active
+        if (student.user_status !== 'active') {
+          errors.push({ studentId, error: `Cannot promote inactive student (ID: ${studentId})` });
+          continue;
+        }
+        
+        // VALIDATION 2: Check if student is alumni (already graduated)
+        if (student.user_role === 'alumni') {
+          errors.push({ studentId, error: `Cannot promote alumni student (ID: ${studentId}) - Already graduated` });
+          continue;
+        }
+        
+        // VALIDATION 3: Check for duplicate promotion in current academic year
+        const currentYear = new Date().getFullYear();
+        const duplicateCheckQuery = `
+          SELECT COUNT(*) as count FROM student_promotion_history 
+          WHERE student_id = ? 
+            AND promotion_type = 'academic_year'
+            AND YEAR(promotion_date) = ?
+        `;
+        const duplicateCheck = await queryDatabase(db, duplicateCheckQuery, [studentId, currentYear]);
+        
+        if (duplicateCheck[0].count > 0) {
+          errors.push({ studentId, error: `Student (ID: ${studentId}) has already been promoted in ${currentYear}` });
+          continue;
+        }
         
         // Update student program
         await queryDatabase(
@@ -256,10 +286,13 @@ const graduateStudents = async (studentIds, graduationYear, promotedBy, graduati
     
     for (const studentId of studentIds) {
       try {
-        // Get current student data
+        // Get current student data with user status and role
         const students = await queryDatabase(
           db,
-          'SELECT s.*, u.id as user_id, u.full_name, u.email FROM students s INNER JOIN users u ON s.user_id = u.id WHERE s.id = ?',
+          `SELECT s.*, u.id as user_id, u.full_name, u.email, u.status as user_status, u.role as user_role 
+           FROM students s 
+           INNER JOIN users u ON s.user_id = u.id 
+           WHERE s.id = ?`,
           [studentId]
         );
         
@@ -269,6 +302,30 @@ const graduateStudents = async (studentIds, graduationYear, promotedBy, graduati
         }
         
         const student = students[0];
+        
+        // VALIDATION 1: Check if student is active
+        if (student.user_status !== 'active') {
+          errors.push({ studentId, error: `Cannot graduate inactive student (ID: ${studentId})` });
+          continue;
+        }
+        
+        // VALIDATION 2: Check if student is already an alumni
+        if (student.user_role === 'alumni') {
+          errors.push({ studentId, error: `Student (ID: ${studentId}) is already an alumni - Cannot graduate again` });
+          continue;
+        }
+        
+        // VALIDATION 3: Check for duplicate graduation
+        const duplicateGradCheck = await queryDatabase(
+          db,
+          `SELECT COUNT(*) as count FROM graduation_records WHERE student_id = ? AND graduation_year = ?`,
+          [studentId, graduationYear]
+        );
+        
+        if (duplicateGradCheck[0].count > 0) {
+          errors.push({ studentId, error: `Student (ID: ${studentId}) has already graduated in ${graduationYear}` });
+          continue;
+        }
         
         // Insert into graduation_records
         await queryDatabase(
@@ -482,11 +539,438 @@ const getAllPrograms = async () => {
   }
 };
 
+/**
+ * Preview promotion - validate and show what will happen before actual promotion
+ * @param {Array} studentIds - Array of student IDs to preview
+ * @param {number} newProgramId - Target program ID
+ * @returns {Promise<object>} Preview with warnings and validation results
+ */
+const previewPromotion = async (studentIds, newProgramId) => {
+  try {
+    // Get target program details
+    const targetProgramResult = await queryDatabase(db, 'SELECT * FROM course_management WHERE id = ?', [newProgramId]);
+    
+    if (targetProgramResult.length === 0) {
+      return {
+        success: false,
+        message: "Target program not found",
+        students: [],
+        warnings: [],
+        errors: []
+      };
+    }
+    
+    const targetProgram = targetProgramResult[0];
+    const studentPreviews = [];
+    const warnings = [];
+    const errors = [];
+    const currentYear = new Date().getFullYear();
+    
+    for (const studentId of studentIds) {
+      const studentData = await queryDatabase(
+        db,
+        `SELECT s.*, u.id as user_id, u.full_name, u.email, u.status as user_status, u.role as user_role,
+                cm.program_code, cm.program_name, cm.year_level, cm.section, cm.course_section
+         FROM students s 
+         INNER JOIN users u ON s.user_id = u.id 
+         LEFT JOIN course_management cm ON s.program_id = cm.id
+         WHERE s.id = ?`,
+        [studentId]
+      );
+      
+      if (studentData.length === 0) {
+        errors.push({ studentId, error: "Student not found" });
+        continue;
+      }
+      
+      const student = studentData[0];
+      const preview = {
+        studentId,
+        studentName: student.full_name,
+        studentEmail: student.email,
+        currentProgram: student.program_code ? `${student.program_code} - Year ${student.year_level} (${student.section})` : "N/A",
+        currentYearLevel: student.year_level,
+        targetProgram: `${targetProgram.program_code} - Year ${targetProgram.year_level} (${targetProgram.section})`,
+        targetYearLevel: targetProgram.year_level,
+        targetSection: targetProgram.section,
+        warnings: [],
+        canPromote: true,
+        blockReason: null
+      };
+      
+      // Validation 1: Check if student is active
+      if (student.user_status !== 'active') {
+        preview.canPromote = false;
+        preview.blockReason = "Student is inactive";
+        preview.warnings.push("⚠ Student account is inactive");
+      }
+      
+      // Validation 2: Check if student is alumni
+      if (student.user_role === 'alumni') {
+        preview.canPromote = false;
+        preview.blockReason = "Student is already an alumni";
+        preview.warnings.push("⚠ Student has already graduated (alumni)");
+      }
+      
+      // Validation 3: Check for duplicate promotion this year
+      const dupCheck = await queryDatabase(
+        db,
+        `SELECT COUNT(*) as count FROM student_promotion_history 
+         WHERE student_id = ? AND promotion_type = 'academic_year' AND YEAR(promotion_date) = ?`,
+        [studentId, currentYear]
+      );
+      if (dupCheck[0].count > 0) {
+        preview.canPromote = false;
+        preview.blockReason = "Already promoted this year";
+        preview.warnings.push(`⚠ Student was already promoted in ${currentYear}`);
+      }
+      
+      // BLOCKING: Same section check - cannot promote to same exact program/section
+      if (student.program_id === newProgramId) {
+        preview.canPromote = false;
+        preview.blockReason = "Already in target section";
+        preview.warnings.push("⚠ Student is already in the target program/section - cannot promote to same section");
+      }
+      
+      // Warning 2: Year level mismatch (e.g., Year 4 → Year 1 or backwards)
+      if (targetProgram.year_level < student.year_level) {
+        preview.warnings.push("⚠ Target year is lower than current year (demotion)");
+      }
+      
+      // Warning 3: Large year jump (more than 1 year)
+      if (Math.abs(targetProgram.year_level - student.year_level) > 1) {
+        preview.warnings.push("⚠ Large year level jump (more than 1 year)");
+      }
+      
+      // Warning 4: Department mismatch
+      if (student.program_code && !targetProgram.program_code.startsWith(student.program_code.substring(0, 3))) {
+        preview.warnings.push("⚠ Target program is in different department");
+      }
+      
+      // Warning 5: Check if target section already has many students (capacity warning)
+      const sectionCount = await queryDatabase(
+        db,
+        `SELECT COUNT(*) as count FROM students s 
+         INNER JOIN course_management cm ON s.program_id = cm.id 
+         WHERE cm.id = ?`,
+        [newProgramId]
+      );
+      if (sectionCount[0].count >= 50) {
+        preview.warnings.push("⚠ Target section may be at capacity");
+      }
+      
+      studentPreviews.push(preview);
+    }
+    
+    // Summary warnings
+    const blockedCount = studentPreviews.filter(s => !s.canPromote).length;
+    const warningCount = studentPreviews.filter(s => s.warnings.length > 0 && s.canPromote).length;
+    
+    if (blockedCount > 0) {
+      warnings.push(`${blockedCount} student(s) cannot be promoted due to blocking issues`);
+    }
+    if (warningCount > 0) {
+      warnings.push(`${warningCount} student(s) have warnings that should be reviewed`);
+    }
+    
+    return {
+      success: true,
+      targetProgram: {
+        id: targetProgram.id,
+        programCode: targetProgram.program_code,
+        programName: targetProgram.program_name,
+        yearLevel: targetProgram.year_level,
+        section: targetProgram.section,
+        courseSection: targetProgram.course_section
+      },
+      students: studentPreviews,
+      summary: {
+        total: studentPreviews.length,
+        canPromote: studentPreviews.filter(s => s.canPromote).length,
+        blocked: blockedCount,
+        withWarnings: warningCount
+      },
+      warnings: warnings,
+      errors: errors
+    };
+    
+  } catch (error) {
+    console.error("Preview promotion error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Undo a promotion - revert student to previous program
+ * @param {number} historyId - The promotion history ID to undo
+ * @param {number} studentId - The student ID
+ * @param {number} undoneBy - Admin user ID performing the undo
+ * @returns {Promise<object>} Undo result
+ */
+const undoPromotion = async (historyId, studentId, undoneBy) => {
+  try {
+    // Get the promotion history record
+    const historyQuery = `
+      SELECT sph.*, s.program_id as current_program_id
+      FROM student_promotion_history sph
+      INNER JOIN students s ON sph.student_id = s.id
+      WHERE sph.id = ? AND sph.student_id = ?
+    `;
+    
+    const historyRecords = await queryDatabase(db, historyQuery, [historyId, studentId]);
+    
+    if (historyRecords.length === 0) {
+      return {
+        success: false,
+        message: "Promotion history not found"
+      };
+    }
+    
+    const historyRecord = historyRecords[0];
+    
+    // Get the previous program ID from history, not from current students table
+    const previousProgramId = historyRecord.previous_program_id;
+    
+    // Check if this is a graduation undo
+    if (historyRecord.promotion_type === 'graduation') {
+      // For graduation, we need to:
+      // 1. Change user role back from 'alumni' to 'student'
+      // 2. Delete the alumni record
+      // 3. Restore the student's program
+      
+      // Get the student info
+      const studentQuery = `SELECT * FROM students WHERE id = ?`;
+      const students = await queryDatabase(db, studentQuery, [studentId]);
+      
+      if (students.length === 0) {
+        return {
+          success: false,
+          message: "Student not found"
+        };
+      }
+      
+      const student = students[0];
+      
+      // Restore user role to student
+      await queryDatabase(
+        db,
+        "UPDATE users SET role = 'student' WHERE id = ?",
+        [student.user_id]
+      );
+      
+      // Delete alumni record
+      await queryDatabase(
+        db,
+        "DELETE FROM alumni WHERE user_id = ?",
+        [student.user_id]
+      );
+      
+      // Restore student's program if they had one
+      if (student.previous_program_id) {
+        await queryDatabase(
+          db,
+          "UPDATE students SET program_id = ?, academic_year = ? WHERE id = ?",
+          [student.previous_program_id, historyRecord.new_year_level, studentId]
+        );
+      }
+      
+      // Mark the history as undone
+      await queryDatabase(
+        db,
+        "UPDATE student_promotion_history SET notes = CONCAT(IFNULL(notes, ''), ' [UNDO: Reverted by admin on ', CURDATE(), ']') WHERE id = ?",
+        [historyId]
+      );
+      
+      return {
+        success: true,
+        message: "Successfully reverted graduation"
+      };
+    }
+    
+    // For regular promotions, revert to previous program
+    // Try to get previous program from history, or look it up by old program code and year
+    let prevProgramId = historyRecord.previous_program_id;
+    
+    // If no previous_program_id in history, try to find it by old program code and year
+    if (!prevProgramId && historyRecord.old_program_code && historyRecord.old_year_level) {
+      const findPrevProgramQuery = `
+        SELECT id FROM course_management 
+        WHERE program_code = ? AND year_level = ? AND status = 'active'
+        LIMIT 1
+      `;
+      const prevPrograms = await queryDatabase(db, findPrevProgramQuery, [
+        historyRecord.old_program_code, 
+        historyRecord.old_year_level
+      ]);
+      if (prevPrograms.length > 0) {
+        prevProgramId = prevPrograms[0].id;
+      }
+    }
+    
+    if (!prevProgramId) {
+      return {
+        success: false,
+        message: "Cannot undo - no previous program found"
+      };
+    }
+    
+    // Get previous program details
+    const prevProgramQuery = 'SELECT * FROM course_management WHERE id = ?';
+    const prevPrograms = await queryDatabase(db, prevProgramQuery, [prevProgramId]);
+    
+    if (prevPrograms.length === 0) {
+      return {
+        success: false,
+        message: "Previous program no longer exists"
+      };
+    }
+    
+    const prevProgram = prevPrograms[0];
+    
+    // Update student back to previous program
+    await queryDatabase(
+      db,
+      "UPDATE students SET program_id = ?, academic_year = ?, previous_program_id = NULL, promotion_date = NULL WHERE id = ?",
+      [prevProgramId, prevProgram.year_level, studentId]
+    );
+    
+    // Delete the history record since we're undoing the promotion
+    await queryDatabase(
+      db,
+      "DELETE FROM student_promotion_history WHERE id = ?",
+      [historyId]
+    );
+    
+    return {
+      success: true,
+      message: "Successfully reverted promotion"
+    };
+    
+  } catch (error) {
+    console.error("Undo promotion error:", error);
+    throw error;
+  }
+};
+
+/**
+ * Bulk undo promotions - revert multiple students to previous programs
+ * @param {Array} historyIds - Array of history IDs to undo
+ * @param {number} undoneBy - Admin user ID performing the undo
+ * @returns {Promise<object>} Bulk undo result
+ */
+const bulkUndoPromotion = async (historyIds, undoneBy) => {
+  try {
+    const results = {
+      success: true,
+      undone: 0,
+      failed: 0,
+      errors: []
+    };
+
+    for (const historyId of historyIds) {
+      try {
+        // Get the promotion history record
+        const historyQuery = `
+          SELECT sph.*, s.program_id as current_program_id, s.previous_program_id 
+          FROM student_promotion_history sph
+          INNER JOIN students s ON sph.student_id = s.id
+          WHERE sph.id = ?
+        `;
+        
+        const historyRecords = await queryDatabase(db, historyQuery, [historyId]);
+        
+        if (historyRecords.length === 0) {
+          results.failed++;
+          results.errors.push({ historyId, error: "History not found" });
+          continue;
+        }
+        
+        const historyRecord = historyRecords[0];
+        const studentId = historyRecord.student_id;
+        
+        // Skip graduations
+        if (historyRecord.promotion_type === 'graduation') {
+          results.failed++;
+          results.errors.push({ historyId, error: "Cannot undo graduation" });
+          continue;
+        }
+        
+        // For regular promotions, revert to previous program
+        // Try to get previous program from history, or look it up by old program code and year
+        let prevProgramId = historyRecord.previous_program_id;
+        
+        // If no previous_program_id in history, try to find it by old program code and year
+        if (!prevProgramId && historyRecord.old_program_code && historyRecord.old_year_level) {
+          const findPrevProgramQuery = `
+            SELECT id FROM course_management 
+            WHERE program_code = ? AND year_level = ? AND status = 'active'
+            LIMIT 1
+          `;
+          const foundPrograms = await queryDatabase(db, findPrevProgramQuery, [
+            historyRecord.old_program_code, 
+            historyRecord.old_year_level
+          ]);
+          if (foundPrograms.length > 0) {
+            prevProgramId = foundPrograms[0].id;
+          }
+        }
+        
+        if (!prevProgramId) {
+          results.failed++;
+          results.errors.push({ historyId, error: "No previous program found" });
+          continue;
+        }
+        
+        // Get previous program details
+        const prevProgramQuery = 'SELECT * FROM course_management WHERE id = ?';
+        const prevPrograms = await queryDatabase(db, prevProgramQuery, [prevProgramId]);
+        
+        if (prevPrograms.length === 0) {
+          results.failed++;
+          results.errors.push({ historyId, error: "Previous program no longer exists" });
+          continue;
+        }
+        
+        const prevProgram = prevPrograms[0];
+        
+        // Update student back to previous program
+        await queryDatabase(
+          db,
+          "UPDATE students SET program_id = ?, academic_year = ?, previous_program_id = NULL, promotion_date = NULL WHERE id = ?",
+          [prevProgramId, prevProgram.year_level, studentId]
+        );
+        
+        results.undone++;
+        
+        // Delete the history record since we're undoing the promotion
+        await queryDatabase(
+          db,
+          "DELETE FROM student_promotion_history WHERE id = ?",
+          [historyId]
+        );
+        
+      } catch (itemError) {
+        results.failed++;
+        results.errors.push({ historyId, error: itemError.message });
+      }
+    }
+
+    return results;
+    
+  } catch (error) {
+    console.error("Bulk undo promotion error:", error);
+    throw error;
+  }
+};
+
 module.exports = {
   getEligibleStudents,
   getTargetPrograms,
   promoteStudents,
   graduateStudents,
   getPromotionHistory,
-  getAllPrograms
+  getAllPrograms,
+  previewPromotion,
+  undoPromotion,
+  bulkUndoPromotion
 };

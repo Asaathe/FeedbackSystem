@@ -46,4 +46,22 @@ router.post('/graduate', studentPromotionController.graduateStudents);
  */
 router.get('/promotion-history', studentPromotionController.getPromotionHistory);
 
+/**
+ * POST /api/students/preview-promotion
+ * Preview promotion - validate before actual promotion
+ */
+router.post('/preview-promotion', studentPromotionController.previewPromotion);
+
+/**
+ * POST /api/students/undo-promotion
+ * Undo a promotion - revert student to previous program
+ */
+router.post('/undo-promotion', studentPromotionController.undoPromotion);
+
+/**
+ * POST /api/students/bulk-undo-promotion
+ * Undo multiple promotions at once
+ */
+router.post('/bulk-undo-promotion', studentPromotionController.bulkUndoPromotion);
+
 module.exports = router;

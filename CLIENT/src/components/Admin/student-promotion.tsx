@@ -15,7 +15,8 @@ import {
   Loader2,
   Award,
   TrendingUp,
-  Building2
+  Building2,
+  RotateCcw
 } from "lucide-react";
 import {
   Table,
@@ -122,12 +123,22 @@ export default function StudentPromotion() {
   const [selectedCourseSection, setSelectedCourseSection] = useState<string>("all");
   const [selectedTargetProgram, setSelectedTargetProgram] = useState<string>("select");
 
+  // History filter states
+  const [historyFilterType, setHistoryFilterType] = useState<string>("all");
+  const [historySearchTerm, setHistorySearchTerm] = useState<string>("");
+  const [selectedHistoryItems, setSelectedHistoryItems] = useState<number[]>([]);
+
   // Promotion notes
   const [promotionNotes, setPromotionNotes] = useState<string>("");
 
   // Dialog states
   const [graduationDialogOpen, setGraduationDialogOpen] = useState(false);
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
+  const [undoDialogOpen, setUndoDialogOpen] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<PromotionHistory | null>(null);
+  const [previewData, setPreviewData] = useState<any>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
   const [graduationData, setGraduationData] = useState({
     graduationYear: new Date().getFullYear(),
     degree: "",
@@ -334,6 +345,140 @@ export default function StudentPromotion() {
     }
   };
 
+  // Handle preview promotion
+  const handlePreviewPromotion = async () => {
+    if (selectedStudents.length === 0) {
+      toast.error("Please select students to promote");
+      return;
+    }
+    if (!selectedTargetProgram || selectedTargetProgram === 'select') {
+      toast.error("Please select target program");
+      return;
+    }
+
+    setPreviewLoading(true);
+    setPreviewDialogOpen(true);
+    try {
+      const response = await fetch(`${API_BASE}/students/preview-promotion`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studentIds: selectedStudents,
+          newProgramId: parseInt(selectedTargetProgram),
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPreviewData(data);
+      } else {
+        toast.error(data.message || "Failed to preview promotion");
+        setPreviewDialogOpen(false);
+      }
+    } catch (error) {
+      console.error("Error previewing promotion:", error);
+      toast.error("Failed to preview promotion");
+      setPreviewDialogOpen(false);
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Handle undo promotion
+  const handleUndoPromotion = async () => {
+    if (!selectedHistoryItem) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/students/undo-promotion`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          historyId: selectedHistoryItem.id,
+          studentId: selectedHistoryItem.student_id,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success("Successfully undone promotion");
+        setUndoDialogOpen(false);
+        setSelectedHistoryItem(null);
+        fetchStudents(selectedCourseSection);
+        fetchHistory();
+      } else {
+        toast.error(data.message || "Failed to undo promotion");
+      }
+    } catch (error) {
+      console.error("Error undoing promotion:", error);
+      toast.error("Failed to undo promotion");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle select/deselect history item
+  const handleSelectHistoryItem = (historyId: number) => {
+    setSelectedHistoryItems(prev =>
+      prev.includes(historyId)
+        ? prev.filter(id => id !== historyId)
+        : [...prev, historyId]
+    );
+  };
+
+  // Handle select all history items
+  const handleSelectAllHistory = () => {
+    // Only select promotions (not graduations)
+    const promotionIds = filteredHistory
+      .filter(item => item.promotion_type !== 'graduation')
+      .map(item => item.id);
+    
+    if (selectedHistoryItems.length === promotionIds.length) {
+      setSelectedHistoryItems([]);
+    } else {
+      setSelectedHistoryItems(promotionIds);
+    }
+  };
+
+  // Handle bulk undo
+  const handleBulkUndo = async () => {
+    if (selectedHistoryItems.length === 0) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_BASE}/students/bulk-undo-promotion`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          historyIds: selectedHistoryItems,
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Successfully undone ${data.undone} promotion(s)`);
+        setSelectedHistoryItems([]);
+        fetchStudents(selectedCourseSection);
+        fetchHistory();
+      } else {
+        toast.error(data.message || "Failed to undo promotions");
+      }
+    } catch (error) {
+      console.error("Error bulk undoing promotions:", error);
+      toast.error("Failed to undo promotions");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredStudents = students.filter(student => {
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
@@ -357,9 +502,34 @@ export default function StudentPromotion() {
     studentsPage * itemsPerPage
   );
 
+  // Filtered history
+  const filteredHistory = history.filter(item => {
+    // Filter by type
+    if (historyFilterType !== "all") {
+      if (historyFilterType === "promotion" && item.promotion_type === "graduation") return false;
+      if (historyFilterType === "graduation" && item.promotion_type !== "graduation") return false;
+    }
+    // Filter by search term
+    if (historySearchTerm) {
+      const term = historySearchTerm.toLowerCase();
+      return (
+        item.student_name?.toLowerCase().includes(term) ||
+        item.studentID?.toLowerCase().includes(term) ||
+        item.old_program_code?.toLowerCase().includes(term) ||
+        item.new_program_code?.toLowerCase().includes(term)
+      );
+    }
+    return true;
+  });
+
+  // Reset history page when filters change
+  useEffect(() => {
+    setHistoryPage(1);
+  }, [historyFilterType, historySearchTerm]);
+
   // Paginated history
-  const totalHistoryPages = Math.ceil(history.length / itemsPerPage);
-  const paginatedHistory = history.slice(
+  const totalHistoryPages = Math.ceil(filteredHistory.length / itemsPerPage);
+  const paginatedHistory = filteredHistory.slice(
     (historyPage - 1) * itemsPerPage,
     historyPage * itemsPerPage
   );
@@ -470,7 +640,7 @@ export default function StudentPromotion() {
                 <div className="w-64">
                   <label className="text-sm font-medium mb-2 block">Select Course & Section</label>
                   <Select value={selectedCourseSection} onValueChange={handleCourseSectionChange}>
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-green-50 border-green-200 focus:ring-green-400">
                       <SelectValue placeholder="Select course section" />
                     </SelectTrigger>
                     <SelectContent>
@@ -603,7 +773,7 @@ export default function StudentPromotion() {
                   <div className="flex items-center gap-4">
                     <span className="text-sm font-medium">Promote to:</span>
                     <Select value={selectedTargetProgram} onValueChange={setSelectedTargetProgram}>
-                      <SelectTrigger className="w-64">
+                      <SelectTrigger className="w-64 bg-green-50 border-green-200 focus:ring-green-400">
                         <SelectValue placeholder="Select target program" />
                       </SelectTrigger>
                       <SelectContent>
@@ -636,7 +806,7 @@ export default function StudentPromotion() {
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4">
                   <Button
-                    onClick={() => setConfirmDialogOpen(true)}
+                    onClick={handlePreviewPromotion}
                     disabled={selectedStudents.length === 0 || selectedTargetProgram === "select"}
                   >
                     <ArrowRight className="h-4 w-4 mr-2" />
@@ -658,27 +828,34 @@ export default function StudentPromotion() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">Important Notice</h4>
-                <p className="text-sm text-yellow-700">
-                  Graduating students will be converted to alumni status. Their feedback history will be preserved,
-                  but they will no longer have access to student features.
-                </p>
-              </div>
-
               {selectedStudents.length > 0 ? (
                 <div className="mb-4">
                   <h4 className="font-semibold mb-2">
                     Selected Students ({selectedStudents.length})
                   </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {filteredStudents
-                      .filter(s => selectedStudents.includes(s.student_id))
-                      .map(s => (
-                        <Badge key={s.student_id} variant="secondary">
-                          {s.full_name}
-                        </Badge>
-                      ))}
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-slate-100">
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Student ID</TableHead>
+                          <TableHead>Program</TableHead>
+                          <TableHead>Section</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredStudents
+                          .filter(s => selectedStudents.includes(s.student_id))
+                          .map(s => (
+                            <TableRow key={s.student_id}>
+                              <TableCell className="font-medium">{s.full_name}</TableCell>
+                              <TableCell>{s.studentID || 'N/A'}</TableCell>
+                              <TableCell>{s.program_code}</TableCell>
+                              <TableCell>{s.section}</TableCell>
+                            </TableRow>
+                          ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 </div>
               ) : (
@@ -709,9 +886,68 @@ export default function StudentPromotion() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {history.length === 0 ? (
+              {/* History Filters */}
+              <div className="flex flex-wrap gap-4 mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="w-48">
+                  <label className="text-sm font-medium mb-1 block">Filter by Type</label>
+                  <Select value={historyFilterType} onValueChange={setHistoryFilterType}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="All Types" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="promotion">Promotions Only</SelectItem>
+                      <SelectItem value="graduation">Graduations Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <label className="text-sm font-medium mb-1 block">Search</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by name, student ID, program..."
+                      value={historySearchTerm}
+                      onChange={(e) => setHistorySearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <div className="text-sm text-gray-600 self-end pb-1">
+                  Showing {paginatedHistory.length} of {filteredHistory.length} record(s)
+                </div>
+              </div>
+
+              {/* Bulk Actions */}
+              {selectedHistoryItems.length > 0 && (
+                <div className="mb-4 flex items-center gap-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+                  <span className="text-sm font-medium text-green-800">
+                    {selectedHistoryItems.length} record(s) selected
+                  </span>
+                  <Button
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={handleBulkUndo}
+                    disabled={loading}
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Undo Selected
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectedHistoryItems([])}
+                  >
+                    Clear Selection
+                  </Button>
+                </div>
+              )}
+
+              {filteredHistory.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
-                  No promotion history yet
+                  {historyFilterType !== "all" || historySearchTerm ? 
+                    "No records match your filters" : 
+                    "No promotion history yet"}
                 </div>
               ) : (
                 <>
@@ -719,18 +955,34 @@ export default function StudentPromotion() {
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
+                          <TableHead className="w-12">
+                            <Checkbox
+                              checked={selectedHistoryItems.length > 0 && 
+                                filteredHistory.filter(i => i.promotion_type !== 'graduation').every(i => selectedHistoryItems.includes(i.id))}
+                              onCheckedChange={handleSelectAllHistory}
+                              title="Select all promotions"
+                            />
+                          </TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Student</TableHead>
-                          <TableHead>Type</TableHead>
                           <TableHead>From</TableHead>
                           <TableHead>To</TableHead>
-                          <TableHead>Promoted By</TableHead>
+                          <TableHead>Type</TableHead>
                           <TableHead>Notes</TableHead>
+                          <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedHistory.map((item) => (
                           <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
+                            <TableCell>
+                              {item.promotion_type !== 'graduation' && (
+                                <Checkbox
+                                  checked={selectedHistoryItems.includes(item.id)}
+                                  onCheckedChange={() => handleSelectHistoryItem(item.id)}
+                                />
+                              )}
+                            </TableCell>
                             <TableCell>{new Date(item.promotion_date).toLocaleDateString()}</TableCell>
                             <TableCell>
                               <div>
@@ -739,14 +991,9 @@ export default function StudentPromotion() {
                               </div>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={item.promotion_type === "graduation" ? "default" : "secondary"}>
-                                {item.promotion_type === "graduation" ? "Graduated" : "Promoted"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
                               {item.old_program_code ? (
                                 <span className="text-sm">
-                                  {item.old_program_code} - Yr {item.old_year_level} {item.old_section}
+                                  {item.old_program_code} - {item.old_year_level}{item.old_section}
                                 </span>
                               ) : (
                                 <span className="text-gray-400">-</span>
@@ -755,14 +1002,34 @@ export default function StudentPromotion() {
                             <TableCell>
                               {item.new_program_code ? (
                                 <span className="text-sm">
-                                  {item.new_program_code} - Yr {item.new_year_level} {item.new_section}
+                                  {item.new_program_code} - {item.new_year_level}{item.new_section}
                                 </span>
                               ) : (
                                 <span className="text-gray-400">Alumni</span>
                               )}
                             </TableCell>
-                            <TableCell>{item.promoted_by_name}</TableCell>
+                            <TableCell>
+                              <Badge variant={item.promotion_type === "graduation" ? "default" : "secondary"}>
+                                {item.promotion_type === "graduation" ? "Graduated" : "Promoted"}
+                              </Badge>
+                            </TableCell>
                             <TableCell className="text-sm text-gray-600">{item.notes}</TableCell>
+                            <TableCell>
+                              {item.promotion_type !== 'graduation' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
+                                  onClick={() => {
+                                    setSelectedHistoryItem(item);
+                                    setUndoDialogOpen(true);
+                                  }}
+                                >
+                                  <RotateCcw className="h-3 w-3 mr-1" />
+                                  Undo
+                                </Button>
+                              )}
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -853,6 +1120,118 @@ export default function StudentPromotion() {
         </DialogContent>
       </Dialog>
 
+      {/* Promotion Preview Dialog */}
+      <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-600" />
+              Promotion Preview
+            </DialogTitle>
+            <DialogDescription>
+              Review the promotion details and warnings before confirming.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {previewLoading ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+            </div>
+          ) : previewData ? (
+            <div className="space-y-4">
+              {/* Summary */}
+              <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <div className="grid grid-cols-4 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold text-slate-700">{previewData.summary?.total || 0}</div>
+                    <div className="text-xs text-slate-500">Total</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-green-600">{previewData.summary?.canPromote || 0}</div>
+                    <div className="text-xs text-slate-500">Can Promote</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-amber-600">{previewData.summary?.withWarnings || 0}</div>
+                    <div className="text-xs text-slate-500">With Warnings</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-red-600">{previewData.summary?.blocked || 0}</div>
+                    <div className="text-xs text-slate-500">Blocked</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Target Program */}
+              <div className="text-sm text-slate-600">
+                <strong>Target Program:</strong> {previewData.targetProgram?.programCode} - Year {previewData.targetProgram?.yearLevel} ({previewData.targetProgram?.section})
+              </div>
+
+              {/* Warnings */}
+              {previewData.warnings && previewData.warnings.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <div className="text-sm font-medium text-amber-800 mb-2">Warnings</div>
+                  {previewData.warnings.map((warning: string, idx: number) => (
+                    <div key={idx} className="text-sm text-amber-700">• {warning}</div>
+                  ))}
+                </div>
+              )}
+
+              {/* Student List */}
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-slate-100">
+                    <TableRow>
+                      <TableHead>Student</TableHead>
+                      <TableHead>Current</TableHead>
+                      <TableHead>Target</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {previewData.students?.map((student: any) => (
+                      <TableRow key={student.studentId} className={!student.canPromote ? "bg-red-50" : student.warnings?.length > 0 ? "bg-amber-50" : ""}>
+                        <TableCell className="font-medium">{student.studentName}</TableCell>
+                        <TableCell>{student.currentProgram}</TableCell>
+                        <TableCell>{student.targetProgram}</TableCell>
+                        <TableCell>
+                          {!student.canPromote ? (
+                            <Badge variant="destructive">{student.blockReason}</Badge>
+                          ) : student.warnings?.length > 0 ? (
+                            <div className="space-y-1">
+                              {student.warnings.map((w: string, i: number) => (
+                                <div key={i} className="text-xs text-amber-700">{w}</div>
+                              ))}
+                            </div>
+                          ) : (
+                            <Badge className="bg-green-100 text-green-800">OK</Badge>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          ) : null}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPreviewDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                setPreviewDialogOpen(false);
+                setConfirmDialogOpen(true);
+              }}
+              disabled={previewLoading || (previewData?.summary?.withWarnings ?? 0) > 0 || (previewData?.summary?.blocked ?? 0) > 0}
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Proceed
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
         <DialogContent>
@@ -886,6 +1265,64 @@ export default function StudentPromotion() {
             >
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {activeTab === "graduate" ? "Graduate Students" : "Promote Students"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Undo Promotion Dialog */}
+      <Dialog open={undoDialogOpen} onOpenChange={setUndoDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-orange-600" />
+              Undo Promotion
+            </DialogTitle>
+            <DialogDescription>
+              Are you sure you want to undo this promotion? This will revert the student to their previous program.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedHistoryItem && (
+            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-gray-500">Student:</span>
+                  <div className="font-medium">{selectedHistoryItem.student_name}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">Type:</span>
+                  <div className="font-medium">{selectedHistoryItem.promotion_type === 'graduation' ? 'Graduation' : 'Promotion'}</div>
+                </div>
+                <div>
+                  <span className="text-gray-500">From:</span>
+                  <div className="font-medium">
+                    {selectedHistoryItem.old_program_code 
+                      ? `${selectedHistoryItem.old_program_code} - Yr ${selectedHistoryItem.old_year_level} ${selectedHistoryItem.old_section}`
+                      : '-'}
+                  </div>
+                </div>
+                <div>
+                  <span className="text-gray-500">To:</span>
+                  <div className="font-medium">
+                    {selectedHistoryItem.new_program_code 
+                      ? `${selectedHistoryItem.new_program_code} - Yr ${selectedHistoryItem.new_year_level} ${selectedHistoryItem.new_section}`
+                      : 'Alumni'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUndoDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUndoPromotion}
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Undo Promotion
             </Button>
           </DialogFooter>
         </DialogContent>

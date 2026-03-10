@@ -177,11 +177,121 @@ const getAllPrograms = async (req, res) => {
   }
 };
 
+/**
+ * Preview promotion - validate before actual promotion
+ */
+const previewPromotion = async (req, res) => {
+  try {
+    const { studentIds, newProgramId } = req.body;
+    
+    // Validation
+    if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Student IDs array is required"
+      });
+    }
+    
+    if (!newProgramId) {
+      return res.status(400).json({
+        success: false,
+        message: "Target program ID is required"
+      });
+    }
+    
+    const result = await studentPromotionService.previewPromotion(
+      studentIds.map(id => parseInt(id)),
+      parseInt(newProgramId)
+    );
+    
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Preview promotion controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
+  }
+};
+
+/**
+ * Undo a promotion - revert student to previous program
+ */
+const undoPromotion = async (req, res) => {
+  try {
+    const { historyId, studentId } = req.body;
+    const undoneBy = req.userId;
+    
+    // Validation
+    if (!historyId) {
+      return res.status(400).json({
+        success: false,
+        message: "History ID is required"
+      });
+    }
+    
+    if (!studentId) {
+      return res.status(400).json({
+        success: false,
+        message: "Student ID is required"
+      });
+    }
+    
+    const result = await studentPromotionService.undoPromotion(
+      parseInt(historyId),
+      parseInt(studentId),
+      undoneBy
+    );
+    
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Undo promotion controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
+  }
+};
+
+/**
+ * Bulk undo promotions - revert multiple students to previous programs
+ */
+const bulkUndoPromotion = async (req, res) => {
+  try {
+    const { historyIds } = req.body;
+    const undoneBy = req.userId;
+    
+    // Validation
+    if (!historyIds || !Array.isArray(historyIds) || historyIds.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "History IDs array is required"
+      });
+    }
+    
+    const result = await studentPromotionService.bulkUndoPromotion(
+      historyIds.map(id => parseInt(id)),
+      undoneBy
+    );
+    
+    return res.status(200).json(result);
+  } catch (error) {
+    console.error("Bulk undo promotion controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   getEligibleStudents,
   getTargetPrograms,
   promoteStudents,
   graduateStudents,
   getPromotionHistory,
-  getAllPrograms
+  getAllPrograms,
+  previewPromotion,
+  undoPromotion,
+  bulkUndoPromotion
 };
