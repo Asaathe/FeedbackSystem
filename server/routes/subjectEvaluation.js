@@ -61,6 +61,9 @@ router.get("/subjects/:subjectId/feedback", verifyToken, (req, res) => {
 // Get subjects for the logged-in student (for student-subject-evaluation.tsx)
 router.get("/my-subjects", verifyToken, subjectEvaluationController.getMySubjects);
 
+// Get stats for instructor
+router.get("/my-stats", verifyToken, subjectEvaluationController.getMyStats);
+
 // Get evaluation forms assigned to student (for student dashboard)
 router.get("/my-evaluations", verifyToken, (req, res) => {
   // Forward to evaluation forms controller

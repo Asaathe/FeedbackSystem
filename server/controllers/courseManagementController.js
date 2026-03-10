@@ -1,4 +1,4 @@
-// Course Management Controller
+// Section Management Controller
 const db = require("../config/database");
 
 /**

@@ -51,9 +51,10 @@ interface Stats {
 
 interface InstructorDashboardProps {
   onNavigate?: (page: string) => void;
+  showSubjectsOnly?: boolean;
 }
 
-export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {}) {
+export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: InstructorDashboardProps = {}) {
   const [instructor, setInstructor] = useState<Instructor | null>(null);
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -248,6 +249,80 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
     );
   }
 
+  // If showSubjectsOnly is true, render only the My Subjects view
+  if (showSubjectsOnly) {
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <h2 className="text-2xl font-semibold">My Subjects</h2>
+          <p className="text-gray-600 mt-1">View and manage your assigned subjects</p>
+        </div>
+
+        {/* My Subjects Cards */}
+        {subjects.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {subjects.map((subject) => (
+              <Card 
+                key={subject.subject_instructor_id}
+                className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer"
+                onClick={() => handleSubjectClick(subject)}
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between">
+                    <CardTitle className="text-lg line-clamp-1">{subject.form_name}</CardTitle>
+                    <Badge variant="outline" className={subject.status === 'active' ? 'border-green-200 text-green-700' : 'border-gray-200'}>
+                      {subject.status}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-500">{subject.subject_code}</p>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">
+                    {subject.description || 'No description'}
+                  </p>
+                  <div className="flex items-center justify-between text-sm mb-2">
+                    <span className="text-gray-500">
+                      {subject.semester} {subject.academic_year}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Star className="w-4 h-4 text-yellow-500" />
+                      <span className="font-medium">
+                        {subject.avg_rating ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm bg-green-50 p-2 rounded-md mb-3">
+                    <Users className="w-4 h-4 text-green-600" />
+                    <span className="text-green-700 font-medium">
+                      {subject.response_count || 0} Students Evaluated
+                    </span>
+                  </div>
+                  <Button 
+                    size="sm" 
+                    className="w-full mt-2 bg-green-500 hover:bg-green-600"
+                  >
+                    <Eye className="w-4 h-4 mr-2" />
+                    View Feedback
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="border-green-100">
+            <CardContent className="py-12 text-center">
+              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No subjects assigned yet</p>
+              <p className="text-gray-400 text-sm">Subjects will appear here when assigned by admin</p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // Default Dashboard view - stats only (no subjects tab)
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
@@ -304,63 +379,6 @@ export function InstructorDashboard({ onNavigate }: InstructorDashboardProps = {
             <p className="text-xs text-gray-600 mt-1">Student responses</p>
           </CardContent>
         </Card>
-      </div>
-
-      {/* My Subjects as Cards */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">My Subjects</h2>
-        {subjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {subjects.map((subject) => (
-              <Card 
-                key={subject.subject_instructor_id}
-                className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer"
-                onClick={() => handleSubjectClick(subject)}
-              >
-                <CardHeader className="pb-2">
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg line-clamp-1">{subject.form_name}</CardTitle>
-                    <Badge variant="outline" className={subject.status === 'active' ? 'border-green-200 text-green-700' : 'border-gray-200'}>
-                      {subject.status}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-gray-500">{subject.subject_code}</p>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm text-gray-600 line-clamp-2 mb-3">
-                    {subject.description || 'No description'}
-                  </p>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-500">
-                      {subject.semester} {subject.academic_year}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <Star className="w-4 h-4 text-yellow-500" />
-                      <span className="font-medium">
-                        {subject.avg_rating ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
-                      </span>
-                    </div>
-                  </div>
-                  <Button 
-                    size="sm" 
-                    className="w-full mt-4 bg-green-500 hover:bg-green-600"
-                  >
-                    <Eye className="w-4 h-4 mr-2" />
-                    View Feedback
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="border-green-100">
-            <CardContent className="py-12 text-center">
-              <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No subjects assigned yet</p>
-              <p className="text-gray-400 text-sm">Subjects will appear here when assigned by admin</p>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

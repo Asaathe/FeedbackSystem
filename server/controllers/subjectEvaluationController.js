@@ -90,6 +90,7 @@ const assignInstructorToSubject = async (req, res) => {
 const getMySubjects = async (req, res) => {
   try {
     const userId = req.user.id;
+    const userRole = req.user.role;
     
     // Get current semester and academic year from settings
     const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
@@ -109,7 +110,78 @@ const getMySubjects = async (req, res) => {
         });
       }
       
-      // Now get the student's enrolled subjects with instructor info
+      // If user is an instructor, get their subjects from instructor_courses
+      if (userRole === 'instructor') {
+        const instructorQuery = `
+          SELECT 
+            s.id as subject_id,
+            COALESCE(f.title, s.subject_name, CONCAT('Subject ', s.id)) as form_name,
+            COALESCE(f.category, s.subject_code, CONCAT('Section ', s.id)) as subject_code,
+            s.department,
+            s.units,
+            s.status,
+            ic.id as subject_instructor_id,
+            u.id as instructor_user_id,
+            u.full_name as instructor_name,
+            u.email as instructor_email,
+            inst.department as instructor_department,
+            inst.image as instructor_image,
+            (SELECT COUNT(*) FROM student_enrollments se WHERE se.subject_id = s.id AND se.status = 'enrolled') as response_count
+          FROM instructor_courses ic
+          INNER JOIN subjects s ON ic.subject_id = s.id
+          LEFT JOIN subject_evaluation_forms sef ON s.id = sef.subject_id
+          LEFT JOIN forms f ON sef.form_id = f.id
+          LEFT JOIN users u ON ic.instructor_id = u.id
+          LEFT JOIN instructors inst ON u.id = inst.user_id
+          WHERE ic.instructor_id = ?
+          ORDER BY s.id DESC
+        `;
+        
+        console.log("=== getMySubjects Debug (Instructor) ===");
+        console.log("UserId:", userId, "Role:", userRole);
+        
+        db.query(instructorQuery, [userId], (err, results) => {
+          if (err) {
+            console.error("Error fetching instructor subjects:", err);
+            return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
+          }
+          
+          console.log("Instructor subjects query results:", results);
+          
+          // Transform results to match frontend interface
+          const subjects = results.map((row) => ({
+            subject_id: row.subject_id,
+            subject_code: row.subject_code,
+            form_name: row.subject_name,
+            form_id: row.subject_id,
+            description: '',
+            category: '',
+            status: row.status,
+            semester: semester,
+            academic_year: academicYear,
+            response_count: row.response_count || 0,
+            subject_instructor_id: row.subject_instructor_id,
+            instructor_id: row.instructor_user_id,
+            instructor_name: row.instructor_name,
+            instructor_email: row.instructor_email,
+            instructor_department: row.instructor_department,
+            instructor_image: row.instructor_image
+          }));
+          
+          // Get instructor info
+          const instructorInfo = results.length > 0 ? {
+            user_id: results[0].instructor_user_id,
+            full_name: results[0].instructor_name,
+            email: results[0].instructor_email,
+            department: results[0].instructor_department
+          } : null;
+          
+          return res.status(200).json({ success: true, instructor: instructorInfo, subjects });
+        });
+        return;
+      }
+      
+      // For students, get enrolled subjects with instructor info
       const query = `
         SELECT 
           s.id as subject_id,
@@ -130,15 +202,12 @@ const getMySubjects = async (req, res) => {
           COALESCE(inst.image, inst2.image) as instructor_image
         FROM student_enrollments se
         INNER JOIN subjects s ON se.subject_id = s.id
-        -- Try subject_instructors first (si.instructor_id is a user_id)
         LEFT JOIN subject_instructors si ON s.id = si.subject_id
         LEFT JOIN instructors inst ON si.instructor_id = inst.user_id
         LEFT JOIN users u ON inst.user_id = u.id
-        -- Also try instructor_courses (ic.instructor_id is a user_id)
         LEFT JOIN instructor_courses ic ON s.id = ic.subject_id
         LEFT JOIN instructors inst2 ON ic.instructor_id = inst2.user_id
         LEFT JOIN users u2 ON inst2.user_id = u2.id
-        -- Also try direct user lookup for cases where instructor_id is a user_id
         LEFT JOIN users usr ON COALESCE(si.instructor_id, ic.instructor_id) = usr.id
         WHERE se.student_id = ? 
           AND se.status = 'enrolled'
@@ -149,7 +218,6 @@ const getMySubjects = async (req, res) => {
       console.log("=== getMySubjects Debug ===");
       console.log("UserId:", userId);
       console.log("Semester:", semester, "Academic Year:", academicYear);
-      console.log("Query:", query);
       
       db.query(query, [userId], (err, results) => {
         if (err) {
@@ -158,16 +226,6 @@ const getMySubjects = async (req, res) => {
         }
         
         console.log("Query results:", results);
-        
-        if (results && results.length > 0) {
-          console.log("First result instructor fields:", {
-            instructor_id: results[0].instructor_user_id,
-            instructor_record_id: results[0].instructor_record_id,
-            instructor_name: results[0].instructor_name,
-            instructor_image: results[0].instructor_image,
-            subject_instructor_id: results[0].subject_instructor_id
-          });
-        }
         
         // Transform results to match frontend interface
         const subjects = results.map((row) => ({
@@ -189,7 +247,7 @@ const getMySubjects = async (req, res) => {
           enrolled_at: row.enrolled_at
         }));
         
-        return res.status(200).json({ success: true, subjects, debug: { instructor_image: results[0]?.instructor_image } });
+        return res.status(200).json({ success: true, subjects });
       });
     });
   } catch (error) {
@@ -1106,6 +1164,87 @@ const createAssignmentTableAndRetry = async (req, res, subjectId, subjectInstruc
   });
 };
 
+/**
+ * Get stats for instructor dashboard
+ */
+const getMyStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get current semester and academic year from settings
+    const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
+    let semester = '1st Semester';
+    let academicYear = '2025-2026';
+    
+    db.query(settingsQuery, (settingsErr, settingsResults) => {
+      if (settingsErr) {
+        console.error("Error fetching settings:", settingsErr);
+      } else if (settingsResults.length > 0) {
+        settingsResults.forEach((setting) => {
+          if (setting.setting_key === 'current_semester') {
+            semester = setting.setting_value;
+          } else if (setting.setting_key === 'current_academic_year') {
+            academicYear = setting.setting_value;
+          }
+        });
+      }
+      
+      // Get instructor's subjects count
+      const subjectsQuery = `
+        SELECT COUNT(DISTINCT ic.subject_id) as total_courses
+        FROM instructor_courses ic
+        INNER JOIN subjects s ON ic.subject_id = s.id
+        WHERE ic.instructor_id = ? AND s.status = 'active'
+      `;
+      
+      // Get total students across all subjects
+      const studentsQuery = `
+        SELECT COUNT(DISTINCT se.student_id) as total_students
+        FROM instructor_courses ic
+        INNER JOIN subjects s ON ic.subject_id = s.id
+        INNER JOIN student_enrollments se ON s.id = se.subject_id
+        WHERE ic.instructor_id = ? AND se.status = 'enrolled' AND s.status = 'active'
+      `;
+      
+      // Execute queries - get subjects count
+      db.query(subjectsQuery, [userId], (err, subjectsResult) => {
+        if (err) {
+          console.error("Error fetching subjects count:", err);
+        }
+        
+        // Get students count
+        db.query(studentsQuery, [userId], (err2, studentsResult) => {
+          if (err2) {
+            console.error("Error fetching students count:", err2);
+          }
+          
+          // Return stats with default values for feedback/rating if tables don't exist
+          const stats = {
+            total_students: studentsResult[0]?.total_students || 0,
+            total_courses: subjectsResult[0]?.total_courses || 0,
+            total_feedbacks: 0,
+            avg_rating: 0
+          };
+          
+          return res.status(200).json({ success: true, stats });
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Get my stats error:", error);
+    // Return default stats on error
+    return res.status(200).json({ 
+      success: true, 
+      stats: {
+        total_students: 0,
+        total_courses: 0,
+        total_feedbacks: 0,
+        avg_rating: 0
+      } 
+    });
+  }
+};
+
 module.exports = {
   getInstructorCourses,
   assignInstructorToSubject,
@@ -1122,5 +1261,6 @@ module.exports = {
   searchSubjects,
   getInstructorDetails,
   getStudentsBySubject,
-  getStudentsByInstructor
+  getStudentsByInstructor,
+  getMyStats
 };
