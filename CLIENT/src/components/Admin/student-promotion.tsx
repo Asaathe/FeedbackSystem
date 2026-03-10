@@ -303,6 +303,21 @@ export default function StudentPromotion() {
     }
   };
 
+  // Handle graduate button click - prepare graduation data with program name
+  const handleGraduateClick = () => {
+    // Get the program name from selected students
+    const selectedStudentData = students.filter(s => selectedStudents.includes(s.student_id));
+    if (selectedStudentData.length > 0) {
+      // Use the first student's program name as the default degree
+      const programName = selectedStudentData[0].program_name || '';
+      setGraduationData({
+        ...graduationData,
+        degree: programName
+      });
+    }
+    setGraduationDialogOpen(true);
+  };
+
   // Handle graduate
   const handleGraduate = async () => {
     if (selectedStudents.length === 0) {
@@ -488,6 +503,18 @@ export default function StudentPromotion() {
       );
     }
     return true;
+  }).sort((a, b) => {
+    // Sort alphabetically by surname, ignoring suffixes like Jr., Sr., II, III, IV, etc.
+    const getSurname = (name: string) => {
+      // Remove suffixes first
+      const cleanName = name.replace(/\s+(Jr\.|Sr\.|II|III|IV|V|VI)$/i, '');
+      // Get the last word as surname
+      const parts = cleanName.trim().split(' ');
+      return parts[parts.length - 1].toLowerCase();
+    };
+    const surnameA = getSurname(a.full_name);
+    const surnameB = getSurname(b.full_name);
+    return surnameA.localeCompare(surnameB);
   });
 
   // Reset page when search changes
@@ -865,7 +892,7 @@ export default function StudentPromotion() {
               )}
 
               <Button
-                onClick={() => setGraduationDialogOpen(true)}
+                onClick={handleGraduateClick}
                 disabled={selectedStudents.length === 0}
                 className="w-full"
               >
@@ -1091,11 +1118,11 @@ export default function StudentPromotion() {
               />
             </div>
             <div>
-              <label className="text-sm font-medium">Degree (Optional)</label>
+              <label className="text-sm font-medium">Degree</label>
               <Input
                 value={graduationData.degree}
                 onChange={(e) => setGraduationData({ ...graduationData, degree: e.target.value })}
-                placeholder="e.g., Bachelor of Science"
+                placeholder="Degree will be auto-filled from student program"
                 className="mt-1"
               />
             </div>
