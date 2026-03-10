@@ -3,7 +3,7 @@ import { Button } from "../ui/button";
 import { InputField } from "../ui/input-field";
 import { SelectField } from "../ui/select-field";
 import { toast } from "sonner";
-import { ChevronLeft, ChevronRight, Settings, GraduationCap, Building2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, GraduationCap, Building2 } from "lucide-react";
 
 interface SystemSettings {
   college: { semester: string; academic_year: string };
@@ -302,10 +302,6 @@ export function CourseManagement() {
       {/* Current Semester Settings Banner */}
       {systemSettings && (
         <div className="mb-6 bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-100">
-          <div className="flex items-center gap-2 mb-3">
-            <Settings className="w-5 h-5 text-green-600" />
-            <h2 className="font-semibold text-gray-900">Current Academic Settings</h2>
-          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center gap-2">
               <GraduationCap className="w-4 h-4 text-green-600" />
