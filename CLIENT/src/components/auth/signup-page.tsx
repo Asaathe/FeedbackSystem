@@ -31,15 +31,9 @@ export function SignupPage({
     email: "",
     password: "",
     confirmPassword: "",
-    role: "",
+    role: "student",
     student_id: "",
     program_id: "",
-    instructor_id: "",
-    department: "",
-    company_name: "",
-    industry: "",
-    degree: "",
-    alumni_company_name: "",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -169,41 +163,14 @@ export function SignupPage({
       newErrors.email = "Please enter a valid email address.";
     }
 
-    if (!formData.role) {
-      newErrors.role = "Please select a role.";
+    // Student validation
+    if (!formData.student_id.trim()) {
+      newErrors.student_id = "Student ID is required.";
+    } else if (!/^\d{5}$/.test(formData.student_id.trim())) {
+      newErrors.student_id = "Student ID must be exactly 5 digits.";
     }
-
-    // Role-specific validation
-    if (formData.role === "student") {
-      if (!formData.student_id.trim()) {
-        newErrors.student_id = "Student ID is required.";
-      } else if (!/^\d{5}$/.test(formData.student_id.trim())) {
-        newErrors.student_id = "Student ID must be exactly 5 digits.";
-      }
-      if (!formData.program_id) {
-        newErrors.program_id = "Program is required.";
-      }
-    } else if (formData.role === "instructor") {
-      if (!formData.instructor_id.trim()) {
-        newErrors.instructor_id = "Instructor ID is required.";
-      }
-      if (!formData.department.trim()) {
-        newErrors.department = "Department is required.";
-      }
-    } else if (formData.role === "employer") {
-      if (!formData.company_name.trim()) {
-        newErrors.company_name = "Company name is required.";
-      }
-      if (!formData.industry.trim()) {
-        newErrors.industry = "Industry is required.";
-      }
-    } else if (formData.role === "alumni") {
-      if (!formData.degree.trim()) {
-        newErrors.degree = "Degree is required.";
-      }
-      if (!formData.alumni_company_name.trim()) {
-        newErrors.alumni_company_name = "Company name is required.";
-      }
+    if (!formData.program_id) {
+      newErrors.program_id = "Program is required.";
     }
 
     // Password validation
@@ -242,12 +209,6 @@ export function SignupPage({
           role: formData.role,
           student_id: formData.student_id.trim(),
           program_id: formData.program_id ? parseInt(formData.program_id) : null,
-          instructor_id: formData.instructor_id.trim(),
-          department: formData.department.trim(),
-          company_name: formData.company_name.trim(),
-          industry: formData.industry.trim(),
-          degree: formData.degree.trim(),
-          alumni_company_name: formData.alumni_company_name.trim(),
         }),
       });
 
@@ -298,9 +259,9 @@ export function SignupPage({
   return (
     <>
     <FormContainer
-      title="Create Account"
+      title="Student Registration"
       subtitle="Join the FeedB-ACTS Community"
-      buttonText="Create Account"
+      buttonText="Register"
       onSubmit={handleSubmit}
       footerText="Already have an account?"
       footerLink="Sign In"
@@ -330,112 +291,29 @@ export function SignupPage({
         />
       </div>
 
-      <SelectField
-        label="Role"
-        value={formData.role}
-        onChange={(value) => handleChange("role", value)}
-        options={[
-          { value: "student", label: "Student" },
-          { value: "instructor", label: "Instructor" },
-          { value: "alumni", label: "Alumni" },
-          { value: "employer", label: "Employer" },
-        ]}
-        placeholder="Select a role"
-        error={errors.role}
-      />
-
-      {formData.role === "student" && (
-        <div className="flex flex-col md:flex-row md:gap-4">
-          <InputField
-            value={formData.student_id}
-            onChange={(e) => handleChange("student_id", e.target.value)}
-            label="Student ID"
-            type="text"
-            placeholder="Enter your student ID"
-            error={errors.student_id}
-          />
-          <SelectField
-            label="Course and Section"
-            value={formData.program_id}
-            onChange={(value) => handleChange("program_id", value)}
-            options={programs}
-            placeholder={
-              isLoadingPrograms
-                ? "Loading programs..."
-                : "Select your program"
-            }
-            error={errors.program_id}
-            disabled={isLoadingPrograms}
-          />
-        </div>
-      )}
-
-      {formData.role === "instructor" && (
-        <div className="flex flex-col md:flex-row md:gap-4">
-          <InputField
-            value={formData.instructor_id}
-            onChange={(e) => handleChange("instructor_id", e.target.value)}
-            label="Instructor ID"
-            type="text"
-            placeholder="Enter your instructor ID"
-            error={errors.instructor_id}
-          />
-          <SelectField
-            label="Department"
-            value={formData.department}
-            onChange={(value) => handleChange("department", value)}
-            options={[
-              { value: "College", label: "College" },
-              { value: "Senior High", label: "Senior High" },
-              { value: "Both", label: "Both" },
-            ]}
-            placeholder="Select your department"
-            error={errors.department}
-          />
-        </div>
-      )}
-
-      {formData.role === "employer" && (
-        <div className="flex flex-col md:flex-row md:gap-4">
-          <InputField
-            value={formData.company_name}
-            onChange={(e) => handleChange("company_name", e.target.value)}
-            label="Company Name"
-            type="text"
-            placeholder="Enter your company name"
-            error={errors.company_name}
-          />
-          <InputField
-            value={formData.industry}
-            onChange={(e) => handleChange("industry", e.target.value)}
-            label="Industry"
-            type="text"
-            placeholder="Enter your industry"
-            error={errors.industry}
-          />
-        </div>
-      )}
-
-      {formData.role === "alumni" && (
-        <div className="flex flex-col md:flex-row md:gap-4">
-          <InputField
-            value={formData.degree}
-            onChange={(e) => handleChange("degree", e.target.value)}
-            label="Degree"
-            type="text"
-            placeholder="Enter your degree"
-            error={errors.degree}
-          />
-          <InputField
-            value={formData.alumni_company_name}
-            onChange={(e) => handleChange("alumni_company_name", e.target.value)}
-            label="Company Name"
-            type="text"
-            placeholder="Enter your company name"
-            error={errors.alumni_company_name}
-          />
-        </div>
-      )}
+      <div className="flex flex-col md:flex-row md:gap-4">
+        <InputField
+          value={formData.student_id}
+          onChange={(e) => handleChange("student_id", e.target.value)}
+          label="Student ID"
+          type="text"
+          placeholder="Enter your student ID"
+          error={errors.student_id}
+        />
+        <SelectField
+          label="Course and Section"
+          value={formData.program_id}
+          onChange={(value) => handleChange("program_id", value)}
+          options={programs}
+          placeholder={
+            isLoadingPrograms
+              ? "Loading programs..."
+              : "Select your program"
+          }
+          error={errors.program_id}
+          disabled={isLoadingPrograms}
+        />
+      </div>
 
       <div className="flex flex-col md:flex-row md:gap-4">
         <div className="flex-1">

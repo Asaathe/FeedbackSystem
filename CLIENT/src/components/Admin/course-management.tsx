@@ -293,9 +293,9 @@ export function CourseManagement() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Program Management</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Section Management</h1>
         <p className="text-gray-600 mt-1">
-          Manage programs, year levels, and sections for student registration
+          Manage sections, year levels, and programs for student registration
         </p>
       </div>
 

@@ -367,7 +367,9 @@ export default function App() {
     if (userRole === "instructor") {
       switch (currentPage) {
         case "dashboard":
-          return <InstructorDashboard onNavigate={setCurrentPage} />;
+          return <InstructorDashboard onNavigate={setCurrentPage} showSubjectsOnly={false} />;
+        case "my-subjects":
+          return <InstructorDashboard onNavigate={setCurrentPage} showSubjectsOnly={true} />;
         case "my-feedback":
           return <InstructorFeedback />;
         case "submit-feedback":
