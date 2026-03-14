@@ -8,23 +8,6 @@ import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tool
 import { getFormsForUserRole, getFormStatsForUser, getCompletedFormsForUser, PublishedForm } from "../../services/publishedFormsService";
 
 
-
-// Generate completion trend data (mock for now, would come from analytics API)
-const completionTrendData = [
-  { week: 'Week 1', completed: 2, target: 3 },
-  { week: 'Week 2', completed: 3, target: 4 },
-  { week: 'Week 3', completed: 4, target: 5 },
-  { week: 'Week 4', completed: 3, target: 4 },
-  { week: 'Week 5', completed: 5, target: 5 },
-  { week: 'Week 6', completed: 4, target: 4 },
-];
-
-const feedbackStatusData = [
-  { name: 'Pending', value: 3, color: '#f97316' },
-  { name: 'Completed', value: 3, color: '#22c55e' },
-  { name: 'Overdue', value: 1, color: '#ef4444' },
-];
-
 interface StudentDashboardProps {
   onNavigate?: (page: string) => void;
 }
@@ -166,8 +149,15 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
           <CardTitle>Pending Feedback Forms</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {pendingForms.map((form) => (
+          {pendingForms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <ClipboardList className="w-12 h-12 text-gray-300 mb-3" />
+              <p className="text-gray-500">No pending feedback forms</p>
+              <p className="text-sm text-gray-400">You're all caught up!</p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {pendingForms.map((form) => (
               <div 
                 key={form.id} 
                 className="p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors"
@@ -211,11 +201,10 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-    
 
       {/* Recently Completed */}
       <Card className="border-green-100">
@@ -223,21 +212,29 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
           <CardTitle>Recently Completed</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {completedForms.slice(0, 3).map((form, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <CheckCircle className="w-5 h-5 text-green-500" />
-                  <div>
-                    <p>{form.title}</p>
+          {completedForms.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <CheckCircle className="w-12 h-12 text-gray-300 mb-3" />
+              <p className="text-gray-500">No completed feedback forms yet</p>
+              <p className="text-sm text-gray-400">Complete your first feedback to see it here</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {completedForms.slice(0, 3).map((form, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <div>
+                      <p>{form.title}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

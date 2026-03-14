@@ -24,7 +24,9 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-interface UserProfileProps {}
+interface UserProfileProps {
+  onNavigate?: (page: string) => void;
+}
 
 interface UserData {
   id: number;
@@ -37,6 +39,7 @@ interface UserData {
   studentId?: string;
   courseYrSection?: string;
   contactNumber?: string;
+  sectionId?: number;
   // Instructor fields
   instructorId?: string;
   department?: string;
@@ -55,6 +58,16 @@ interface UserData {
   employerContactNumber?: string;
 }
 
+// Interface for course management data from database
+interface CourseData {
+  id: number;
+  course_section: string;
+  program_code: string;
+  department: string;
+  year_level: number;
+  section: string;
+}
+
 // Field mapping from API snake_case to component camelCase
 const mapApiToUserData = (apiUser: Record<string, any>): UserData => {
   return {
@@ -66,7 +79,7 @@ const mapApiToUserData = (apiUser: Record<string, any>): UserData => {
     profilePicture: apiUser.profilePicture || apiUser.image || null,
     // Student fields
     studentId: apiUser.studentID || apiUser.studentId,
-    courseYrSection: apiUser.course_yr_section || apiUser.courseYrSection,
+    courseYrSection: apiUser.course_section || apiUser.course_yr_section || apiUser.courseYrSection,
     contactNumber: apiUser.contact_number || apiUser.contactNumber,
     // Instructor fields
     instructorId: apiUser.instructor_id || apiUser.instructorId,
@@ -87,12 +100,13 @@ const mapApiToUserData = (apiUser: Record<string, any>): UserData => {
   };
 };
 
-export function UserProfile() {
+export function UserProfile({ onNavigate }: UserProfileProps = {}) {
   const [isEditing, setIsEditing] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<UserData>>({});
+  const [courses, setCourses] = useState<CourseData[]>([]);
 
   // Fetch user profile data
   useEffect(() => {
@@ -128,7 +142,27 @@ export function UserProfile() {
     };
 
     fetchUserProfile();
+    fetchCourses();
   }, []);
+
+  // Fetch courses from course_management table
+  const fetchCourses = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch('http://localhost:5000/api/course-management/sections', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setCourses(data.programs || []);
+      }
+    } catch (error) {
+      console.error('Error fetching courses:', error);
+    }
+  };
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -143,12 +177,18 @@ export function UserProfile() {
         return;
       }
 
-      // For now, we'll just update basic user info
-      // Use snake_case field names to match backend expectations
-      const updateData = {
-        full_name: formData.fullName,
-        // Add other updatable fields as needed
-      };
+      // For students, allow updating studentId, contactNumber, courseYrSection, sectionId
+      // For other roles, only allow fullName
+      const updateData: Record<string, any> = {};
+      
+      if (userData?.role === 'student') {
+        if (formData.studentId) updateData.student_id = formData.studentId;
+        if (formData.contactNumber) updateData.contact_number = formData.contactNumber;
+        if (formData.courseYrSection) updateData.course_yr_section = formData.courseYrSection;
+        if (formData.sectionId) updateData.section_id = formData.sectionId;
+      } else {
+        if (formData.fullName) updateData.full_name = formData.fullName;
+      }
 
       const response = await fetch('http://localhost:5000/api/auth/profile', {
         method: 'PUT',
@@ -162,7 +202,14 @@ export function UserProfile() {
       const data = await response.json();
 
       if (data.success) {
-        setUserData(prev => prev ? { ...prev, fullName: formData.fullName! } : null);
+        // Update local state with the new values
+        setUserData(prev => prev ? { 
+          ...prev, 
+          studentId: formData.studentId || prev.studentId,
+          contactNumber: formData.contactNumber || prev.contactNumber,
+          courseYrSection: formData.courseYrSection || prev.courseYrSection,
+          sectionId: formData.sectionId || prev.sectionId,
+        } : null);
         setIsEditing(false);
         toast.success('Profile updated successfully');
       } else {
@@ -278,10 +325,9 @@ export function UserProfile() {
                 </Label>
                 <Input
                   id="fullName"
-                  defaultValue={userData.fullName}
-                  disabled={!isEditing}
-                  className={isEditing ? "border-green-200" : "bg-gray-50"}
-                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                  value={userData.fullName}
+                  disabled
+                  className="bg-gray-50"
                 />
               </div>
 
@@ -293,9 +339,9 @@ export function UserProfile() {
                 <Input
                   id="email"
                   type="email"
-                  defaultValue={userData.email}
-                  disabled={!isEditing}
-                  className={isEditing ? "border-green-200" : "bg-gray-50"}
+                  value={userData.email}
+                  disabled
+                  className="bg-gray-50"
                 />
               </div>
 
@@ -334,17 +380,16 @@ export function UserProfile() {
                 <Input
                   value={userData.studentId || 'Not provided'}
                   disabled
-                  className="bg-white"
+                  className="bg-gray-50"
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Course Year & Section</Label>
+                <Label>Course & Section</Label>
                 <Input
                   value={userData.courseYrSection || 'Not provided'}
-                  disabled={!isEditing}
-                  className={isEditing ? "border-blue-200" : "bg-white"}
-                  onChange={(e) => handleInputChange('courseYrSection', e.target.value)}
+                  disabled
+                  className="bg-gray-50"
                 />
               </div>
 
@@ -354,10 +399,22 @@ export function UserProfile() {
                   Contact Number
                 </Label>
                 <Input
-                  value={userData.contactNumber || 'Not provided'}
-                  disabled
-                  className="bg-white"
+                  value={formData.contactNumber || userData.contactNumber || ''}
+                  disabled={!isEditing}
+                  placeholder="e.g., 09123456789"
+                  maxLength={11}
+                  className={isEditing ? "border-blue-200 bg-white" : "bg-gray-50"}
+                  onChange={(e) => {
+                    // Allow any input, just filter to digits and limit to 11
+                    const value = e.target.value.replace(/\D/g, '');
+                    if (value.length <= 11) {
+                      handleInputChange('contactNumber', value);
+                    }
+                  }}
                 />
+                {isEditing && formData.contactNumber && formData.contactNumber.length > 0 && formData.contactNumber.length !== 11 && (
+                  <p className="text-xs text-red-500">Contact number must be 11 digits</p>
+                )}
               </div>
             </div>
           </CardContent>
@@ -541,17 +598,7 @@ export function UserProfile() {
               </Button>
             </div>
 
-            <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200">
-              <div>
-                <p>Privacy Settings</p>
-                <p className="text-sm text-gray-600">Control who can see your profile information</p>
-              </div>
-              <Button variant="outline" size="sm" className="border-green-200 hover:bg-green-50">
-                Configure
-              </Button>
-            </div>
-
-            <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200">
+            <div className="flex items-center justify-between p-4 rounded-lg border border-gray-200 cursor-pointer hover:bg-gray-50" onClick={() => onNavigate?.('change-password')}>
               <div>
                 <p>Change Password</p>
                 <p className="text-sm text-gray-600">Update your account password</p>

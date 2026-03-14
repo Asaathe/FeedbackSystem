@@ -409,21 +409,7 @@ export default function App() {
         case "submit-feedback":
           return <FeedbackSubmission userRole={userRole} />;
         case "profile":
-          return <UserProfile />;
-      }
-    }
-
-    // Alumni pages
-    if (userRole === "alumni") {
-      switch (currentPage) {
-        case "dashboard":
-          return <AlumniDashboard onNavigate={setCurrentPage} />;
-        case "submit-feedback":
-          return <AlumniFeedback onBack={() => setCurrentPage("dashboard")} />;
-        case "my-submissions":
-          return <MySubmissions />;
-        case "profile":
-          return <UserProfile />;
+          return <UserProfile onNavigate={setCurrentPage} />;
       }
     }
 
@@ -440,7 +426,7 @@ export default function App() {
       case "my-submissions":
         return <MySubmissions />;
       case "profile":
-        return <UserProfile />;
+        return <UserProfile onNavigate={setCurrentPage} />;
       default:
         return <StudentDashboard onNavigate={setCurrentPage} />;
     }

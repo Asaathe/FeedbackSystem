@@ -310,7 +310,10 @@ const getUserProfile = async (userId) => {
       case "student":
         const students = await queryDatabase(
           db,
-          "SELECT * FROM students WHERE user_id = ?",
+          `SELECT s.*, cm.course_section 
+           FROM students s 
+           LEFT JOIN course_management cm ON s.program_id = cm.id 
+           WHERE s.user_id = ?`,
           [userId]
         );
         if (students.length > 0) {
@@ -373,28 +376,69 @@ const getUserProfile = async (userId) => {
  */
 const updateUserProfile = async (userId, updates) => {
   try {
-    const allowedFields = ["full_name", "email"];
+    // First, get the user to determine their role
+    const users = await queryDatabase(
+      db,
+      "SELECT role FROM Users WHERE id = ?",
+      [userId]
+    );
+
+    if (users.length === 0) {
+      return { success: false, message: "User not found" };
+    }
+
+    const userRole = users[0].role;
     const updateFields = [];
     const updateValues = [];
 
-    for (const field of allowedFields) {
+    // Handle User table updates (full_name, email)
+    const userAllowedFields = ["full_name", "email"];
+    for (const field of userAllowedFields) {
       if (updates[field] !== undefined) {
         updateFields.push(`${field} = ?`);
         updateValues.push(updates[field]);
       }
     }
 
-    if (updateFields.length === 0) {
-      return { success: false, message: "No valid fields to update" };
+    // Update User table if there are fields to update
+    if (updateFields.length > 0) {
+      updateValues.push(userId);
+      await queryDatabase(
+        db,
+        `UPDATE Users SET ${updateFields.join(", ")} WHERE id = ?`,
+        updateValues
+      );
     }
 
-    updateValues.push(userId);
+    // Handle role-specific updates
+    if (userRole === "student") {
+      const studentFields = [];
+      const studentValues = [];
 
-    await queryDatabase(
-      db,
-      `UPDATE Users SET ${updateFields.join(", ")} WHERE id = ?`,
-      updateValues
-    );
+      if (updates.student_id !== undefined) {
+        studentFields.push("studentID = ?");
+        studentValues.push(updates.student_id);
+      }
+      if (updates.contact_number !== undefined) {
+        studentFields.push("contact_number = ?");
+        studentValues.push(updates.contact_number);
+      }
+
+      if (studentFields.length > 0) {
+        studentValues.push(userId);
+        await queryDatabase(
+          db,
+          `UPDATE students SET ${studentFields.join(", ")} WHERE user_id = ?`,
+          studentValues
+        );
+      }
+    } else if (userRole === "instructor") {
+      // Handle instructor-specific updates if needed
+    } else if (userRole === "alumni") {
+      // Handle alumni-specific updates if needed
+    } else if (userRole === "employer") {
+      // Handle employer-specific updates if needed
+    }
 
     return { success: true, message: "Profile updated successfully" };
   } catch (error) {
