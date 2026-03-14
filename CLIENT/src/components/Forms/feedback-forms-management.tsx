@@ -14,8 +14,6 @@ import {
   Star,
   Send,
   X,
-  ClipboardList,
-  ClipboardCheck,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -91,7 +89,6 @@ export function FeedbackFormsManagement({
   const [categories, setCategories] = useState<FormCategory[]>([]);
   const [loadingCategoryOperation, setLoadingCategoryOperation] =
     useState(false);
-  const [formTypeSelectionOpen, setFormTypeSelectionOpen] = useState(false);
 
   // Load question count cache from localStorage on component mount
   const [formQuestionCache, setFormQuestionCache] = useState<
@@ -305,15 +302,9 @@ export function FeedbackFormsManagement({
     }
   };
 
-  // Handler for creating a new form (opens type selection modal)
+  // Handler for creating a new form (navigates directly to builder)
   const handleCreateNewForm = () => {
-    setFormTypeSelectionOpen(true);
-  };
-
-  // Handler for selecting form type
-  const handleSelectFormType = (formType: 'custom' | 'evaluation') => {
-    setFormTypeSelectionOpen(false);
-    onNavigateToBuilder?.(undefined, formType);
+    onNavigateToBuilder?.(undefined, 'custom');
   };
 
   const handleDuplicateForm = async (formId: string) => {
@@ -570,61 +561,15 @@ export function FeedbackFormsManagement({
           <h2 className="text-2xl">Feedback Forms</h2>
           <p className="text-gray-600">Create and manage feedback forms</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            className="bg-green-500 hover:bg-green-600"
-            onClick={handleCreateNewForm}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Form
-          </Button>
-        </div>
+        <Button
+          className="bg-green-500 hover:bg-green-600"
+          onClick={handleCreateNewForm}
+        >
+          <Plus className="w-4 h-4 mr-2" />
+          Create New Form
+        </Button>
       </div>
 
-      {/* Form Type Selection Modal */}
-      <Dialog open={formTypeSelectionOpen} onOpenChange={setFormTypeSelectionOpen}>
-        <DialogContent className="max-w-md">
-          <DialogClose className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-            <X className="h-4 w-4" />
-            <span className="sr-only">Close</span>
-          </DialogClose>
-          <DialogHeader>
-            <DialogTitle>Create New Form</DialogTitle>
-            <DialogDescription>
-              Select the type of form you want to create
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-1 gap-4 py-4">
-            {/* Custom Form Option */}
-            <button
-              onClick={() => handleSelectFormType('custom')}
-              className="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-colors text-left group"
-            >
-              <div className="flex-shrink-0 w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-green-200">
-                <ClipboardList className="w-6 h-6 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Custom Form</h3>
-                <p className="text-sm text-gray-500">Traditional feedback form with custom questions</p>
-              </div>
-            </button>
-
-            {/* Evaluation Form Option */}
-            <button
-              onClick={() => handleSelectFormType('evaluation')}
-              className="flex items-center p-4 border-2 border-gray-200 rounded-lg hover:border-purple-500 hover:bg-purple-50 transition-colors text-left group"
-            >
-              <div className="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4 group-hover:bg-purple-200">
-                <ClipboardCheck className="w-6 h-6 text-purple-600" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-gray-900">Evaluation Form</h3>
-                <p className="text-sm text-gray-500">Subject &amp; Instructor Evaluation</p>
-              </div>
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>

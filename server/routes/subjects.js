@@ -54,4 +54,21 @@ router.get("/instructors/available", verifyToken, subjectController.getAllInstru
 // Assign form to subject (for evaluation form deployment) - also available at /api/subject-evaluation/subjects/:id/assign-form
 router.put("/:id/assign-form", verifyToken, subjectEvaluationController.assignFormToSubject);
 
+// ==================== Subject Offerings ====================
+
+// Get all subject offerings
+router.get("/offerings/all", verifyToken, subjectController.getAllSubjectOfferings);
+
+// Create subject offering (admin only)
+router.post("/offerings", verifyToken, requireAdmin, subjectController.createSubjectOffering);
+
+// Update subject offering (admin only)
+router.put("/offerings/:id", verifyToken, requireAdmin, subjectController.updateSubjectOffering);
+
+// Delete subject offering (admin only)
+router.delete("/offerings/:id", verifyToken, requireAdmin, subjectController.deleteSubjectOffering);
+
+// Get students in a subject offering (auto-enrolled based on program/year/section)
+router.get("/offerings/:offeringId/students", verifyToken, subjectController.getSubjectOfferingStudents);
+
 module.exports = router;

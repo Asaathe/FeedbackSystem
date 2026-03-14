@@ -717,6 +717,365 @@ const getStudentsByProgram = async (req, res) => {
   }
 };
 
+/**
+ * Get all subject offerings
+ */
+const getAllSubjectOfferings = async (req, res) => {
+  try {
+    const { search, academic_year, semester, program_id } = req.query;
+    
+    let query = `
+      SELECT 
+        so.id,
+        so.subject_id,
+        so.program_id,
+        so.year_level,
+        so.section,
+        so.academic_year,
+        so.semester,
+        so.instructor_id,
+        so.status,
+        so.created_at,
+        s.subject_code,
+        s.subject_name,
+        s.units,
+        c.program_code,
+        c.program_name,
+        u.full_name as instructor_name,
+        u.email as instructor_email,
+        (SELECT COUNT(*) FROM users u2 
+         INNER JOIN students st2 ON u2.id = st2.user_id 
+         WHERE st2.program_id = so.program_id 
+         AND u2.status = 'active') as enrolled_count
+      FROM subject_offerings so
+      LEFT JOIN evaluation_subjects s ON so.subject_id = s.id
+      LEFT JOIN course_management c ON so.program_id = c.id
+      LEFT JOIN users u ON so.instructor_id = u.id
+      WHERE 1=1
+    `;
+    
+    const params = [];
+    
+    if (search) {
+      query += ` AND (s.subject_code LIKE ? OR s.subject_name LIKE ? OR c.program_code LIKE ?)`;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+    }
+    
+    if (academic_year && semester) {
+      query += ` AND so.academic_year = ? AND so.semester = ?`;
+      params.push(academic_year, semester);
+    } else if (academic_year) {
+      query += ` AND so.academic_year = ?`;
+      params.push(academic_year);
+    } else if (semester) {
+      query += ` AND so.semester = ?`;
+      params.push(semester);
+    }
+    
+    if (program_id) {
+      query += ` AND so.program_id = ?`;
+      params.push(program_id);
+    }
+    
+    query += ` ORDER BY s.subject_code, c.program_name, so.year_level, so.section`;
+    
+    db.query(query, params, (err, results) => {
+      if (err) {
+        console.error("Error fetching subject offerings:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch subject offerings", error: err.message });
+      }
+      return res.status(200).json({ success: true, offerings: results });
+    });
+  } catch (error) {
+    console.error("Get all subject offerings error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Create new subject offering
+ */
+const createSubjectOffering = async (req, res) => {
+  try {
+    const { subject_id, program_id, year_level, section, academic_year, semester, instructor_id } = req.body;
+    
+    if (!subject_id || !program_id || !year_level || !section) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Subject, Program, Year Level, and Section are required" 
+      });
+    }
+    
+    // Check if offering already exists
+    const checkQuery = `
+      SELECT id FROM subject_offerings 
+      WHERE subject_id = ? AND program_id = ? AND year_level = ? 
+      AND section = ? AND academic_year = ? AND semester = ?
+    `;
+    db.query(checkQuery, [subject_id, program_id, year_level, section, academic_year || '2025-2026', semester || '1st'], (checkErr, checkResults) => {
+      if (checkErr) {
+        console.error("Error checking offering:", checkErr);
+        return res.status(500).json({ success: false, message: "Database error" });
+      }
+      
+      if (checkResults.length > 0) {
+        return res.status(400).json({ success: false, message: "Subject offering already exists for this combination" });
+      }
+      
+      // Insert the offering
+      const insertQuery = `
+        INSERT INTO subject_offerings (subject_id, program_id, year_level, section, academic_year, semester, instructor_id) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+      db.query(insertQuery, [
+        subject_id, 
+        program_id, 
+        year_level, 
+        section, 
+        academic_year || '2025-2026', 
+        semester || '1st', 
+        instructor_id || null
+      ], (insertErr, result) => {
+        if (insertErr) {
+          console.error("Error creating subject offering:", insertErr);
+          return res.status(500).json({ success: false, message: "Failed to create subject offering" });
+        }
+        
+        const offeringId = result.insertId;
+        const acadYear = academic_year || '2025-2026';
+        const sem = semester || '1st';
+        
+        // If instructor_id is provided, assign instructor to instructor_courses
+        if (instructor_id) {
+          const instructorCheckQuery = "SELECT id FROM instructor_courses WHERE instructor_id = ? AND subject_id = ?";
+          db.query(instructorCheckQuery, [instructor_id, subject_id], (checkErr, checkResults) => {
+            if (checkErr || checkResults.length === 0) {
+              const instructorInsertQuery = "INSERT INTO instructor_courses (instructor_id, subject_id) VALUES (?, ?)";
+              db.query(instructorInsertQuery, [instructor_id, subject_id], (instErr) => {
+                if (instErr) {
+                  console.error("Error assigning instructor:", instErr);
+                }
+              });
+            }
+          });
+        }
+        
+        // Auto-enroll students from this program into subject_students
+        // Get students from users table who have the matching program_id
+        const studentsQuery = `
+          SELECT u.id as user_id FROM users u
+          INNER JOIN students st ON u.id = st.user_id
+          WHERE st.program_id = ?
+          AND u.status = 'active'
+        `;
+        console.log("Looking for students with program_id:", program_id);
+        db.query(studentsQuery, [program_id], (studentsErr, students) => {
+          console.log("Students found:", students);
+          if (studentsErr) {
+            console.error("Error fetching students for enrollment:", studentsErr);
+          } else if (students.length > 0) {
+            // Enroll each student into subject_students
+            students.forEach(student => {
+              const enrollCheckQuery = "SELECT id FROM subject_students WHERE student_id = ? AND subject_id = ?";
+              db.query(enrollCheckQuery, [student.user_id, subject_id], (checkErr, checkResults) => {
+                if (checkErr || checkResults.length === 0) {
+                  const enrollQuery = "INSERT INTO subject_students (student_id, subject_id, academic_year, semester, status) VALUES (?, ?, ?, ?, 'enrolled')";
+                  db.query(enrollQuery, [student.user_id, subject_id, acadYear, sem], (enrollErr) => {
+                    if (enrollErr) {
+                      console.error("Error enrolling student:", enrollErr);
+                    }
+                  });
+                }
+              });
+            });
+            console.log(`Enrolled ${students.length} students for subject offering ${offeringId}`);
+          }
+        });
+        
+        return res.status(201).json({ 
+          success: true, 
+          message: "Subject offering created successfully",
+          offeringId: result.insertId
+        });
+      });
+    });
+  } catch (error) {
+    console.error("Create subject offering error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Update subject offering
+ */
+const updateSubjectOffering = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { instructor_id, status } = req.body;
+    
+    // First get the current offering to know the subject_id
+    const getOfferingQuery = "SELECT subject_id, academic_year, semester FROM subject_offerings WHERE id = ?";
+    db.query(getOfferingQuery, [id], (getErr, offeringResults) => {
+      if (getErr) {
+        console.error("Error fetching offering:", getErr);
+        return res.status(500).json({ success: false, message: "Failed to fetch offering" });
+      }
+      
+      if (offeringResults.length === 0) {
+        return res.status(404).json({ success: false, message: "Offering not found" });
+      }
+      
+      const { subject_id, academic_year, semester } = offeringResults[0];
+      
+      const updateQuery = `
+        UPDATE subject_offerings 
+        SET instructor_id = COALESCE(?, instructor_id),
+            status = COALESCE(?, status)
+        WHERE id = ?
+      `;
+      db.query(updateQuery, [instructor_id, status, id], (err) => {
+        if (err) {
+          console.error("Error updating subject offering:", err);
+          return res.status(500).json({ success: false, message: "Failed to update subject offering" });
+        }
+        
+        // If instructor_id is provided, also update instructor_courses
+        if (instructor_id) {
+          const instructorCheckQuery = "SELECT id FROM instructor_courses WHERE instructor_id = ? AND subject_id = ?";
+          db.query(instructorCheckQuery, [instructor_id, subject_id], (checkErr, checkResults) => {
+            if (checkErr || checkResults.length === 0) {
+              const instructorInsertQuery = "INSERT INTO instructor_courses (instructor_id, subject_id) VALUES (?, ?)";
+              db.query(instructorInsertQuery, [instructor_id, subject_id], (instErr) => {
+                if (instErr) {
+                  console.error("Error updating instructor:", instErr);
+                }
+              });
+            }
+          });
+        }
+        
+        return res.status(200).json({ success: true, message: "Subject offering updated successfully" });
+      });
+    });
+  } catch (error) {
+    console.error("Update subject offering error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Delete subject offering
+ */
+const deleteSubjectOffering = async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // First get the offering details
+    const getOfferingQuery = "SELECT subject_id, academic_year, semester, instructor_id FROM subject_offerings WHERE id = ?";
+    db.query(getOfferingQuery, [id], (getErr, offeringResults) => {
+      if (getErr) {
+        console.error("Error fetching offering:", getErr);
+        return res.status(500).json({ success: false, message: "Failed to fetch offering" });
+      }
+      
+      if (offeringResults.length === 0) {
+        return res.status(404).json({ success: false, message: "Offering not found" });
+      }
+      
+      const { subject_id, academic_year, semester, instructor_id } = offeringResults[0];
+      
+      // Delete from subject_offerings
+      const deleteQuery = "DELETE FROM subject_offerings WHERE id = ?";
+      db.query(deleteQuery, [id], (err) => {
+        if (err) {
+          console.error("Error deleting subject offering:", err);
+          return res.status(500).json({ success: false, message: "Failed to delete subject offering" });
+        }
+        
+        // Remove instructor from instructor_courses
+        if (instructor_id) {
+          const instructorDeleteQuery = "DELETE FROM instructor_courses WHERE instructor_id = ? AND subject_id = ?";
+          db.query(instructorDeleteQuery, [instructor_id, subject_id], (instErr) => {
+            if (instErr) {
+              console.error("Error removing instructor:", instErr);
+            }
+          });
+        }
+        
+        // Remove students from subject_students for this subject/academic_year/semester
+        const studentsDeleteQuery = "DELETE FROM subject_students WHERE subject_id = ? AND academic_year = ? AND semester = ?";
+        db.query(studentsDeleteQuery, [subject_id, academic_year, semester], (studentsErr) => {
+          if (studentsErr) {
+            console.error("Error removing students:", studentsErr);
+          }
+        });
+        
+        return res.status(200).json({ success: true, message: "Subject offering deleted successfully" });
+      });
+    });
+  } catch (error) {
+    console.error("Delete subject offering error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Get students in a subject offering (based on program/year/section)
+ */
+const getSubjectOfferingStudents = async (req, res) => {
+  try {
+    const { offeringId } = req.params;
+    
+    // First get the offering details
+    const offeringQuery = `
+      SELECT so.program_id, so.year_level, so.section, so.academic_year, so.semester
+      FROM subject_offerings so
+      WHERE so.id = ?
+    `;
+    
+    db.query(offeringQuery, [offeringId], (err, offeringResults) => {
+      if (err) {
+        console.error("Error fetching offering:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch offering" });
+      }
+      
+      if (offeringResults.length === 0) {
+        return res.status(404).json({ success: false, message: "Subject offering not found" });
+      }
+      
+      const { program_id, year_level, section, academic_year, semester } = offeringResults[0];
+      
+      // Get students in this program/year/section
+      const studentsQuery = `
+        SELECT 
+          u.id as user_id,
+          u.full_name,
+          u.email,
+          st.studentID,
+          c.program_code,
+          c.program_name
+        FROM users u
+        INNER JOIN students st ON u.id = st.user_id
+        INNER JOIN course_management c ON st.program_id = c.id
+        WHERE st.program_id = ? AND u.status = 'active'
+        ORDER BY u.full_name
+      `;
+      
+      db.query(studentsQuery, [program_id], (studentsErr, students) => {
+        if (studentsErr) {
+          console.error("Error fetching students:", studentsErr);
+          return res.status(500).json({ success: false, message: "Failed to fetch students" });
+        }
+        
+        return res.status(200).json({ success: true, students });
+      });
+    });
+  } catch (error) {
+    console.error("Get subject offering students error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 module.exports = {
   getAllSubjects,
   getSubjectById,
@@ -732,5 +1091,11 @@ module.exports = {
   getAllEnrolledStudents,
   getAllInstructorsForAssignment,
   bulkEnrollStudents,
-  getStudentsByProgram
+  getStudentsByProgram,
+  // Subject Offerings
+  getAllSubjectOfferings,
+  createSubjectOffering,
+  updateSubjectOffering,
+  deleteSubjectOffering,
+  getSubjectOfferingStudents
 };

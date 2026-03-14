@@ -127,13 +127,13 @@ export function FormBuilder({
   // Form Type State - use prop if provided (for evaluation forms), otherwise default to general
   const [formType, setFormType] = useState<string>(initialFormType === 'evaluation' ? 'evaluation' : 'general');
   
-  // Check if this is an evaluation form
-  const isEvaluationForm = initialFormType === 'evaluation' || formType === 'evaluation';
-
-  // Evaluation form state: target selection
+  // Evaluation form state - kept for backward compatibility but isEvaluationForm is always false
   const [evalType, setEvalType] = useState<'subject' | 'instructor'>('subject');
   const [selectedEvalTargets, setSelectedEvalTargets] = useState<number[]>([]);
   const [selectedEvalTargetItems, setSelectedEvalTargetItems] = useState<any[]>([]);
+  
+  // Always false now - evaluation forms removed, using new category-based system
+  const isEvaluationForm = false;
 
   // Get available question types based on form type
   const availableQuestionTypes = isEvaluationForm 

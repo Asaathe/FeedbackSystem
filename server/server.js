@@ -126,6 +126,10 @@ app.use("/api/subjects", subjectRoutes);
 const evaluationFormRoutes = require("./routes/evaluationForms");
 app.use("/api/evaluation-forms", evaluationFormRoutes);
 
+// Feedback Template routes
+const feedbackTemplateRoutes = require("./routes/feedbackTemplates");
+app.use("/api/feedback-templates", feedbackTemplateRoutes);
+
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 

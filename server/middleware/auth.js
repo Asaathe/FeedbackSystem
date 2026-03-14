@@ -25,8 +25,15 @@ const verifyToken = (req, res, next) => {
     // Also set req.user with role for admin checks
     const userQuery = "SELECT role FROM users WHERE id = ?";
     db.query(userQuery, [decoded.userId], (err, results) => {
-      if (!err && results.length > 0) {
+      if (err) {
+        console.error("Error fetching user role:", err);
+        // Still set req.user with basic info from token even if DB fails
+        req.user = { id: decoded.userId, role: null };
+      } else if (results.length > 0) {
         req.user = { id: decoded.userId, role: results[0].role };
+      } else {
+        // User not found in database, but token is valid
+        req.user = { id: decoded.userId, role: null };
       }
       next();
     });
@@ -45,6 +52,26 @@ const requireAdmin = (req, res, next) => {
   
   // If role is available, check it; otherwise allow for now
   if (userRole && userRole !== 'admin') {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access required",
+    });
+  }
+  next();
+};
+
+// Admin verification middleware
+const verifyAdmin = (req, res, next) => {
+  const userRole = req.user && req.user.role;
+  
+  if (!userRole) {
+    return res.status(401).json({
+      success: false,
+      message: "Authentication required",
+    });
+  }
+  
+  if (userRole !== 'admin') {
     return res.status(403).json({
       success: false,
       message: "Admin access required",
@@ -220,6 +247,7 @@ const requireFormAccess = (req, res, next) => {
 // Export middleware functions
 module.exports = {
   verifyToken,
+  verifyAdmin,
   requireAdmin,
   requireFormOwnership,
   requireRole,

@@ -111,6 +111,18 @@ const SubjectAssignment = lazy(() =>
   }))
 );
 
+const SubjectOfferings = lazy(() =>
+  import("./components/Admin/subject-offerings").then((m) => ({
+    default: m.SubjectOfferings,
+  }))
+);
+
+const SubjectManagement = lazy(() =>
+  import("./components/Admin/subject-management").then((m) => ({
+    default: m.SubjectManagement,
+  }))
+);
+
 
 const SystemSettings = lazy(() =>
   import("./components/Admin/system-settings").then((m) => ({
@@ -121,6 +133,24 @@ const SystemSettings = lazy(() =>
 const StudentSubjectEvaluation = lazy(() =>
   import("./components/Dashboards/student-subject-evaluation").then((m) => ({
     default: m.StudentSubjectEvaluation,
+  }))
+);
+
+const MySubjects = lazy(() =>
+  import("./components/Dashboards/my-subjects").then((m) => ({
+    default: m.MySubjects,
+  }))
+);
+
+const StudentFeedback = lazy(() =>
+  import("./components/Dashboards/student-feedback").then((m) => ({
+    default: m.StudentFeedback,
+  }))
+);
+
+const FeedbackTemplate = lazy(() =>
+  import("./components/Admin/feedback-template").then((m) => ({
+    default: m.FeedbackTemplate,
   }))
 );
 
@@ -330,10 +360,14 @@ export default function App() {
           return <SubjectEvaluation onNavigate={setCurrentPage} />;
         case "subjectassign":
           return <SubjectAssignment onNavigate={setCurrentPage} />;
+        case "subject-offerings":
+          return <SubjectOfferings />;
         case "subjects":
-          return <SubjectAssignment onNavigate={setCurrentPage} />;
+          return <SubjectManagement />;
         case "settings":
           return <SystemSettings onNavigate={setCurrentPage} />;
+        case "feedback-template":
+          return <FeedbackTemplate />;
        
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;
@@ -397,8 +431,10 @@ export default function App() {
     switch (currentPage) {
       case "dashboard":
         return <StudentDashboard onNavigate={setCurrentPage} />;
-      case "subjecteval":
-        return <StudentSubjectEvaluation onNavigate={setCurrentPage} />;
+      case "my-subjects":
+        return <MySubjects onNavigate={setCurrentPage} />;
+      case "student-feedback":
+        return <StudentFeedback onNavigate={setCurrentPage} />;
       case "submit-feedback":
         return <FeedbackSubmission userRole={userRole} />;
       case "my-submissions":

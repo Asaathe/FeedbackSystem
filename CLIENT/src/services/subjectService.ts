@@ -465,3 +465,123 @@ export const bulkEnrollStudents = async (data: {
     return { success: false, message: 'Failed to bulk enroll students' };
   }
 };
+
+// ==================== Subject Offerings ====================
+
+export interface SubjectOffering {
+  id: number;
+  subject_id: number;
+  program_id: number;
+  year_level: number;
+  section: string;
+  academic_year: string;
+  semester: string;
+  instructor_id: number | null;
+  status: string;
+  created_at: string;
+  subject_code: string;
+  subject_name: string;
+  units: number;
+  program_code: string;
+  program_name: string;
+  instructor_name: string | null;
+  instructor_email: string | null;
+  enrolled_count: number;
+}
+
+export const getSubjectOfferings = async (params?: {
+  search?: string;
+  academic_year?: string;
+  semester?: string;
+  program_id?: string;
+}) => {
+  try {
+    const urlParams = new URLSearchParams();
+    if (params?.search) urlParams.append('search', params.search);
+    if (params?.academic_year) urlParams.append('academic_year', params.academic_year);
+    if (params?.semester) urlParams.append('semester', params.semester);
+    if (params?.program_id) urlParams.append('program_id', params.program_id);
+
+    const response = await fetch(`${API_BASE_URL}/subjects/offerings/all?${urlParams}`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching subject offerings:', error);
+    return { success: false, message: 'Failed to fetch subject offerings', offerings: [] };
+  }
+};
+
+export const createSubjectOffering = async (data: {
+  subject_id: number;
+  program_id: number;
+  year_level: number;
+  section: string;
+  academic_year?: string;
+  semester?: string;
+  instructor_id?: number;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/offerings`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(data),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error creating subject offering:', error);
+    return { success: false, message: 'Failed to create subject offering' };
+  }
+};
+
+export const updateSubjectOffering = async (id: string, updates: {
+  instructor_id?: number;
+  status?: string;
+}) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/offerings/${id}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(updates),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error updating subject offering:', error);
+    return { success: false, message: 'Failed to update subject offering' };
+  }
+};
+
+export const deleteSubjectOffering = async (id: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/offerings/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error deleting subject offering:', error);
+    return { success: false, message: 'Failed to delete subject offering' };
+  }
+};
+
+export const getSubjectOfferingStudents = async (offeringId: string) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/subjects/offerings/${offeringId}/students`, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching subject offering students:', error);
+    return { success: false, message: 'Failed to fetch students', students: [] };
+  }
+};

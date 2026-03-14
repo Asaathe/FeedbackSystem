@@ -101,6 +101,24 @@ interface SubjectStudent {
   profilePicture?: string;
 }
 
+interface SubjectSection {
+  id: number;
+  subject_id: number;
+  program_id: number;
+  instructor_id?: number;
+  academic_year?: string;
+  semester?: string;
+  status: string;
+  subject_code: string;
+  subject_name: string;
+  department: string;
+  program_code: string;
+  program_name: string;
+  year_level: number;
+  section: string;
+  instructor_name?: string;
+}
+
 interface SubjectAssignmentProps {
   onNavigate?: (page: string) => void;
 }
@@ -112,6 +130,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   const [students, setStudents] = useState<Student[]>([]);
   const [instructorCourses, setInstructorCourses] = useState<InstructorCourse[]>([]);
   const [subjectStudents, setSubjectStudents] = useState<SubjectStudent[]>([]);
+  const [subjectSections, setSubjectSections] = useState<SubjectSection[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedInstructor, setSelectedInstructor] = useState<Instructor | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -286,6 +305,16 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       if (enrollmentsData.success) {
         setSubjectStudents(enrollmentsData.enrollments || []);
       }
+
+      // Fetch subject-sections (new approach - single record per subject-program)
+      const subjectSectionsRes = await fetch('http://localhost:5000/api/subject-evaluation/subject-sections', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const subjectSectionsData = await subjectSectionsRes.json();
+
+      if (subjectSectionsData.success) {
+        setSubjectSections(subjectSectionsData.subjectSections || []);
+      }
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load data');
@@ -442,53 +471,37 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
     }
   };
 
-  // Remove all students in a program from subject
+  // Remove subject from program/section (delete the subject-section record)
   const handleRemoveEnrolledSection = async () => {
     if (!removingSection || !selectedSubject) return;
 
     try {
       const token = sessionStorage.getItem('authToken');
       
-      // Get enrollments for this subject AND matching the selected program/section
-      const removingSectionKey = `${removingSection.program_code}-${removingSection.year_level}-${removingSection.section}`;
+      // Find the subject-section record to delete
+      const subjectSectionRecord = subjectSections.find(
+        ss => ss.subject_id === selectedSubject.id && ss.program_id === removingSection.id
+      );
       
-      // Find students in this subject with matching program
-      const sectionEnrollments = subjectStudents.filter(ss => {
-        const enrollmentMatchesSubject = ss.subject_id === selectedSubject.id || ss.course_section_id === selectedSubject.id;
-        if (!enrollmentMatchesSubject) return false;
-        
-        // Find the student and check if their program matches
-        const student = students.find(s => s.user_id === ss.student_id);
-        if (!student || !student.program_id) return false;
-        
-        const studentProgram = programs.find(p => p.id === student.program_id);
-        if (!studentProgram) return false;
-        
-        const studentSectionKey = `${studentProgram.program_code}-${studentProgram.year_level}-${studentProgram.section}`;
-        return studentSectionKey === removingSectionKey;
-      });
-      
-      console.log('Removing enrollments:', sectionEnrollments);
-      console.log('Selected subject id:', selectedSubject.id);
-      
-      if (sectionEnrollments.length === 0) {
-        toast.error('No enrollments found for this subject');
+      if (!subjectSectionRecord) {
+        toast.error('Subject-section assignment not found');
         return;
       }
       
-      let removed = 0;
-      for (const enrollment of sectionEnrollments) {
-        console.log('Deleting enrollment:', enrollment.id);
-        const response = await fetch(`http://localhost:5000/api/subject-evaluation/student-enrollments/${enrollment.id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const data = await response.json();
-        console.log('Delete response:', data);
-        if (data.success) removed++;
+      // Delete the subject-section record (single record instead of individual enrollments)
+      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subject-sections/${subjectSectionRecord.id}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success('Subject removed from section successfully');
+      } else {
+        toast.error(data.message || 'Failed to remove subject from section');
+        return;
       }
       
-      toast.success(`${removed} students removed from subject`);
       fetchData();
       setRemoveSectionDialogOpen(false);
       setRemovingSection(null);
@@ -558,84 +571,45 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
     }
   };
 
-  // Enroll all students from a program to a subject
+  // Assign subject to a program/section (creates a single record in subject_sections)
   const handleEnrollProgram = async () => {
     if (!selectedSubjectId || !selectedProgramId) {
       toast.error('Please select a subject and a program');
       return;
     }
 
-    // Get students from this program (matching program_id AND year_level)
-    const selectedProgram = programs.find(p => p.id === parseInt(selectedProgramId));
-    const programStudents = students.filter(s => {
-      // First try to match both program_id and year_level
-      if (selectedProgram && s.program_id && s.year_level) {
-        return s.program_id === parseInt(selectedProgramId) && s.year_level === selectedProgram.year_level;
-      }
-      // Fallback: just match program_id if year_level data is missing
-      return s.program_id === parseInt(selectedProgramId);
-    });
-
-    // Debug: Show count before enrolling
-    console.log('Selected Program:', selectedProgram);
-    console.log('Program Students Count:', programStudents.length);
-    console.log('Sample student program_ids:', students.slice(0, 5).map(s => ({ program_id: s.program_id, year_level: s.year_level, name: s.full_name })));
-    
-    if (programStudents.length === 0) {
-      const selectedProgram = programs.find(p => p.id === parseInt(selectedProgramId));
-      if (selectedProgram) {
-        toast.error(`No students found in ${selectedProgram.program_code} Year ${selectedProgram.year_level}. Check if students have the correct program and year level assigned.`);
-      } else {
-        toast.error('No students found in this program. Make sure students have program assigned.');
-      }
-      return;
-    }
-
     try {
       const token = sessionStorage.getItem('authToken');
-      let enrolled = 0;
-      const errors: string[] = [];
 
-      for (const student of programStudents) {
-        // Use subject_instructor_id (new format) if available, otherwise use course_section_id (legacy)
-        const enrollmentData = subjectInstructorId ? {
-          student_id: student.user_id,
-          subject_instructor_id: parseInt(subjectInstructorId)
-        } : {
-          student_id: student.user_id,
-          course_section_id: parseInt(selectedSubjectId)
-        };
-        
-        const response = await fetch('http://localhost:5000/api/subject-evaluation/student-enrollments', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify(enrollmentData)
-        });
+      // NEW APPROACH: Create a single subject-section record instead of enrolling each student
+      const subjectSectionData = {
+        subject_id: parseInt(selectedSubjectId),
+        program_id: parseInt(selectedProgramId),
+        instructor_id: subjectInstructorId ? parseInt(subjectInstructorId) : undefined
+      };
 
-        const data = await response.json();
-        if (data.success) {
-          enrolled++;
-        } else if (data.message && !data.message.includes('already enrolled')) {
-          errors.push(data.message);
-        }
-      }
+      const response = await fetch('http://localhost:5000/api/subject-evaluation/subject-sections', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(subjectSectionData)
+      });
 
-      if (enrolled > 0) {
-        toast.success(`${enrolled} students enrolled successfully`);
-      }
-      if (errors.length > 0) {
-        toast.error(errors[0]);
+      const data = await response.json();
+      if (data.success) {
+        toast.success('Subject assigned to section successfully');
+      } else {
+        toast.error(data.message || 'Failed to assign subject to section');
       }
       
       setAssignDialogOpen(false);
       setSelectedProgramId("");
       fetchData();
     } catch (error) {
-      console.error('Error enrolling students:', error);
-      toast.error('Failed to enroll students');
+      console.error('Error assigning subject to section:', error);
+      toast.error('Failed to assign subject to section');
     }
   };
 
@@ -652,48 +626,44 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
     return instructorCourses.filter(ic => ic.instructor_id === instructorId);
   };
 
-  // Get unique sections enrolled in a subject
+  // Get unique sections enrolled in a subject (using new subject_sections table)
   const getSubjectEnrolledSections = (subjectId: number) => {
-    // Support both subject_id (new) and course_section_id (legacy)
-    const enrolledStudents = subjectStudents.filter(ss => ss.subject_id === subjectId || ss.course_section_id === subjectId);
-    const studentIds = enrolledStudents.map(ss => ss.student_id);
-    const studentsInSubject = students.filter(s => studentIds.includes(s.user_id));
+    // Use the new subjectSections data
+    const subjectSectionRecords = subjectSections.filter(ss => ss.subject_id === subjectId);
     
     const sectionsMap = new Map();
     
-    // First, add sections for students with program_id
-    studentsInSubject.forEach(student => {
-      if (student.program_id) {
-        const program = programs.find(p => p.id === student.program_id);
-        if (program) {
-          const sectionKey = `${program.program_code}-${program.year_level}-${program.section}`;
-          if (!sectionsMap.has(sectionKey)) {
-            sectionsMap.set(sectionKey, { ...program });
-          }
-        }
+    subjectSectionRecords.forEach(ss => {
+      const sectionKey = `${ss.program_code}-${ss.year_level}-${ss.section}`;
+      if (!sectionsMap.has(sectionKey)) {
+        sectionsMap.set(sectionKey, {
+          id: ss.program_id,
+          program_code: ss.program_code,
+          program_name: ss.program_name,
+          year_level: ss.year_level,
+          section: ss.section,
+          department: ss.department,
+          subjectSectionId: ss.id  // Store the subject_section id for removal
+        });
       }
     });
-    
-    // If no sections found, create a placeholder for students without program
-    if (sectionsMap.size === 0 && studentsInSubject.length > 0) {
-      sectionsMap.set('unassigned', {
-        id: 0,
-        program_code: 'UNK',
-        program_name: 'Unassigned Program',
-        year_level: 1,
-        section: '-',
-        department: 'N/A'
-      });
-    }
     
     return Array.from(sectionsMap.values());
   };
 
-  // Get total number of enrolled students in a subject
+  // Get total number of enrolled students in a subject (derived from subject_sections)
   const getEnrolledStudentCount = (subjectId: number): number => {
-    // Support both subject_id (new) and course_section_id (legacy)
-    const enrolledStudents = subjectStudents.filter(ss => ss.subject_id === subjectId || ss.course_section_id === subjectId);
-    return enrolledStudents.length;
+    // Get all subject-sections for this subject
+    const subjectSectionRecords = subjectSections.filter(ss => ss.subject_id === subjectId);
+    
+    // Count students in all programs associated with this subject
+    let totalCount = 0;
+    subjectSectionRecords.forEach(ss => {
+      const programStudents = students.filter(s => s.program_id === ss.program_id);
+      totalCount += programStudents.length;
+    });
+    
+    return totalCount;
   };
 
   const getInstructorName = (instructorId: number | undefined) => {
@@ -702,48 +672,31 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
     return instructor ? instructor.full_name : "Unknown";
   };
 
-  // Get students enrolled in a specific program/section for a subject
+  // Get students enrolled in a specific program/section for a subject (derived from subject_sections)
   const getStudentsByEnrolledSection = (subjectId: number, program: Program | null): SubjectStudent[] => {
     if (!program) return [];
     
-    // Support both subject_id (new) and course_section_id (legacy)
-    const subjectEnrollments = subjectStudents.filter(ss => ss.subject_id === subjectId || ss.course_section_id === subjectId);
+    // Find the subject-section record for this program
+    const subjectSectionRecord = subjectSections.find(
+      ss => ss.subject_id === subjectId && ss.program_id === program.id
+    );
     
-    // Filter by matching program_code, year_level, and section
-    const programKey = `${program.program_code}-${program.year_level}-${program.section}`;
+    if (!subjectSectionRecord) return [];
     
-    const filteredEnrollments = subjectEnrollments.filter(enrollment => {
-      const student = students.find(s => s.user_id === enrollment.student_id);
-      if (!student || !student.program_id) return false;
-      
-      const studentProgram = programs.find(p => p.id === student.program_id);
-      if (!studentProgram) return false;
-      
-      const studentProgramKey = `${studentProgram.program_code}-${studentProgram.year_level}-${studentProgram.section}`;
-      return studentProgramKey === programKey;
-    });
+    // Get all students in this program
+    const programStudents = students.filter(s => s.program_id === program.id);
     
-    const studentIds = filteredEnrollments.map(ss => ss.student_id);
-    
-    // Build maps for quick lookup of student details from ALL students
-    const studentDetailsMap = new Map<number, { profilePicture?: string; studentID?: string }>();
-    students.forEach(s => {
-      // Match by user_id directly
-      studentDetailsMap.set(s.user_id, {
-        profilePicture: s.profilePicture || undefined,
-        studentID: s.studentID || undefined
-      });
-    });
-    
-    // Return filtered enrollments with student details merged
-    return filteredEnrollments.map(enrollment => {
-      const details = studentDetailsMap.get(enrollment.student_id) || {};
-      return {
-        ...enrollment,
-        profilePicture: details.profilePicture,
-        studentID: details.studentID || enrollment.studentID
-      };
-    });
+    // Return as SubjectStudent array
+    return programStudents.map(student => ({
+      id: student.user_id,
+      student_id: student.user_id,
+      subject_id: subjectId,
+      student_name: student.full_name,
+      student_email: student.email,
+      studentID: student.studentID,
+      program_id: student.program_id,
+      profilePicture: student.profilePicture
+    }));
   };
 
   // Get unique programs
@@ -940,12 +893,12 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
           </Card>
         )}
 
-        {/* Enroll by Program Dialog */}
+        {/* Assign Subject to Program Dialog */}
         <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
           <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle>Enroll Students by Program</DialogTitle>
-              <DialogDescription>Select a program to enroll all its students to this subject</DialogDescription>
+              <DialogTitle>Assign Subject to Section</DialogTitle>
+              <DialogDescription>Select a program/section to assign this subject. Students will be derived from the program.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
@@ -977,7 +930,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
                         return s.program_id === parseInt(selectedProgramId);
                       }).length;
                       return count;
-                    })()} students will be enrolled
+                    })()} students in this program will have access to this subject
                   </p>
                 </div>
               )}

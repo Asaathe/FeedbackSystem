@@ -100,11 +100,13 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
     ? [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'forms', label: 'Feedback Forms', icon: FileText },
+        { id: 'feedback-template', label: 'Feedback Template', icon: Book },
         { id: 'users', label: 'User Management', icon: Users },
         { id: 'courses', label: 'Section Management', icon: BookOpen },
         { id: 'student-promotion', label: 'Student Promotion', icon: GraduationCap },
         { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
         { id: 'subjects', label: 'Subject Management', icon: Book },
+        { id: 'subject-offerings', label: 'Subject Offerings', icon: BookOpen },
         { id: 'settings', label: 'System Settings', icon: Settings },
 
       ]
@@ -139,7 +141,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
     : role === 'student'
     ? [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
+        { id: 'my-subjects', label: 'My Subjects', icon: GraduationCap },
         { id: 'submit-feedback', label: 'Submit Feedback', icon: FileText },
         { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
       ]

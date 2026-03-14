@@ -18,6 +18,9 @@ router.get("/instructor-courses", verifyToken, subjectEvaluationController.getIn
 // Get all instructors with their subjects (for subject-evaluation.tsx)
 router.get("/instructors", verifyToken, subjectEvaluationController.getAllInstructors);
 
+// Get all subjects with their instructors (for subject-evaluation.tsx - By Subjects view)
+router.get("/subjects", verifyToken, subjectEvaluationController.getAllSubjects);
+
 // Get all subject-instructors (for EvaluationTargetSelector.tsx)
 router.get("/subject-instructors", verifyToken, subjectEvaluationController.getSubjectInstructors);
 
@@ -44,6 +47,21 @@ router.post("/student-enrollments", verifyToken, requireAdmin, subjectEvaluation
 
 // Unenroll student from subject
 router.delete("/student-enrollments/:id", verifyToken, requireAdmin, subjectEvaluationController.unenrollStudent);
+
+// Subject Sections - New approach for class program assignments
+router.get("/subject-sections", verifyToken, subjectEvaluationController.getSubjectSections);
+
+// Assign subject to a program/section
+router.post("/subject-sections", verifyToken, requireAdmin, subjectEvaluationController.assignSubjectToSection);
+
+// Update subject-section assignment
+router.put("/subject-sections/:id", verifyToken, requireAdmin, subjectEvaluationController.updateSubjectSection);
+
+// Remove subject from program/section
+router.delete("/subject-sections/:id", verifyToken, requireAdmin, subjectEvaluationController.removeSubjectFromSection);
+
+// Get students in a subject-section (derived from program students)
+router.get("/subject-sections/:id/students", verifyToken, subjectEvaluationController.getSubjectSectionStudents);
 
 // Get feedback for a subject (returns empty stats - feedback system not fully implemented)
 router.get("/subjects/:subjectId/feedback", verifyToken, (req, res) => {

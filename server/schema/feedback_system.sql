@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Mar 04, 2026 at 11:39 AM
+-- Generation Time: Mar 13, 2026 at 02:49 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -37,6 +37,13 @@ CREATE TABLE `alumni` (
   `image` varchar(500) DEFAULT NULL,
   `company` varchar(255) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `alumni`
+--
+
+INSERT INTO `alumni` (`id`, `user_id`, `grad_year`, `degree`, `jobtitle`, `contact`, `image`, `company`) VALUES
+(12, 104, '2026', NULL, NULL, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -73,7 +80,8 @@ INSERT INTO `course_management` (`id`, `department`, `program_name`, `program_co
 (9, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 1, 'C', 'active', '2026-02-10 19:58:48', '2026-02-15 12:16:28'),
 (10, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 1, 'D', 'active', '2026-02-19 04:36:41', '2026-02-19 04:36:41'),
 (11, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'E', 'active', '2026-02-25 05:58:29', '2026-02-25 05:58:29'),
-(12, 'College', 'Bachelor of Science in Information Technology', 'IT', 1, 'A', 'active', '2026-03-01 21:31:40', '2026-03-01 21:31:40');
+(12, 'College', 'Bachelor of Science in Information Technology', 'BSIT', 2, 'A', 'active', '2026-03-01 21:31:40', '2026-03-10 03:55:23'),
+(15, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 3, 'B', 'active', '2026-03-10 21:38:52', '2026-03-10 21:38:52');
 
 -- --------------------------------------------------------
 
@@ -121,6 +129,24 @@ CREATE TABLE `evaluation_forms` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `evaluation_periods`
+--
+
+CREATE TABLE `evaluation_periods` (
+  `id` int(11) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `start_date` date NOT NULL,
+  `end_date` date NOT NULL,
+  `is_active` tinyint(1) DEFAULT 0,
+  `academic_year` varchar(20) DEFAULT NULL,
+  `semester` varchar(20) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `evaluation_subjects`
 --
 
@@ -141,7 +167,41 @@ CREATE TABLE `evaluation_subjects` (
 --
 
 INSERT INTO `evaluation_subjects` (`id`, `subject_code`, `subject_name`, `department`, `units`, `description`, `status`, `created_at`, `updated_at`) VALUES
-(1, 'GJGG', 'dadada', 'adada', 3, 'dada', 'active', '2026-03-04 08:52:11', '2026-03-04 08:52:11');
+(36, 'IT402', 'Capstone 2', 'College', 3, NULL, 'active', '2026-03-12 03:35:27', '2026-03-12 03:35:27'),
+(37, 'IT232', 'NEtworking', 'College', 3, NULL, 'active', '2026-03-13 01:46:30', '2026-03-13 01:46:30');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `feedback_template_categories`
+--
+
+CREATE TABLE `feedback_template_categories` (
+  `id` int(11) NOT NULL,
+  `category_name` varchar(255) NOT NULL,
+  `description` text DEFAULT NULL,
+  `display_order` int(11) DEFAULT 0,
+  `feedback_type` enum('subject','instructor','general') DEFAULT 'general',
+  `is_active` tinyint(1) DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `feedback_template_categories`
+--
+
+INSERT INTO `feedback_template_categories` (`id`, `category_name`, `description`, `display_order`, `feedback_type`, `is_active`, `created_at`, `updated_at`) VALUES
+(1, 'Clarity of Teaching', 'How clear was the instructor\'s teaching style', 1, 'subject', 1, '2026-03-11 13:13:00', '2026-03-11 18:23:18'),
+(2, 'Course Organization', 'How well was the course organized', 2, 'subject', 1, '2026-03-11 13:13:00', '2026-03-11 18:23:18'),
+(3, 'Learning Materials', 'Quality of learning materials provided', 3, 'subject', 1, '2026-03-11 13:13:00', '2026-03-11 18:23:18'),
+(4, 'Student Engagement', 'Level of student engagement in class', 4, 'subject', 1, '2026-03-11 13:13:00', '2026-03-11 18:23:18'),
+(5, 'Overall Experience', 'Overall learning experience', 5, 'subject', 1, '2026-03-11 13:13:00', '2026-03-11 18:23:18'),
+(6, 'Teaching Style', 'How would you rate the instructor\'s teaching approach and methods', 6, 'instructor', 1, '2026-03-11 18:23:18', '2026-03-11 18:23:18'),
+(7, 'Communication', 'How effective was the instructor\'s communication with students', 7, 'instructor', 1, '2026-03-11 18:23:18', '2026-03-11 18:23:18'),
+(8, 'Knowledge & Expertise', 'How would you rate the instructor\'s knowledge of the subject', 8, 'instructor', 1, '2026-03-11 18:23:18', '2026-03-11 18:23:18'),
+(9, 'Accessibility', 'How accessible was the instructor for questions and consultations', 9, 'instructor', 1, '2026-03-11 18:23:18', '2026-03-11 18:23:18'),
+(10, 'Fairness', 'How fair was the instructor in grading and evaluation', 10, 'instructor', 1, '2026-03-11 18:23:18', '2026-03-11 18:23:18');
 
 -- --------------------------------------------------------
 
@@ -171,13 +231,6 @@ CREATE TABLE `forms` (
   `deadline` datetime DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `forms`
---
-
-INSERT INTO `forms` (`id`, `title`, `description`, `ai_description`, `type`, `category`, `subject_id`, `target_audience`, `status`, `image_url`, `is_template`, `start_date`, `end_date`, `created_by`, `created_at`, `updated_at`, `submission_count`, `is_anonymous`, `deadline`) VALUES
-(548, 'ddddddddd', 'dddddddddddddd', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', '/uploads/forms/955f1d6c-9205-431d-9ca8-2d19150ca14f.webp', 0, '2026-03-04', '2026-03-05', 1, '2026-03-04 08:45:11', '2026-03-04 08:45:11', 0, 0, NULL);
-
 -- --------------------------------------------------------
 
 --
@@ -191,13 +244,6 @@ CREATE TABLE `form_assignments` (
   `assigned_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `status` enum('pending','completed','expired') NOT NULL DEFAULT 'pending'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `form_assignments`
---
-
-INSERT INTO `form_assignments` (`id`, `form_id`, `user_id`, `assigned_at`, `status`) VALUES
-(3297, 548, 93, '2026-03-04 08:45:11', 'completed');
 
 -- --------------------------------------------------------
 
@@ -240,13 +286,6 @@ CREATE TABLE `form_deployments` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `form_deployments`
---
-
-INSERT INTO `form_deployments` (`id`, `form_id`, `deployed_by`, `start_date`, `start_time`, `end_date`, `end_time`, `target_filters`, `deployment_status`, `created_at`) VALUES
-(188, 548, 1, '2026-03-04', '16:45:00', '2026-03-05', '16:46:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-03-04 08:45:11');
-
 -- --------------------------------------------------------
 
 --
@@ -260,13 +299,6 @@ CREATE TABLE `form_responses` (
   `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `response_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`response_data`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `form_responses`
---
-
-INSERT INTO `form_responses` (`id`, `form_id`, `user_id`, `submitted_at`, `response_data`) VALUES
-(131, 548, 93, '2026-03-04 08:45:46', '{\"1841\":5,\"1842\":\"Neutral\",\"1843\":6,\"1844\":[\"School Website/Portal\"],\"1845\":5,\"1846\":7,\"1847\":\"Good\",\"1848\":\"Spectator Events\",\"1849\":5,\"1850\":\"Likely\",\"1851\":\"eqeq\",\"1852\":\"eqeq\"}');
 
 -- --------------------------------------------------------
 
@@ -313,6 +345,13 @@ CREATE TABLE `graduation_records` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+--
+-- Dumping data for table `graduation_records`
+--
+
+INSERT INTO `graduation_records` (`id`, `student_id`, `user_id`, `program_id`, `graduation_year`, `degree`, `honors`, `ceremony_date`, `created_at`) VALUES
+(2, 71, 104, 1, '2026', NULL, NULL, NULL, '2026-03-05 09:39:06');
+
 -- --------------------------------------------------------
 
 --
@@ -334,8 +373,10 @@ CREATE TABLE `instructors` (
 --
 
 INSERT INTO `instructors` (`id`, `user_id`, `instructor_id`, `department`, `school_role`, `subject_taught`, `image`) VALUES
-(24, 150, '90872', 'Both', 'IT Instructor', '', '/uploads/profiles/instructors/86dadc5e-bece-4204-b775-5bab0df6c401.jpg'),
-(26, 152, '79164', 'College', 'College dean/DBM Head', '', '/uploads/profiles/92bdc992-17f3-484a-bf69-97ee491e0362.png');
+(24, 150, '90872', 'Both', 'IT Instructor', '', '/uploads/profiles/instructors/efb68f33-be89-4738-8446-5bf0991a9845.jpg'),
+(26, 152, '79164', 'College', 'College dean/DBM Head', '', '/uploads/profiles/92bdc992-17f3-484a-bf69-97ee491e0362.png'),
+(28, 154, '123453', 'College', 'Science Teacher', '', '/uploads/profiles/instructors/1a44692c-ad36-4fac-8cf6-22ba364a379a.jpg'),
+(30, 159, '12348', 'College', 'IT Instructor', '', '/uploads/profiles/40a66faa-f9b2-46e8-945d-81181c1d5a10.jpg');
 
 -- --------------------------------------------------------
 
@@ -356,8 +397,12 @@ CREATE TABLE `instructor_courses` (
 --
 
 INSERT INTO `instructor_courses` (`id`, `instructor_id`, `subject_id`, `created_at`, `updated_at`) VALUES
-(4, 150, 27, '2026-03-04 07:39:14', '2026-03-04 07:39:14'),
-(5, 150, 28, '2026-03-04 09:54:12', '2026-03-04 09:54:12');
+(12, 150, 30, '2026-03-05 20:21:26', '2026-03-05 20:21:26'),
+(13, 152, 33, '2026-03-05 23:52:23', '2026-03-05 23:52:23'),
+(14, 152, 34, '2026-03-06 01:31:57', '2026-03-06 01:31:57'),
+(15, 152, 36, '2026-03-11 20:29:45', '2026-03-11 20:29:45'),
+(16, 150, 36, '2026-03-12 05:22:44', '2026-03-12 05:22:44'),
+(17, 154, 38, '2026-03-12 22:06:55', '2026-03-12 22:06:55');
 
 -- --------------------------------------------------------
 
@@ -367,6 +412,24 @@ INSERT INTO `instructor_courses` (`id`, `instructor_id`, `subject_id`, `created_
 --
 CREATE TABLE `instructor_evaluation_summary` (
 );
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `instructor_feedback`
+--
+
+CREATE TABLE `instructor_feedback` (
+  `id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `instructor_id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `academic_year` varchar(20) DEFAULT NULL,
+  `semester` varchar(20) DEFAULT NULL,
+  `responses` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`responses`)),
+  `overall_rating` decimal(3,2) DEFAULT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -412,24 +475,6 @@ CREATE TABLE `questions` (
   `order_index` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `questions`
---
-
-INSERT INTO `questions` (`id`, `form_id`, `section_id`, `question_text`, `question_type`, `description`, `required`, `min_value`, `max_value`, `order_index`) VALUES
-(1841, 548, 46, 'Clarity of pre-event information (schedule, rules, etc.)', 'rating', 'Rate how clear and comprehensive the information provided before Sportfest was.', 1, NULL, NULL, 0),
-(1842, 548, 46, 'How would you describe the registration process for Sportfest?', 'multiple-choice', NULL, 1, NULL, NULL, 0),
-(1843, 548, 46, 'Rate the helpfulness and availability of event staff/volunteers during preparation.', 'linear-scale', '1 = Not helpful at all, 10 = Extremely helpful and available.', 1, NULL, NULL, 0),
-(1844, 548, 46, 'Which channels did you use to receive Sportfest information?', 'checkbox', NULL, 1, NULL, NULL, 0),
-(1845, 548, 47, 'Satisfaction with the variety and types of sports/activities offered.', 'rating', 'Rate your satisfaction with the range of activities available.', 1, NULL, NULL, 0),
-(1846, 548, 47, 'Overall enjoyment of the Sportfest day.', 'linear-scale', '1 = Not enjoyable at all, 10 = Extremely enjoyable.', 1, NULL, NULL, 0),
-(1847, 548, 47, 'How suitable was the event venue for the activities?', 'multiple-choice', NULL, 1, NULL, NULL, 0),
-(1848, 548, 47, 'Which activity did you enjoy the most?', 'dropdown', NULL, 1, NULL, NULL, 0),
-(1849, 548, 48, 'To what extent did Sportfest foster a sense of community and school spirit?', 'rating', 'Rate how well Sportfest helped build school unity.', 1, NULL, NULL, 0),
-(1850, 548, 48, 'How likely are you to participate in future Sportfest events?', 'multiple-choice', NULL, 1, NULL, NULL, 0),
-(1851, 548, 48, 'Please describe any specific areas where you think Sportfest could be improved next year.', 'textarea', NULL, 0, NULL, NULL, 0),
-(1852, 548, 48, 'Do you have any other general comments or suggestions?', 'text', NULL, 0, NULL, NULL, 0);
-
 -- --------------------------------------------------------
 
 --
@@ -462,37 +507,6 @@ CREATE TABLE `question_options` (
   `order_index` int(11) NOT NULL DEFAULT 0
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
---
--- Dumping data for table `question_options`
---
-
-INSERT INTO `question_options` (`id`, `question_id`, `option_text`, `order_index`) VALUES
-(2251, 1842, 'Very Easy', 0),
-(2252, 1842, 'Easy', 0),
-(2253, 1842, 'Neutral', 0),
-(2254, 1842, 'Difficult', 0),
-(2255, 1842, 'Very Difficult', 0),
-(2256, 1844, 'Email', 0),
-(2257, 1844, 'School Website/Portal', 0),
-(2258, 1844, 'Social Media', 0),
-(2259, 1844, 'School Announcements', 0),
-(2260, 1844, 'Word of Mouth', 0),
-(2261, 1847, 'Excellent', 0),
-(2262, 1847, 'Good', 0),
-(2263, 1847, 'Adequate', 0),
-(2264, 1847, 'Needs Improvement', 0),
-(2265, 1847, 'Poor', 0),
-(2266, 1848, 'Team Relays', 0),
-(2267, 1848, 'Individual Challenges', 0),
-(2268, 1848, 'Creative Games', 0),
-(2269, 1848, 'Spectator Events', 0),
-(2270, 1848, 'Other', 0),
-(2271, 1850, 'Very Likely', 0),
-(2272, 1850, 'Likely', 0),
-(2273, 1850, 'Neutral', 0),
-(2274, 1850, 'Unlikely', 0),
-(2275, 1850, 'Very Unlikely', 0);
-
 -- --------------------------------------------------------
 
 --
@@ -508,15 +522,6 @@ CREATE TABLE `sections` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `sections`
---
-
-INSERT INTO `sections` (`id`, `form_id`, `title`, `description`, `order_index`, `created_at`, `updated_at`) VALUES
-(46, 548, 'Prep & Org', 'Feedback on the planning and organization leading up to Sportfest.', 0, '2026-03-04 08:45:11', '2026-03-04 08:45:11'),
-(47, 548, 'Event Experience', 'Feedback on your experience during the Sportfest day.', 0, '2026-03-04 08:45:11', '2026-03-04 08:45:11'),
-(48, 548, 'Impact & Future', 'Feedback on the overall impact and suggestions for future Sportfest events.', 0, '2026-03-04 08:45:11', '2026-03-04 08:45:11');
 
 -- --------------------------------------------------------
 
@@ -558,10 +563,10 @@ CREATE TABLE `students` (
 INSERT INTO `students` (`id`, `user_id`, `studentID`, `contact_number`, `subjects`, `image`, `program_id`, `academic_year`, `promotion_date`, `previous_program_id`) VALUES
 (60, 93, '12345', NULL, NULL, '/uploads/profiles/407b5128-f035-4795-8a8d-530a1fea24cf.jpg', 1, NULL, NULL, NULL),
 (61, 94, '12342', NULL, NULL, '/uploads/profiles/fae00fb0-b475-4e5c-8c38-c845f6464883.jpg', 1, NULL, NULL, NULL),
-(62, 95, '79719', NULL, NULL, '/uploads/profiles/bc2fe40d-d028-481a-a45e-40d482b69e52.jpg', 1, NULL, NULL, NULL),
+(62, 95, '79719', NULL, NULL, '/uploads/profiles/bc2fe40d-d028-481a-a45e-40d482b69e52.jpg', 1, '2004', NULL, NULL),
 (63, 96, '31758', NULL, NULL, '/uploads/profiles/83a09ed2-aaab-4a5c-ad74-128c90373e34.jpg', 1, NULL, NULL, NULL),
 (64, 97, '27891', NULL, NULL, NULL, 1, NULL, NULL, NULL),
-(65, 98, '61863', NULL, NULL, NULL, 1, '2004', '2026-03-02', 2),
+(65, 98, '61863', NULL, NULL, NULL, 2, '2004', NULL, NULL),
 (66, 99, '19497', NULL, NULL, NULL, 1, NULL, NULL, NULL),
 (67, 100, '64916', NULL, NULL, NULL, 1, NULL, NULL, NULL),
 (68, 101, '11135', NULL, NULL, '/uploads/profiles/5e7a9a4e-f370-4be0-9efe-4116eb414a61.jpg', 1, NULL, NULL, NULL),
@@ -577,7 +582,7 @@ INSERT INTO `students` (`id`, `user_id`, `studentID`, `contact_number`, `subject
 (78, 111, '42515', NULL, NULL, NULL, 1, NULL, NULL, NULL),
 (80, 113, '46196', NULL, NULL, NULL, 1, NULL, NULL, NULL),
 (81, 114, '70711', NULL, NULL, '/uploads/profiles/692bef3f-e206-42a5-a4e1-12e0f632371f.jpg', 1, NULL, NULL, NULL),
-(82, 115, '01741', NULL, NULL, '/uploads/profiles/0ed1e27a-ccd3-417f-ab2e-04f62578fcb1.jpg', 1, NULL, NULL, NULL),
+(82, 115, '01741', NULL, NULL, '/uploads/profiles/0ed1e27a-ccd3-417f-ab2e-04f62578fcb1.jpg', 1, '2004', NULL, NULL),
 (83, 116, '70174', NULL, NULL, '/uploads/profiles/0c99c5a5-5f85-4129-8e6b-0f2c237f3389.jpg', 1, NULL, NULL, NULL),
 (84, 117, '71641', NULL, NULL, '/uploads/profiles/373971de-7748-4836-892a-ba43551b2be6.jpg', 1, NULL, NULL, NULL),
 (85, 118, '10410', NULL, NULL, '/uploads/profiles/ddc4f662-686b-46eb-8283-83c6ffebc59e.jpg', 1, NULL, NULL, NULL),
@@ -586,7 +591,9 @@ INSERT INTO `students` (`id`, `user_id`, `studentID`, `contact_number`, `subject
 (88, 121, '71074', NULL, NULL, '/uploads/profiles/cb710fcf-f190-4ae7-8b05-f0b85b7de56b.jpg', 1, NULL, NULL, NULL),
 (89, 122, '31415', NULL, NULL, '/uploads/profiles/2bbe767a-3312-42f9-be3f-11b614e2edfd.jpg', 1, NULL, NULL, NULL),
 (90, 123, '14107', NULL, NULL, '/uploads/profiles/22656c9e-b8ef-4b71-a881-9fd3a61807fd.jpg', 1, NULL, NULL, NULL),
-(91, 124, '41704', NULL, NULL, '/uploads/profiles/5bae7b9f-b66b-4a19-9f6c-0f09a3e8de36.jpg', 1, NULL, NULL, NULL);
+(91, 124, '41704', NULL, NULL, '/uploads/profiles/5bae7b9f-b66b-4a19-9f6c-0f09a3e8de36.jpg', 1, NULL, NULL, NULL),
+(106, 155, NULL, '', '', '/uploads/profiles/employers/cf04a9a7-d909-4fee-aac8-26bad2eb5470.jpg', 1, NULL, NULL, NULL),
+(107, 158, NULL, '', '', '/uploads/profiles/d9c00d43-599f-418d-8967-c61c484fa435.jpg', 15, '2003', NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -602,43 +609,6 @@ CREATE TABLE `student_enrollments` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
---
--- Dumping data for table `student_enrollments`
---
-
-INSERT INTO `student_enrollments` (`id`, `student_id`, `subject_id`, `status`, `created_at`, `updated_at`) VALUES
-(218, 124, 28, 'enrolled', '2026-03-04 09:45:54', '2026-03-04 09:45:54'),
-(219, 123, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(220, 122, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(221, 121, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(222, 120, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(223, 119, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(224, 118, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(225, 117, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(226, 116, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(227, 115, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(228, 114, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(229, 113, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(230, 111, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(231, 110, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(232, 109, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(233, 108, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(234, 107, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(235, 106, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(236, 105, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(237, 104, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(238, 103, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(239, 102, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(240, 101, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(241, 100, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(242, 99, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(243, 98, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(244, 97, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(245, 96, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(246, 95, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(247, 94, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55'),
-(248, 93, 28, 'enrolled', '2026-03-04 09:45:55', '2026-03-04 09:45:55');
 
 -- --------------------------------------------------------
 
@@ -658,15 +628,6 @@ CREATE TABLE `student_promotion_history` (
   `notes` text DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `student_promotion_history`
---
-
-INSERT INTO `student_promotion_history` (`id`, `student_id`, `user_id`, `previous_program_id`, `new_program_id`, `promotion_type`, `promotion_date`, `promoted_by`, `notes`, `created_at`) VALUES
-(1, 65, 98, 1, 1, 'academic_year', '2026-02-22', 1, 'Promoted to year 4', '2026-02-22 15:21:37'),
-(2, 65, 98, 1, 2, 'academic_year', '2026-02-22', 1, 'Promoted to year 4', '2026-02-22 15:22:01'),
-(3, 65, 98, 2, 1, 'academic_year', '2026-03-02', 1, '', '2026-03-01 22:50:37');
 
 -- --------------------------------------------------------
 
@@ -690,8 +651,24 @@ CREATE TABLE `subjects` (
 --
 
 INSERT INTO `subjects` (`id`, `subject_code`, `subject_name`, `department`, `units`, `status`, `created_at`, `updated_at`) VALUES
-(27, 'GJGG', 'ddd', 'Senior High', 3.0, 'inactive', '2026-03-04 07:39:06', '2026-03-04 08:35:38'),
-(28, 'IT122', 'Networking', 'College', 3.0, 'active', '2026-03-04 09:03:18', '2026-03-04 09:03:18');
+(42, 'IT233', 'System', 'College', 3.3, 'inactive', '2026-03-13 00:08:31', '2026-03-13 00:08:33');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subject_evaluation_forms`
+--
+
+CREATE TABLE `subject_evaluation_forms` (
+  `id` int(11) NOT NULL,
+  `subject_id` int(11) DEFAULT NULL,
+  `subject_instructor_id` int(11) DEFAULT NULL,
+  `form_id` int(11) NOT NULL,
+  `evaluation_type` varchar(20) DEFAULT 'both',
+  `start_date` date DEFAULT NULL,
+  `end_date` date DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -715,6 +692,24 @@ CREATE TABLE `subject_evaluation_responses` (
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `subject_feedback`
+--
+
+CREATE TABLE `subject_feedback` (
+  `id` int(11) NOT NULL,
+  `student_id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `instructor_id` int(11) NOT NULL,
+  `academic_year` varchar(20) DEFAULT NULL,
+  `semester` varchar(20) DEFAULT NULL,
+  `responses` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`responses`)),
+  `overall_rating` decimal(3,2) DEFAULT NULL,
+  `submitted_at` timestamp NOT NULL DEFAULT current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `subject_instructors`
 --
 
@@ -727,13 +722,51 @@ CREATE TABLE `subject_instructors` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `subject_instructors`
+-- Table structure for table `subject_offerings`
 --
 
-INSERT INTO `subject_instructors` (`id`, `subject_id`, `instructor_id`, `academic_year`, `semester`, `created_at`) VALUES
-(1, 1, 150, '2025-2026', '1st', '2026-03-04 08:52:40'),
-(2, 1, 152, '2025-2026', '1st', '2026-03-04 08:53:19');
+CREATE TABLE `subject_offerings` (
+  `id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `program_id` int(11) NOT NULL,
+  `year_level` int(11) NOT NULL,
+  `section` varchar(10) NOT NULL,
+  `academic_year` varchar(20) NOT NULL,
+  `semester` varchar(20) NOT NULL,
+  `instructor_id` int(11) DEFAULT NULL,
+  `status` varchar(20) DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+--
+-- Dumping data for table `subject_offerings`
+--
+
+INSERT INTO `subject_offerings` (`id`, `subject_id`, `program_id`, `year_level`, `section`, `academic_year`, `semester`, `instructor_id`, `status`, `created_at`, `updated_at`) VALUES
+(1, 36, 7, 4, 'B', '2025-2026', '1st', 159, 'active', '2026-03-13 01:35:27', '2026-03-13 01:35:27'),
+(2, 37, 7, 4, 'B', '2025-2026', '1st', 154, 'active', '2026-03-13 01:46:43', '2026-03-13 01:46:43');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `subject_sections`
+--
+
+CREATE TABLE `subject_sections` (
+  `id` int(11) NOT NULL,
+  `subject_id` int(11) NOT NULL,
+  `program_id` int(11) NOT NULL,
+  `instructor_id` int(11) DEFAULT NULL,
+  `academic_year` year(4) DEFAULT NULL,
+  `semester` varchar(20) DEFAULT NULL,
+  `status` enum('active','inactive') DEFAULT 'active',
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
 
@@ -802,7 +835,7 @@ CREATE TABLE `users` (
 
 INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role`, `registration_date`, `status`) VALUES
 (1, 'admin@acts.edu', '$2a$12$NpMcEwRYq0ypHjzmP0ORGOrfxrZgenZlaAxTK51jNVUEPDGsKH7RS', 'System Administrator', 'admin', '2026-01-04 15:38:48', 'active'),
-(93, 'agnasan@gmail.com', '$2a$12$Q.Ru70Wxk9IoECrVVDVI7Ok4ZR5BTKIGPVZknMqaZb8FhXAH2SZtu', 'Angelo T. Agnasan', 'student', '2026-01-29 18:52:48', 'active'),
+(93, 'agnasan@gmail.com', '$2a$10$8K1p/a0dL3.HX5K5v5P/O9jqEqPqvBQJ5Y5Y5Y5Y5Y5Y5Y5Y5Y5Y5', 'Angelo T. Agnasan', 'student', '2026-01-29 18:52:48', 'active'),
 (94, 'badinas@gmail.com', '$2a$12$eq30nZhuQpiS5rpBknZzHuZCtPBQb0LEuQaXDtKF0JfK6AifNxwd6', 'Jonard A. Badinas', 'student', '2026-01-29 18:54:40', 'active'),
 (95, 'brosas@gmail.com', '$2a$12$06YIDhf731u3fzfSMhr3SugU0gsFbCeYQJy7CsIejLLSAah22hum.', 'Angelito O.  Brosas Jr.', 'student', '2026-01-29 18:55:45', 'active'),
 (96, 'dausin@gmail.com', '$2a$12$borBfdDtGHjiDzKDHC8o9OIm6Gr93tt6uSvQNw2sqpiiRoz6uNOpS', 'Emmanuel M. Dausin', 'student', '2026-01-29 18:56:26', 'active'),
@@ -813,7 +846,7 @@ INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role`, `regis
 (101, 'melicio@gmail.com', '$2a$12$4fTghkQzSAMqro8QjnkrxupcGf7PVvOhe9zLOdLe6.ocoSiozLokO', 'Gerald O. Melicio', 'student', '2026-01-29 19:00:40', 'active'),
 (102, 'merle@gmail.com', '$2a$12$YQdMiy4I1i0Aa1faoPIjXeyzObXGiLXuuJJjzBw6GDz3ZyVUbO3My', 'Ghiezel A. Merle', 'student', '2026-01-29 19:01:18', 'active'),
 (103, 'molina@gmail.com', '$2a$12$fL7b6olYcZzJ1hmixGB1d.yJSkIBjmBmZs81mFTJsUY5qA51fKopq', 'Carl Justin Molina', 'student', '2026-01-29 19:01:55', 'active'),
-(104, 'montes@gmail.com', '$2a$12$4hEMYETIzESPxrR5A5IFTeG5yHgRPEDzs/dpjDUGn2MIELF3NG6Ma', 'Ryan Timothy I. Montes', 'student', '2026-01-29 19:02:38', 'active'),
+(104, 'montes@gmail.com', '$2a$12$4hEMYETIzESPxrR5A5IFTeG5yHgRPEDzs/dpjDUGn2MIELF3NG6Ma', 'Ryan Timothy I. Montes', 'alumni', '2026-01-29 19:02:38', 'active'),
 (105, 'montesena@gmail.com', '$2a$12$dhjn1/x7mZ/eJvl7Sf9xbeTb81exYT6e3txFJtEOxYJZ5rjPbKHEW', 'Babe Louise M. Monteseña', 'student', '2026-01-29 19:03:17', 'active'),
 (106, 'palconan@gmail.com', '$2a$12$WPJSSO8Ol5VoGGV1jsZLDuTfos4q/gTLkYRhk8/67MaCTpazoOpl2', 'Ronald Joseph C. Palconan', 'student', '2026-01-29 19:03:56', 'active'),
 (107, 'ramirez@gmail.com', '$2a$12$Z4bR1H32G/u2MTTk7CUBreiMsby0BuDkykja85M1m0I/Li1vJZl8m', 'Mark Aldrin C. Ramirez', 'student', '2026-01-29 19:04:37', 'active'),
@@ -832,9 +865,13 @@ INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role`, `regis
 (121, 'victoriano@gmail.com', '$2a$12$FQIy84UHt8rOSHlJz965qeCndPqimgmYQi/w2ZCh5S55Ah9f8ugUO', 'Per Jansen M. Victoriano', 'student', '2026-01-29 19:13:39', 'active'),
 (122, 'villanuevag@gmail.com', '$2a$12$xFPN16FEH/kN4Py.ydBQXuj27KbiqEDS5FeX.pwoWd/NZoXqFh./K', 'Ashe Mae M. Villanueva', 'student', '2026-01-29 19:14:20', 'active'),
 (123, 'villanuevab@gmail.com', '$2a$12$yfEnmOr00vzj6YOVfKP.Se3HwuhXLevLdUqtgjzHowqeUHWmPn0lq', 'Christian C. Villanueva', 'student', '2026-01-29 19:15:13', 'active'),
-(124, 'jc@gmail.com', '$2a$12$pD.ObTJ6/XwOrsBST4XPmeR8i0ejMJC7lA/gkcO2bL3t9Vh3YMery', 'Jc D. Yasoña', 'student', '2026-01-29 19:15:51', 'active'),
-(150, 'demo@gmail.com', '$2a$12$Uv48DBqvfZiPm09HddN2u.ap.d5YQwEpbZXKJH1cLX0CP5mlj307i', 'Mr. Ariel M. Tobias, Jr.', 'instructor', '2026-03-01 15:36:46', 'active'),
-(152, 'dean@gmail.com', '$2a$12$mwhoar738MtySfC2qH29GenOSLLV65/99idWBdDAgorJGNOiU9y/2', 'Dr. Adoree A. Ramos', 'instructor', '2026-03-01 15:43:13', 'active');
+(124, 'jc@gmail.com', '$2a$12$NpMcEwRYq0ypHvU5wCjY/OaPYq8qK5v5P/O9jqEqPqvBQJ5Y5Y5Y5Y5', 'Jc D. Yasoña', 'student', '2026-01-29 19:15:51', 'active'),
+(150, 'demo@gmail.com', '$2a$12$Uv48DBqvfZiPm09HddN2u.ap.d5YQwEpbZXKJH1cLX0CP5mlj307i', 'Mr. Ariel M. Tobias Jr.', 'instructor', '2026-03-01 15:36:46', 'active'),
+(152, 'dean@gmail.com', '$2a$12$mwhoar738MtySfC2qH29GenOSLLV65/99idWBdDAgorJGNOiU9y/2', 'Dr. Adoree A. Ramos', 'instructor', '2026-03-01 15:43:13', 'active'),
+(154, 'teachers@gmail.com', '$2a$12$5FJyI3LhYQxHQFqPeELKMOtJXMybea/iRKRjmro0rX9wzYLyRwHty', 'Demo Teacher', 'instructor', '2026-03-04 11:51:17', 'active'),
+(155, 'geraldmelicio.it@gmail.com', '$2a$12$0zL48jMpj/riv0iQaAQxveImuEKzNnH1ZE/3ZltTwNkgZ95iAEdF2', 'Gerald O. Manacio', 'student', '2026-03-09 20:23:01', 'active'),
+(158, 'too@gmail.com', '$2a$12$ISB81L5utLNjZwZHQIGoSOJS1XyrUc0PZRHQ7D.3WfbFnqLJsNwOO', 'Gerald Too', 'student', '2026-03-10 21:39:40', 'active'),
+(159, 'instructor@gmail.com', '$2a$12$N9ltf.6bNlugRSL7rb9EceI9hBi0CVgC2wv94EwKKmj39CUCsf2tC', 'Demo Instructor', 'instructor', '2026-03-12 23:47:00', 'active');
 
 -- --------------------------------------------------------
 
@@ -921,11 +958,25 @@ ALTER TABLE `evaluation_forms`
   ADD KEY `instructor_id` (`instructor_id`);
 
 --
+-- Indexes for table `evaluation_periods`
+--
+ALTER TABLE `evaluation_periods`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_period` (`academic_year`,`semester`);
+
+--
 -- Indexes for table `evaluation_subjects`
 --
 ALTER TABLE `evaluation_subjects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_subject_code` (`subject_code`);
+
+--
+-- Indexes for table `feedback_template_categories`
+--
+ALTER TABLE `feedback_template_categories`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_category_name` (`category_name`);
 
 --
 -- Indexes for table `forms`
@@ -1008,6 +1059,16 @@ ALTER TABLE `instructor_courses`
   ADD KEY `idx_subject_id` (`subject_id`);
 
 --
+-- Indexes for table `instructor_feedback`
+--
+ALTER TABLE `instructor_feedback`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_student_instructor_feedback` (`student_id`,`instructor_id`,`academic_year`,`semester`),
+  ADD KEY `subject_id` (`subject_id`),
+  ADD KEY `idx_instructor_feedback_student` (`student_id`,`submitted_at`),
+  ADD KEY `idx_instructor_feedback_instructor` (`instructor_id`);
+
+--
 -- Indexes for table `questions`
 --
 ALTER TABLE `questions`
@@ -1083,6 +1144,14 @@ ALTER TABLE `subjects`
   ADD KEY `idx_status` (`status`);
 
 --
+-- Indexes for table `subject_evaluation_forms`
+--
+ALTER TABLE `subject_evaluation_forms`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_assignment` (`subject_id`,`subject_instructor_id`,`form_id`),
+  ADD KEY `idx_sef_subject` (`subject_id`);
+
+--
 -- Indexes for table `subject_evaluation_responses`
 --
 ALTER TABLE `subject_evaluation_responses`
@@ -1094,12 +1163,40 @@ ALTER TABLE `subject_evaluation_responses`
   ADD KEY `idx_evaluation_response_subject` (`subject_id`,`instructor_id`);
 
 --
+-- Indexes for table `subject_feedback`
+--
+ALTER TABLE `subject_feedback`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_student_subject_feedback` (`student_id`,`subject_id`,`academic_year`,`semester`),
+  ADD KEY `instructor_id` (`instructor_id`),
+  ADD KEY `idx_subject_feedback_student` (`student_id`,`submitted_at`),
+  ADD KEY `idx_subject_feedback_subject` (`subject_id`,`instructor_id`);
+
+--
 -- Indexes for table `subject_instructors`
 --
 ALTER TABLE `subject_instructors`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_subject_instructor` (`subject_id`,`instructor_id`,`academic_year`,`semester`),
   ADD KEY `idx_subject_instructor` (`instructor_id`,`academic_year`);
+
+--
+-- Indexes for table `subject_offerings`
+--
+ALTER TABLE `subject_offerings`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_offering` (`subject_id`,`program_id`,`year_level`,`section`,`academic_year`,`semester`),
+  ADD KEY `idx_subject` (`subject_id`),
+  ADD KEY `idx_program` (`program_id`),
+  ADD KEY `idx_instructor` (`instructor_id`),
+  ADD KEY `idx_academic` (`academic_year`,`semester`);
+
+--
+-- Indexes for table `subject_sections`
+--
+ALTER TABLE `subject_sections`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `unique_subject_program` (`subject_id`,`program_id`,`academic_year`,`semester`);
 
 --
 -- Indexes for table `subject_students`
@@ -1133,13 +1230,13 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `alumni`
 --
 ALTER TABLE `alumni`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
 
 --
 -- AUTO_INCREMENT for table `course_management`
 --
 ALTER TABLE `course_management`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `employers`
@@ -1154,22 +1251,34 @@ ALTER TABLE `evaluation_forms`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
 
 --
+-- AUTO_INCREMENT for table `evaluation_periods`
+--
+ALTER TABLE `evaluation_periods`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
 -- AUTO_INCREMENT for table `evaluation_subjects`
 --
 ALTER TABLE `evaluation_subjects`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=38;
+
+--
+-- AUTO_INCREMENT for table `feedback_template_categories`
+--
+ALTER TABLE `feedback_template_categories`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
 
 --
 -- AUTO_INCREMENT for table `forms`
 --
 ALTER TABLE `forms`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=550;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=578;
 
 --
 -- AUTO_INCREMENT for table `form_assignments`
 --
 ALTER TABLE `form_assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3332;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3422;
 
 --
 -- AUTO_INCREMENT for table `form_categories`
@@ -1181,49 +1290,55 @@ ALTER TABLE `form_categories`
 -- AUTO_INCREMENT for table `form_deployments`
 --
 ALTER TABLE `form_deployments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=190;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=193;
 
 --
 -- AUTO_INCREMENT for table `form_responses`
 --
 ALTER TABLE `form_responses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=132;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=135;
 
 --
 -- AUTO_INCREMENT for table `graduation_records`
 --
 ALTER TABLE `graduation_records`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
 
 --
 -- AUTO_INCREMENT for table `instructors`
 --
 ALTER TABLE `instructors`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=31;
 
 --
 -- AUTO_INCREMENT for table `instructor_courses`
 --
 ALTER TABLE `instructor_courses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=6;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
+
+--
+-- AUTO_INCREMENT for table `instructor_feedback`
+--
+ALTER TABLE `instructor_feedback`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
 -- AUTO_INCREMENT for table `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1855;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1922;
 
 --
 -- AUTO_INCREMENT for table `question_options`
 --
 ALTER TABLE `question_options`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2276;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2321;
 
 --
 -- AUTO_INCREMENT for table `sections`
 --
 ALTER TABLE `sections`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=49;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `shared_responses`
@@ -1235,37 +1350,61 @@ ALTER TABLE `shared_responses`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=106;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=108;
 
 --
 -- AUTO_INCREMENT for table `student_enrollments`
 --
 ALTER TABLE `student_enrollments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=249;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=493;
 
 --
 -- AUTO_INCREMENT for table `student_promotion_history`
 --
 ALTER TABLE `student_promotion_history`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=8;
 
 --
 -- AUTO_INCREMENT for table `subjects`
 --
 ALTER TABLE `subjects`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+
+--
+-- AUTO_INCREMENT for table `subject_evaluation_forms`
+--
+ALTER TABLE `subject_evaluation_forms`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
 
 --
 -- AUTO_INCREMENT for table `subject_evaluation_responses`
 --
 ALTER TABLE `subject_evaluation_responses`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=11;
+
+--
+-- AUTO_INCREMENT for table `subject_feedback`
+--
+ALTER TABLE `subject_feedback`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
 
 --
 -- AUTO_INCREMENT for table `subject_instructors`
 --
 ALTER TABLE `subject_instructors`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `subject_offerings`
+--
+ALTER TABLE `subject_offerings`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3;
+
+--
+-- AUTO_INCREMENT for table `subject_sections`
+--
+ALTER TABLE `subject_sections`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=4;
 
 --
 -- AUTO_INCREMENT for table `subject_students`
@@ -1283,7 +1422,7 @@ ALTER TABLE `system_settings`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=154;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=160;
 
 --
 -- Constraints for dumped tables
@@ -1352,6 +1491,14 @@ ALTER TABLE `instructors`
   ADD CONSTRAINT `instructors_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
+-- Constraints for table `instructor_feedback`
+--
+ALTER TABLE `instructor_feedback`
+  ADD CONSTRAINT `instructor_feedback_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `instructor_feedback_ibfk_2` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `instructor_feedback_ibfk_3` FOREIGN KEY (`subject_id`) REFERENCES `evaluation_subjects` (`id`) ON DELETE CASCADE;
+
+--
 -- Constraints for table `questions`
 --
 ALTER TABLE `questions`
@@ -1402,6 +1549,14 @@ ALTER TABLE `subject_evaluation_responses`
   ADD CONSTRAINT `subject_evaluation_responses_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `evaluation_subjects` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `subject_evaluation_responses_ibfk_3` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `subject_evaluation_responses_ibfk_4` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
+
+--
+-- Constraints for table `subject_feedback`
+--
+ALTER TABLE `subject_feedback`
+  ADD CONSTRAINT `subject_feedback_ibfk_1` FOREIGN KEY (`student_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `subject_feedback_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `evaluation_subjects` (`id`) ON DELETE CASCADE,
+  ADD CONSTRAINT `subject_feedback_ibfk_3` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `subject_instructors`

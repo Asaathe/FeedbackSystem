@@ -272,7 +272,7 @@ const getDepartments = async (req, res) => {
 const getCourseSections = async (req, res) => {
   try {
     const { department } = req.query;
-    let query = "SELECT DISTINCT course_section, department, program_code, year_level, section FROM course_management WHERE status = 'active'";
+    let query = "SELECT DISTINCT id, course_section, department, program_code, year_level, section FROM course_management WHERE status = 'active'";
     const params = [];
     
     if (department) {
@@ -295,6 +295,7 @@ const getCourseSections = async (req, res) => {
         success: true,
         courses: results.map(row => ({
           value: row.course_section,
+          program_id: row.id,
           department: row.department,
           program_code: row.program_code,
           year_level: row.year_level,
