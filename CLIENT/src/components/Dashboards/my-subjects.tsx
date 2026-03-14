@@ -30,6 +30,15 @@ interface Subject {
   has_instructor_feedback: boolean;
 }
 
+interface EvaluationPeriod {
+  id: number;
+  name: string;
+  start_date: string;
+  end_date: string;
+  is_active: boolean;
+  is_within_period?: boolean;
+}
+
 interface Category {
   id: number;
   category_name: string;
@@ -45,6 +54,7 @@ interface MySubjectsProps {
 
 export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
+  const [period, setPeriod] = useState<EvaluationPeriod | null>(null);
   const [loading, setLoading] = useState(true);
   const [academicYear, setAcademicYear] = useState("");
   const [semester, setSemester] = useState("");
@@ -61,11 +71,23 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
     fetchMySubjects();
   }, []);
 
+  // Check if evaluation is active
+  const isEvaluationActive = period && period.is_active && period.is_within_period;
+
   const fetchMySubjects = async () => {
     setLoading(true);
     try {
       const token = sessionStorage.getItem('authToken');
       
+      // Check if evaluation is active
+      const periodResponse = await fetch('http://localhost:5000/api/feedback-templates/periods/active', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const periodData = await periodResponse.json();
+      if (periodData.success && periodData.period) {
+        setPeriod(periodData.period);
+      }
+
       const response = await fetch('http://localhost:5000/api/feedback-templates/student/subjects', {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -386,6 +408,21 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
         </p>
       </div>
 
+      {/* Evaluation Status */}
+      {!isEvaluationActive && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="flex items-center gap-4 py-4">
+            <Calendar className="w-6 h-6 text-yellow-600 flex-shrink-0" />
+            <div>
+              <p className="font-medium text-yellow-800">Evaluation Period Inactive</p>
+              <p className="text-sm text-yellow-700">
+                Feedback collection is not currently active. Please wait for the admin to create and activate an evaluation period.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Subject Cards */}
       {subjects.length === 0 ? (
         <Card className="border-green-100">
@@ -464,6 +501,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
                     className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium transition-colors" 
                     size="sm"
                     onClick={() => handleRateSubject(subject)}
+                    disabled={!isEvaluationActive}
                   >
                     <Star className="w-4 h-4 mr-1" />
                     Rate Subject
@@ -472,6 +510,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
                     className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors" 
                     size="sm"
                     onClick={() => handleRateInstructor(subject)}
+                    disabled={!isEvaluationActive}
                   >
                     <User className="w-4 h-4 mr-1" />
                     Rate Instructor

@@ -518,6 +518,7 @@ export function FeedbackTemplate() {
                 <TableBody>
                   {periods.map((period) => {
                     const isWithinRange = isPeriodWithinRange(period);
+                    const isPeriodActive = Boolean(period.is_active);
                     return (
                       <TableRow key={period.id}>
                         <TableCell className="font-medium">{period.name}</TableCell>
@@ -527,15 +528,15 @@ export function FeedbackTemplate() {
                         <TableCell>{formatDate(period.end_date)}</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {period.is_active ? (
+                            {isPeriodActive ? (
                               <Badge className="bg-green-500">Active</Badge>
                             ) : (
                               <Badge variant="secondary">Inactive</Badge>
                             )}
-                            {period.is_active && isWithinRange && (
+                            {isPeriodActive && isWithinRange && (
                               <Badge className="bg-blue-500">In Progress</Badge>
                             )}
-                            {period.is_active && !isWithinRange && (
+                            {isPeriodActive && !isWithinRange && (
                               <Badge className="bg-orange-500">Scheduled</Badge>
                             )}
                           </div>
@@ -592,27 +593,49 @@ export function FeedbackTemplate() {
               <CardTitle>Current Status</CardTitle>
             </CardHeader>
             <CardContent>
-              {periods.find(p => p.is_active) ? (
-                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
-                  <CheckCircle className="w-6 h-6 text-green-500" />
-                  <div>
-                    <p className="font-medium text-green-700">Feedback Collection is Active</p>
-                    <p className="text-sm text-green-600">
-                      Students can now submit subject and instructor feedback
-                    </p>
+              {(() => {
+                const activePeriod = periods.find(p => p.is_active);
+                if (!activePeriod) {
+                  return (
+                    <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
+                      <XCircle className="w-6 h-6 text-gray-400" />
+                      <div>
+                        <p className="font-medium text-gray-700">Feedback Collection is Inactive</p>
+                        <p className="text-sm text-gray-500">
+                          Create and activate an evaluation period to enable feedback collection
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                const isWithinRange = isPeriodWithinRange(activePeriod);
+                if (isWithinRange) {
+                  return (
+                    <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
+                      <CheckCircle className="w-6 h-6 text-green-500" />
+                      <div>
+                        <p className="font-medium text-green-700">Feedback Collection is Active</p>
+                        <p className="text-sm text-green-600">
+                          Students can now submit subject and instructor feedback
+                        </p>
+                      </div>
+                    </div>
+                  );
+                }
+                
+                return (
+                  <div className="flex items-center gap-3 p-4 bg-orange-50 rounded-lg">
+                    <Calendar className="w-6 h-6 text-orange-500" />
+                    <div>
+                      <p className="font-medium text-orange-700">Feedback Collection is Scheduled</p>
+                      <p className="text-sm text-orange-600">
+                        Evaluation period is set but not yet active. Opens on {formatDate(activePeriod.start_date)}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-lg">
-                  <XCircle className="w-6 h-6 text-gray-400" />
-                  <div>
-                    <p className="font-medium text-gray-700">Feedback Collection is Inactive</p>
-                    <p className="text-sm text-gray-500">
-                      Create and activate an evaluation period to enable feedback collection
-                    </p>
-                  </div>
-                </div>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
         </div>
@@ -669,7 +692,7 @@ export function FeedbackTemplate() {
 
       {/* Period Dialog */}
       <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg sm:max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingPeriod ? 'Edit Evaluation Period' : 'Create Evaluation Period'}</DialogTitle>
             <DialogDescription>

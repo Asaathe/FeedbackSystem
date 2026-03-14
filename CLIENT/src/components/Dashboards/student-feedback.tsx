@@ -248,7 +248,7 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
   }
 
   // Check if evaluation is active
-  const isEvaluationActive = period && period.is_within_period;
+  const isEvaluationActive = period && period.is_active && period.is_within_period;
 
   // Feedback form view
   if (selectedSubject && feedbackType) {
