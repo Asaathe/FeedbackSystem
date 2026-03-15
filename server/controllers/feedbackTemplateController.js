@@ -501,10 +501,10 @@ const getStudentEnrolledSubjects = async (req, res) => {
               SELECT 
                 so.id as offering_id,
                 so.subject_id,
-                COALESCE(es.subject_code, s.subject_code) as subject_code,
-                COALESCE(es.subject_name, s.subject_name) as subject_name,
-                COALESCE(es.department, s.department) as department,
-                COALESCE(es.units, s.units) as units,
+                es.subject_code,
+                es.subject_name,
+                es.department,
+                es.units,
                 so.program_id,
                 so.year_level,
                 so.section,
@@ -516,7 +516,6 @@ const getStudentEnrolledSubjects = async (req, res) => {
                 'subject_offering' as source
               FROM subject_offerings so
               LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-              LEFT JOIN subjects s ON so.subject_id = s.id
               LEFT JOIN users u ON so.instructor_id = u.id
               LEFT JOIN instructors inst ON u.id = inst.user_id
               WHERE so.program_id = ?
@@ -527,10 +526,10 @@ const getStudentEnrolledSubjects = async (req, res) => {
               SELECT 
                 so.id as offering_id,
                 so.subject_id,
-                COALESCE(es.subject_code, s.subject_code) as subject_code,
-                COALESCE(es.subject_name, s.subject_name) as subject_name,
-                COALESCE(es.department, s.department) as department,
-                COALESCE(es.units, s.units) as units,
+                es.subject_code,
+                es.subject_name,
+                es.department,
+                es.units,
                 so.program_id,
                 so.year_level,
                 so.section,
@@ -542,53 +541,13 @@ const getStudentEnrolledSubjects = async (req, res) => {
                 'subject_offering' as source
               FROM subject_offerings so
               LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-              LEFT JOIN subjects s ON so.subject_id = s.id
               LEFT JOIN users u ON so.instructor_id = u.id
               LEFT JOIN instructors inst ON u.id = inst.user_id
             `;
           }
           
-          // Query from subject_students table
-          const subjectStudentsQuery = `
-            SELECT 
-              s.id as subject_id,
-              s.subject_code,
-              s.subject_name,
-              s.department,
-              s.units,
-              ss.id as enrollment_id,
-              ss.student_id,
-              ss.status as enrollment_status,
-              COALESCE(si.instructor_id, ic.instructor_id) as instructor_user_id,
-              COALESCE(u.full_name, u2.full_name) as instructor_name,
-              COALESCE(inst.image, inst2.image) as instructor_image,
-              'subject_student' as source
-            FROM subject_students ss
-            INNER JOIN subjects s ON ss.subject_id = s.id
-            LEFT JOIN subject_instructors si ON s.id = si.subject_id
-            LEFT JOIN users u ON si.instructor_id = u.id
-            LEFT JOIN instructors inst ON si.instructor_id = inst.user_id
-            LEFT JOIN instructor_courses ic ON s.id = ic.subject_id
-            LEFT JOIN users u2 ON ic.instructor_id = u2.id
-            LEFT JOIN instructors inst2 ON ic.instructor_id = inst2.user_id
-            WHERE ss.student_id = ? 
-              AND ss.status = 'enrolled'
-              AND s.status = 'active'
-            ORDER BY s.subject_code
-          `;
-          
-          // Execute both queries and combine results
+          // Execute the query - only use subject_offerings now
           const executeQueries = async () => {
-            const subjectStudentResults = await new Promise((resolve, reject) => {
-              db.query(subjectStudentsQuery, [userId], (err, results) => {
-                if (err) reject(err);
-                else {
-                  console.log("Subject students query results:", results ? results.length : 0);
-                  resolve(results);
-                }
-              });
-            });
-            
             let subjectOfferingResults = [];
             console.log("Subject offerings query:", subjectOfferingsQuery);
             
@@ -606,21 +565,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
               });
             }
             
-            // Combine results from both sources, removing duplicates
-            const allResults = [
-              ...(subjectOfferingResults || []),
-              ...(subjectStudentResults || [])
-            ];
-            
-            const uniqueSubjects = new Map();
-            allResults.forEach(row => {
-              const key = row.subject_id + '-' + (row.program_id || '');
-              if (!uniqueSubjects.has(key)) {
-                uniqueSubjects.set(key, row);
-              }
-            });
-            
-            const results = Array.from(uniqueSubjects.values());
+            const results = subjectOfferingResults || [];
             console.log("Student enrolled subjects:", results.length);
             
             const subjects = results.map(row => ({
@@ -686,20 +631,8 @@ const submitSubjectFeedback = async (req, res) => {
       }
       
       if (validateResults.length === 0) {
-        // Subject doesn't exist in evaluation_subjects, try to sync it from subjects table
-        const syncSubjectQuery = `
-          INSERT INTO evaluation_subjects (id, subject_code, subject_name, department, units, status, created_at, updated_at)
-          SELECT id, subject_code, subject_name, department, units, 'active', NOW(), NOW()
-          FROM subjects WHERE id = ?
-        `;
-        db.query(syncSubjectQuery, [subject_id], (syncErr, syncResult) => {
-          if (syncErr) {
-            console.error("Error syncing subject:", syncErr);
-            return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
-          }
-          // Subject synced, proceed with feedback submission
-          getAcademicYearAndSemester();
-        });
+        // Subject doesn't exist - cannot sync from legacy table anymore
+        return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
       } else {
         getAcademicYearAndSemester();
       }
@@ -787,20 +720,8 @@ const submitInstructorFeedback = async (req, res) => {
         }
         
         if (validateResults.length === 0) {
-          // Subject doesn't exist in evaluation_subjects, try to sync it from subjects table
-          const syncSubjectQuery = `
-            INSERT INTO evaluation_subjects (id, subject_code, subject_name, department, units, status, created_at, updated_at)
-            SELECT id, subject_code, subject_name, department, units, 'active', NOW(), NOW()
-            FROM subjects WHERE id = ?
-          `;
-          db.query(syncSubjectQuery, [subject_id], (syncErr, syncResult) => {
-            if (syncErr) {
-              console.error("Error syncing subject:", syncErr);
-              return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
-            }
-            // Subject synced, proceed with feedback submission
-            proceedWithInsert();
-          });
+          // Subject doesn't exist - cannot sync from legacy table anymore
+          return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
         } else {
           proceedWithInsert();
         }
@@ -894,19 +815,8 @@ const submitFeedback = async (req, res) => {
         }
 
         if (validateResults.length === 0) {
-          // Subject doesn't exist in evaluation_subjects, try to sync it from subjects table
-          const syncSubjectQuery = `
-            INSERT INTO evaluation_subjects (id, subject_code, subject_name, department, units, status, created_at, updated_at)
-            SELECT id, subject_code, subject_name, department, units, 'active', NOW(), NOW()
-            FROM subjects WHERE id = ?
-          `;
-          db.query(syncSubjectQuery, [subject_id], (syncErr, syncResult) => {
-            if (syncErr) {
-              console.error("Error syncing subject:", syncErr);
-              return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
-            }
-            insertSubjectFeedback();
-          });
+          // Subject doesn't exist - cannot sync from legacy table anymore
+          return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
         } else {
           insertSubjectFeedback();
         }
@@ -1130,7 +1040,7 @@ const getFeedbackAnalytics = async (req, res) => {
         AVG(sf.overall_rating) as average_rating,
         sf.responses
       FROM subject_feedback sf
-      LEFT JOIN subjects s ON sf.subject_id = s.id
+      LEFT JOIN evaluation_subjects s ON sf.subject_id = s.id
       LEFT JOIN users u ON sf.instructor_id = u.id
       WHERE 1=1 ${subjectFilter} ${instructorFilter}
       GROUP BY sf.subject_id, sf.instructor_id

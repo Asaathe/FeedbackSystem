@@ -260,7 +260,7 @@ export function SignupPage({
     <>
     <FormContainer
       title="Student Registration"
-      subtitle="Join the FeedB-ACTS Community"
+      subtitle="Join the FeedbACTS Community"
       buttonText="Register"
       onSubmit={handleSubmit}
       footerText="Already have an account?"

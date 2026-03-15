@@ -11,7 +11,7 @@ const authRoutes = require("./routes/auth");
 const formRoutes = require("./routes/forms");
 const formCategoriesRoutes = require("./routes/formCategories");
 const userRoutes = require("./routes/users");
-const courseRoutes = require("./routes/courses");
+// const courseRoutes = require("./routes/courses"); // DEPRECATED - using subject_offerings instead
 const courseManagementRoutes = require("./routes/courseManagement");
 const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
@@ -107,7 +107,7 @@ app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/forms", formLimiter, formRoutes);
 app.use("/api/form-categories", formCategoriesRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/courses", courseRoutes);
+// app.use("/api/courses", courseRoutes); // DEPRECATED
 app.use("/api/programs", courseManagementRoutes);
 app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
@@ -122,9 +122,9 @@ app.use("/api/subject-evaluation", subjectEvaluationRoutes);
 const subjectRoutes = require("./routes/subjects");
 app.use("/api/subjects", subjectRoutes);
 
-// Evaluation Form routes
-const evaluationFormRoutes = require("./routes/evaluationForms");
-app.use("/api/evaluation-forms", evaluationFormRoutes);
+// Evaluation Form routes - DISABLED (using subject_offerings instead)
+// const evaluationFormRoutes = require("./routes/evaluationForms");
+// app.use("/api/evaluation-forms", evaluationFormRoutes);
 
 // Feedback Template routes
 const feedbackTemplateRoutes = require("./routes/feedbackTemplates");
