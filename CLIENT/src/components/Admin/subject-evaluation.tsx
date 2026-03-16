@@ -147,8 +147,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
       const data = await response.json();
       if (data.success) {
         const mappedSubjects = (data.subjects || []).map((subject: any) => ({
-          id: subject.section_id || subject.id || 0,
-          section_id: subject.section_id || subject.id || 0,
+          id: subject.section_id || subject.offering_id || subject.id || 0,
+          section_id: subject.section_id || subject.offering_id || subject.id || 0,
           subject_name: subject.subject_name || '',
           subject_code: subject.subject_code || '',
           section: subject.section || '-',
@@ -156,7 +156,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           department: subject.department || '',
           student_count: subject.student_count || 0,
           feedback_count: subject.feedback_count || 0,
-          avg_rating: subject.avg_rating || 0
+          avg_rating: ((subject.subject_avg || 0) + (subject.instructor_avg || 0)) / 2 || 0
         }));
         setSubjects(mappedSubjects);
       } else {
@@ -188,8 +188,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
       const data = await response.json();
       if (data.success) {
         const mappedSubjects = (data.subjects || []).map((subject: any) => ({
-          id: subject.section_id || subject.id || 0,
-          section_id: subject.section_id || subject.id || 0,
+          id: subject.section_id || subject.offering_id || subject.id || 0,
+          section_id: subject.section_id || subject.offering_id || subject.id || 0,
           subject_name: subject.subject_name || '',
           subject_code: subject.subject_code || '',
           section: subject.section || '-',
@@ -197,7 +197,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           department: subject.department || '',
           student_count: subject.student_count || 0,
           feedback_count: subject.feedback_count || 0,
-          avg_rating: subject.avg_rating || 0,
+          avg_rating: ((subject.subject_avg || 0) + (subject.instructor_avg || 0)) / 2 || 0,
           instructor_name: subject.instructor_name || 'Unknown Instructor'
         }));
         setAllSubjects(mappedSubjects);
@@ -214,6 +214,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
   const fetchSubjectFeedback = async (subjectId: number) => {
     setLoadingFeedback(true);
+    console.log('Fetching feedback for subjectId:', subjectId);
     try {
       const [analyticsResult, sectionResult] = await Promise.all([
         getSubjectEvaluationResults(subjectId.toString()),
@@ -343,7 +344,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </div>
         </div>
 
-        {/* Results by Section Table - Q1, Q2, Q3 Format */}
+        {/* Results by Section Table - Responses vs Enrolled */}
         <Card className="border-green-100">
           <CardHeader>
             <CardTitle className="text-lg">Evaluation Results by Section</CardTitle>
@@ -358,38 +359,26 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Respondents</TableHead>
-                    <TableHead className="text-center">Respondents / Enrolled</TableHead>
-                    <TableHead className="text-center">Q1</TableHead>
-                    <TableHead className="text-center">Q2</TableHead>
-                    <TableHead className="text-center">Q3</TableHead>
-                    <TableHead className="text-center">Average</TableHead>
+                    <TableHead>Section</TableHead>
+                    <TableHead className="text-center">Responses / Enrolled</TableHead>
+                    <TableHead className="text-center">Average Rating</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {sectionResults.map((result, index) => (
-                    <TableRow key={index}>
+                    <TableRow key={`${result.respondents}-${index}`}>
                       <TableCell className="font-medium">{result.respondents}</TableCell>
                       <TableCell className="text-center">
-                        {result.total_enrolled}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {result.question_averages ? 
-                          (Object.keys(result.question_averages).length > 0 ? 
-                            Object.values(result.question_averages)[0] : '-') : 
-                          (result.q1 || '-')}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {result.question_averages ? 
-                          (Object.keys(result.question_averages).length > 1 ? 
-                            Object.values(result.question_averages)[1] : '-') : 
-                          (result.q2 || '-')}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {result.question_averages ? 
-                          (Object.keys(result.question_averages).length > 2 ? 
-                            Object.values(result.question_averages)[2] : '-') : 
-                          (result.q3 || '-')}
+                        <div className="flex items-center justify-center gap-2">
+                          <span className="font-medium">{result.total_responses}</span>
+                          <span className="text-gray-400">/</span>
+                          <span>{result.total_enrolled}</span>
+                          {Number(result.total_enrolled) > 0 && (
+                            <span className="text-xs text-gray-500 ml-1">
+                              ({((result.total_responses / Number(result.total_enrolled)) * 100).toFixed(0)}%)
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         {result.average !== 'N/A' ? (

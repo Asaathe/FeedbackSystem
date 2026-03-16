@@ -524,6 +524,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
             subjectOfferingsQuery = `
               SELECT 
                 so.id as offering_id,
+                so.id as section_id,
                 so.subject_id,
                 es.subject_code,
                 es.subject_name,
@@ -549,6 +550,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
             subjectOfferingsQuery = `
               SELECT 
                 so.id as offering_id,
+                so.id as section_id,
                 so.subject_id,
                 es.subject_code,
                 es.subject_name,
@@ -594,6 +596,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
             
             const subjects = results.map(row => ({
               subject_id: row.subject_id,
+              section_id: row.section_id,
               subject_code: row.subject_code,
               subject_name: row.subject_name,
               department: row.department,
@@ -636,7 +639,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
 const submitSubjectFeedback = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { subject_id, instructor_id, responses, overall_rating, academic_year, semester } = req.body;
+    const { subject_id, section_id, instructor_id, responses, overall_rating, academic_year, semester } = req.body;
 
     if (!subject_id || !responses) {
       return res.status(400).json({ success: false, message: "Subject ID and responses are required" });
@@ -697,10 +700,10 @@ const submitSubjectFeedback = async (req, res) => {
       }
       
       const insertQuery = `
-        INSERT INTO subject_feedback (student_id, subject_id, instructor_id, responses, overall_rating, academic_year, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, academic_year, semester)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      db.query(insertQuery, [userId, subject_id, instructor_id || null, JSON.stringify(responses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+      db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(responses), finalOverallRating, acadYear, sem], (insertErr, result) => {
         if (insertErr) {
           // Check for duplicate
           if (insertErr.code === 'ER_DUP_ENTRY') {
@@ -724,7 +727,7 @@ const submitSubjectFeedback = async (req, res) => {
 const submitInstructorFeedback = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { subject_id, instructor_id, responses, overall_rating, academic_year, semester } = req.body;
+    const { subject_id, section_id, instructor_id, responses, overall_rating, academic_year, semester } = req.body;
 
     if (!instructor_id || !responses) {
       return res.status(400).json({ success: false, message: "Instructor ID and responses are required" });
@@ -789,10 +792,10 @@ const submitInstructorFeedback = async (req, res) => {
       }
       
       const insertQuery = `
-        INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, responses, overall_rating, academic_year, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, academic_year, semester)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      db.query(insertQuery, [userId, instructor_id, subject_id || null, JSON.stringify(responses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+      db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(responses), finalOverallRating, acadYear, sem], (insertErr, result) => {
         if (insertErr) {
           // Check for duplicate
           if (insertErr.code === 'ER_DUP_ENTRY') {
@@ -816,7 +819,7 @@ const submitInstructorFeedback = async (req, res) => {
 const submitFeedback = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { subject_id, instructor_id, feedback_type, ratings, responses, overall_rating, academic_year, semester } = req.body;
+    const { subject_id, section_id, instructor_id, feedback_type, ratings, responses, overall_rating, academic_year, semester } = req.body;
 
     if (!feedback_type) {
       return res.status(400).json({ success: false, message: "Feedback type is required" });
@@ -884,10 +887,10 @@ const submitFeedback = async (req, res) => {
         }
         
         const insertQuery = `
-          INSERT INTO subject_feedback (student_id, subject_id, instructor_id, responses, overall_rating, academic_year, semester)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, academic_year, semester)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(insertQuery, [userId, subject_id, instructor_id || null, JSON.stringify(feedbackResponses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+        db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(feedbackResponses), finalOverallRating, acadYear, sem], (insertErr, result) => {
           if (insertErr) {
             if (insertErr.code === 'ER_DUP_ENTRY') {
               return res.status(400).json({ success: false, message: "You have already submitted feedback for this subject" });
@@ -939,10 +942,10 @@ const submitFeedback = async (req, res) => {
         }
         
         const insertQuery = `
-          INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, responses, overall_rating, academic_year, semester)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, academic_year, semester)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(insertQuery, [userId, instructor_id, subject_id || null, JSON.stringify(feedbackResponses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+        db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(feedbackResponses), finalOverallRating, acadYear, sem], (insertErr, result) => {
           if (insertErr) {
             if (insertErr.code === 'ER_DUP_ENTRY') {
               return res.status(400).json({ success: false, message: "You have already submitted feedback for this instructor" });

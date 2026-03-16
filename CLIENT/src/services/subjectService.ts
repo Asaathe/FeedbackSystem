@@ -338,7 +338,7 @@ export const getSubjectEvaluationResults = async (subjectId: string, academic_ye
     if (academic_year) params.append('academic_year', academic_year);
     if (semester) params.append('semester', semester);
 
-    const response = await fetch(`${API_BASE_URL}/evaluation-forms/results/${subjectId}?${params}`, {
+    const response = await fetch(`${API_BASE_URL}/subject-evaluation/results/${subjectId}?${params}`, {
       headers: getAuthHeaders(),
     });
 
@@ -395,8 +395,8 @@ export const getEvaluationResultsBySection = async (subjectId: string, academic_
 
     const queryString = params.toString();
     const url = queryString 
-      ? `${API_BASE_URL}/evaluation-forms/results-by-section/${subjectId}?${queryString}`
-      : `${API_BASE_URL}/evaluation-forms/results-by-section/${subjectId}`;
+      ? `${API_BASE_URL}/subject-evaluation/results-by-section/${subjectId}?${queryString}`
+      : `${API_BASE_URL}/subject-evaluation/results-by-section/${subjectId}`;
 
     const response = await fetch(url, {
       headers: getAuthHeaders(),

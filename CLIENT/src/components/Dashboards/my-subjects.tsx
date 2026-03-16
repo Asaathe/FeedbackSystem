@@ -20,6 +20,7 @@ import { toast } from "sonner";
 
 interface Subject {
   subject_id: number;
+  section_id?: number;
   subject_code: string;
   subject_name: string;
   department: string;
@@ -166,6 +167,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
       
       const payload = {
         subject_id: selectedSubject.subject_id,
+        section_id: selectedSubject.section_id,
         instructor_id: selectedSubject.instructor_id,
         feedback_type: feedbackType,
         ratings: ratings,
