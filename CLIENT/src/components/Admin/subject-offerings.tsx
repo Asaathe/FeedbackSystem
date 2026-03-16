@@ -511,8 +511,8 @@ export function SubjectOfferings() {
                       <SelectValue placeholder="Select an instructor" />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableInstructors.filter(i => i.user_id).map((instructor) => (
-                        <SelectItem key={instructor.user_id} value={instructor.user_id.toString()}>
+                      {availableInstructors.filter(i => i.id).map((instructor) => (
+                        <SelectItem key={instructor.id} value={instructor.id.toString()}>
                           <div className="flex items-center gap-2">
                             <Avatar className="h-6 w-6">
                               <AvatarFallback className="bg-purple-100 text-purple-600 text-xs">
@@ -550,27 +550,6 @@ export function SubjectOfferings() {
             className="pl-10"
           />
         </div>
-        <Select value={filterAcademicYear} onValueChange={setFilterAcademicYear}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Academic Year" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="2025-2026">2025-2026</SelectItem>
-            <SelectItem value="2024-2025">2024-2025</SelectItem>
-            <SelectItem value="2023-2024">2023-2024</SelectItem>
-            <SelectItem value="2022-2023">2022-2023</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterSemester} onValueChange={setFilterSemester}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Semester" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="1st">1st Semester</SelectItem>
-            <SelectItem value="2nd">2nd Semester</SelectItem>
-            <SelectItem value="Summer">Summer</SelectItem>
-          </SelectContent>
-        </Select>
         <Button variant="outline" onClick={handleSearch}>
           <Search className="w-4 h-4 mr-2" />
           Search
@@ -635,7 +614,7 @@ export function SubjectOfferings() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="bg-purple-50">
-                        Year {offering.year_level} - {offering.section}
+                        {offering.year_level} - {offering.section}
                       </Badge>
                     </TableCell>
                     <TableCell>{offering.academic_year}</TableCell>
@@ -751,8 +730,8 @@ export function SubjectOfferings() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="unassigned">Not Assigned</SelectItem>
-                  {availableInstructors.filter(i => i.user_id).map((instructor) => (
-                    <SelectItem key={instructor.user_id} value={instructor.user_id.toString()}>
+                  {availableInstructors.filter(i => i.id).map((instructor) => (
+                    <SelectItem key={instructor.id} value={instructor.id.toString()}>
                       <div className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
                           <AvatarFallback className="bg-purple-100 text-purple-600 text-xs">

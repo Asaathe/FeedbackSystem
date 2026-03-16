@@ -27,18 +27,21 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  GripVertical, 
   Calendar,
-  Clock,
   ToggleLeft,
   ToggleRight,
   Loader2,
-  AlertCircle,
   CheckCircle,
-  XCircle
+  XCircle,
+  GripVertical,
+  Eye,
+  Layers,
+  ChevronRight
 } from "lucide-react";
 import { toast } from "sonner";
+import { ScrollArea } from "../ui/scroll-area";
 import { Badge } from "../ui/badge";
+import { Separator } from "../ui/separator";
 
 interface Category {
   id: number;
@@ -49,6 +52,8 @@ interface Category {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  parent_category_id?: number | null;
+  subcategories?: Category[];
 }
 
 interface EvaluationPeriod {
@@ -69,6 +74,8 @@ export function FeedbackTemplate() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'categories' | 'evaluation'>('categories');
   const [categoryType, setCategoryType] = useState<'subject' | 'instructor'>('subject');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(new Set());
   
   // Category form state
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -77,8 +84,9 @@ export function FeedbackTemplate() {
   const [categoryDescription, setCategoryDescription] = useState("");
   const [categoryActive, setCategoryActive] = useState(true);
   const [categoryFeedbackType, setCategoryFeedbackType] = useState<'subject' | 'instructor'>('subject');
+  const [parentCategoryId, setParentCategoryId] = useState<number | null>(null);
   const [savingCategory, setSavingCategory] = useState(false);
-  
+
   // Period form state
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<EvaluationPeriod | null>(null);
@@ -142,12 +150,31 @@ export function FeedbackTemplate() {
     }
   };
 
-  const handleAddCategory = () => {
+  const mainCategories = categories.filter(c => !c.parent_category_id);
+  
+  const getSubcategories = (parentId: number) => {
+    return categories.filter(c => c.parent_category_id === parentId);
+  };
+
+  const toggleExpanded = (categoryId: number) => {
+    setExpandedCategories(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(categoryId)) {
+        newSet.delete(categoryId);
+      } else {
+        newSet.add(categoryId);
+      }
+      return newSet;
+    });
+  };
+
+  const handleAddCategory = (parentId?: number) => {
     setEditingCategory(null);
     setCategoryName("");
     setCategoryDescription("");
     setCategoryActive(true);
     setCategoryFeedbackType(categoryType);
+    setParentCategoryId(parentId || null);
     setCategoryDialogOpen(true);
   };
 
@@ -157,6 +184,7 @@ export function FeedbackTemplate() {
     setCategoryDescription(category.description || "");
     setCategoryActive(category.is_active);
     setCategoryFeedbackType(category.feedback_type as 'subject' | 'instructor' || 'subject');
+    setParentCategoryId(category.parent_category_id || null);
     setCategoryDialogOpen(true);
   };
 
@@ -185,7 +213,8 @@ export function FeedbackTemplate() {
           category_name: categoryName,
           description: categoryDescription,
           is_active: categoryActive,
-          feedback_type: categoryFeedbackType
+          feedback_type: categoryFeedbackType,
+          parent_category_id: parentCategoryId
         }),
       });
       
@@ -387,7 +416,7 @@ export function FeedbackTemplate() {
           onClick={() => setActiveTab('categories')}
           className={activeTab === 'categories' ? 'bg-green-500 hover:bg-green-600' : ''}
         >
-          <Star className="w-4 h-4 mr-2" />
+          <Layers className="w-4 h-4 mr-2" />
           Rating Categories
         </Button>
         <Button
@@ -407,17 +436,23 @@ export function FeedbackTemplate() {
             <div>
               <CardTitle>Rating Categories</CardTitle>
               <CardDescription>
-                Manage the star-rating categories used for subject and instructor feedback
+                Manage categories with subcategories for subject and instructor feedback
               </CardDescription>
             </div>
-            <Button onClick={handleAddCategory} className="bg-green-500 hover:bg-green-600">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Category
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </Button>
+              <Button onClick={() => handleAddCategory()} className="bg-green-500 hover:bg-green-600">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Category
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             {/* Subject/Instructor Category Tabs */}
-            <div className="flex gap-2 mb-4">
+            <div className="flex gap-2 mb-6">
               <Button
                 variant={categoryType === 'subject' ? 'default' : 'outline'}
                 onClick={() => setCategoryType('subject')}
@@ -433,55 +468,128 @@ export function FeedbackTemplate() {
                 Instructor Categories
               </Button>
             </div>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {categories.map((category) => (
-                  <TableRow key={category.id}>
-                    <TableCell>{category.category_name}</TableCell>
-                    <TableCell className="text-gray-600">{category.description || '-'}</TableCell>
-                    <TableCell>
-                      <Badge variant={category.is_active ? 'default' : 'secondary'}>
-                        {category.is_active ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+
+            {/* Category List - Form Builder Style */}
+            <div className="space-y-3">
+              {mainCategories.map((mainCategory, index) => {
+                const subcategories = getSubcategories(mainCategory.id);
+                const isExpanded = expandedCategories.has(mainCategory.id);
+                
+                return (
+                  <div key={mainCategory.id} className="border rounded-lg overflow-hidden bg-gray-50">
+                    {/* Main Category Card */}
+                    <div className="flex items-center p-4 bg-white">
+                      {/* Drag Handle */}
+                      <Button variant="ghost" size="icon" className="cursor-move h-8 w-8 mr-2">
+                        <GripVertical className="w-4 h-4 text-gray-400" />
+                      </Button>
+                      
+                      {/* Number */}
+                      <span className="text-sm text-gray-400 w-8">{index + 1}.</span>
+                      
+                      {/* Category Info */}
+                      <div className="flex-1">
+                        <p className="font-semibold">{mainCategory.category_name}</p>
+                        {mainCategory.description && (
+                          <p className="text-sm text-gray-500 mt-0.5">{mainCategory.description}</p>
+                        )}
+                      </div>
+                      
+                      {/* Subcategories indicator */}
+                      {subcategories.length > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleExpanded(mainCategory.id)}
+                          className="mr-2"
+                        >
+                          <span className="text-xs text-green-600 mr-1">{subcategories.length} subcategories</span>
+                          <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                        </Button>
+                      )}
+                      
+                      {/* Actions */}
+                      <div className="flex items-center gap-1">
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleEditCategory(category)}
+                          onClick={() => handleAddCategory(mainCategory.id)}
+                          title="Add Subcategory"
+                          className="h-8 w-8"
+                        >
+                          <Plus className="w-4 h-4 text-green-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleEditCategory(mainCategory)}
+                          className="h-8 w-8"
                         >
                           <Edit className="w-4 h-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteCategory(category.id)}
-                          className="text-red-500 hover:text-red-600"
+                          onClick={() => handleDeleteCategory(mainCategory.id)}
+                          className="h-8 w-8 text-red-500 hover:text-red-600"
                         >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {categories.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center py-8 text-gray-500">
-                      No categories found. Add one to get started.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
+                    </div>
+                    
+                    {/* Subcategories - Expanded View */}
+                    {subcategories.length > 0 && isExpanded && (
+                      <div className="bg-gray-100 p-4 border-t space-y-2">
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-2">Subcategories</p>
+                        {subcategories.map((subcategory, subIndex) => (
+                          <div 
+                            key={subcategory.id}
+                            className="flex items-center p-3 bg-white rounded-lg border"
+                          >
+                            <span className="text-xs text-gray-400 w-8">{index + 1}.{subIndex + 1}</span>
+                            <div className="flex-1">
+                              <p className="font-medium">{subcategory.category_name}</p>
+                              {subcategory.description && (
+                                <p className="text-xs text-gray-500">{subcategory.description}</p>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEditCategory(subcategory)}
+                              className="h-7 w-7"
+                            >
+                              <Edit className="w-3 h-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteCategory(subcategory.id)}
+                              className="h-7 w-7 text-red-500 hover:text-red-600"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              
+              {mainCategories.length === 0 && (
+                <div className="text-center py-12 border-2 border-dashed rounded-lg">
+                  <Layers className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500 text-lg mb-2">No categories found</p>
+                  <p className="text-gray-400 text-sm mb-4">Add a category to get started</p>
+                  <Button onClick={() => handleAddCategory()} className="bg-green-500 hover:bg-green-600">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Category
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       )}
@@ -547,7 +655,6 @@ export function FeedbackTemplate() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleTogglePeriod(period.id, period.is_active)}
-                              title={period.is_active ? 'Deactivate' : 'Activate'}
                             >
                               {period.is_active ? (
                                 <ToggleRight className="w-5 h-5 text-green-500" />
@@ -641,23 +748,143 @@ export function FeedbackTemplate() {
         </div>
       )}
 
+      {/* Preview Dialog - Full Form Preview */}
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Form View</DialogTitle>
+            <DialogDescription>
+              This is how respondents will see your feedback form
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            {/* Preview Form */}
+            <div className="bg-white rounded-lg border shadow-sm">
+              <div className="p-6 space-y-6">
+                {/* Title and Description */}
+                <div className="space-y-3">
+                  <h1 className="text-3xl font-bold">
+                    {categoryType === 'subject' ? 'Subject Evaluation' : 'Instructor Evaluation'}
+                  </h1>
+                  <p className="text-gray-600">
+                    Please rate the {categoryType === 'subject' ? 'subject' : 'instructor'} based on the following criteria
+                  </p>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    <Badge variant="secondary">
+                      {categoryType === 'subject' ? 'Subject Feedback' : 'Instructor Feedback'}
+                    </Badge>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Categories */}
+                <div className="space-y-6">
+                  {categories.length > 0 ? (
+                    categories.filter(c => !c.parent_category_id).map((category, categoryIndex) => (
+                      <div key={category.id}>
+                        {/* Category Section */}
+                        <div className="bg-green-50 rounded-lg border border-green-200 p-4 mt-4">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                              <Layers className="w-4 h-4 text-white" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-green-800">{category.category_name}</h3>
+                              {category.description && (
+                                <p className="text-sm text-green-600 mt-0.5">{category.description}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Subcategories with ratings */}
+                        {getSubcategories(category.id).length > 0 && (
+                          <div className="space-y-4 mt-4 pl-4">
+                            {getSubcategories(category.id).map((sub, subIndex) => (
+                              <div key={sub.id} className="space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <Label className="text-base">
+                                    {sub.category_name}
+                                    <span className="text-red-500 ml-1">*</span>
+                                  </Label>
+                                </div>
+                                {sub.description && (
+                                  <p className="text-sm text-gray-500">{sub.description}</p>
+                                )}
+                                <div className="pt-2">
+                                  {/* Rating Scale Checkboxes Preview - Landscape */}
+                                  <div className="flex flex-wrap gap-2">
+                                    {[
+                                      { value: 5, label: 'Strongly Agree' },
+                                      { value: 4, label: 'Agree' },
+                                      { value: 3, label: 'Neutral' },
+                                      { value: 2, label: 'Disagree' },
+                                      { value: 1, label: 'Strongly Disagree' }
+                                    ].map((option) => (
+                                      <div key={option.value} className="flex items-center gap-1">
+                                        <div className="w-4 h-4 rounded border-2 border-gray-300"></div>
+                                        <span className="text-sm text-gray-700">{option.label}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <Star className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+                      <p className="text-sm">No categories to preview. Add some categories first.</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Submit Button Preview */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button
+                    className="bg-green-500 hover:bg-green-600"
+                    disabled
+                  >
+                    Submit Feedback
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Category Dialog */}
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingCategory ? 'Edit Category' : 'Add New Category'}</DialogTitle>
+            <DialogTitle>
+              {editingCategory 
+                ? (editingCategory.parent_category_id ? 'Edit Subcategory' : 'Edit Category')
+                : (parentCategoryId ? 'Add New Subcategory' : 'Add New Category')
+              }
+            </DialogTitle>
             <DialogDescription>
-              Create a new rating category for feedback forms
+              {parentCategoryId 
+                ? 'Create a subcategory under the selected main category'
+                : 'Create a main category for feedback forms'
+              }
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="categoryName">Category Name</Label>
+              <Label htmlFor="categoryName">
+                {parentCategoryId ? 'Subcategory Name' : 'Category Name'}
+              </Label>
               <Input
                 id="categoryName"
                 value={categoryName}
                 onChange={(e) => setCategoryName(e.target.value)}
-                placeholder="e.g., Clarity of Teaching"
+                placeholder={parentCategoryId ? "e.g., Communication Skills" : "e.g., Teaching Quality"}
               />
             </div>
             <div className="space-y-2">
@@ -669,6 +896,30 @@ export function FeedbackTemplate() {
                 placeholder="Brief description of this category"
               />
             </div>
+            
+            {/* Parent Category Selection */}
+            {(!editingCategory || parentCategoryId || editingCategory.parent_category_id) && (
+              <div className="space-y-2">
+                <Label htmlFor="parentCategory">Parent Category</Label>
+                <select
+                  id="parentCategory"
+                  value={parentCategoryId || ''}
+                  onChange={(e) => setParentCategoryId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full p-2 border rounded-md"
+                >
+                  <option value="">Select a main category (optional)</option>
+                  {mainCategories
+                    .filter(mc => editingCategory?.id !== mc.id)
+                    .map(mc => (
+                      <option key={mc.id} value={mc.id}>
+                        {mc.category_name}
+                      </option>
+                    ))
+                  }
+                </select>
+              </div>
+            )}
+            
             <div className="flex items-center gap-2">
               <Switch
                 id="categoryActive"
@@ -684,7 +935,7 @@ export function FeedbackTemplate() {
             </Button>
             <Button onClick={handleSaveCategory} disabled={savingCategory} className="bg-green-500 hover:bg-green-600">
               {savingCategory && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {editingCategory ? 'Update' : 'Add'} Category
+              {editingCategory ? 'Update' : 'Add'} {parentCategoryId ? 'Subcategory' : 'Category'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -692,7 +943,7 @@ export function FeedbackTemplate() {
 
       {/* Period Dialog */}
       <Dialog open={periodDialogOpen} onOpenChange={setPeriodDialogOpen}>
-        <DialogContent className="max-w-lg sm:max-w-lg">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{editingPeriod ? 'Edit Evaluation Period' : 'Create Evaluation Period'}</DialogTitle>
             <DialogDescription>

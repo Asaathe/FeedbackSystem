@@ -13,7 +13,8 @@ import {
   Star, 
   CheckCircle, 
   ArrowLeft,
-  Send
+  Send,
+  Layers
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -46,6 +47,7 @@ interface Category {
   display_order: number;
   feedback_type?: 'subject' | 'instructor' | 'general';
   is_active: boolean;
+  parent_category_id?: number | null;
 }
 
 interface MySubjectsProps {
@@ -150,8 +152,9 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   const handleSubmitFeedback = async () => {
     if (!selectedSubject || !feedbackType) return;
 
-    // Check if all categories are rated
-    const allRated = categories.every(cat => ratings[cat.id]);
+    // Check if all subcategories are rated (not main categories)
+    const subcategories = categories.filter(c => c.parent_category_id && c.parent_category_id !== 0);
+    const allRated = subcategories.every(cat => ratings[cat.id]);
     if (!allRated) {
       toast.error('Please rate all categories');
       return;
@@ -326,46 +329,89 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
             <CardHeader>
               <CardTitle>Rate {feedbackType === 'subject' ? 'this Subject' : 'this Instructor'}</CardTitle>
               <CardDescription>
-                Please rate each category from 1 to 5 stars
+                Please select one option for each category
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {categories.map((category) => (
-                <div key={category.id} className="space-y-2">
-                  <Label className="text-sm font-medium">{category.category_name}</Label>
-                  {category.description && (
-                    <p className="text-xs text-gray-500">{category.description}</p>
-                  )}
-                  <div className="flex gap-1">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => handleRatingChange(category.id, star)}
-                        className="p-1 hover:scale-110 transition-transform"
-                      >
-                        <Star
-                          className={`w-8 h-8 ${
-                            ratings[category.id] >= star
-                              ? "fill-yellow-400 text-yellow-400"
-                              : "text-gray-300"
-                          }`}
-                        />
-                      </button>
+              {/* Group categories by parent - main categories show as headings */}
+              {(() => {
+                const mainCategories = categories.filter(c => !c.parent_category_id && c.parent_category_id !== 0);
+                const getSubcategories = (parentId: number) => categories.filter(c => c.parent_category_id === parentId);
+                
+                return mainCategories.map((mainCat) => (
+                  <div key={mainCat.id} className="space-y-4">
+                    {/* Main Category Heading */}
+                    <div className="bg-green-50 rounded-lg border border-green-200 p-4 mt-4">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                          <Layers className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-green-800 text-lg">{mainCat.category_name}</h3>
+                          {mainCat.description && (
+                            <p className="text-sm text-green-600 mt-0.5">{mainCat.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Subcategories with ratings */}
+                    {getSubcategories(mainCat.id).map((subcat) => (
+                      <div key={subcat.id} className="ml-4 space-y-3">
+                        <div className="flex items-start gap-2">
+                          <Label className="text-base">
+                            {subcat.category_name}
+                            <span className="text-red-500 ml-1">*</span>
+                          </Label>
+                        </div>
+                        {subcat.description && (
+                          <p className="text-sm text-gray-500">{subcat.description}</p>
+                        )}
+                        <div className="pt-2">
+                          <div className="flex flex-wrap gap-2">
+                            {[
+                              { value: 5, label: 'Strongly Agree' },
+                              { value: 4, label: 'Agree' },
+                              { value: 3, label: 'Neutral' },
+                              { value: 2, label: 'Disagree' },
+                              { value: 1, label: 'Strongly Disagree' }
+                            ].map((option) => (
+                              <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => handleRatingChange(subcat.id, option.value)}
+                                className={`
+                                  flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all duration-200
+                                  ${ratings[subcat.id] === option.value 
+                                    ? 'border-green-500 bg-green-50 text-green-700' 
+                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+                                  }
+                                `}
+                              >
+                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                                  ratings[subcat.id] === option.value 
+                                    ? 'border-green-500 bg-green-500' 
+                                    : 'border-gray-300'
+                                }`}>
+                                  {ratings[subcat.id] === option.value && (
+                                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
+                                  )}
+                                </div>
+                                <span className="text-sm font-medium">{option.label}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                    {ratings[category.id] && (
-                      <span className="ml-2 text-sm text-gray-600 self-center">
-                        {ratings[category.id]}/5
-                      </span>
-                    )}
                   </div>
-                </div>
-              ))}
+                ));
+              })()}
 
               <Button 
                 className="w-full bg-green-500 hover:bg-green-600 mt-4"
                 onClick={handleSubmitFeedback}
-                disabled={submitting}
+                disabled={submitting || Object.keys(ratings).length !== categories.filter(c => c.parent_category_id && c.parent_category_id !== 0).length}
               >
                 {submitting ? (
                   <>

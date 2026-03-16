@@ -14,7 +14,7 @@ const getCategories = async (req, res) => {
     const { feedback_type } = req.query;
     
     let query = `
-      SELECT id, category_name, description, display_order, feedback_type, is_active, created_at, updated_at
+      SELECT id, category_name, description, display_order, feedback_type, is_active, created_at, updated_at, parent_category_id
       FROM feedback_template_categories
     `;
     
@@ -45,15 +45,20 @@ const getCategories = async (req, res) => {
  */
 const addCategory = async (req, res) => {
   try {
-    const { category_name, description, display_order, feedback_type } = req.body;
+    const { category_name, description, display_order, feedback_type, parent_category_id } = req.body;
 
     if (!category_name) {
       return res.status(400).json({ success: false, message: "Category name is required" });
     }
 
-    // Check if category already exists for this feedback type
-    const checkQuery = "SELECT id FROM feedback_template_categories WHERE category_name = ? AND (feedback_type = ? OR feedback_type IS NULL)";
-    db.query(checkQuery, [category_name, feedback_type || 'subject'], (checkErr, checkResults) => {
+    // Check if category already exists for this feedback type (only for main categories)
+    const checkQuery = parent_category_id 
+      ? "SELECT id FROM feedback_template_categories WHERE category_name = ? AND parent_category_id = ?"
+      : "SELECT id FROM feedback_template_categories WHERE category_name = ? AND (parent_category_id IS NULL OR parent_category_id = 0)";
+    
+    const checkParams = parent_category_id ? [category_name, parent_category_id] : [category_name];
+    
+    db.query(checkQuery, checkParams, (checkErr, checkResults) => {
       if (checkErr) {
         console.error("Error checking category:", checkErr);
         return res.status(500).json({ success: false, message: "Database error" });
@@ -81,8 +86,8 @@ const addCategory = async (req, res) => {
       }
 
       function insertCategory() {
-        const insertQuery = "INSERT INTO feedback_template_categories (category_name, description, display_order, feedback_type) VALUES (?, ?, ?, ?)";
-        db.query(insertQuery, [category_name, description || null, order, feedback_type || 'subject'], (insertErr, result) => {
+        const insertQuery = "INSERT INTO feedback_template_categories (category_name, description, display_order, feedback_type, parent_category_id) VALUES (?, ?, ?, ?, ?)";
+        db.query(insertQuery, [category_name, description || null, order, feedback_type || 'subject', parent_category_id || null], (insertErr, result) => {
           if (insertErr) {
             console.error("Error adding category:", insertErr);
             return res.status(500).json({ success: false, message: "Failed to add category" });
@@ -90,7 +95,7 @@ const addCategory = async (req, res) => {
           return res.status(201).json({ 
             success: true, 
             message: "Category added successfully",
-            category: { id: result.insertId, category_name, description, display_order: order, feedback_type }
+            category: { id: result.insertId, category_name, description, display_order: order, feedback_type, parent_category_id }
           });
         });
       }
@@ -107,7 +112,7 @@ const addCategory = async (req, res) => {
 const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { category_name, description, display_order, is_active, feedback_type } = req.body;
+    const { category_name, description, display_order, is_active, feedback_type, parent_category_id } = req.body;
 
     if (!category_name) {
       return res.status(400).json({ success: false, message: "Category name is required" });
@@ -125,9 +130,19 @@ const updateCategory = async (req, res) => {
         return res.status(404).json({ success: false, message: "Category not found" });
       }
 
-      // Check if category name is already used by another category
-      const nameCheckQuery = "SELECT id FROM feedback_template_categories WHERE category_name = ? AND id != ?";
-      db.query(nameCheckQuery, [category_name, id], (nameCheckErr, nameCheckResults) => {
+      // Prevent a category from being its own parent
+      if (parent_category_id && parseInt(parent_category_id) === parseInt(id)) {
+        return res.status(400).json({ success: false, message: "A category cannot be its own parent" });
+      }
+
+      // Check if category name is already used by another category (in same parent or same level)
+      const nameCheckQuery = parent_category_id 
+        ? "SELECT id FROM feedback_template_categories WHERE category_name = ? AND id != ? AND parent_category_id = ?"
+        : "SELECT id FROM feedback_template_categories WHERE category_name = ? AND id != ? AND (parent_category_id IS NULL OR parent_category_id = 0)";
+      
+      const nameCheckParams = parent_category_id ? [category_name, id, parent_category_id] : [category_name, id];
+      
+      db.query(nameCheckQuery, nameCheckParams, (nameCheckErr, nameCheckResults) => {
         if (nameCheckErr) {
           console.error("Error checking category name:", nameCheckErr);
           return res.status(500).json({ success: false, message: "Database error" });
@@ -139,10 +154,10 @@ const updateCategory = async (req, res) => {
 
         const updateQuery = `
           UPDATE feedback_template_categories 
-          SET category_name = ?, description = ?, display_order = ?, is_active = ?, feedback_type = ?
+          SET category_name = ?, description = ?, display_order = ?, is_active = ?, feedback_type = ?, parent_category_id = ?
           WHERE id = ?
         `;
-        db.query(updateQuery, [category_name, description, display_order, is_active, feedback_type || 'subject', id], (updateErr) => {
+        db.query(updateQuery, [category_name, description, display_order, is_active, feedback_type || 'subject', parent_category_id || null, id], (updateErr) => {
           if (updateErr) {
             console.error("Error updating category:", updateErr);
             return res.status(500).json({ success: false, message: "Failed to update category" });
@@ -164,8 +179,16 @@ const deleteCategory = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deleteQuery = "DELETE FROM feedback_template_categories WHERE id = ?";
-    db.query(deleteQuery, [id], (err, result) => {
+    // Also delete all subcategories
+    const deleteSubcategoriesQuery = "DELETE FROM feedback_template_categories WHERE parent_category_id = ?";
+    db.query(deleteSubcategoriesQuery, [id], (subDeleteErr) => {
+      if (subDeleteErr) {
+        console.error("Error deleting subcategories:", subDeleteErr);
+        // Continue with deletion anyway
+      }
+      
+      const deleteQuery = "DELETE FROM feedback_template_categories WHERE id = ?";
+      db.query(deleteQuery, [id], (err, result) => {
       if (err) {
         console.error("Error deleting category:", err);
         return res.status(500).json({ success: false, message: "Failed to delete category" });
@@ -176,6 +199,7 @@ const deleteCategory = async (req, res) => {
       }
 
       return res.status(200).json({ success: true, message: "Category deleted successfully" });
+      });
     });
   } catch (error) {
     console.error("Delete category error:", error);

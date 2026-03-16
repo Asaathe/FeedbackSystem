@@ -1960,9 +1960,7 @@ export function FormBuilder({
                             <p className="text-xs text-gray-400 mt-1">
                               Recommended: 800×200px for best display
                             </p>
-                            <p className="text-xs text-green-600 mt-2">
-                              ✨ You can crop your image after uploading
-                            </p>
+                            
                           </div>
                           <input
                             id="form-image-upload"
