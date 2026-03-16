@@ -291,6 +291,7 @@ const createForm = async (formData, userId) => {
       status = 'draft',
     } = formData;
     
+    console.log('🔍 SERVER formService createForm: sections received:', JSON.stringify(sections));
     console.log('🔍 SERVER formService createForm: ai_description received:', ai_description);
     console.log('🔍 SERVER formService createForm: formType received:', formType);
     console.log('🔍 SERVER formService createForm: status received:', status);
@@ -348,33 +349,52 @@ const createForm = async (formData, userId) => {
     const sectionIdMap = {};
 
     // Insert sections
-    if (sections && sections.length > 0) {
+    if (sections && Array.isArray(sections) && sections.length > 0) {
+      console.log('DEBUG createForm - Processing sections:', JSON.stringify(sections));
       for (const section of sections) {
-        const sectionResult = await queryDatabase(
-          db,
-          `
-          INSERT INTO sections (
-            form_id, title, description, order_index
-          ) VALUES (?, ?, ?, ?)
-        `,
-          [
-            formId,
-            section.title || 'New Section',
-            section.description || null,
-            section.order || 0,
-          ]
-        );
-        sectionIdMap[section.id] = sectionResult.insertId;
+        // Skip sections without valid ID (new sections that weren't saved to DB yet)
+        if (!section.id) {
+          console.log('DEBUG createForm - Skipping section without ID:', section);
+          continue;
+        }
+        console.log('DEBUG createForm - Section being inserted:', JSON.stringify(section));
+        try {
+          const sectionResult = await queryDatabase(
+            db,
+            `
+            INSERT INTO sections (
+              form_id, title, description, order_index
+            ) VALUES (?, ?, ?, ?)
+          `,
+            [
+              formId,
+              section.title || 'New Section',
+              section.description || null,
+              section.order || 0,
+            ]
+          );
+          console.log('DEBUG createForm - Inserted section with old ID:', section.id, 'new ID:', sectionResult.insertId);
+          sectionIdMap[section.id] = sectionResult.insertId;
+        } catch (sectionError) {
+          console.error('DEBUG createForm - Error inserting section:', sectionError);
+        }
       }
+    } else {
+      console.log('DEBUG createForm - No sections to process, sections value:', sections);
     }
 
     // Insert questions
     if (questions.length > 0) {
+      console.log('DEBUG createForm - Processing questions, count:', questions.length);
       for (const question of questions) {
+        console.log('DEBUG createForm - Question sectionId:', question.sectionId, 'Question:', question.question?.substring(0, 50));
         // Get the mapped section ID if question has a sectionId
         let mappedSectionId = null;
         if (question.sectionId && sectionIdMap[question.sectionId]) {
           mappedSectionId = sectionIdMap[question.sectionId];
+          console.log('DEBUG createForm - Mapped sectionId:', question.sectionId, 'to:', mappedSectionId);
+        } else if (question.sectionId) {
+          console.log('DEBUG createForm - sectionId not found in map:', question.sectionId, 'Available keys:', Object.keys(sectionIdMap));
         }
 
         const questionResult = await queryDatabase(
@@ -824,6 +844,12 @@ const duplicateForm = async (formId, userId) => {
     const form = originalForm.form;
 
     // Create new form with copied data
+    console.log('DEBUG duplicateForm - form.sections:', JSON.stringify(form.sections));
+    console.log('DEBUG duplicateForm - form.questions sample:', form.questions?.slice(0, 2));
+    
+    // Ensure sections is an array (handle undefined or null)
+    const sectionsToCopy = Array.isArray(form.sections) ? form.sections : [];
+    
     const newFormData = {
       title: `${form.title} (Copy)`,
       description: form.description,
@@ -831,7 +857,8 @@ const duplicateForm = async (formId, userId) => {
       targetAudience: form.target_audience,
       startDate: form.start_date,
       endDate: form.end_date,
-      questions: form.questions,
+      questions: form.questions || [],
+      sections: sectionsToCopy,
       imageUrl: form.image_url,
       isTemplate: false,
     };

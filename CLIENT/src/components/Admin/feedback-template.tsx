@@ -87,6 +87,10 @@ export function FeedbackTemplate() {
   const [parentCategoryId, setParentCategoryId] = useState<number | null>(null);
   const [savingCategory, setSavingCategory] = useState(false);
 
+  // Delete category dialog state
+  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null);
+
   // Period form state
   const [periodDialogOpen, setPeriodDialogOpen] = useState(false);
   const [editingPeriod, setEditingPeriod] = useState<EvaluationPeriod | null>(null);
@@ -222,7 +226,7 @@ export function FeedbackTemplate() {
       if (data.success) {
         toast.success(editingCategory ? "Category updated successfully" : "Category added successfully");
         setCategoryDialogOpen(false);
-        fetchCategories();
+        fetchCategories(categoryType);
       } else {
         toast.error(data.message || "Failed to save category");
       }
@@ -235,11 +239,17 @@ export function FeedbackTemplate() {
   };
 
   const handleDeleteCategory = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this category?")) return;
+    const category = categories.find(c => c.id === id);
+    setCategoryToDelete(category || null);
+    setDeleteCategoryDialogOpen(true);
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
     
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/feedback-templates/categories/${id}`, {
+      const response = await fetch(`http://localhost:5000/api/feedback-templates/categories/${categoryToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -248,13 +258,16 @@ export function FeedbackTemplate() {
       const data = await response.json();
       if (data.success) {
         toast.success("Category deleted successfully");
-        fetchCategories();
+        fetchCategories(categoryType);
       } else {
         toast.error(data.message || "Failed to delete category");
       }
     } catch (error) {
       console.error("Error deleting category:", error);
       toast.error("Failed to delete category");
+    } finally {
+      setDeleteCategoryDialogOpen(false);
+      setCategoryToDelete(null);
     }
   };
 
@@ -860,7 +873,7 @@ export function FeedbackTemplate() {
 
       {/* Category Dialog */}
       <Dialog open={categoryDialogOpen} onOpenChange={setCategoryDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
               {editingCategory 
@@ -936,6 +949,34 @@ export function FeedbackTemplate() {
             <Button onClick={handleSaveCategory} disabled={savingCategory} className="bg-green-500 hover:bg-green-600">
               {savingCategory && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               {editingCategory ? 'Update' : 'Add'} {parentCategoryId ? 'Subcategory' : 'Category'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Category Confirmation Dialog */}
+      <Dialog open={deleteCategoryDialogOpen} onOpenChange={setDeleteCategoryDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete Category</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this category? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          {categoryToDelete && getSubcategories(categoryToDelete.id).length > 0 && (
+            <div className="py-4">
+              <p className="text-sm text-amber-600">
+                Warning: This category has {getSubcategories(categoryToDelete.id).length} subcategory(ies) that will also be deleted.
+              </p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteCategoryDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDeleteCategory}>
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete Category
             </Button>
           </DialogFooter>
         </DialogContent>
