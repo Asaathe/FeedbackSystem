@@ -514,6 +514,254 @@ const validateUserStatusUpdate = [
     .withMessage("Invalid status"),
 ];
 
+/**
+ * Get employment info for current alumni user
+ */
+const getEmploymentInfo = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get employment record from separate table
+    let employmentRecords = [];
+    try {
+      employmentRecords = await queryDatabase(
+        db,
+        "SELECT * FROM alumni_employment WHERE alumni_user_id = ?",
+        [userId]
+      );
+    } catch (err) {
+      console.log("Employment table not found:", err.message);
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: "Employment table not configured yet"
+      });
+    }
+    
+    if (employmentRecords.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: null,
+        message: "No employment information found"
+      });
+    }
+    
+    const employment = employmentRecords[0];
+    return res.status(200).json({
+      success: true,
+      data: {
+        companyName: employment.company_name,
+        jobTitle: employment.job_title,
+        employmentStatus: employment.employment_status,
+        industryType: employment.industry_type,
+        companyAddress: employment.company_address,
+        supervisorName: employment.supervisor_name,
+        supervisorEmail: employment.supervisor_email,
+        yearStarted: employment.year_started
+      }
+    });
+  } catch (error) {
+    console.error("Get employment info controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Update employment info for current alumni user
+ */
+const updateEmploymentInfo = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { 
+      companyName, 
+      jobTitle, 
+      employmentStatus, 
+      industryType, 
+      companyAddress, 
+      supervisorName, 
+      supervisorEmail, 
+      yearStarted 
+    } = req.body;
+    
+    // Check if employment table exists
+    let existingRecords = [];
+    try {
+      existingRecords = await queryDatabase(
+        db,
+        "SELECT id FROM alumni_employment WHERE alumni_user_id = ?",
+        [userId]
+      );
+    } catch (err) {
+      console.log("Employment table not found:", err.message);
+      return res.status(500).json({
+        success: false,
+        message: "Employment table not configured. Please run the database migration."
+      });
+    }
+    
+    if (existingRecords.length > 0) {
+      // Update existing employment record
+      await queryDatabase(
+        db,
+        `UPDATE alumni_employment SET 
+          company_name = ?,
+          job_title = ?,
+          employment_status = ?,
+          industry_type = ?,
+          company_address = ?,
+          supervisor_name = ?,
+          supervisor_email = ?,
+          year_started = ?
+        WHERE alumni_user_id = ?`,
+        [
+          companyName || null,
+          jobTitle || null,
+          employmentStatus || null,
+          industryType || null,
+          companyAddress || null,
+          supervisorName || null,
+          supervisorEmail || null,
+          yearStarted || null,
+          userId
+        ]
+      );
+    } else {
+      // Create new employment record
+      await queryDatabase(
+        db,
+        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          userId,
+          companyName || null,
+          jobTitle || null,
+          employmentStatus || null,
+          industryType || null,
+          companyAddress || null,
+          supervisorName || null,
+          supervisorEmail || null,
+          yearStarted || null
+        ]
+      );
+    }
+    
+    return res.status(200).json({
+      success: true,
+      message: "Employment information updated successfully"
+    });
+  } catch (error) {
+    console.error("Update employment info controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Get all alumni data for dashboard
+ */
+const getAlumniData = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get user info
+    const userRecords = await queryDatabase(
+      db,
+      "SELECT full_name, email FROM users WHERE id = ?",
+      [userId]
+    );
+    
+    if (userRecords.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    
+    // Get employment record from separate table
+    let employmentRecords = [];
+    try {
+      employmentRecords = await queryDatabase(
+        db,
+        "SELECT * FROM alumni_employment WHERE alumni_user_id = ?",
+        [userId]
+      );
+    } catch (err) {
+      console.log("Employment table query failed:", err.message);
+    }
+    
+    const employment = employmentRecords.length > 0 ? employmentRecords[0] : null;
+    
+    // Get count of alumni network - check if alumni table exists
+    let networkCount = [{ count: 0 }];
+    try {
+      networkCount = await queryDatabase(
+        db,
+        "SELECT COUNT(*) as count FROM alumni"
+      );
+    } catch (err) {
+      console.log("Alumni table query failed, using default count");
+    }
+    
+    // Get form stats - count completed responses
+    let completedForms = [{ count: 0 }];
+    try {
+      completedForms = await queryDatabase(
+        db,
+        "SELECT COUNT(*) as count FROM form_responses WHERE user_id = ?",
+        [userId]
+      );
+    } catch (err) {
+      console.log("Form responses table query failed:", err.message);
+    }
+    
+    // Get pending forms count - set to 0 for now (can be enhanced later)
+    const pendingForms = [{ count: 0 }];
+    
+    // Build response data
+    const data = {
+      stats: {
+        graduationYear: alumni ? String(alumni.grad_year) : '',
+        program: alumni ? alumni.degree : '',
+        currentEmployment: employment && employment.job_title 
+          ? `${employment.job_title}${employment.company_name ? ' at ' + employment.company_name : ''}` 
+          : '',
+        feedbackSubmitted: completedForms[0]?.count || 0
+      },
+      employment: employment ? {
+        companyName: employment.company_name,
+        jobTitle: employment.job_title,
+        employmentStatus: employment.employment_status,
+        industryType: employment.industry_type,
+        companyAddress: employment.company_address,
+        supervisorName: employment.supervisor_name,
+        supervisorEmail: employment.supervisor_email,
+        yearStarted: employment.year_started
+      } : null,
+      alumniNetworkCount: networkCount[0]?.count || 0,
+      careerImpact: [],
+      recentActivity: [],
+      skills: [],
+      engagement: []
+    };
+    
+    return res.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    console.error("Get alumni data controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
 module.exports = {
   getFilteredUsers,
   getAssignedForms,
@@ -526,4 +774,7 @@ module.exports = {
   validateUserStatusUpdate,
   approveUser,
   rejectUser,
+  getEmploymentInfo,
+  updateEmploymentInfo,
+  getAlumniData
 };

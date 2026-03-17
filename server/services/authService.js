@@ -75,14 +75,13 @@ const registerUser = async (userData) => {
       case "student":
         await queryDatabase(
           db,
-          `INSERT INTO students (user_id, studentID, program_id, contact_number, subjects, image)
-           VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO students (user_id, studentID, program_id, contact_number, image)
+           VALUES (?, ?, ?, ?, ?)`,
           [
             userId,
             student_id,
             program_id,
             userData.contactNumber || "",
-            userData.subjects || "",
             userData.profilePicture || null,
           ]
         );

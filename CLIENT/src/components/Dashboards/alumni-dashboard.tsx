@@ -2,34 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { GraduationCap, Briefcase, Users, MessageSquare, TrendingUp } from "lucide-react";
+import { GraduationCap, Briefcase, Users, MessageSquare } from "lucide-react";
 import { Progress } from "../ui/progress";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { getFormsForUserRole, getFormStatsForUser, PublishedForm } from "../../services/publishedFormsService";
-
-const skillsRelevanceData = [
-  { skill: 'Programming', yourRating: 4.5, avgAlumni: 4.2 },
-  { skill: 'Problem Solving', yourRating: 4.8, avgAlumni: 4.4 },
-  { skill: 'Teamwork', yourRating: 4.0, avgAlumni: 4.3 },
-  { skill: 'Communication', yourRating: 3.8, avgAlumni: 4.0 },
-  { skill: 'Industry Tools', yourRating: 4.2, avgAlumni: 3.9 },
-];
-
-const engagementTimelineData = [
-  { month: 'Jan', feedback: 1, events: 2 },
-  { month: 'Mar', feedback: 0, events: 1 },
-  { month: 'May', feedback: 1, events: 3 },
-  { month: 'Jul', feedback: 0, events: 0 },
-  { month: 'Sep', feedback: 1, events: 2 },
-  { month: 'Oct', feedback: 0, events: 1 },
-];
-
-const alumniStats = {
-  graduationYear: '2023',
-  program: 'BS in Computer Science',
-  currentEmployment: 'Software Developer',
-  feedbackSubmitted: 3,
-};
+import { getFormsForUserRole, getFormStatsForUser } from "../../services/publishedFormsService";
 
 // Type for pending forms
 type PendingForm = {
@@ -40,18 +16,37 @@ type PendingForm = {
   priority: string;
 };
 
-const recentActivity = [
-  { action: 'Submitted Program Quality Feedback', date: 'Sep 28, 2025', type: 'feedback' },
-  { action: 'Updated Employment Information', date: 'Sep 25, 2025', type: 'profile' },
-  { action: 'Completed Faculty Evaluation', date: 'Sep 20, 2025', type: 'feedback' },
-];
+// Types for alumni data from API
+type AlumniStats = {
+  graduationYear: string;
+  program: string;
+  currentEmployment: string;
+  feedbackSubmitted: number;
+};
 
-const careerImpact = [
-  { skill: 'Technical Skills Relevance', rating: 4.5, impact: 'high' },
-  { skill: 'Soft Skills Development', rating: 4.0, impact: 'medium' },
-  { skill: 'Industry Preparedness', rating: 3.8, impact: 'medium' },
-  { skill: 'Career Network Building', rating: 3.5, impact: 'low' },
-];
+type CareerImpactItem = {
+  skill: string;
+  rating: number;
+  impact: 'high' | 'medium' | 'low';
+};
+
+type RecentActivityItem = {
+  action: string;
+  date: string;
+  type: 'feedback' | 'profile';
+};
+
+type SkillsData = {
+  skill: string;
+  yourRating: number;
+  avgAlumni: number;
+};
+
+type EngagementData = {
+  month: string;
+  feedback: number;
+  events: number;
+};
 
 interface AlumniDashboardProps {
   onNavigate?: (page: string) => void;
@@ -60,6 +55,50 @@ interface AlumniDashboardProps {
 export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   const [alumniPendingForms, setAlumniPendingForms] = useState<PendingForm[]>([]);
   const [formStats, setFormStats] = useState({ pending: 0, completed: 0, total: 0, completionRate: 0 });
+  
+  // State for dynamic data (replacing mock data)
+  const [alumniStats, setAlumniStats] = useState<AlumniStats>({
+    graduationYear: '',
+    program: '',
+    currentEmployment: '',
+    feedbackSubmitted: 0,
+  });
+  const [careerImpact, setCareerImpact] = useState<CareerImpactItem[]>([]);
+  const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
+  const [skillsData, setSkillsData] = useState<SkillsData[]>([]);
+  const [engagementData, setEngagementData] = useState<EngagementData[]>([]);
+  const [alumniNetworkCount, setAlumniNetworkCount] = useState(0);
+
+  const loadAlumniData = async () => {
+    const token = sessionStorage.getItem('authToken');
+    try {
+      const response = await fetch('http://localhost:5000/api/users/alumni-data', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        if (data.data.stats) setAlumniStats(data.data.stats);
+        if (data.data.careerImpact) setCareerImpact(data.data.careerImpact);
+        if (data.data.recentActivity) setRecentActivity(data.data.recentActivity);
+        if (data.data.skills) setSkillsData(data.data.skills);
+        if (data.data.engagement) setEngagementData(data.data.engagement);
+        if (data.data.alumniNetworkCount) setAlumniNetworkCount(data.data.alumniNetworkCount);
+        if (data.data.employment) {
+          setAlumniStats(prev => ({
+            ...prev,
+            currentEmployment: data.data.employment.jobTitle 
+              ? `${data.data.employment.jobTitle} at ${data.data.employment.companyName}`
+              : prev.currentEmployment
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error loading alumni data:', error);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -74,6 +113,9 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
       setAlumniPendingForms(pendingForms);
       const stats = await getFormStatsForUser('alumni');
       setFormStats(stats);
+      
+      // Load alumni-specific data from API
+      await loadAlumniData();
     };
     loadData();
   }, []);
@@ -85,11 +127,17 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
         <div className="flex items-start justify-between">
           <div>
             <h2 className="text-2xl">Welcome back, Alumnus!</h2>
-            <p className="text-gray-600 mt-1">{alumniStats.program} • Class of {alumniStats.graduationYear}</p>
-            <div className="flex items-center gap-2 mt-2">
-              <Briefcase className="w-4 h-4 text-gray-600" />
-              <p className="text-sm text-gray-600">{alumniStats.currentEmployment}</p>
-            </div>
+            <p className="text-gray-600 mt-1">
+              {alumniStats.program 
+                ? `${alumniStats.program} • Class of ${alumniStats.graduationYear}`
+                : 'Alumni User'}
+            </p>
+            {alumniStats.currentEmployment && (
+              <div className="flex items-center gap-2 mt-2">
+                <Briefcase className="w-4 h-4 text-gray-600" />
+                <p className="text-sm text-gray-600">{alumniStats.currentEmployment}</p>
+              </div>
+            )}
           </div>
           <Badge className="bg-purple-500">Alumni</Badge>
         </div>
@@ -103,7 +151,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
             <MessageSquare className="w-5 h-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">{alumniStats.feedbackSubmitted}</div>
+            <div className="text-3xl">{alumniStats.feedbackSubmitted || formStats.completed}</div>
             <p className="text-xs text-gray-600 mt-1">Post-graduation</p>
           </CardContent>
         </Card>
@@ -114,7 +162,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
             <GraduationCap className="w-5 h-5 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">{alumniPendingForms.length}</div>
+            <div className="text-3xl">{alumniPendingForms.length || formStats.pending}</div>
             <p className="text-xs text-orange-600 mt-1">Awaiting response</p>
           </CardContent>
         </Card>
@@ -125,88 +173,92 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
             <Users className="w-5 h-5 text-purple-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">234</div>
+            <div className="text-3xl">{alumniNetworkCount || 0}</div>
             <p className="text-xs text-gray-600 mt-1">Connections</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Analytics Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Skills Relevance Comparison */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <CardTitle>Skills Relevance to Career</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={skillsRelevanceData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis type="number" domain={[0, 5]} stroke="#6b7280" />
-                <YAxis type="category" dataKey="skill" stroke="#6b7280" width={100} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="yourRating" fill="#22c55e" name="Your Rating" radius={[0, 8, 8, 0]} />
-                <Bar dataKey="avgAlumni" fill="#84cc16" name="Avg Alumni" radius={[0, 8, 8, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      {skillsData.length > 0 && engagementData.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Skills Relevance Comparison */}
+          <Card className="border-green-100">
+            <CardHeader>
+              <CardTitle>Skills Relevance to Career</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={skillsData} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis type="number" domain={[0, 5]} stroke="#6b7280" />
+                  <YAxis type="category" dataKey="skill" stroke="#6b7280" width={100} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="yourRating" fill="#22c55e" name="Your Rating" radius={[0, 8, 8, 0]} />
+                  <Bar dataKey="avgAlumni" fill="#84cc16" name="Avg Alumni" radius={[0, 8, 8, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        {/* Engagement Timeline */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <CardTitle>Your Engagement Timeline</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={engagementTimelineData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                <XAxis dataKey="month" stroke="#6b7280" />
-                <YAxis stroke="#6b7280" />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="feedback" stroke="#22c55e" strokeWidth={2} name="Feedback Submitted" />
-                <Line type="monotone" dataKey="events" stroke="#a855f7" strokeWidth={2} name="Events Attended" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
+          {/* Engagement Timeline */}
+          <Card className="border-green-100">
+            <CardHeader>
+              <CardTitle>Your Engagement Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={engagementData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="month" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="feedback" stroke="#22c55e" strokeWidth={2} name="Feedback Submitted" />
+                  <Line type="monotone" dataKey="events" stroke="#a855f7" strokeWidth={2} name="Events Attended" />
+                </LineChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Career Impact Assessment */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <CardTitle>How Your Education Impacts Your Career</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {careerImpact.map((item, index) => (
-              <div key={index} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm">{item.skill}</span>
-                  <div className="flex items-center gap-2">
-                    <Badge 
-                      variant="secondary"
-                      className={
-                        item.impact === 'high' 
-                          ? 'bg-green-100 text-green-700' 
-                          : item.impact === 'medium'
-                          ? 'bg-blue-100 text-blue-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }
-                    >
-                      {item.impact} impact
-                    </Badge>
-                    <span className="text-sm">{item.rating}/5</span>
+      {careerImpact.length > 0 && (
+        <Card className="border-green-100">
+          <CardHeader>
+            <CardTitle>How Your Education Impacts Your Career</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {careerImpact.map((item, index) => (
+                <div key={index} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm">{item.skill}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant="secondary"
+                        className={
+                          item.impact === 'high' 
+                            ? 'bg-green-100 text-green-700' 
+                            : item.impact === 'medium'
+                            ? 'bg-blue-100 text-blue-700'
+                            : 'bg-gray-100 text-gray-700'
+                        }
+                      >
+                        {item.impact} impact
+                      </Badge>
+                      <span className="text-sm">{item.rating}/5</span>
+                    </div>
                   </div>
+                  <Progress value={item.rating * 20} className="h-2" />
                 </div>
-                <Progress value={item.rating * 20} className="h-2" />
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pending Alumni Feedback */}
       <Card className="border-green-100">
@@ -215,70 +267,79 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {alumniPendingForms.map((form) => (
-              <div 
-                key={form.id} 
-                className="p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors"
-              >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3>{form.title}</h3>
-                      <Badge 
-                        variant="secondary"
-                        className={
-                          form.priority === 'high' 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-orange-100 text-orange-700'
-                        }
-                      >
-                        {form.priority}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-gray-600">{form.description}</p>
-                    <p className="text-xs text-gray-500 mt-1">Due: {form.dueDate}</p>
-                  </div>
-                </div>
-                <Button 
-                  className="bg-green-500 hover:bg-green-600 mt-3"
-                  onClick={() => onNavigate?.('submit-feedback')}
+            {alumniPendingForms.length > 0 ? (
+              alumniPendingForms.map((form) => (
+                <div 
+                  key={form.id} 
+                  className="p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors"
                 >
-                  Complete Feedback
-                </Button>
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3>{form.title}</h3>
+                        <Badge 
+                          variant="secondary"
+                          className={
+                            form.priority === 'high' 
+                              ? 'bg-red-100 text-red-700' 
+                              : 'bg-orange-100 text-orange-700'
+                          }
+                        >
+                          {form.priority}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600">{form.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">Due: {form.dueDate}</p>
+                    </div>
+                  </div>
+                  <Button 
+                    className="bg-green-500 hover:bg-green-600 mt-3"
+                    onClick={() => onNavigate?.('submit-feedback')}
+                  >
+                    Complete Feedback
+                  </Button>
+                </div>
+              ))
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <MessageSquare className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No pending feedback forms at this time.</p>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
 
       {/* Recent Activity */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {recentActivity.map((activity, index) => (
-              <div 
-                key={index}
-                className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  {activity.type === 'feedback' ? (
-                    <MessageSquare className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <TrendingUp className="w-5 h-5 text-blue-500" />
-                  )}
-                  <div>
-                    <p>{activity.action}</p>
-                    <p className="text-sm text-gray-500">{activity.date}</p>
+      {recentActivity.length > 0 && (
+        <Card className="border-green-100">
+          <CardHeader>
+            <CardTitle>Recent Activity</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {recentActivity.map((activity, index) => (
+                <div 
+                  key={index}
+                  className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    {activity.type === 'feedback' ? (
+                      <MessageSquare className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <Briefcase className="w-5 h-5 text-blue-500" />
+                    )}
+                    <div>
+                      <p>{activity.action}</p>
+                      <p className="text-sm text-gray-500">{activity.date}</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Call to Action */}
       <Card className="border-purple-100 bg-gradient-to-r from-purple-50 to-pink-50">

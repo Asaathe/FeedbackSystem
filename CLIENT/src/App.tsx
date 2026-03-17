@@ -53,6 +53,11 @@ const AlumniDashboard = lazy(() =>
     default: m.AlumniDashboard,
   }))
 );
+const AlumniEmployment = lazy(() =>
+  import("./components/Dashboards/alumni-employment").then((m) => ({
+    default: m.AlumniEmployment,
+  }))
+);
 const AlumniFeedback = lazy(() =>
   import("./components/feedback/alumni-feedback").then((m) => ({
     default: m.AlumniFeedback,
@@ -410,6 +415,24 @@ export default function App() {
           return <FeedbackSubmission userRole={userRole} />;
         case "profile":
           return <UserProfile onNavigate={setCurrentPage} />;
+      }
+    }
+
+    // Alumni pages (Graduated Students)
+    if (userRole === "alumni") {
+      switch (currentPage) {
+        case "dashboard":
+          return <AlumniDashboard onNavigate={setCurrentPage} />;
+        case "employment":
+          return <AlumniEmployment onNavigate={setCurrentPage} />;
+        case "submit-feedback":
+          return <FeedbackSubmission userRole={userRole} />;
+        case "my-submissions":
+          return <MySubmissions />;
+        case "profile":
+          return <UserProfile onNavigate={setCurrentPage} />;
+        default:
+          return <AlumniDashboard onNavigate={setCurrentPage} />;
       }
     }
 

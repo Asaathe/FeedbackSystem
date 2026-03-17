@@ -58,6 +58,11 @@ router.get("/filter", verifyToken, userController.getFilteredUsers);
 router.get("/assigned-forms", verifyToken, userController.getAssignedForms);
 router.get("/responses", verifyToken, userController.getUserResponses);
 router.get("/", verifyToken, userController.getAllUsers);
+
+// Employment routes for alumni
+router.get("/employment", verifyToken, userController.getEmploymentInfo);
+router.post("/employment", verifyToken, userController.updateEmploymentInfo);
+router.get("/alumni-data", verifyToken, userController.getAlumniData);
 router.post("/create", verifyToken, authController.register);
 router.post("/upload-profile-image", verifyToken, uploadProfileImage.single('image'), (req, res) => {
   if (!req.file) {

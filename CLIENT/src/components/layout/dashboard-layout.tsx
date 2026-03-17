@@ -17,7 +17,8 @@ import {
   HelpCircle,
   Shield,
   BookOpen,
-  Book
+  Book,
+  Briefcase
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { formatImageUrl } from "../../utils/imageUtils";
@@ -135,6 +136,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
     : role === 'alumni'
     ? [
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+        { id: 'employment', label: 'Employment', icon: Briefcase },
         { id: 'submit-feedback', label: 'Alumni Feedback', icon: FileText },
         { id: 'my-submissions', label: 'My Submissions', icon: BarChart3 },
       ]
