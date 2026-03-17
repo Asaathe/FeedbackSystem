@@ -587,7 +587,7 @@ export function UserManagement() {
       address: user.address || '',
       profilePicture: user.profilePicture || '',
       studentId: user.studentId || '',
-      program_id: user.program_id ? String(user.program_id) : '',
+      program_id: user.program_id ? String(user.program_id) : (user.program_id === 0 ? '0' : ''),
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
       graduationYear: user.graduationYear || '',
@@ -610,7 +610,7 @@ export function UserManagement() {
       address: user.address || '',
       profilePicture: user.profilePicture || '',
       studentId: user.studentId || '',
-      program_id: user.program_id ? String(user.program_id) : '',
+      program_id: user.program_id ? String(user.program_id) : (user.program_id === 0 ? '0' : ''),
       employeeId: user.employeeId || '',
       companyName: user.companyName || '',
       graduationYear: user.graduationYear || '',
@@ -863,8 +863,10 @@ export function UserManagement() {
   };
 
   const renderEditRoleSpecificFields = () => {
-    switch (editUser.role) {
-      case 'Student':
+    // Convert role to lowercase for comparison since API returns lowercase roles
+    const role = editUser.role?.toLowerCase() || '';
+    switch (role) {
+      case 'student':
         return (
           <>
             <div className="grid gap-1.5">
@@ -909,7 +911,7 @@ export function UserManagement() {
             </div>
           </>
         );
-      case 'Instructor':
+      case 'instructor':
         return (
           <>
             <div className="grid gap-1.5">
@@ -947,7 +949,7 @@ export function UserManagement() {
             </div>
           </>
         );
-      case 'Employer':
+      case 'employer':
         return (
           <div className="grid gap-1.5 sm:col-span-2">
             <Label htmlFor="companyName" className="text-xs font-medium text-gray-600">Company Name <span className="text-red-500">*</span></Label>
@@ -960,7 +962,7 @@ export function UserManagement() {
             />
           </div>
         );
-      case 'Alumni':
+      case 'alumni':
         return (
           <div className="grid gap-1.5 sm:col-span-2">
             <Label htmlFor="graduationYear" className="text-xs font-medium text-gray-600">Graduation Year <span className="text-red-500">*</span></Label>
@@ -1763,10 +1765,122 @@ export function UserManagement() {
                       {selectedUser.status}
                     </Badge>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">{getPendingLabel(selectedUser)}</p>
-                    <p>{getPendingInfo(selectedUser)}</p>
-                  </div>
+                  
+                  {/* Role-specific fields for Students */}
+                  {selectedUser.role?.toLowerCase() === 'student' && (
+                    <>
+                      {selectedUser.studentId && (
+                        <div>
+                          <p className="text-sm text-gray-600">Student ID</p>
+                          <p className="font-medium">{selectedUser.studentId}</p>
+                        </div>
+                      )}
+                      {(selectedUser.program_name || selectedUser.courseYrSection) && (
+                        <div>
+                          <p className="text-sm text-gray-600">Program / Course</p>
+                          <p className="font-medium">{selectedUser.program_name || selectedUser.courseYrSection}</p>
+                        </div>
+                      )}
+                      {selectedUser.department && (
+                        <div>
+                          <p className="text-sm text-gray-600">Department</p>
+                          <p className="font-medium">{selectedUser.department}</p>
+                        </div>
+                      )}
+                      {selectedUser.year_level && (
+                        <div>
+                          <p className="text-sm text-gray-600">Year Level</p>
+                          <p className="font-medium">{selectedUser.year_level}</p>
+                        </div>
+                      )}
+                      {selectedUser.section && (
+                        <div>
+                          <p className="text-sm text-gray-600">Section</p>
+                          <p className="font-medium">{selectedUser.section}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Role-specific fields for Instructors */}
+                  {selectedUser.role?.toLowerCase() === 'instructor' && (
+                    <>
+                      {selectedUser.employeeId && (
+                        <div>
+                          <p className="text-sm text-gray-600">Employee ID</p>
+                          <p className="font-medium">{selectedUser.employeeId}</p>
+                        </div>
+                      )}
+                      {selectedUser.department && (
+                        <div>
+                          <p className="text-sm text-gray-600">Department</p>
+                          <p className="font-medium">{selectedUser.department}</p>
+                        </div>
+                      )}
+                      {selectedUser.schoolRole && (
+                        <div>
+                          <p className="text-sm text-gray-600">School Role</p>
+                          <p className="font-medium">{selectedUser.schoolRole}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Role-specific fields for Alumni */}
+                  {selectedUser.role?.toLowerCase() === 'alumni' && (
+                    <>
+                      {selectedUser.graduationYear && (
+                        <div>
+                          <p className="text-sm text-gray-600">Graduation Year</p>
+                          <p className="font-medium">{selectedUser.graduationYear}</p>
+                        </div>
+                      )}
+                      {selectedUser.degree && (
+                        <div>
+                          <p className="text-sm text-gray-600">Degree</p>
+                          <p className="font-medium">{selectedUser.degree}</p>
+                        </div>
+                      )}
+                      {selectedUser.companyName && (
+                        <div>
+                          <p className="text-sm text-gray-600">Current Company</p>
+                          <p className="font-medium">{selectedUser.companyName}</p>
+                        </div>
+                      )}
+                      {selectedUser.industry && (
+                        <div>
+                          <p className="text-sm text-gray-600">Industry</p>
+                          <p className="font-medium">{selectedUser.industry}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Role-specific fields for Employers */}
+                  {selectedUser.role?.toLowerCase() === 'employer' && (
+                    <>
+                      {selectedUser.companyName && (
+                        <div>
+                          <p className="text-sm text-gray-600">Company Name</p>
+                          <p className="font-medium">{selectedUser.companyName}</p>
+                        </div>
+                      )}
+                      {selectedUser.employeeId && (
+                        <div>
+                          <p className="text-sm text-gray-600">Employee ID</p>
+                          <p className="font-medium">{selectedUser.employeeId}</p>
+                        </div>
+                      )}
+                      {selectedUser.industry && (
+                        <div>
+                          <p className="text-sm text-gray-600">Industry</p>
+                          <p className="font-medium">{selectedUser.industry}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Common fields */}
                   {selectedUser.phoneNumber && (
                     <div>
                       <p className="text-sm text-gray-600">Phone Number</p>
@@ -1779,28 +1893,10 @@ export function UserManagement() {
                       <p>{selectedUser.address}</p>
                     </div>
                   )}
-                  {selectedUser.studentId && (
+                  {selectedUser.createdAt && (
                     <div>
-                      <p className="text-sm text-gray-600">Student ID</p>
-                      <p>{selectedUser.studentId}</p>
-                    </div>
-                  )}
-                  {selectedUser.employeeId && (
-                    <div>
-                      <p className="text-sm text-gray-600">Employee ID</p>
-                      <p>{selectedUser.employeeId}</p>
-                    </div>
-                  )}
-                  {selectedUser.companyName && (
-                    <div>
-                      <p className="text-sm text-gray-600">Company Name</p>
-                      <p>{selectedUser.companyName}</p>
-                    </div>
-                  )}
-                  {selectedUser.graduationYear && (
-                    <div>
-                      <p className="text-sm text-gray-600">Graduation Year</p>
-                      <p>{selectedUser.graduationYear}</p>
+                      <p className="text-sm text-gray-600">Account Created</p>
+                      <p>{new Date(selectedUser.createdAt).toLocaleDateString()}</p>
                     </div>
                   )}
                 </div>
@@ -1860,7 +1956,10 @@ export function UserManagement() {
                             <SelectValue placeholder="Select user role" />
                           </SelectTrigger>
                           <SelectContent>
+                            <SelectItem value="Student">Student</SelectItem>
                             <SelectItem value="Instructor">Instructor</SelectItem>
+                            <SelectItem value="Alumni">Alumni</SelectItem>
+                            <SelectItem value="Employer">Employer</SelectItem>
                             <SelectItem value="Admin">Admin</SelectItem>
                           </SelectContent>
                         </Select>

@@ -359,19 +359,83 @@ const getAllUsers = async (filters = {}) => {
           totalPages: Math.ceil(total / limit),
         },
       };
+    } else if (role === "alumni") {
+      // Build WHERE clause for alumni query
+      const alumniConditions = [...conditions];
+      const alumniParams = [...params];
+      const alumniWhereClause =
+        alumniConditions.length > 0 ? `WHERE ${alumniConditions.join(" AND ")}` : "";
+      
+      usersQuery = `
+        SELECT 
+          u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
+          a.grad_year as graduationYear, a.contact as phoneNumber, a.degree, a.company, a.jobtitle, a.image as profilePicture
+        FROM Users u
+        LEFT JOIN alumni a ON u.id = a.user_id
+        ${alumniWhereClause}
+        ORDER BY u.registration_date DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      alumniParams.push(Number(limit), Number(offset));
+      const users = await queryDatabase(db, usersQuery, alumniParams);
+      return {
+        success: true,
+        users: users.map(formatUserResponse),
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      };
+    } else if (role === "employer") {
+      // Build WHERE clause for employer query
+      const employerConditions = [...conditions];
+      const employerParams = [...params];
+      const employerWhereClause =
+        employerConditions.length > 0 ? `WHERE ${employerConditions.join(" AND ")}` : "";
+      
+      usersQuery = `
+        SELECT 
+          u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
+          e.companyname as companyName, e.contact as phoneNumber, e.industry, e.image as profilePicture
+        FROM Users u
+        LEFT JOIN employers e ON u.id = e.user_id
+        ${employerWhereClause}
+        ORDER BY u.registration_date DESC
+        LIMIT ? OFFSET ?
+      `;
+      
+      employerParams.push(Number(limit), Number(offset));
+      const users = await queryDatabase(db, usersQuery, employerParams);
+      return {
+        success: true,
+        users: users.map(formatUserResponse),
+        pagination: {
+          total,
+          page: parseInt(page),
+          limit: parseInt(limit),
+          totalPages: Math.ceil(total / limit),
+        },
+      };
     } else {
-      // Default query for other roles or no specific role - include student and instructor data for all users
+      // Default query for other roles or no specific role - include all role-specific data
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
           s.studentID, s.program_id, s.contact_number,
-          COALESCE(i.image, s.image) as profilePicture,
+          COALESCE(i.image, s.image, a.image, e.image) as profilePicture,
           cm.course_section, cm.department as course_department,
-          i.instructor_id, i.department as instructor_department, i.school_role
+          i.instructor_id, i.department as instructor_department, i.school_role,
+          a.grad_year as graduationYear, a.degree, a.company as alumniCompany, a.jobtitle,
+          e.companyname as companyName, e.industry
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN course_management cm ON s.program_id = cm.id
         LEFT JOIN instructors i ON u.id = i.user_id
+        LEFT JOIN alumni a ON u.id = a.user_id
+        LEFT JOIN employers e ON u.id = e.user_id
         ${whereClause}
         ORDER BY u.registration_date DESC
         LIMIT ? OFFSET ?

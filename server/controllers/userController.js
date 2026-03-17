@@ -264,6 +264,9 @@ const updateUser = async (req, res) => {
         [id]
       );
 
+      console.log('Student update - profilePicture:', profilePicture);
+      console.log('Student update - studentRecords:', studentRecords);
+
       if (studentRecords.length > 0) {
         // Update existing student record
         const studentUpdateFields = [];
@@ -311,6 +314,20 @@ const updateUser = async (req, res) => {
           }
           studentUpdateFields.push("image = ?");
           studentUpdateValues.push(profilePicture);
+          console.log('Adding image to student update:', profilePicture);
+        }
+
+        console.log('Student update fields:', studentUpdateFields);
+        console.log('Student update values:', studentUpdateValues);
+
+        if (studentUpdateFields.length > 0) {
+          studentUpdateValues.push(id);
+          await queryDatabase(
+            db,
+            `UPDATE students SET ${studentUpdateFields.join(", ")} WHERE user_id = ?`,
+            studentUpdateValues
+          );
+          console.log('Student updated successfully');
         }
       } else {
         // Create new student record
@@ -320,6 +337,7 @@ const updateUser = async (req, res) => {
            VALUES (?, ?, ?, ?, ?)`,
           [id, studentId || null, program_id || null, phoneNumber || null, profilePicture || null]
         );
+        console.log('Student record created');
       }
     } else if (role === 'instructor') {
       // Check if instructor record exists
@@ -416,6 +434,37 @@ const updateUser = async (req, res) => {
           alumniUpdateFields.push("contact = ?");
           alumniUpdateValues.push(phoneNumber);
         }
+        if (profilePicture === '') {
+          // User wants to remove the profile picture
+          alumniUpdateFields.push("image = ?");
+          alumniUpdateValues.push(null);
+          
+          // Delete old image if exists
+          if (alumniRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', alumniRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+              } catch (err) {
+                console.error('Failed to delete old image:', err);
+              }
+            }
+          }
+        } else if (profilePicture) {
+          // Delete old image if exists and new image is being uploaded
+          if (alumniRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', alumniRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+              } catch (err) {
+                console.error('Failed to delete old image:', err);
+              }
+            }
+          }
+          alumniUpdateFields.push("image = ?");
+          alumniUpdateValues.push(profilePicture);
+        }
 
         if (alumniUpdateFields.length > 0) {
           alumniUpdateValues.push(id);
@@ -429,9 +478,9 @@ const updateUser = async (req, res) => {
         // Create new alumni record
         await queryDatabase(
           db,
-          `INSERT INTO alumni (user_id, grad_year, contact)
-           VALUES (?, ?, ?)`,
-          [id, graduationYear || null, phoneNumber || null]
+          `INSERT INTO alumni (user_id, grad_year, contact, image)
+           VALUES (?, ?, ?, ?)`,
+          [id, graduationYear || null, phoneNumber || null, profilePicture || null]
         );
       }
     } else if (role === 'employer') {
@@ -455,6 +504,37 @@ const updateUser = async (req, res) => {
           employerUpdateFields.push("contact = ?");
           employerUpdateValues.push(phoneNumber);
         }
+        if (profilePicture === '') {
+          // User wants to remove the profile picture
+          employerUpdateFields.push("image = ?");
+          employerUpdateValues.push(null);
+          
+          // Delete old image if exists
+          if (employerRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', employerRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+              } catch (err) {
+                console.error('Failed to delete old image:', err);
+              }
+            }
+          }
+        } else if (profilePicture) {
+          // Delete old image if exists and new image is being uploaded
+          if (employerRecords[0].image) {
+            const oldImagePath = path.join(__dirname, '../public', employerRecords[0].image);
+            if (fs.existsSync(oldImagePath)) {
+              try {
+                fs.unlinkSync(oldImagePath);
+              } catch (err) {
+                console.error('Failed to delete old image:', err);
+              }
+            }
+          }
+          employerUpdateFields.push("image = ?");
+          employerUpdateValues.push(profilePicture);
+        }
 
         if (employerUpdateFields.length > 0) {
           employerUpdateValues.push(id);
@@ -468,9 +548,9 @@ const updateUser = async (req, res) => {
         // Create new employer record
         await queryDatabase(
           db,
-          `INSERT INTO employers (user_id, companyname, contact)
-           VALUES (?, ?, ?)`,
-          [id, companyName || null, phoneNumber || null]
+          `INSERT INTO employers (user_id, companyname, contact, image)
+           VALUES (?, ?, ?, ?)`,
+          [id, companyName || null, phoneNumber || null, profilePicture || null]
         );
       }
     }

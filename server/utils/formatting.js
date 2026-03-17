@@ -103,19 +103,16 @@ const formatUserResponse = (user) => {
     createdAt: user.registration_date || user.created_at,
   };
 
-  // Add profile picture - handle both student and instructor images from combined queries
-  // Use role to determine which image to use
-  if (user.role === 'instructor' && user.profilePicture !== undefined) {
-    // For instructors, use the profilePicture from instructors table (already aliased)
+  // Debug logging
+  console.log('formatUserResponse - user.role:', user.role, 'profilePicture:', user.profilePicture);
+
+  // Add profile picture - handle all role types
+  // Always check profilePicture first, then fallbacks
+  if (user.profilePicture !== undefined && user.profilePicture !== null) {
     formatted.profilePicture = user.profilePicture;
-  } else if (user.role === 'student' && user.profilePicture !== undefined) {
-    // For students, use the profilePicture from students table (already aliased)
-    formatted.profilePicture = user.profilePicture;
-  } else if (user.instructor_image !== undefined) {
-    // Fallback to instructor image
+  } else if (user.instructor_image !== undefined && user.instructor_image !== null) {
     formatted.profilePicture = user.instructor_image;
-  } else if (user.student_image !== undefined) {
-    // Fallback to student image
+  } else if (user.student_image !== undefined && user.student_image !== null) {
     formatted.profilePicture = user.student_image;
   }
 
@@ -143,25 +140,19 @@ const formatUserResponse = (user) => {
     } else if (user.department !== undefined) {
       formatted.department = user.department;
     }
-    // Handle profile picture - check multiple sources
-    if (user.profilePicture !== undefined) {
-      formatted.profilePicture = user.profilePicture;
-    } else if (user.instructor_image !== undefined) {
-      formatted.profilePicture = user.instructor_image;
-    }
-    if (user.school_role !== undefined) formatted.schoolRole = user.school_role;
   }
 
   // Add role-specific fields for alumni
   if (user.role === 'alumni') {
-    if (user.grad_year !== undefined) formatted.gradYear = user.grad_year;
+    if (user.graduationYear !== undefined) formatted.graduationYear = user.graduationYear;
     if (user.degree !== undefined) formatted.degree = user.degree;
-    if (user.company !== undefined) formatted.alumniCompany = user.company;
+    if (user.company !== undefined) formatted.companyName = user.company;
+    if (user.industry !== undefined) formatted.industry = user.industry;
   }
 
   // Add role-specific fields for employers
   if (user.role === 'employer') {
-    if (user.companyname !== undefined) formatted.companyName = user.companyname;
+    if (user.companyName !== undefined) formatted.companyName = user.companyName;
     if (user.industry !== undefined) formatted.industry = user.industry;
   }
 
