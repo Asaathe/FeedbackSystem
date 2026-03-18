@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import {
   getFilteredUsers,
-  getAlumniCompanies,
+  getAlumniDegrees,
+  getAlumniGraduationYears,
+  getAlumniEmploymentCompanies,
+  getSupervisorsByCompany,
+  getAlumniByCompany,
   getEmployerCompanies,
   getActiveCourseSections,
   getDepartmentsFromPrograms,
@@ -35,8 +39,11 @@ export function useRecipients() {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Dynamic audience options
-  const [alumniCompanies, setAlumniCompanies] = useState<string[]>([]);
+  const [alumniDegrees, setAlumniDegrees] = useState<string[]>([]);
+  const [alumniGraduationYears, setAlumniGraduationYears] = useState<string[]>([]);
   const [employerCompanies, setEmployerCompanies] = useState<string[]>([]);
+  const [supervisors, setSupervisors] = useState<any[]>([]);
+  const [selectedSupervisors, setSelectedSupervisors] = useState<any[]>([]);
   const [courseYearSections, setCourseYearSections] = useState<string[]>(["All Students"]);
   const [loadingCourseSections, setLoadingCourseSections] = useState<boolean>(false);
   // Departments from course_management table for student filtering
@@ -67,23 +74,40 @@ export function useRecipients() {
     );
   }, [instructors, instructorSearchTerm]);
 
-  // Load companies for alumni and employers
+  // Load degrees and graduation years for alumni, and companies from alumni employment for employers
   useEffect(() => {
-    const loadCompanies = async () => {
+    const loadAlumniFilters = async () => {
       try {
-        const alumniResult = await getAlumniCompanies();
-        if (alumniResult.success) {
-          setAlumniCompanies(alumniResult.companies || []);
+        const degreesResult = await getAlumniDegrees();
+        if (degreesResult.success) {
+          setAlumniDegrees(degreesResult.degrees || []);
         }
-        const employerResult = await getEmployerCompanies();
+        const yearsResult = await getAlumniGraduationYears();
+        if (yearsResult.success) {
+          setAlumniGraduationYears(yearsResult.graduationYears || []);
+        }
+        // Use alumni_employment companies for employer feedback
+        const employerResult = await getAlumniEmploymentCompanies();
         if (employerResult.success) {
           setEmployerCompanies(employerResult.companies || []);
         }
       } catch (error) {
-        toast.error("Failed to load companies");
+        toast.error("Failed to load alumni filters");
       }
     };
-    loadCompanies();
+    loadAlumniFilters();
+  }, []);
+
+  // Load supervisors when employer company is selected
+  const loadSupervisors = useCallback(async (company: string) => {
+    try {
+      const result = await getSupervisorsByCompany(company);
+      if (result.success) {
+        setSupervisors(result.supervisors || []);
+      }
+    } catch (error) {
+      toast.error("Failed to load supervisors");
+    }
   }, []);
 
   // Load course sections from course_management table
@@ -185,9 +209,34 @@ export function useRecipients() {
             filters.department = courseYearSection;
           }
         } else if (audienceType === "Alumni") {
-          if (courseYearSection) {
-            filters.company = courseYearSection;
+          // Pass degree and graduation year for filtering alumni
+          if (department) {
+            filters.degree = department;
           }
+          if (courseYearSection) {
+            filters.gradYear = courseYearSection;
+          }
+        } else if (audienceType === "Employers") {
+          // For employers, get alumni who work at the selected company
+          if (courseYearSection) {
+            const alumniResult = await getAlumniByCompany(courseYearSection);
+            if (alumniResult.success && alumniResult.users && alumniResult.users.length > 0) {
+              const formattedUsers = alumniResult.users.map((user) => ({
+                id: user.id,
+                fullName: user.full_name,
+                details: `${user.job_title || 'Employee'} at ${user.company_name}`,
+              }));
+              setRecipients(formattedUsers);
+              setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));
+              setSelectAllRecipients(true);
+              return;
+            }
+          }
+          // No company selected, show empty
+          setRecipients([]);
+          setSelectedRecipients(new Set());
+          setSelectAllRecipients(true);
+          return;
         }
 
         const result = await getFilteredUsers(filters);
@@ -241,6 +290,20 @@ export function useRecipients() {
       } else {
         // If nothing selected, show all students
         fetchRecipients(selectedAudienceType, "All Students", "");
+      }
+    } else if (selectedAudienceType === "Alumni") {
+      // For alumni, filter by degree and/or graduation year
+      if (selectedDepartment || selectedCourseYearSection) {
+        fetchRecipients(
+          selectedAudienceType,
+          selectedCourseYearSection || "",
+          selectedDepartment || ""
+        );
+      } else {
+        // If nothing selected, show all alumni
+        setRecipients([]);
+        setSelectedRecipients(new Set());
+        setSelectAllRecipients(true);
       }
     } else if (
       selectedAudienceType !== "All Users" &&
@@ -299,6 +362,32 @@ export function useRecipients() {
       }
       return newSelected;
     });
+  }, []);
+
+  // Toggle supervisor selection
+  const toggleSupervisor = useCallback((supervisor: any) => {
+    setSelectedSupervisors((prev) => {
+      const exists = prev.find(s => s.id === supervisor.id);
+      if (exists) {
+        return prev.filter(s => s.id !== supervisor.id);
+      } else {
+        return [...prev, supervisor];
+      }
+    });
+  }, []);
+
+  // Toggle all supervisors
+  const toggleAllSupervisors = useCallback((checked: boolean, allSupervisors: any[]) => {
+    if (checked) {
+      setSelectedSupervisors(allSupervisors);
+    } else {
+      setSelectedSupervisors([]);
+    }
+  }, []);
+
+  // Clear selected supervisors when company changes
+  const clearSelectedSupervisors = useCallback(() => {
+    setSelectedSupervisors([]);
   }, []);
 
   // Assign form to specific users
@@ -386,8 +475,11 @@ export function useRecipients() {
     setSelectAllRecipients,
     searchTerm,
     setSearchTerm,
-    alumniCompanies,
+    alumniDegrees,
+    alumniGraduationYears,
     employerCompanies,
+    supervisors,
+    selectedSupervisors,
     instructors,
     filteredInstructors,
     selectedInstructors,
@@ -405,7 +497,11 @@ export function useRecipients() {
     toggleRecipient,
     toggleAllRecipients,
     toggleInstructor,
+    toggleSupervisor,
+    toggleAllSupervisors,
+    clearSelectedSupervisors,
     assignToUsers,
     deployToGroup,
+    loadSupervisors,
   };
 }

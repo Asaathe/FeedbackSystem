@@ -1153,6 +1153,252 @@ export const getEmployerCompanies = async (): Promise<{ success: boolean; compan
   }
 };
 
+// Get alumni degrees for filtering
+export const getAlumniDegrees = async (): Promise<{ success: boolean; degrees: string[]; message?: string }> => {
+  logDebug('getAlumniDegrees called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, degrees: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/alumni/degrees';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, degrees: [], message: 'Failed to fetch alumni degrees' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.degrees) {
+      logDebug(`Successfully loaded ${result.degrees.length} degrees`);
+      return { success: true, degrees: result.degrees, message: 'Degrees fetched successfully' };
+    }
+
+    return { success: false, degrees: [], message: result.message || 'Failed to fetch degrees' };
+  } catch (error) {
+    logError('Exception in getAlumniDegrees:', error);
+    return { success: false, degrees: [], message: 'An error occurred while fetching degrees' };
+  }
+};
+
+// Get alumni graduation years for filtering
+export const getAlumniGraduationYears = async (): Promise<{ success: boolean; graduationYears: string[]; message?: string }> => {
+  logDebug('getAlumniGraduationYears called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, graduationYears: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/alumni/graduation-years';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, graduationYears: [], message: 'Failed to fetch graduation years' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.graduationYears) {
+      logDebug(`Successfully loaded ${result.graduationYears.length} graduation years`);
+      return { success: true, graduationYears: result.graduationYears, message: 'Graduation years fetched successfully' };
+    }
+
+    return { success: false, graduationYears: [], message: result.message || 'Failed to fetch graduation years' };
+  } catch (error) {
+    logError('Exception in getAlumniGraduationYears:', error);
+    return { success: false, graduationYears: [], message: 'An error occurred while fetching graduation years' };
+  }
+};
+
+// Get companies from alumni employment (for employer feedback)
+export const getAlumniEmploymentCompanies = async (): Promise<{ success: boolean; companies: string[]; message?: string }> => {
+  logDebug('getAlumniEmploymentCompanies called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, companies: [], message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/alumni-employment/companies';
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, companies: [], message: 'Failed to fetch companies' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.companies) {
+      logDebug(`Successfully loaded ${result.companies.length} companies from alumni employment`);
+      return { success: true, companies: result.companies, message: 'Companies fetched successfully' };
+    }
+
+    return { success: false, companies: [], message: result.message || 'Failed to fetch companies' };
+  } catch (error) {
+    logError('Exception in getAlumniEmploymentCompanies:', error);
+    return { success: false, companies: [], message: 'An error occurred while fetching companies' };
+  }
+};
+
+// Supervisor interface for employer feedback
+interface Supervisor {
+  id: number;
+  alumni_user_id: number;
+  company_name: string;
+  supervisor_name: string;
+  supervisor_email: string;
+  alumni_name: string;
+}
+
+// Get supervisors by company from alumni employment
+export const getSupervisorsByCompany = async (company?: string): Promise<{ success: boolean; supervisors: Supervisor[]; message?: string }> => {
+  logDebug('getSupervisorsByCompany called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, supervisors: [], message: 'No authentication token found' };
+    }
+
+    let apiUrl = '/api/alumni-employment/supervisors';
+    if (company) {
+      apiUrl += `?company=${encodeURIComponent(company)}`;
+    }
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, supervisors: [], message: 'Failed to fetch supervisors' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.supervisors) {
+      logDebug(`Successfully loaded ${result.supervisors.length} supervisors`);
+      return { success: true, supervisors: result.supervisors, message: 'Supervisors fetched successfully' };
+    }
+
+    return { success: false, supervisors: [], message: result.message || 'Failed to fetch supervisors' };
+  } catch (error) {
+    logError('Exception in getSupervisorsByCompany:', error);
+    return { success: false, supervisors: [], message: 'An error occurred while fetching supervisors' };
+  }
+};
+
+// Get alumni by company from alumni employment (for employer preview recipients)
+export const getAlumniByCompany = async (company?: string): Promise<{ success: boolean; users: any[]; message?: string }> => {
+  logDebug('getAlumniByCompany called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, users: [], message: 'No authentication token found' };
+    }
+
+    let apiUrl = '/api/alumni-employment/alumni-by-company';
+    if (company) {
+      apiUrl += `?company=${encodeURIComponent(company)}`;
+    }
+
+    const response = await fetch(apiUrl, {
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, users: [], message: 'Failed to fetch alumni' };
+    }
+
+    const result = await response.json();
+    if (result.success && result.users) {
+      logDebug(`Successfully loaded ${result.users.length} alumni`);
+      return { success: true, users: result.users, message: 'Alumni fetched successfully' };
+    }
+
+    return { success: false, users: [], message: result.message || 'Failed to fetch alumni' };
+  } catch (error) {
+    logError('Exception in getAlumniByCompany:', error);
+    return { success: false, users: [], message: 'An error occurred while fetching alumni' };
+  }
+};
+
+// Send feedback invitation to supervisor
+export interface SendFeedbackInvitationParams {
+  supervisorEmail: string;
+  supervisorName: string;
+  companyName: string;
+  alumnusName: string;
+  formTitle: string;
+  feedbackLink: string;
+}
+
+export const sendFeedbackInvitation = async (params: SendFeedbackInvitationParams): Promise<{ success: boolean; message: string }> => {
+  logDebug('sendFeedbackInvitation called');
+
+  try {
+    const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
+    if (!token) {
+      logError('No authentication token found');
+      return { success: false, message: 'No authentication token found' };
+    }
+
+    const apiUrl = '/api/forms/send-feedback-invitation';
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, message: 'Failed to send feedback invitation' };
+    }
+
+    const result = await response.json();
+    return { success: result.success, message: result.message || 'Feedback invitation sent successfully' };
+  } catch (error) {
+    logError('Exception in sendFeedbackInvitation:', error);
+    return { success: false, message: 'An error occurred while sending feedback invitation' };
+  }
+};
+
 // Get instructor departments for filtering
 export const getInstructorDepartments = async (): Promise<{ success: boolean; departments: string[]; message?: string }> => {
   logDebug('getInstructorDepartments called');
@@ -1651,5 +1897,45 @@ export const getMyEvaluations = async (): Promise<{ success: boolean; evaluation
   } catch (error) {
     logError('Exception in getMyEvaluations:', error);
     return { success: false, evaluations: [], message: 'An error occurred while fetching evaluations' };
+  }
+};
+
+// Submit feedback publicly (without authentication) - for external supervisors
+interface PublicFeedbackParams {
+  formId: string;
+  responses: Record<string, any>;
+  supervisorEmail?: string;
+  supervisorName?: string;
+  companyName?: string;
+  alumnusName?: string;
+}
+
+export const submitPublicFeedback = async (params: PublicFeedbackParams): Promise<{ success: boolean; message: string; responseId?: number }> => {
+  logDebug('submitPublicFeedback called');
+
+  try {
+    const apiUrl = '/api/forms/public/submit';
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(params),
+    });
+
+    if (!response.ok) {
+      logError(`HTTP error! status: ${response.status}`);
+      return { success: false, message: 'Failed to submit feedback' };
+    }
+
+    const result = await response.json();
+    return { 
+      success: result.success, 
+      message: result.message || 'Feedback submitted successfully',
+      responseId: result.responseId 
+    };
+  } catch (error) {
+    logError('Exception in submitPublicFeedback:', error);
+    return { success: false, message: 'An error occurred while submitting feedback' };
   }
 };

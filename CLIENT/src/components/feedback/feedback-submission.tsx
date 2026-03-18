@@ -37,6 +37,7 @@ import {
 } from "../../services/publishedFormsService";
 import { getForm } from "../../services/formManagementService";
 import { getAuthToken } from "../../utils/auth";
+import { submitPublicFeedback } from "../../services/formManagementService";
 
 type FormQuestion = ServiceFormQuestion;
 
@@ -63,9 +64,11 @@ interface FeedbackForm {
 
 interface FeedbackSubmissionProps {
   userRole?: string;
+  externalFormId?: string | null;
+  onBackToLogin?: () => void;
 }
 
-export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
+export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: FeedbackSubmissionProps = {}) {
   const [selectedForm, setSelectedForm] = useState<FeedbackForm | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -73,6 +76,13 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
   const [loading, setLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
+  const [isExternalMode, setIsExternalMode] = useState(!!externalFormId);
+  
+  // External supervisor info (for public feedback)
+  const [externalSupervisorName, setExternalSupervisorName] = useState("");
+  const [externalSupervisorEmail, setExternalSupervisorEmail] = useState("");
+  const [externalCompanyName, setExternalCompanyName] = useState("");
+  const [externalAlumnusName, setExternalAlumnusName] = useState("");
   
   // Track current "page" - either a standalone question or a section with all its questions
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -195,6 +205,54 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     touchStartX.current = 0;
     touchStartY.current = 0;
   };
+
+  // Load external form when externalFormId is provided (for public feedback links)
+  useEffect(() => {
+    if (externalFormId && isExternalMode) {
+      const loadExternalForm = async () => {
+        setLoading(true);
+        try {
+          console.log("Loading external form:", externalFormId);
+          
+          // Parse URL parameters for supervisor info
+          const params = new URLSearchParams(window.location.search);
+          const supervisorEmail = params.get('supervisorEmail');
+          const supervisorName = params.get('supervisorName');
+          const companyName = params.get('companyName');
+          const alumnusName = params.get('alumnusName');
+          
+          if (supervisorEmail) setExternalSupervisorEmail(supervisorEmail);
+          if (supervisorName) setExternalSupervisorName(supervisorName);
+          if (companyName) setExternalCompanyName(companyName);
+          if (alumnusName) setExternalAlumnusName(alumnusName);
+          
+          const result = await getForm(externalFormId);
+          if (result.success && result.form) {
+            const form = result.form;
+            const formData: FeedbackForm = {
+              id: form.id,
+              title: form.title,
+              description: form.description,
+              category: form.category,
+              dueDate: form.end_date || "No due date",
+              imageUrl: form.image_url,
+              questions: form.questions || [],
+              questionCount: form.questions?.length || 0,
+            };
+            setSelectedForm(formData);
+            setAvailableForms([formData]);
+          } else {
+            console.error("Form not found or error:", result.message);
+          }
+        } catch (error) {
+          console.error("Error loading external form:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+      loadExternalForm();
+    }
+  }, [externalFormId, isExternalMode]);
 
   // Load forms when component mounts or userRole changes
   useEffect(() => {
@@ -341,6 +399,28 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
     }
 
     try {
+      // For external/public mode, use public submission endpoint
+      if (isExternalMode) {
+        console.log("Submitting external feedback...");
+        const result = await submitPublicFeedback({
+          formId: selectedForm.id,
+          responses: answers,
+          supervisorEmail: externalSupervisorEmail,
+          supervisorName: externalSupervisorName,
+          companyName: externalCompanyName,
+          alumnusName: externalAlumnusName,
+        });
+
+        if (result.success) {
+          setShowSuccessModal(true);
+          console.log("External feedback submitted successfully!");
+        } else {
+          alert("Failed to submit feedback: " + result.message);
+        }
+        return;
+      }
+
+      // For authenticated users, use the normal submission
       const token = getAuthToken();
       if (!token) {
         alert("You must be logged in to submit feedback.");
@@ -769,6 +849,51 @@ export function FeedbackSubmission({ userRole }: FeedbackSubmissionProps = {}) {
 
           {/* Form Title Section */}
           <div className="px-8 py-6 border-b border-gray-100">
+            {/* External Supervisor Info - shown only in external mode */}
+            {isExternalMode && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <h3 className="text-blue-800 font-medium mb-3">Your Information</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-blue-700 text-sm">Your Name</Label>
+                    <Input
+                      value={externalSupervisorName}
+                      onChange={(e) => setExternalSupervisorName(e.target.value)}
+                      placeholder="Enter your name"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-blue-700 text-sm">Your Email</Label>
+                    <Input
+                      value={externalSupervisorEmail}
+                      onChange={(e) => setExternalSupervisorEmail(e.target.value)}
+                      placeholder="Enter your email"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-blue-700 text-sm">Company</Label>
+                    <Input
+                      value={externalCompanyName}
+                      onChange={(e) => setExternalCompanyName(e.target.value)}
+                      placeholder="Your company"
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-blue-700 text-sm">Alumnus Name</Label>
+                    <Input
+                      value={externalAlumnusName}
+                      onChange={(e) => setExternalAlumnusName(e.target.value)}
+                      placeholder="Alumnus you're providing feedback for"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-3">

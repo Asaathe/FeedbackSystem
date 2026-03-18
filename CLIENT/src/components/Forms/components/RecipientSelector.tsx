@@ -38,7 +38,7 @@ export function RecipientSelector({
           className="w-full justify-between p-3 h-auto border rounded-lg hover:bg-gray-50"
         >
           <span className="text-sm">
-            Preview Recipients ({filteredRecipients.length} of {recipients.length})
+            Preview Recipients ({selectedRecipients.size} of {recipients.length})
           </span>
           <ChevronDown className="w-4 h-4" />
         </Button>

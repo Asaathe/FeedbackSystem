@@ -60,7 +60,7 @@ const upload = multer({
   storage: storage,
   fileFilter: imageFileFilter,
   limits: {
-    fileSize: 500 * 1024, // 500KB max file size
+    fileSize: 2 * 1024 * 1024, // 2MB max file size for form images
     files: 1 // Single file upload
   }
 });
@@ -93,7 +93,7 @@ const handleUploadError = (err, req, res, next) => {
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(400).json({
         success: false,
-        message: 'File too large. Maximum size is 500KB.'
+        message: 'File too large. Maximum size is 2MB.'
       });
     }
     if (err.code === 'LIMIT_FILE_COUNT') {

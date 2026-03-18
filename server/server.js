@@ -1,11 +1,33 @@
 // FeedbACTS System - Main Server File
 // Environment variables are loaded via process.env (configured in .env)
 
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
+const fs = require("fs");
+
+// Create upload directories if they don't exist
+const uploadDirs = [
+  path.join(__dirname, "public/uploads/forms"),
+  path.join(__dirname, "public/uploads/users"),
+  path.join(__dirname, "public/uploads/feedback"),
+  path.join(__dirname, "public/uploads/profiles"),
+  path.join(__dirname, "public/uploads/profiles/instructors"),
+  path.join(__dirname, "public/uploads/profiles/students"),
+  path.join(__dirname, "public/uploads/profiles/alumni"),
+  path.join(__dirname, "public/uploads/profiles/employers"),
+];
+
+uploadDirs.forEach(dir => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+    console.log(`Created upload directory: ${dir}`);
+  }
+});
 
 const authRoutes = require("./routes/auth");
 const formRoutes = require("./routes/forms");

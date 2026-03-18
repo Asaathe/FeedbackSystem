@@ -146,8 +146,10 @@ const formatUserResponse = (user) => {
   if (user.role === 'alumni') {
     if (user.graduationYear !== undefined) formatted.graduationYear = user.graduationYear;
     if (user.degree !== undefined) formatted.degree = user.degree;
-    if (user.company !== undefined) formatted.companyName = user.company;
-    if (user.industry !== undefined) formatted.industry = user.industry;
+    // Get company name from alumni_employment table
+    if (user.company_name !== undefined) formatted.companyName = user.company_name;
+    if (user.job_title !== undefined) formatted.jobTitle = user.job_title;
+    if (user.industry_type !== undefined) formatted.industry = user.industry_type;
   }
 
   // Add role-specific fields for employers

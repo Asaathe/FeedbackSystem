@@ -84,7 +84,7 @@ import { cleanQuestions, getDepartmentFromSection, formatUserDetails } from "./u
 
 // AI Service
 import { generateQuestionsWithAI, GeneratedQuestion } from "../../services/aiQuestionService";
-import { deployEvaluationForm } from "../../services/formManagementService";
+import { deployEvaluationForm, sendFeedbackInvitation } from "../../services/formManagementService";
 
 interface FormBuilderProps {
   onBack: () => void;
@@ -217,8 +217,15 @@ export function FormBuilder({
     selectAllRecipients,
     searchTerm,
     setSearchTerm,
-    alumniCompanies,
+    alumniDegrees,
+    alumniGraduationYears,
     employerCompanies,
+    supervisors,
+    selectedSupervisors,
+    loadSupervisors,
+    toggleSupervisor,
+    toggleAllSupervisors,
+    clearSelectedSupervisors,
     instructors,
     filteredInstructors,
     selectedInstructors,
@@ -772,6 +779,58 @@ export function FormBuilder({
       }
 
       if (deployResult && deployResult.success) {
+        console.log("Form deployed successfully. Audience:", selectedAudienceType, "Supervisors:", selectedSupervisors.length);
+        
+        // For Employers, send feedback invitations to selected supervisors
+        if (selectedAudienceType === "Employers" && selectedSupervisors.length > 0) {
+          console.log("Sending feedback invitations to:", selectedSupervisors);
+          
+          let emailSuccessCount = 0;
+          let emailFailCount = 0;
+          
+          // Send feedback invitations to each selected supervisor
+          for (const supervisor of selectedSupervisors) {
+            console.log("Supervisor object:", supervisor);
+            console.log("Supervisor alumnus_name:", supervisor.alumnus_name);
+            try {
+              console.log("Sending to:", supervisor.supervisor_email, supervisor.supervisor_name);
+              
+              // Build feedback link with supervisor info as URL parameters
+              const feedbackLink = `${window.location.origin}/feedback/${currentFormId}?supervisorEmail=${encodeURIComponent(supervisor.supervisor_email)}&supervisorName=${encodeURIComponent(supervisor.supervisor_name)}&companyName=${encodeURIComponent(supervisor.company_name)}&alumnusName=${encodeURIComponent(supervisor.alumnus_name || supervisor.alumni_name || '')}`;
+              console.log("Feedback link:", feedbackLink);
+              
+              const result = await sendFeedbackInvitation({
+                supervisorEmail: supervisor.supervisor_email,
+                supervisorName: supervisor.supervisor_name,
+                companyName: supervisor.company_name,
+                alumnusName: supervisor.alumnus_name || supervisor.alumni_name || "Unknown",
+                formTitle: formTitle,
+                feedbackLink: feedbackLink,
+              });
+              
+              if (result.success) {
+                emailSuccessCount++;
+                console.log("Email sent successfully to:", supervisor.supervisor_email);
+              } else {
+                emailFailCount++;
+                console.error("Failed to send email to:", supervisor.supervisor_email, result.message);
+              }
+            } catch (error) {
+              emailFailCount++;
+              console.error("Error sending email to:", supervisor.supervisor_email, error);
+            }
+          }
+          
+          if (emailFailCount > 0) {
+            toast.warning(`Form published! ${emailSuccessCount} invitation(s) sent, ${emailFailCount} failed.`);
+          } else {
+            toast.success(`Form published! ${emailSuccessCount} supervisor invitation(s) sent.`);
+          }
+        } else {
+          console.log("Not sending emails - Audience:", selectedAudienceType, "Supervisors:", selectedSupervisors.length);
+          toast.success("Form published successfully!");
+        }
+        
         setPublishDialogOpen(false);
         // Update original state to match current state after publishing
         setOriginalFormState({
@@ -780,6 +839,10 @@ export function FormBuilder({
           questionsCount: questions.length,
         });
         setHasUnsavedChanges(false); // Clear unsaved changes after publishing
+        
+        // Clear selected supervisors after publishing
+        clearSelectedSupervisors();
+        
         // Navigate back directly since we just published
         setTimeout(() => {
           onBack();
@@ -1365,17 +1428,31 @@ export function FormBuilder({
                                     "Course and Section"}
                                   {selectedAudienceType === "Instructors" &&
                                     "Department"}
-                                  {selectedAudienceType === "Alumni" && "Company"}
+                                  {selectedAudienceType === "Alumni" && "Degree"}
                                   {selectedAudienceType === "Employers" &&
                                     "Company"}
                                 </Label>
                                 <Select
-                                  value={selectedCourseYearSection}
+                                  value={selectedAudienceType === "Alumni" ? selectedDepartment : selectedCourseYearSection}
                                   onValueChange={(value) => {
-                                    setSelectedCourseYearSection(value);
-                                    setFormTarget(
-                                      `${selectedAudienceType} - ${value}`
-                                    );
+                                    if (selectedAudienceType === "Alumni") {
+                                      setSelectedDepartment(value);
+                                      setFormTarget(
+                                        `${selectedAudienceType} - ${value}`
+                                      );
+                                    } else if (selectedAudienceType === "Employers") {
+                                      setSelectedCourseYearSection(value);
+                                      setFormTarget(
+                                        `${selectedAudienceType} - ${value}`
+                                      );
+                                      // Load supervisors for the selected company
+                                      loadSupervisors(value);
+                                    } else {
+                                      setSelectedCourseYearSection(value);
+                                      setFormTarget(
+                                        `${selectedAudienceType} - ${value}`
+                                      );
+                                    }
                                   }}
                                 >
                                   <SelectTrigger className="h-10">
@@ -1385,6 +1462,8 @@ export function FormBuilder({
                                           ? "Select course year section"
                                           : selectedAudienceType === "Instructors"
                                           ? "Select department"
+                                          : selectedAudienceType === "Alumni"
+                                          ? "Select degree"
                                           : "Select company"
                                       }
                                     />
@@ -1404,9 +1483,9 @@ export function FormBuilder({
                                         </SelectItem>
                                       ))}
                                     {selectedAudienceType === "Alumni" &&
-                                      alumniCompanies.map((company) => (
-                                        <SelectItem key={company} value={company}>
-                                          {company}
+                                      alumniDegrees.map((degree) => (
+                                        <SelectItem key={degree} value={degree}>
+                                          {degree}
                                         </SelectItem>
                                       ))}
                                     {selectedAudienceType === "Employers" &&
@@ -1417,6 +1496,86 @@ export function FormBuilder({
                                       ))}
                                   </SelectContent>
                                 </Select>
+                              </div>
+                            )}
+
+                            {/* Graduation Year Selection for Alumni */}
+                            {selectedAudienceType === "Alumni" && selectedDepartment && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">
+                                  Graduation Year
+                                </Label>
+                                <Select
+                                  value={selectedCourseYearSection}
+                                  onValueChange={(value) => {
+                                    setSelectedCourseYearSection(value);
+                                    setFormTarget(
+                                      `${selectedAudienceType} - ${selectedDepartment} - ${value}`
+                                    );
+                                  }}
+                                >
+                                  <SelectTrigger className="h-10">
+                                    <SelectValue
+                                      placeholder="Select graduation year"
+                                    />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {alumniGraduationYears.map((year) => (
+                                      <SelectItem key={year} value={year}>
+                                        {year}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
+
+                            {/* Supervisor Selection for Employers */}
+                            {selectedAudienceType === "Employers" && selectedCourseYearSection && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">
+                                  Select Supervisors to Invite ({selectedSupervisors.length} selected)
+                                </Label>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <input
+                                    id="select-all-supervisors"
+                                    type="checkbox"
+                                    checked={selectedSupervisors.length === supervisors.length && supervisors.length > 0}
+                                    onChange={(e) => toggleAllSupervisors(e.target.checked, supervisors)}
+                                    className="w-4 h-4"
+                                  />
+                                  <Label htmlFor="select-all-supervisors" className="text-sm">
+                                    Select All Supervisors
+                                  </Label>
+                                </div>
+                                <div className="border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto">
+                                  {supervisors.length > 0 ? (
+                                    supervisors.map((supervisor) => (
+                                      <div key={supervisor.id} className="flex items-center gap-2 py-1">
+                                        <input
+                                          id={`supervisor-${supervisor.id}`}
+                                          type="checkbox"
+                                          checked={selectedSupervisors.some(s => s.id === supervisor.id)}
+                                          onChange={() => toggleSupervisor(supervisor)}
+                                          className="w-4 h-4"
+                                        />
+                                        <Label
+                                          htmlFor={`supervisor-${supervisor.id}`}
+                                          className="text-sm flex-1"
+                                        >
+                                          {supervisor.supervisor_name} ({supervisor.supervisor_email})
+                                          <span className="text-xs text-gray-500 ml-2">
+                                            - Alumni: {supervisor.alumni_name}
+                                          </span>
+                                        </Label>
+                                      </div>
+                                    ))
+                                  ) : (
+                                    <p className="text-xs text-gray-500">
+                                      No supervisors found for this company.
+                                    </p>
+                                  )}
+                                </div>
                               </div>
                             )}
 
@@ -1435,7 +1594,12 @@ export function FormBuilder({
                               ((selectedAudienceType === "Students" &&
                                 selectedDepartment &&
                                 selectedCourseYearSection) ||
-                                (selectedAudienceType !== "Students" &&
+                                (selectedAudienceType === "Alumni" &&
+                                selectedDepartment &&
+                                selectedCourseYearSection) ||
+                                (selectedAudienceType === "Instructors" &&
+                                  selectedCourseYearSection) ||
+                                (selectedAudienceType === "Employers" &&
                                   selectedCourseYearSection)) && (
                               <RecipientSelector
                                 recipients={recipients}

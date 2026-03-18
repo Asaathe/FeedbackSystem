@@ -74,10 +74,10 @@ export const getDefaultFallbackImage = (): string => {
 export const IMAGE_VALIDATION = {
   // Allowed file types
   allowedTypes: ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'],
-  // Maximum file size (500KB for optimal performance)
-  maxFileSize: 500 * 1024, // 500KB
-  // Maximum base64 string length (approximately 500KB when encoded)
-  maxBase64Length: 700000, // ~700K characters
+  // Maximum file size (2MB for form header images)
+  maxFileSize: 2 * 1024 * 1024, // 2MB
+  // Maximum base64 string length (approximately 2MB when encoded)
+  maxBase64Length: 2800000, // ~2.8M characters
   // Recommended dimensions for form headers
   recommendedWidth: 800,
   recommendedHeight: 200,

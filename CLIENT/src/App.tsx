@@ -165,6 +165,9 @@ export default function App() {
   const [userRole, setUserRole] = useState<string>("");
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [showSignup, setShowSignup] = useState(false);
+  
+  // External feedback form ID (for public feedback links)
+  const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(null);
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
     undefined
   );
@@ -214,6 +217,17 @@ export default function App() {
           // Network error or server error, clear storage
           clearAuthData();
         });
+    }
+  }, []);
+
+  // Check for external feedback link in URL on page load
+  useEffect(() => {
+    const path = window.location.pathname;
+    // Check if URL is like /feedback/123
+    const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
+    if (feedbackMatch && feedbackMatch[1]) {
+      console.log("External feedback link detected, form ID:", feedbackMatch[1]);
+      setExternalFeedbackFormId(feedbackMatch[1]);
     }
   }, []);
 
@@ -301,6 +315,23 @@ export default function App() {
     setViewingResponsesFormId(undefined);
     setCurrentPage("forms");
   };
+
+  // Render external feedback page (for public links like /feedback/123)
+  if (externalFeedbackFormId) {
+    return (
+      <div className="min-h-screen bg-gray-100">
+        <FeedbackSubmission 
+          externalFormId={externalFeedbackFormId} 
+          onBackToLogin={() => {
+            // Redirect to login - external users can also login if they have accounts
+            setExternalFeedbackFormId(null);
+            // Optionally redirect to login page
+            setCurrentPage("login");
+          }}
+        />
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     if (showSignup) {

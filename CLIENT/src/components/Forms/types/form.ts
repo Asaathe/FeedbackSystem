@@ -92,6 +92,8 @@ export interface FormFilters {
   course_year_section?: string;
   department?: string;
   company?: string;
+  degree?: string;
+  gradYear?: string;
 }
 
 // Evaluation Form Types

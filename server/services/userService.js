@@ -108,9 +108,9 @@ const getFilteredUsers = async (filters) => {
     } else if (role === "alumni") {
       query = `
         SELECT 
-          u.id, u_name, u.role.email, u.full, u.status,
+          u.id, u.full_name, u.email, u.role, u.status,
           a.grad_year, a.degree, a.jobtitle, a.contact, a.company
-        FROM Users u
+        FROM users u
         LEFT JOIN alumni a ON u.id = a.user_id
         WHERE ${whereClause}
       `;
@@ -369,9 +369,11 @@ const getAllUsers = async (filters = {}) => {
       usersQuery = `
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
-          a.grad_year as graduationYear, a.contact as phoneNumber, a.degree, a.company, a.jobtitle, a.image as profilePicture
+          a.grad_year as graduationYear, a.contact as phoneNumber, a.degree, a.image as profilePicture,
+          ae.company_name, ae.job_title, ae.industry_type, ae.employment_status
         FROM Users u
         LEFT JOIN alumni a ON u.id = a.user_id
+        LEFT JOIN alumni_employment ae ON u.id = ae.alumni_user_id
         ${alumniWhereClause}
         ORDER BY u.registration_date DESC
         LIMIT ? OFFSET ?
@@ -428,13 +430,15 @@ const getAllUsers = async (filters = {}) => {
           COALESCE(i.image, s.image, a.image, e.image) as profilePicture,
           cm.course_section, cm.department as course_department,
           i.instructor_id, i.department as instructor_department, i.school_role,
-          a.grad_year as graduationYear, a.degree, a.company as alumniCompany, a.jobtitle,
+          a.grad_year as graduationYear, a.degree,
+          ae.company_name, ae.job_title, ae.industry_type, ae.employment_status,
           e.companyname as companyName, e.industry
         FROM Users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN course_management cm ON s.program_id = cm.id
         LEFT JOIN instructors i ON u.id = i.user_id
         LEFT JOIN alumni a ON u.id = a.user_id
+        LEFT JOIN alumni_employment ae ON u.id = ae.alumni_user_id
         LEFT JOIN employers e ON u.id = e.user_id
         ${whereClause}
         ORDER BY u.registration_date DESC
