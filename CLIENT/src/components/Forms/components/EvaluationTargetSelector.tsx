@@ -96,7 +96,7 @@ export function EvaluationTargetSelector({
     setLoadingInstructors(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/instructors', {
+      const response = await fetch('/api/subject-evaluation/instructors', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -133,7 +133,7 @@ export function EvaluationTargetSelector({
     setLoadingSubjects(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/search?search=${encodeURIComponent(search)}`, {
+      const response = await fetch(`/api/subject-evaluation/subjects/search?search=${encodeURIComponent(search)}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -164,7 +164,7 @@ export function EvaluationTargetSelector({
     setLoadingInstructorDetails(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/instructors/${instructorId}/details`, {
+      const response = await fetch(`/api/subject-evaluation/instructors/${instructorId}/details`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -187,7 +187,7 @@ export function EvaluationTargetSelector({
     setLoadingStudents(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/students-by-subject', {
+      const response = await fetch('/api/subject-evaluation/students-by-subject', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,7 +211,7 @@ export function EvaluationTargetSelector({
     setLoadingStudents(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/students-by-instructor', {
+      const response = await fetch('/api/subject-evaluation/students-by-instructor', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -606,3 +606,4 @@ export function EvaluationTargetSelector({
     </Card>
   );
 }
+

@@ -453,3 +453,4 @@ const departments = ["College", "Senior High"];
 }
 
 export default SubjectManagement;
+

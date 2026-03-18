@@ -947,7 +947,7 @@ export function FormBuilder({
       formData.append('uploadType', 'forms');
 
       const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
-      const uploadResponse = await fetch('http://localhost:5000/api/forms/upload-image', {
+      const uploadResponse = await fetch('/api/forms/upload-image', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -2397,3 +2397,4 @@ export function FormBuilder({
     </div>
   );
 }
+

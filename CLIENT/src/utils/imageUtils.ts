@@ -3,7 +3,8 @@
 
 import React from 'react';
 
-const API_BASE_URL = 'http://localhost:5000';
+// Use relative path for uploads - works with Vite proxy in dev, same origin in prod
+const UPLOADS_BASE = '/uploads';
 
 /**
  * Formats image URL for display
@@ -47,8 +48,8 @@ export const formatImageUrl = (imageUrl: string | undefined | null): string => {
     cleanPath = cleanPath.slice(0, -1);
   }
   
-  // Construct full URL with API base
-  const fullUrl = `${API_BASE_URL}/${cleanPath}`;
+  // Construct full URL with uploads base (relative path)
+  const fullUrl = `${UPLOADS_BASE}/${cleanPath}`;
   
   // Debug logging (can be removed in production)
   console.log('Image URL formatting:', {

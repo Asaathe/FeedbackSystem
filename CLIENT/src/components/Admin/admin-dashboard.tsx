@@ -62,7 +62,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
       }
 
       // Fetch forms data
-      const formsResponse = await fetch('http://localhost:5000/api/forms?status=active&limit=100', {
+      const formsResponse = await fetch('/api/forms?status=active&limit=100', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -124,7 +124,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
       };
 
       const rolePromises = roles.map(async (role) => {
-        const response = await fetch(`http://localhost:5000/api/users?role=${role}&limit=1`, {
+        const response = await fetch(`/api/users?role=${role}&limit=1`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },

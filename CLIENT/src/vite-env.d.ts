@@ -17,3 +17,4 @@ declare module '*.svg' {
     React.SVGProps<SVGSVGElement> & { title?: string }
   >;
 }
+

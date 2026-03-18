@@ -118,7 +118,7 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
           return;
         }
 
-        const response = await fetch('http://localhost:5000/api/auth/verify', {
+        const response = await fetch('/api/auth/verify', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -149,7 +149,7 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
   const fetchCourses = async () => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/course-management/sections', {
+      const response = await fetch('/api/course-management/sections', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -190,7 +190,7 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
         if (formData.fullName) updateData.full_name = formData.fullName;
       }
 
-      const response = await fetch('http://localhost:5000/api/auth/profile', {
+      const response = await fetch('/api/auth/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -613,3 +613,4 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
     </div>
   );
 }
+

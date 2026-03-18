@@ -224,7 +224,7 @@ export function UserManagement() {
         limit: String(limit)
       });
 
-      const response = await fetch(`http://localhost:5000/api/users?${params}`, {
+      const response = await fetch(`/api/users?${params}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -454,7 +454,7 @@ export function UserManagement() {
         })
       };
 
-      const response = await fetch('http://localhost:5000/api/users/create', {
+      const response = await fetch('/api/users/create', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -501,7 +501,7 @@ export function UserManagement() {
   const handleApproveUser = async (userId: number) => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/approve`, {
+      const response = await fetch(`/api/users/${userId}/approve`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -537,7 +537,7 @@ export function UserManagement() {
   const handleRejectUser = async (userId: number) => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/users/${userId}/reject`, {
+      const response = await fetch(`/api/users/${userId}/reject`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -657,7 +657,7 @@ export function UserManagement() {
         })
       };
 
-      const response = await fetch(`http://localhost:5000/api/users/${editingUserId}`, {
+      const response = await fetch(`/api/users/${editingUserId}`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -720,7 +720,7 @@ export function UserManagement() {
         throw new Error('No authentication token found');
       }
       
-      const response = await fetch(`http://localhost:5000/api/users/${userToRemove}`, {
+      const response = await fetch(`/api/users/${userToRemove}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1056,7 +1056,7 @@ export function UserManagement() {
                           const formData = new FormData();
                           formData.append('image', file);
                           const roleParam = `?role=${encodeURIComponent(newUser.role || 'profiles')}`;
-                          const response = await fetch(`http://localhost:5000/api/users/upload-profile-image${roleParam}`, {
+                          const response = await fetch(`/api/users/upload-profile-image${roleParam}`, {
                             method: 'POST',
                             headers: { 'Authorization': `Bearer ${token}` },
                             body: formData,
@@ -1708,7 +1708,7 @@ export function UserManagement() {
                             // Send role as query parameter for proper folder routing
                             const roleParam = `?role=${encodeURIComponent(editUser.role || 'profiles')}`;
                             
-                            const response = await fetch(`http://localhost:5000/api/users/upload-profile-image${roleParam}`, {
+                            const response = await fetch(`/api/users/upload-profile-image${roleParam}`, {
                               method: 'POST',
                               headers: {
                                 'Authorization': `Bearer ${token}`,

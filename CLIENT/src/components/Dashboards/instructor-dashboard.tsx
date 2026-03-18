@@ -82,7 +82,7 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: In
       }
 
       // Fetch instructor's subjects
-      const subjectsResponse = await fetch('http://localhost:5000/api/subject-evaluation/my-subjects', {
+      const subjectsResponse = await fetch('/api/subject-evaluation/my-subjects', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -95,7 +95,7 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: In
       }
 
       // Fetch stats
-      const statsResponse = await fetch('http://localhost:5000/api/subject-evaluation/my-stats', {
+      const statsResponse = await fetch('/api/subject-evaluation/my-stats', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -117,7 +117,7 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: In
     setLoadingFeedback(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/${subjectId}/feedback`, {
+      const response = await fetch(`/api/subject-evaluation/subjects/${subjectId}/feedback`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -383,3 +383,4 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: In
     </div>
   );
 }
+

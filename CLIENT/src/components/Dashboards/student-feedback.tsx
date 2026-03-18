@@ -81,7 +81,7 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
       const token = sessionStorage.getItem('authToken');
       
       // Fetch categories (default to subject type for initial load)
-      const categoriesResponse = await fetch('http://localhost:5000/api/feedback-templates/categories?feedback_type=subject', {
+      const categoriesResponse = await fetch('/api/feedback-templates/categories?feedback_type=subject', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const categoriesData = await categoriesResponse.json();
@@ -90,7 +90,7 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
       }
 
       // Check if evaluation is active
-      const periodResponse = await fetch('http://localhost:5000/api/feedback-templates/periods/active', {
+      const periodResponse = await fetch('/api/feedback-templates/periods/active', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const periodData = await periodResponse.json();
@@ -99,7 +99,7 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
       }
 
       // Fetch student's enrolled subjects
-      const subjectsResponse = await fetch('http://localhost:5000/api/feedback-templates/student/subjects', {
+      const subjectsResponse = await fetch('/api/feedback-templates/student/subjects', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const subjectsData = await subjectsResponse.json();
@@ -110,7 +110,7 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
       }
 
       // Fetch feedback status
-      const statusResponse = await fetch('http://localhost:5000/api/feedback-templates/student/feedback-status', {
+      const statusResponse = await fetch('/api/feedback-templates/student/feedback-status', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const statusData = await statusResponse.json();
@@ -145,7 +145,7 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
   const loadCategories = async (type: 'subject' | 'instructor') => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/feedback-templates/categories?feedback_type=${type}`, {
+      const response = await fetch(`/api/feedback-templates/categories?feedback_type=${type}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -184,8 +184,8 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
       });
 
       const endpoint = feedbackType === 'subject' 
-        ? 'http://localhost:5000/api/feedback-templates/subject-feedback'
-        : 'http://localhost:5000/api/feedback-templates/instructor-feedback';
+        ? '/api/feedback-templates/subject-feedback'
+        : '/api/feedback-templates/instructor-feedback';
 
       const payload = {
         subject_id: selectedSubject.subject_id,
@@ -573,3 +573,4 @@ export function StudentFeedback({ onNavigate }: StudentFeedbackProps = {}) {
     </div>
   );
 }
+

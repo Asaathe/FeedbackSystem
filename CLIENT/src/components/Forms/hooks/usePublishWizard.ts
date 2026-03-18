@@ -34,3 +34,4 @@ export function usePublishWizard(totalSteps: number = 3) {
     goToStep,
   };
 }
+

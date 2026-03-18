@@ -59,7 +59,7 @@ export function MySubmissions({ userRole = 'student' }: MySubmissionsProps) {
       }
 
       // Fetch submitted forms
-      const submittedResponse = await fetch("http://localhost:5000/api/forms/my-responses", {
+      const submittedResponse = await fetch("/api/forms/my-responses", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -120,7 +120,7 @@ export function MySubmissions({ userRole = 'student' }: MySubmissionsProps) {
       const token = getAuthToken();
       if (!token) return;
 
-      const response = await fetch("http://localhost:5000/api/forms/my-responses", {
+      const response = await fetch("/api/forms/my-responses", {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
@@ -379,3 +379,4 @@ export function MySubmissions({ userRole = 'student' }: MySubmissionsProps) {
     </div>
   );
 }
+

@@ -210,7 +210,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch instructors
-      const instructorsRes = await fetch('http://localhost:5000/api/users?role=instructor&limit=100', {
+      const instructorsRes = await fetch('/api/users?role=instructor&limit=100', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const instructorsData = await instructorsRes.json();
@@ -228,7 +228,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch course sections (subjects)
-      const sectionsRes = await fetch('http://localhost:5000/api/subject-evaluation/course-sections', {
+      const sectionsRes = await fetch('/api/subject-evaluation/course-sections', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const sectionsData = await sectionsRes.json();
@@ -250,7 +250,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch programs from course_management
-      const programsRes = await fetch('http://localhost:5000/api/programs', {
+      const programsRes = await fetch('/api/programs', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const programsData = await programsRes.json();
@@ -268,7 +268,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch students
-      const studentsRes = await fetch('http://localhost:5000/api/users?role=student&limit=500', {
+      const studentsRes = await fetch('/api/users?role=student&limit=500', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const studentsData = await studentsRes.json();
@@ -287,7 +287,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch instructor courses
-      const coursesRes = await fetch('http://localhost:5000/api/subject-evaluation/instructor-courses', {
+      const coursesRes = await fetch('/api/subject-evaluation/instructor-courses', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const coursesData = await coursesRes.json();
@@ -297,7 +297,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch student enrollments
-      const enrollmentsRes = await fetch('http://localhost:5000/api/subject-evaluation/student-enrollments', {
+      const enrollmentsRes = await fetch('/api/subject-evaluation/student-enrollments', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const enrollmentsData = await enrollmentsRes.json();
@@ -307,7 +307,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
 
       // Fetch subject-sections (new approach - single record per subject-program)
-      const subjectSectionsRes = await fetch('http://localhost:5000/api/subject-evaluation/subject-sections', {
+      const subjectSectionsRes = await fetch('/api/subject-evaluation/subject-sections', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const subjectSectionsData = await subjectSectionsRes.json();
@@ -343,7 +343,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
       console.log('Creating subject with data:', subjectData);
 
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/course-sections', {
+      const response = await fetch('/api/subject-evaluation/course-sections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -386,7 +386,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/course-sections/${editingSubject.id}`, {
+      const response = await fetch(`/api/subject-evaluation/course-sections/${editingSubject.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -423,7 +423,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/course-sections/${deletingSubject.id}`, {
+      const response = await fetch(`/api/subject-evaluation/course-sections/${deletingSubject.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -450,7 +450,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/student-enrollments/${unenrollingStudent.id}`, {
+      const response = await fetch(`/api/subject-evaluation/student-enrollments/${unenrollingStudent.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -489,7 +489,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
       }
       
       // Delete the subject-section record (single record instead of individual enrollments)
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subject-sections/${subjectSectionRecord.id}`, {
+      const response = await fetch(`/api/subject-evaluation/subject-sections/${subjectSectionRecord.id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -521,7 +521,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/instructor-courses', {
+      const response = await fetch('/api/subject-evaluation/instructor-courses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -552,7 +552,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
   const handleRemoveCourse = async (courseId: number) => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/instructor-courses/${courseId}`, {
+      const response = await fetch(`/api/subject-evaluation/instructor-courses/${courseId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -588,7 +588,7 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
         instructor_id: subjectInstructorId ? parseInt(subjectInstructorId) : undefined
       };
 
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/subject-sections', {
+      const response = await fetch('/api/subject-evaluation/subject-sections', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -1294,3 +1294,4 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 }
 
 export default SubjectAssignment;
+

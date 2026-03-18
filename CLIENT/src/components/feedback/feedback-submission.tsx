@@ -99,7 +99,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
         const token = getAuthToken();
         if (!token) return;
 
-        const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+        const response = await fetch('/api/forms/my-responses', {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
@@ -440,7 +440,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
 
       // Submit the form response
       const response = await fetch(
-        `http://localhost:5000/api/forms/${selectedForm.id}/submit`,
+        `/api/forms/${selectedForm.id}/submit`,
         {
           method: "POST",
           headers: {
@@ -1101,4 +1101,5 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     </div>
   );
 }
+
 

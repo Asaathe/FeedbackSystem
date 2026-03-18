@@ -31,7 +31,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
       try {
         const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
         if (token) {
-          const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+          const response = await fetch('/api/forms/my-responses', {
             headers: {
               'Authorization': `Bearer ${token}`,
               'Content-Type': 'application/json',

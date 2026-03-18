@@ -1,5 +1,6 @@
 // Authentication Utility
 // Centralized authentication token management
+// Uses relative URLs that work in both dev (via Vite proxy) and production
 
 export interface AuthUser {
   id: string;
@@ -72,7 +73,7 @@ export const refreshToken = async (): Promise<boolean> => {
   if (!token) return false;
   
   try {
-    const response = await fetch('http://localhost:5000/api/auth/refresh', {
+    const response = await fetch('/api/auth/refresh', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -158,7 +159,7 @@ export const verifyToken = async (): Promise<{ success: boolean; user?: AuthUser
   }
   
   try {
-    const response = await fetch('http://localhost:5000/api/auth/verify', {
+    const response = await fetch('/api/auth/verify', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },

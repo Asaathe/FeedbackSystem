@@ -160,3 +160,4 @@ function EmptyState({ searchTerm }: EmptyStateProps) {
     </p>
   );
 }
+

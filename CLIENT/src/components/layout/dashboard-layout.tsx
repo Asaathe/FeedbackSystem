@@ -50,7 +50,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
       const token = sessionStorage.getItem('authToken');
       if (token) {
         try {
-          const response = await fetch('http://localhost:5000/api/auth/verify', {
+          const response = await fetch('/api/auth/verify', {
             headers: {
               'Authorization': `Bearer ${token}`,
             },

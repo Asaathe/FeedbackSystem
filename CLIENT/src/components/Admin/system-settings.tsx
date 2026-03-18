@@ -44,7 +44,7 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
     setLoading(true);
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch("http://localhost:5000/api/settings/current-semester", {
+      const response = await fetch("/api/settings/current-semester", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -82,7 +82,7 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
         { key: "current_academic_year", value: settings[department].academic_year, department: deptKey },
       ];
 
-      const response = await fetch("http://localhost:5000/api/settings/bulk/update", {
+      const response = await fetch("/api/settings/bulk/update", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -328,3 +328,4 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
 }
 
 export default SystemSettings;
+

@@ -83,7 +83,7 @@ export const getFormsForUserRole = async (userRole: string): Promise<PublishedFo
       return [];
     }
 
-    const response = await fetch('http://localhost:5000/api/users/assigned-forms', {
+    const response = await fetch('/api/users/assigned-forms', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -155,7 +155,7 @@ export const getPendingFormsForUser = async (userRole: string, userId?: string):
     }
 
     // Get user's submitted responses
-    const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+    const response = await fetch('/api/forms/my-responses', {
      headers: {
        'Authorization': `Bearer ${token}`,
        'Content-Type': 'application/json',
@@ -186,7 +186,7 @@ export const getPendingFormsForUser = async (userRole: string, userId?: string):
         return [];
       }
 
-      const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+      const response = await fetch('/api/forms/my-responses', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -266,7 +266,7 @@ export const getSharedResponsesForInstructor = async (): Promise<SharedResponse[
       return [];
     }
 
-    const response = await fetch('http://localhost:5000/api/instructor/shared-responses', {
+    const response = await fetch('/api/instructor/shared-responses', {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -313,7 +313,7 @@ export const getSharedResponsesDetails = async (sharedId: string): Promise<Respo
       return [];
     }
 
-    const response = await fetch(`http://localhost:5000/api/instructor/shared-responses/${sharedId}/responses`, {
+    const response = await fetch(`/api/instructor/shared-responses/${sharedId}/responses`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -370,7 +370,7 @@ export const checkFormSubmissionStatus = async (formId: string): Promise<FormSub
       return null;
     }
 
-    const response = await fetch(`http://localhost:5000/api/forms/${formId}/submission-status`, {
+    const response = await fetch(`/api/forms/${formId}/submission-status`, {
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',

@@ -87,7 +87,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
   const fetchCurrentSettings = async () => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/settings/current-semester', {
+      const response = await fetch('/api/settings/current-semester', {
         headers: { Authorization: `Bearer ${token}` }
       });
       const data = await response.json();
@@ -108,7 +108,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/my-subjects', {
+      const response = await fetch('/api/subject-evaluation/my-subjects', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -142,7 +142,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       const token = sessionStorage.getItem('authToken');
       if (!token) return;
 
-      const response = await fetch('http://localhost:5000/api/forms/my-responses', {
+      const response = await fetch('/api/forms/my-responses', {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
@@ -168,7 +168,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/my-evaluations', {
+      const response = await fetch('/api/subject-evaluation/my-evaluations', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -232,7 +232,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/forms/${form.form_id}`, {
+      const response = await fetch(`/api/forms/${form.form_id}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -281,7 +281,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     try {
       const token = sessionStorage.getItem('authToken');
       const evaluationFormId = selectedForm.evaluation_form_id || parseInt(selectedForm.id);
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/evaluation-submissions', {
+      const response = await fetch('/api/subject-evaluation/evaluation-submissions', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -331,7 +331,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       return imagePath;
     }
     // Otherwise, prepend the server URL
-    return `http://localhost:5000${imagePath}`;
+    return `${imagePath}`;
   };
 
   const isOverdue = (dueDate: string | undefined) => {
@@ -795,3 +795,4 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     </div>
   );
 }
+

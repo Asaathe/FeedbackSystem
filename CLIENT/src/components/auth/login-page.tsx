@@ -80,7 +80,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
 
     try {
       console.log('Login attempt with:', { email: formData.email.trim().toLowerCase() });
-      const response = await fetch("http://localhost:5000/api/auth/login", {
+      const response = await fetch('/api/auth/login', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -285,3 +285,4 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
     </div>
   );
 }
+

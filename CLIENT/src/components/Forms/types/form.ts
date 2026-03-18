@@ -114,3 +114,4 @@ export interface EvaluationInstructor {
   total_subjects: number;
   image?: string;
 }
+

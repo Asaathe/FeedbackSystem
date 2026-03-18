@@ -1797,7 +1797,7 @@ export const deployEvaluationForm = async (
     const results = [];
     for (const subjectId of subjectIds) {
       console.log("📋 [deployEvaluationForm] Sending request for subjectId:", subjectId);
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/subjects/${subjectId}/assign-form`, {
+      const response = await fetch(`/api/subject-evaluation/subjects/${subjectId}/assign-form`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1845,7 +1845,7 @@ export const submitEvaluation = async (
       return { success: false, message: 'Authentication required' };
     }
     
-    const response = await fetch('http://localhost:5000/api/subject-evaluation/evaluation-submissions', {
+    const response = await fetch('/api/subject-evaluation/evaluation-submissions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1882,7 +1882,7 @@ export const getMyEvaluations = async (): Promise<{ success: boolean; evaluation
       return { success: false, evaluations: [], message: 'Authentication required' };
     }
     
-    const response = await fetch('http://localhost:5000/api/subject-evaluation/my-evaluations', {
+    const response = await fetch('/api/subject-evaluation/my-evaluations', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },

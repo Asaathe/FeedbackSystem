@@ -174,7 +174,7 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
 
         try {
           const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
-          const response = await fetch('http://localhost:5000/api/forms/upload-image', {
+          const response = await fetch('/api/forms/upload-image', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -430,7 +430,7 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
             }
 
             const instructorIdsArray = Array.from(selectedInstructors);
-            const response = await fetch(`http://localhost:5000/api/forms/${currentFormId}/share-responses`, {
+            const response = await fetch(`/api/forms/${currentFormId}/share-responses`, {
               method: 'POST',
               headers: {
                 'Authorization': `Bearer ${token}`,
@@ -518,3 +518,4 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
     publishForm,
   };
 }
+

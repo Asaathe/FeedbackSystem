@@ -184,7 +184,7 @@ export default function App() {
     
     if (token) {
       // Verify token with server using proper headers
-      fetch("http://localhost:5000/api/auth/verify", {
+      fetch("/api/auth/verify", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",

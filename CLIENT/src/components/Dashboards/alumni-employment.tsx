@@ -36,7 +36,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
     const loadEmploymentData = async () => {
       const token = sessionStorage.getItem('authToken');
       try {
-        const response = await fetch('http://localhost:5000/api/users/employment', {
+        const response = await fetch('/api/users/employment', {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -64,7 +64,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
     e.preventDefault();
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/users/employment', {
+      const response = await fetch('/api/users/employment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -306,3 +306,4 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
     </div>
   );
 }
+

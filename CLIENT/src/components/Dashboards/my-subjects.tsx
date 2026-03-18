@@ -83,7 +83,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
       const token = sessionStorage.getItem('authToken');
       
       // Check if evaluation is active
-      const periodResponse = await fetch('http://localhost:5000/api/feedback-templates/periods/active', {
+      const periodResponse = await fetch('/api/feedback-templates/periods/active', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const periodData = await periodResponse.json();
@@ -91,7 +91,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
         setPeriod(periodData.period);
       }
 
-      const response = await fetch('http://localhost:5000/api/feedback-templates/student/subjects', {
+      const response = await fetch('/api/feedback-templates/student/subjects', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -117,7 +117,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
     setLoadingForm(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/feedback-templates/categories?feedback_type=${type}`, {
+      const response = await fetch(`/api/feedback-templates/categories?feedback_type=${type}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
@@ -175,7 +175,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
         semester: semester
       };
 
-      const response = await fetch('http://localhost:5000/api/feedback-templates/submit', {
+      const response = await fetch('/api/feedback-templates/submit', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -572,3 +572,4 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
     </div>
   );
 }
+

@@ -117,8 +117,8 @@ export function FeedbackTemplate() {
     try {
       const token = sessionStorage.getItem('authToken');
       const url = type 
-        ? `http://localhost:5000/api/feedback-templates/categories?feedback_type=${type}`
-        : 'http://localhost:5000/api/feedback-templates/categories';
+        ? `/api/feedback-templates/categories?feedback_type=${type}`
+        : '/api/feedback-templates/categories';
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -137,7 +137,7 @@ export function FeedbackTemplate() {
   const fetchPeriods = async () => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('http://localhost:5000/api/feedback-templates/periods', {
+      const response = await fetch('/api/feedback-templates/periods', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -202,8 +202,8 @@ export function FeedbackTemplate() {
     try {
       const token = sessionStorage.getItem('authToken');
       const url = editingCategory 
-        ? `http://localhost:5000/api/feedback-templates/categories/${editingCategory.id}`
-        : 'http://localhost:5000/api/feedback-templates/categories';
+        ? `/api/feedback-templates/categories/${editingCategory.id}`
+        : '/api/feedback-templates/categories';
       
       const method = editingCategory ? 'PUT' : 'POST';
       
@@ -249,7 +249,7 @@ export function FeedbackTemplate() {
     
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/feedback-templates/categories/${categoryToDelete.id}`, {
+      const response = await fetch(`/api/feedback-templates/categories/${categoryToDelete.id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -303,8 +303,8 @@ export function FeedbackTemplate() {
     try {
       const token = sessionStorage.getItem('authToken');
       const url = editingPeriod 
-        ? `http://localhost:5000/api/feedback-templates/periods/${editingPeriod.id}`
-        : 'http://localhost:5000/api/feedback-templates/periods';
+        ? `/api/feedback-templates/periods/${editingPeriod.id}`
+        : '/api/feedback-templates/periods';
       
       const method = editingPeriod ? 'PUT' : 'POST';
       
@@ -345,7 +345,7 @@ export function FeedbackTemplate() {
     
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/feedback-templates/periods/${id}`, {
+      const response = await fetch(`/api/feedback-templates/periods/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -367,7 +367,7 @@ export function FeedbackTemplate() {
   const handleTogglePeriod = async (id: number, isActive: boolean) => {
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`http://localhost:5000/api/feedback-templates/periods/${id}/toggle`, {
+      const response = await fetch(`/api/feedback-templates/periods/${id}/toggle`, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -1064,3 +1064,4 @@ export function FeedbackTemplate() {
     </div>
   );
 }
+

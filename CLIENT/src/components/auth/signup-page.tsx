@@ -24,7 +24,7 @@ export function SignupPage({
   onBackToLogin,
 }: SignupPageProps) {
   
-  const API_BASE_URL = import.meta.env.DEV ? "http://localhost:5000/api" : "/api";
+  const API_BASE_URL = import.meta.env.DEV ? "/api" : "/api";
   
   const [formData, setFormData] = useState({
     name: "",
@@ -383,3 +383,4 @@ export function SignupPage({
     </>
   );
 }
+

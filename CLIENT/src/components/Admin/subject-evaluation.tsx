@@ -97,7 +97,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/instructors', {
+      const response = await fetch('/api/subject-evaluation/instructors', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -138,7 +138,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         return;
       }
 
-      const response = await fetch(`http://localhost:5000/api/subject-evaluation/instructors/${instructorId}/subjects`, {
+      const response = await fetch(`/api/subject-evaluation/instructors/${instructorId}/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -179,7 +179,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         return;
       }
 
-      const response = await fetch('http://localhost:5000/api/subject-evaluation/subjects', {
+      const response = await fetch('/api/subject-evaluation/subjects', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -701,3 +701,4 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     </div>
   );
 }
+

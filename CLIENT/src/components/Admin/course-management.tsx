@@ -86,7 +86,7 @@ export function CourseManagement() {
   const fetchSystemSettings = async () => {
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch("http://localhost:5000/api/settings/current-semester", {
+      const response = await fetch("/api/settings/current-semester", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -599,3 +599,4 @@ export function CourseManagement() {
     </div>
   );
 }
+

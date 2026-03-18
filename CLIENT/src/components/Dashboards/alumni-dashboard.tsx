@@ -72,7 +72,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   const loadAlumniData = async () => {
     const token = sessionStorage.getItem('authToken');
     try {
-      const response = await fetch('http://localhost:5000/api/users/alumni-data', {
+      const response = await fetch('/api/users/alumni-data', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -366,3 +366,4 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
     </div>
   );
 }
+
