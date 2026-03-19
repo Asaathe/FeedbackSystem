@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { FormSection, FormQuestion, QuestionTypeConfig } from "../types/form";
 import { Button } from "../../ui/button";
 import { Input } from "../../ui/input";
@@ -12,16 +11,9 @@ import {
   GripVertical,
   Plus,
   X,
-  ChevronDown as ChevronDownIcon,
-  ChevronUp as ChevronUpIcon,
   Layers,
 } from "lucide-react";
 import { Separator } from "../../ui/separator";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "../../ui/collapsible";
 import { QuestionCard } from "./QuestionCard";
 
 interface SectionCardProps {
@@ -67,12 +59,8 @@ export function SectionCard({
   onDeleteOption,
   onSetActiveQuestion,
 }: SectionCardProps) {
-  const [isOpen, setIsOpen] = useState(true);
-
   return (
-    <Collapsible
-      open={isOpen}
-      onOpenChange={setIsOpen}
+    <div
       className={`transition-all ${
         isActive ? "border-green-500 border-2 shadow-md" : "border-gray-200"
       }`}
@@ -80,52 +68,42 @@ export function SectionCard({
     >
       <div className="bg-white border rounded-lg overflow-hidden">
         {/* Section Header */}
-        <CollapsibleTrigger asChild>
-          <div className="flex items-center gap-2 sm:gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="cursor-move h-6 w-6 sm:h-8 sm:w-8 shrink-0"
-                aria-label="Drag to reorder"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <GripVertical className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
-              </Button>
-              <span className="text-xs sm:text-sm text-gray-500 min-w-[1.5rem] sm:min-w-[2rem]">
-                Section {index + 1}
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              {isActive ? (
-                <Input
-                  value={section.title}
-                  onChange={(e) =>
-                    onUpdateSection(section.id, { title: e.target.value })
-                  }
-                  placeholder="Enter section title"
-                  className="text-sm sm:text-base font-semibold bg-white"
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                />
-              ) : (
-                <h3 className="text-sm sm:text-base font-semibold truncate">
-                  {section.title || "Untitled Section"}
-                </h3>
-              )}
-            </div>
-            <div className="flex items-center gap-1">
-              {isOpen ? (
-                <ChevronUpIcon className="w-4 h-4 text-gray-400" />
-              ) : (
-                <ChevronDownIcon className="w-4 h-4 text-gray-400" />
-              )}
-            </div>
+        <div className="flex items-center gap-2 sm:gap-3 p-4 cursor-pointer hover:bg-gray-50 transition-colors">
+          <div className="flex items-center gap-1 sm:gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="cursor-move h-6 w-6 sm:h-8 sm:w-8 shrink-0"
+              aria-label="Drag to reorder"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <GripVertical className="w-3 h-3 sm:w-4 sm:h-4 text-gray-400" />
+            </Button>
+            <span className="text-xs sm:text-sm text-gray-500 min-w-[1.5rem] sm:min-w-[2rem]">
+              Section {index + 1}
+            </span>
           </div>
-        </CollapsibleTrigger>
+          <div className="flex-1 min-w-0">
+            {isActive ? (
+              <Input
+                value={section.title}
+                onChange={(e) =>
+                  onUpdateSection(section.id, { title: e.target.value })
+                }
+                placeholder="Enter section title"
+                className="text-sm sm:text-base font-semibold bg-white"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <h3 className="text-sm sm:text-base font-semibold truncate">
+                {section.title || "Untitled Section"}
+              </h3>
+            )}
+          </div>
+        </div>
 
-        <CollapsibleContent>
-          {/* Section Description */}
+        {/* Section Description */}
           {isActive && (
             <div className="px-4 pb-3">
               <Input
@@ -247,9 +225,8 @@ export function SectionCard({
               </Button>
             </div>
           )}
-        </CollapsibleContent>
       </div>
-    </Collapsible>
+    </div>
   );
 }
 
