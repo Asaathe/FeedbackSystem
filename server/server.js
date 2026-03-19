@@ -39,6 +39,7 @@ const recipientRoutes = require("./routes/recipients");
 const instructorRoutes = require("./routes/instructor");
 const studentPromotionRoutes = require("./routes/studentPromotion");
 const settingsRoutes = require("./routes/settings");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -135,6 +136,9 @@ app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
 app.use("/api/settings", settingsRoutes);
+
+// Notifications routes
+app.use("/api/notifications", notificationRoutes);
 
 // Subject Evaluation routes (for subject-assignment)
 const subjectEvaluationRoutes = require("./routes/subjectEvaluation");
