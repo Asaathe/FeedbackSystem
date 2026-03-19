@@ -343,6 +343,36 @@ export function FormBuilder({
     onBack();
   };
 
+  // Custom handler for toggling all recipients - excludes selected instructors for peer to peer evaluation
+  const handleToggleAllRecipients = (checked: boolean) => {
+    // When peer to peer evaluation is enabled for Instructors, filter out selected instructors
+    if (peerToPeerEvaluation && selectedAudienceType === "Instructors") {
+      const filteredRecipientsList = recipients.filter(r => !selectedInstructors.has(r.id));
+      setSelectAllRecipients(checked);
+      if (checked) {
+        setSelectedRecipients(new Set(filteredRecipientsList.map((r) => r.id)));
+      } else {
+        setSelectedRecipients(new Set());
+      }
+    } else {
+      // Default behavior for other cases
+      toggleAllRecipients(checked);
+    }
+  };
+
+  // Custom handler for toggling individual recipient - prevents selecting excluded instructors for peer to peer evaluation
+  const handleToggleRecipient = (id: number) => {
+    // When peer to peer evaluation is enabled for Instructors, prevent selecting excluded instructors
+    if (peerToPeerEvaluation && selectedAudienceType === "Instructors") {
+      // Don't allow toggling if the recipient is in the selected instructors list
+      if (selectedInstructors.has(id)) {
+        return; // Silently ignore - cannot select an instructor designated for peer evaluation
+      }
+    }
+    // Default behavior for other cases
+    toggleRecipient(id);
+  };
+
   // State to track loaded recipients and instructors from existing form
   const [loadedRecipientIds, setLoadedRecipientIds] = useState<Set<number>>(new Set());
   const [loadedInstructorIds, setLoadedInstructorIds] = useState<Set<number>>(new Set());
@@ -680,180 +710,211 @@ export function FormBuilder({
 
   // Handle publish form
   const handlePublishForm = async () => {
-    const cleanedQuestions = cleanQuestions(questions);
-    const result = await publishForm(
-      cleanedQuestions,
-      sections,
-      selectedRecipients,
-      recipients,
-      selectedInstructors,
-      peerToPeerEvaluation
-    );
+    // Set loading state to true at the start of the entire publish operation
+    setLoading(true);
+    
+    try {
+      const cleanedQuestions = cleanQuestions(questions);
+      const result = await publishForm(
+        cleanedQuestions,
+        sections,
+        selectedRecipients,
+        recipients,
+        selectedInstructors,
+        peerToPeerEvaluation,
+        true // skipLoading - handlePublishForm will manage loading state
+      );
 
-    if (result && result.success) {
-      const currentFormId = result.formId;
+      if (result && result.success) {
+        const currentFormId = result.formId;
 
-      // For evaluation forms, deploy to selected subject-instructor combinations
-      let deployResult;
-      if (isEvaluationForm && selectedEvalTargets.length > 0) {
-        // Deploy evaluation form to selected targets
-        console.log("📋 Deploying evaluation form to:", {
-          formId: currentFormId,
-          targets: selectedEvalTargets,
-          evaluationType: evalType,
-          schedule: submissionSchedule
-        });
-
-        deployResult = await deployEvaluationForm(
-          currentFormId,
-          selectedEvalTargets,
-          evalType,
-          { 
-            startDate: submissionSchedule.startDate, 
-            endDate: submissionSchedule.endDate 
-          }
-        );
-      } else {
-        const hasSpecificRecipients =
-          selectedRecipients.size > 0 &&
-          selectedRecipients.size < recipients.length;
-
-        if (hasSpecificRecipients) {
-          // Assign to specific users
-          // Combine date and time for start and end dates
-          const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
-            ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
-            : submissionSchedule.startDate;
-          const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
-            ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
-            : submissionSchedule.endDate;
-
-          console.log("📋 Assigning to specific users with schedule:", {
-            submissionSchedule,
-            startDateTime,
-            endDateTime,
+        // For evaluation forms, deploy to selected subject-instructor combinations
+        let deployResult;
+        if (isEvaluationForm && selectedEvalTargets.length > 0) {
+          // Deploy evaluation form to selected targets
+          console.log("📋 Deploying evaluation form to:", {
+            formId: currentFormId,
+            targets: selectedEvalTargets,
+            evaluationType: evalType,
+            schedule: submissionSchedule
           });
 
-          deployResult = await assignToUsers(
+          deployResult = await deployEvaluationForm(
             currentFormId,
-            Array.from(selectedRecipients),
-            formTarget,
-            submissionSchedule.startDate,
-            submissionSchedule.endDate,
-            submissionSchedule.startTime,
-            submissionSchedule.endTime,
-            selectedDepartment,
-            selectedCourseYearSection
-          );
-        } else {
-          // Deploy to group
-          // Combine date and time for start and end dates
-          console.log("📋 Before combining dates:", {
-            submissionSchedule,
-            hasStartDate: !!submissionSchedule.startDate,
-            hasStartTime: !!submissionSchedule.startTime,
-            hasEndDate: !!submissionSchedule.endDate,
-            hasEndTime: !!submissionSchedule.endTime,
-          });
-
-          const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
-            ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
-            : submissionSchedule.startDate;
-          const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
-            ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
-            : submissionSchedule.endDate;
-
-          console.log("📋 Publishing form with schedule:", {
-            submissionSchedule,
-            startDateTime,
-            endDateTime,
-          });
-
-          deployResult = await deployToGroup(
-            currentFormId,
-            formTarget,
-            submissionSchedule.startDate,
-            submissionSchedule.endDate,
-            submissionSchedule.startTime,
-            submissionSchedule.endTime,
-            selectedDepartment,
-            selectedCourseYearSection
-          );
-        }
-      }
-
-      if (deployResult && deployResult.success) {
-        console.log("Form deployed successfully. Audience:", selectedAudienceType, "Supervisors:", selectedSupervisors.length);
-        
-        // For Employers, send feedback invitations to selected supervisors
-        if (selectedAudienceType === "Employers" && selectedSupervisors.length > 0) {
-          console.log("Sending feedback invitations to:", selectedSupervisors);
-          
-          let emailSuccessCount = 0;
-          let emailFailCount = 0;
-          
-          // Send feedback invitations to each selected supervisor
-          for (const supervisor of selectedSupervisors) {
-            console.log("Supervisor object:", supervisor);
-            console.log("Supervisor alumnus_name:", supervisor.alumnus_name);
-            try {
-              console.log("Sending to:", supervisor.supervisor_email, supervisor.supervisor_name);
-              
-              // Build feedback link with supervisor info as URL parameters
-              const feedbackLink = `${window.location.origin}/feedback/${currentFormId}?supervisorEmail=${encodeURIComponent(supervisor.supervisor_email)}&supervisorName=${encodeURIComponent(supervisor.supervisor_name)}&companyName=${encodeURIComponent(supervisor.company_name)}&alumnusName=${encodeURIComponent(supervisor.alumnus_name || supervisor.alumni_name || '')}`;
-              console.log("Feedback link:", feedbackLink);
-              
-              const result = await sendFeedbackInvitation({
-                supervisorEmail: supervisor.supervisor_email,
-                supervisorName: supervisor.supervisor_name,
-                companyName: supervisor.company_name,
-                alumnusName: supervisor.alumnus_name || supervisor.alumni_name || "Unknown",
-                formTitle: formTitle,
-                feedbackLink: feedbackLink,
-              });
-              
-              if (result.success) {
-                emailSuccessCount++;
-                console.log("Email sent successfully to:", supervisor.supervisor_email);
-              } else {
-                emailFailCount++;
-                console.error("Failed to send email to:", supervisor.supervisor_email, result.message);
-              }
-            } catch (error) {
-              emailFailCount++;
-              console.error("Error sending email to:", supervisor.supervisor_email, error);
+            selectedEvalTargets,
+            evalType,
+            { 
+              startDate: submissionSchedule.startDate, 
+              endDate: submissionSchedule.endDate 
             }
+          );
+        } else {
+          // When peer to peer evaluation is enabled for Instructors, always use specific user assignment
+          // to ensure selected instructors (evaluation targets) are excluded from form assignment
+          const isPeerToPeerEnabled = peerToPeerEvaluation && selectedAudienceType === "Instructors";
+          
+          // Use assignToUsers when:
+          // 1. Not using peer to peer evaluation AND specific recipients selected (some but not all)
+          // 2. Using peer to peer evaluation (always need to filter out selected instructors)
+          const useSpecificAssignment = isPeerToPeerEnabled || 
+            (selectedRecipients.size > 0 && selectedRecipients.size < recipients.length);
+
+          if (useSpecificAssignment) {
+            // Assign to specific users
+            // Combine date and time for start and end dates
+            const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
+              ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
+              : submissionSchedule.startDate;
+            const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
+              ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
+              : submissionSchedule.endDate;
+
+            console.log("📋 Assigning to specific users with schedule:", {
+              submissionSchedule,
+              startDateTime,
+              endDateTime,
+            });
+
+            // Filter out selected instructors when peer to peer evaluation is enabled
+            // This is a safety measure to ensure they don't receive the form
+            const recipientsForAssignment = peerToPeerEvaluation && selectedAudienceType === "Instructors"
+              ? Array.from(selectedRecipients).filter(id => !selectedInstructors.has(id))
+              : Array.from(selectedRecipients);
+
+            // Skip if no recipients after filtering (e.g., all recipients were evaluation targets)
+            if (recipientsForAssignment.length === 0) {
+              toast.error("No recipients available. The selected evaluation targets have been excluded.");
+              setLoading(false);
+              return;
+            }
+
+            deployResult = await assignToUsers(
+              currentFormId,
+              recipientsForAssignment,
+              formTarget,
+              submissionSchedule.startDate,
+              submissionSchedule.endDate,
+              submissionSchedule.startTime,
+              submissionSchedule.endTime,
+              selectedDepartment,
+              selectedCourseYearSection
+            );
+          } else {
+            // Deploy to group
+            // Combine date and time for start and end dates
+            console.log("📋 Before combining dates:", {
+              submissionSchedule,
+              hasStartDate: !!submissionSchedule.startDate,
+              hasStartTime: !!submissionSchedule.startTime,
+              hasEndDate: !!submissionSchedule.endDate,
+              hasEndTime: !!submissionSchedule.endTime,
+            });
+
+            const startDateTime = submissionSchedule.startDate && submissionSchedule.startTime
+              ? `${submissionSchedule.startDate}T${submissionSchedule.startTime}:00`
+              : submissionSchedule.startDate;
+            const endDateTime = submissionSchedule.endDate && submissionSchedule.endTime
+              ? `${submissionSchedule.endDate}T${submissionSchedule.endTime}:00`
+              : submissionSchedule.endDate;
+
+            console.log("📋 Publishing form with schedule:", {
+              submissionSchedule,
+              startDateTime,
+              endDateTime,
+            });
+
+            deployResult = await deployToGroup(
+              currentFormId,
+              formTarget,
+              submissionSchedule.startDate,
+              submissionSchedule.endDate,
+              submissionSchedule.startTime,
+              submissionSchedule.endTime,
+              selectedDepartment,
+              selectedCourseYearSection
+            );
+          }
+        }
+
+        if (deployResult && deployResult.success) {
+          console.log("Form deployed successfully. Audience:", selectedAudienceType, "Supervisors:", selectedSupervisors.length);
+          
+          // For Employers, send feedback invitations to selected supervisors
+          if (selectedAudienceType === "Employers" && selectedSupervisors.length > 0) {
+            console.log("Sending feedback invitations to:", selectedSupervisors);
+            
+            let emailSuccessCount = 0;
+            let emailFailCount = 0;
+            
+            // Send feedback invitations to each selected supervisor
+            for (const supervisor of selectedSupervisors) {
+              console.log("Supervisor object:", supervisor);
+              console.log("Supervisor alumnus_name:", supervisor.alumnus_name);
+              try {
+                console.log("Sending to:", supervisor.supervisor_email, supervisor.supervisor_name);
+                
+                // Build feedback link with supervisor info as URL parameters
+                const feedbackLink = `${window.location.origin}/feedback/${currentFormId}?supervisorEmail=${encodeURIComponent(supervisor.supervisor_email)}&supervisorName=${encodeURIComponent(supervisor.supervisor_name)}&companyName=${encodeURIComponent(supervisor.company_name)}&alumnusName=${encodeURIComponent(supervisor.alumnus_name || supervisor.alumni_name || '')}`;
+                console.log("Feedback link:", feedbackLink);
+                
+                const result = await sendFeedbackInvitation({
+                  supervisorEmail: supervisor.supervisor_email,
+                  supervisorName: supervisor.supervisor_name,
+                  companyName: supervisor.company_name,
+                  alumnusName: supervisor.alumnus_name || supervisor.alumni_name || "Unknown",
+                  formTitle: formTitle,
+                  feedbackLink: feedbackLink,
+                });
+                
+                if (result.success) {
+                  emailSuccessCount++;
+                  console.log("Email sent successfully to:", supervisor.supervisor_email);
+                } else {
+                  emailFailCount++;
+                  console.error("Failed to send email to:", supervisor.supervisor_email, result.message);
+                }
+              } catch (error) {
+                emailFailCount++;
+                console.error("Error sending email to:", supervisor.supervisor_email, error);
+              }
+            }
+            
+            if (emailFailCount > 0) {
+              toast.warning(`Form published! ${emailSuccessCount} invitation(s) sent, ${emailFailCount} failed.`);
+            } else {
+              toast.success(`Form published! ${emailSuccessCount} supervisor invitation(s) sent.`);
+            }
+          } else {
+            console.log("Not sending emails - Audience:", selectedAudienceType, "Supervisors:", selectedSupervisors.length);
+            toast.success("Form published successfully!");
           }
           
-          if (emailFailCount > 0) {
-            toast.warning(`Form published! ${emailSuccessCount} invitation(s) sent, ${emailFailCount} failed.`);
-          } else {
-            toast.success(`Form published! ${emailSuccessCount} supervisor invitation(s) sent.`);
-          }
+          setPublishDialogOpen(false);
+          // Update original state to match current state after publishing
+          setOriginalFormState({
+            title: formTitle,
+            description: formDescription,
+            questionsCount: questions.length,
+          });
+          setHasUnsavedChanges(false); // Clear unsaved changes after publishing
+          
+          // Clear selected supervisors after publishing
+          clearSelectedSupervisors();
+          
+          // Navigate back directly since we just published
+          setTimeout(() => {
+            onBack();
+          }, 1500);
         } else {
-          console.log("Not sending emails - Audience:", selectedAudienceType, "Supervisors:", selectedSupervisors.length);
-          toast.success("Form published successfully!");
+          toast.error(deployResult.message || "Failed to deploy form");
         }
-        
-        setPublishDialogOpen(false);
-        // Update original state to match current state after publishing
-        setOriginalFormState({
-          title: formTitle,
-          description: formDescription,
-          questionsCount: questions.length,
-        });
-        setHasUnsavedChanges(false); // Clear unsaved changes after publishing
-        
-        // Clear selected supervisors after publishing
-        clearSelectedSupervisors();
-        
-        // Navigate back directly since we just published
-        setTimeout(() => {
-          onBack();
-        }, 1500);
-      } else {
-        toast.error(deployResult.message || "Failed to deploy form");
       }
+    } catch (error) {
+      console.error("Error publishing form:", error);
+      toast.error("An error occurred while publishing the form");
+    } finally {
+      // Always set loading to false when the entire operation completes
+      setLoading(false);
     }
   };
 
@@ -1703,8 +1764,8 @@ export function FormBuilder({
                                 selectedRecipients={selectedRecipients}
                                 selectAllRecipients={selectAllRecipients}
                                 searchTerm={searchTerm}
-                                onToggleRecipient={toggleRecipient}
-                                onToggleAllRecipients={toggleAllRecipients}
+                                onToggleRecipient={handleToggleRecipient}
+                                onToggleAllRecipients={handleToggleAllRecipients}
                                 onSearchTermChange={setSearchTerm}
                                 formTarget={formTarget}
                                 excludedCount={peerToPeerEvaluation && selectedAudienceType === "Instructors" ? selectedInstructors.size : 0}
@@ -1997,11 +2058,16 @@ export function FormBuilder({
                                 questions.length === 0
                               }
                             >
-                              {loading
-                                ? "Saving..."
-                                : isPublished
-                                ? "Update Now"
-                                : "Publish Now"}
+                              {loading ? (
+                                <>
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                  {isPublished ? "Updating..." : "Publishing..."}
+                                </>
+                              ) : isPublished ? (
+                                "Update Now"
+                              ) : (
+                                "Publish Now"
+                              )}
                             </Button>
                           )}
                         </div>

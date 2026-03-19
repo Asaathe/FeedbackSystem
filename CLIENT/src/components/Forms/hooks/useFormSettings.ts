@@ -341,7 +341,8 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
       selectedRecipients: Set<number>,
       recipients: any[],
       selectedInstructors: Set<number>,
-      peerToPeerEvaluation: boolean = false
+      peerToPeerEvaluation: boolean = false,
+      skipLoading: boolean = false
     ) => {
       // Validate required fields
       if (!formTitle.trim()) {
@@ -375,7 +376,9 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
       }
 
       try {
-        setLoading(true);
+        if (!skipLoading) {
+          setLoading(true);
+        }
 
         const formData = {
           title: formTitle,
@@ -466,7 +469,9 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
         toast.error("Failed to publish form");
         return false;
       } finally {
-        setLoading(false);
+        if (!skipLoading) {
+          setLoading(false);
+        }
       }
     },
     [
