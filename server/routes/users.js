@@ -62,6 +62,8 @@ router.get("/", verifyToken, userController.getAllUsers);
 // Employment routes for alumni
 router.get("/employment", verifyToken, userController.getEmploymentInfo);
 router.post("/employment", verifyToken, userController.updateEmploymentInfo);
+router.post("/employment/confirm", verifyToken, userController.confirmEmploymentInfo);
+router.post("/employment/send-update-request", verifyToken, userController.sendEmploymentUpdateRequest);
 router.get("/alumni-data", verifyToken, userController.getAlumniData);
 router.post("/create", verifyToken, authController.register);
 router.post("/upload-profile-image", verifyToken, uploadProfileImage.single('image'), (req, res) => {

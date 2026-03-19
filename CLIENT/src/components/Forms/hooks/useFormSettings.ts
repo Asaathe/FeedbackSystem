@@ -340,7 +340,8 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
       sections: any[],
       selectedRecipients: Set<number>,
       recipients: any[],
-      selectedInstructors: Set<number>
+      selectedInstructors: Set<number>,
+      peerToPeerEvaluation: boolean = false
     ) => {
       // Validate required fields
       if (!formTitle.trim()) {
@@ -420,8 +421,8 @@ export function useFormSettings({ formId, initialFormType }: UseFormSettingsProp
         // Note: Recipient assignment and deployment logic should be handled by caller
         // This hook returns the formId for the caller to use
 
-        // Share responses with selected instructors if any
-        if (selectedInstructors.size > 0) {
+        // Share responses with selected instructors if peer to peer evaluation is enabled
+        if (peerToPeerEvaluation && selectedInstructors.size > 0) {
           try {
             const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
             if (!token) {

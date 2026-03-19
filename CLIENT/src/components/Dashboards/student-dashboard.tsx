@@ -91,8 +91,12 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-        <h2 className="text-2xl">Welcome back, Student!</h2>
-        <p className="text-gray-600 mt-1">You have {pendingForms.length} pending feedback forms to complete.</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl">Welcome back, Student!</h2>
+            <p className="text-gray-600 mt-1">You have {pendingForms.length} pending feedback forms to complete.</p>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}

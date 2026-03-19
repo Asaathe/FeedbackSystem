@@ -255,8 +255,12 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: In
       <div className="space-y-6">
         {/* Header */}
         <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-          <h2 className="text-2xl font-semibold">My Subjects</h2>
-          <p className="text-gray-600 mt-1">View and manage your assigned subjects</p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h2 className="text-2xl font-semibold">My Subjects</h2>
+              <p className="text-gray-600 mt-1">View and manage your assigned subjects</p>
+            </div>
+          </div>
         </div>
 
         {/* My Subjects Cards */}
@@ -327,8 +331,13 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false }: In
     <div className="space-y-6">
       {/* Welcome Section */}
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-        <h2 className="text-2xl">Welcome, {instructor?.full_name || 'Instructor'}!</h2>
-        <p className="text-gray-600 mt-1">{instructor?.department || 'Department'} Department</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl">Welcome, {instructor?.full_name || 'Instructor'}!</h2>
+            <p className="text-gray-600 mt-1">{instructor?.department || 'Department'} Department</p>
+          </div>
+          <Badge className="bg-green-500">Instructor</Badge>
+        </div>
       </div>
 
       {/* Stats */}

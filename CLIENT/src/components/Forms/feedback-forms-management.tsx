@@ -573,7 +573,7 @@ export function FeedbackFormsManagement({
 
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
           <DialogHeader>
             <DialogTitle>Form View</DialogTitle>
             <DialogDescription>

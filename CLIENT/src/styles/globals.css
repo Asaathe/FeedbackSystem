@@ -500,24 +500,28 @@
     scrollbar-color: #013207 #f0fdf4 !important;
   }
 
-  /* Custom scrollbar for overflow utilities */
+  /* Custom scrollbar for overflow utilities - Ghost style (barely visible) */
   .overflow-y-auto::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 3px;
+    height: 3px;
   }
 
   .overflow-y-auto::-webkit-scrollbar-track {
-    background: #f3f4f6;
-    border-radius: 4px;
+    background: transparent;
   }
 
   .overflow-y-auto::-webkit-scrollbar-thumb {
-    background: #9ca3af;
-    border-radius: 4px;
+    background-color: #10b9811a;
+    border-radius: 3px;
   }
 
   .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-    background: #6b7280;
+    background-color: #10b98133;
+  }
+
+  .overflow-y-auto {
+    scrollbar-width: thin !important;
+    scrollbar-color: #10b9811a transparent !important;
   }
 
   .overflow-x-auto {

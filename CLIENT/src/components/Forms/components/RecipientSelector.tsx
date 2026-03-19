@@ -16,6 +16,7 @@ interface RecipientSelectorProps {
   onToggleAllRecipients: (checked: boolean) => void;
   onSearchTermChange: (value: string) => void;
   formTarget: string;
+  excludedCount?: number;
 }
 
 export function RecipientSelector({
@@ -28,6 +29,7 @@ export function RecipientSelector({
   onToggleAllRecipients,
   onSearchTermChange,
   formTarget,
+  excludedCount = 0,
 }: RecipientSelectorProps) {
   return (
     <Collapsible>
@@ -38,7 +40,7 @@ export function RecipientSelector({
           className="w-full justify-between p-3 h-auto border rounded-lg hover:bg-gray-50"
         >
           <span className="text-sm">
-            Preview Recipients ({selectedRecipients.size} of {recipients.length})
+            Preview Recipients ({selectedRecipients.size} of {recipients.length}{excludedCount > 0 ? `, ${excludedCount} excluded for peer evaluation` : ''})
           </span>
           <ChevronDown className="w-4 h-4" />
         </Button>

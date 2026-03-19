@@ -252,7 +252,7 @@ export function FormBuilder({
     nextWizardStep,
     prevWizardStep,
     resetWizard,
-  } = usePublishWizard(4);
+  } = usePublishWizard(3);
 
   // Dynamic total steps: evaluation forms have 3 steps, custom forms have 4
   const totalWizardSteps = isEvaluationForm ? 3 : wizardTotalSteps;
@@ -272,6 +272,9 @@ export function FormBuilder({
   // Track unsaved changes for "Are you sure you want to leave?" warning
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isFormLoaded, setIsFormLoaded] = useState(false);
+  
+  // Peer to Peer Evaluation state
+  const [peerToPeerEvaluation, setPeerToPeerEvaluation] = useState<boolean>(false);
   
   // Store original/saved form state to compare against for detecting actual changes
   const [originalFormState, setOriginalFormState] = useState({
@@ -683,7 +686,8 @@ export function FormBuilder({
       sections,
       selectedRecipients,
       recipients,
-      selectedInstructors
+      selectedInstructors,
+      peerToPeerEvaluation
     );
 
     if (result && result.success) {
@@ -1073,7 +1077,7 @@ export function FormBuilder({
                       <span className="hidden sm:inline">View</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
                     <DialogHeader>
                       <DialogTitle>Form View</DialogTitle>
                       <DialogDescription>
@@ -1246,7 +1250,7 @@ export function FormBuilder({
                       </span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
                     <DialogHeader>
                       <DialogTitle className="text-lg">
                         {isPublished
@@ -1293,20 +1297,14 @@ export function FormBuilder({
                         <h3 className="text-lg font-semibold">
                           {currentWizardStep === 1 && "Target Audience"}
                           {currentWizardStep === 2 && "Schedule (Optional)"}
-                          {currentWizardStep === 3 && !isEvaluationForm && "Share Responses"}
-                          {currentWizardStep === 3 && isEvaluationForm && "Summary & Publish"}
-                          {currentWizardStep === 4 && "Summary & Publish"}
+                          {currentWizardStep === 3 && "Summary & Publish"}
                         </h3>
                         <p className="text-sm text-gray-600 mt-1">
                           {currentWizardStep === 1 &&
                             "Select who will receive this feedback form"}
                           {currentWizardStep === 2 &&
                             "Set when respondents can submit their feedback"}
-                          {currentWizardStep === 3 && !isEvaluationForm &&
-                            "Select instructors to share responses with"}
-                          {currentWizardStep === 3 && isEvaluationForm &&
-                            "Review your evaluation settings and publish"}
-                          {currentWizardStep === 4 &&
+                          {currentWizardStep === 3 &&
                             "Review your settings and publish the form"}
                         </p>
                       </div>
@@ -1578,6 +1576,102 @@ export function FormBuilder({
                               </div>
                             )}
 
+                            {/* Peer to Peer Evaluation Section - Only for Instructors */}
+                            {selectedAudienceType === "Instructors" && (
+                              <div className="space-y-3 pt-2 border-t border-gray-200">
+                                <div className="flex items-center gap-2">
+                                  <Checkbox
+                                    id="peerToPeerEvaluation"
+                                    checked={peerToPeerEvaluation}
+                                    onCheckedChange={(checked) =>
+                                      setPeerToPeerEvaluation(checked as boolean)
+                                    }
+                                  />
+                                  <Label
+                                    htmlFor="peerToPeerEvaluation"
+                                    className="text-sm font-medium cursor-pointer"
+                                  >
+                                    Peer to Peer Evaluation
+                                  </Label>
+                                </div>
+                                <p className="text-xs text-gray-600">
+                                  Enable peer to peer evaluation to allow respondents to evaluate specific instructors and automatically share responses with them.
+                                </p>
+                              </div>
+                            )}
+
+                            {/* Instructor Search for Peer to Peer Evaluation - Only for Instructors */}
+                            {selectedAudienceType === "Instructors" && peerToPeerEvaluation && (
+                              <div className="space-y-2">
+                                <Label className="text-sm font-medium">
+                                  Select Instructors for Peer Evaluation
+                                </Label>
+                                <p className="text-xs text-gray-600">
+                                  Search and select instructors who will receive access to view the responses.
+                                </p>
+
+                                {/* Search Bar with Autocomplete */}
+                                <div className="relative">
+                                  <Input
+                                    placeholder="Search instructors by name..."
+                                    className="h-9"
+                                    value={instructorSearchTerm}
+                                    onChange={(e) =>
+                                      setInstructorSearchTerm(e.target.value)
+                                    }
+                                  />
+                                  {/* Autocomplete Suggestions */}
+                                  {instructorSearchTerm.trim() !== "" && filteredInstructors.length > 0 && (
+                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                      {filteredInstructors.slice(0, 5).map((instructor) => (
+                                        <div
+                                          key={instructor.id}
+                                          className="px-3 py-2 hover:bg-green-50 cursor-pointer flex items-center justify-between"
+                                          onClick={() => {
+                                            toggleInstructor(instructor.id);
+                                            setInstructorSearchTerm("");
+                                          }}
+                                        >
+                                          <span className="text-sm">
+                                            {instructor.fullName}
+                                          </span>
+                                          <span className="text-xs text-gray-500">
+                                            {instructor.department}
+                                          </span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Selection Summary */}
+                                {selectedInstructors.size > 0 && (
+                                  <div className="p-3 bg-orange-50 rounded-lg border">
+                                    <span className="text-sm text-orange-700 font-medium">
+                                      Selected Instructors:
+                                    </span>
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {Array.from(selectedInstructors).map((instructorId) => {
+                                        const instructor = instructors.find(i => i.id === instructorId);
+                                        return instructor ? (
+                                          <span
+                                            key={instructorId}
+                                            className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded flex items-center gap-1"
+                                          >
+                                            {instructor.fullName}
+                                            <X
+                                              className="w-3 h-3 cursor-pointer hover:text-orange-600"
+                                              onClick={() => toggleInstructor(instructorId)}
+                                            />
+                                          </span>
+                                        ) : null;
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             {/* Final Target Display */}
                             <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border">
                               <span className="text-sm text-blue-700 font-medium">
@@ -1600,8 +1694,12 @@ export function FormBuilder({
                                 (selectedAudienceType === "Employers" &&
                                   selectedCourseYearSection)) && (
                               <RecipientSelector
-                                recipients={recipients}
-                                filteredRecipients={filteredRecipients}
+                                recipients={peerToPeerEvaluation && selectedAudienceType === "Instructors" 
+                                  ? recipients.filter(r => !selectedInstructors.has(r.id))
+                                  : recipients}
+                                filteredRecipients={peerToPeerEvaluation && selectedAudienceType === "Instructors"
+                                  ? filteredRecipients.filter(r => !selectedInstructors.has(r.id))
+                                  : filteredRecipients}
                                 selectedRecipients={selectedRecipients}
                                 selectAllRecipients={selectAllRecipients}
                                 searchTerm={searchTerm}
@@ -1609,6 +1707,7 @@ export function FormBuilder({
                                 onToggleAllRecipients={toggleAllRecipients}
                                 onSearchTermChange={setSearchTerm}
                                 formTarget={formTarget}
+                                excludedCount={peerToPeerEvaluation && selectedAudienceType === "Instructors" ? selectedInstructors.size : 0}
                               />
                             )}
                           </CardContent>
@@ -1749,100 +1848,8 @@ export function FormBuilder({
                         </Card>
                       )}
 
-                      {/* Step 3: Share Responses - Only for non-evaluation forms */}
-                      {currentWizardStep === 3 && !isEvaluationForm && (
-                        <Card className="border-orange-100 bg-gradient-to-br from-orange-50 to-yellow-50">
-                          <CardHeader className="pb-3">
-                            <div className="flex items-center gap-2 text-orange-700">
-                              <SendHorizontal className="w-4 h-4" />
-                              <span className="text-sm font-medium">
-                                Share Responses
-                              </span>
-                              <span className="text-xs text-orange-600">
-                                (Optional)
-                              </span>
-                            </div>
-                          </CardHeader>
-                          <CardContent className="pt-0 space-y-4">
-                            <div className="space-y-3">
-                              <Label className="text-sm font-medium">
-                                Select Instructors to Share Responses With
-                              </Label>
-                              <p className="text-xs text-gray-600">
-                                Choose instructors who will receive access to view
-                                the responses for this feedback form. This is
-                                particularly useful for forms about subjects or
-                                instructors.
-                              </p>
-
-                              {/* Search Bar */}
-                              <div className="space-y-2">
-                                <Input
-                                  placeholder="Search instructors by name..."
-                                  className="h-9"
-                                  value={instructorSearchTerm}
-                                  onChange={(e) =>
-                                    setInstructorSearchTerm(e.target.value)
-                                  }
-                                />
-                              </div>
-
-                              {/* Instructors List */}
-                              <div className="border rounded-lg p-3 bg-gray-50 max-h-48 overflow-y-auto">
-                                {instructors.length > 0 ? (
-                                  <div className="space-y-2">
-                                    {filteredInstructors.map((instructor) => (
-                                      <div
-                                        key={instructor.id}
-                                        className="flex items-center gap-2"
-                                      >
-                                        <Checkbox
-                                          id={`instructor-${instructor.id}`}
-                                          checked={selectedInstructors.has(
-                                            instructor.id
-                                          )}
-                                          onCheckedChange={() =>
-                                            toggleInstructor(instructor.id)
-                                          }
-                                        />
-                                        <Label
-                                          htmlFor={`instructor-${instructor.id}`}
-                                          className="text-sm flex-1"
-                                        >
-                                          {instructor.fullName}{" "}
-                                          <span className="text-gray-500">
-                                            ({instructor.department})
-                                          </span>
-                                        </Label>
-                                      </div>
-                                    ))}
-                                  </div>
-                                ) : (
-                                  <p className="text-xs text-gray-500">
-                                    No instructors found.
-                                  </p>
-                                )}
-                              </div>
-
-                              {/* Selection Summary */}
-                              {selectedInstructors.size > 0 && (
-                                <div className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border">
-                                  <span className="text-sm text-orange-700 font-medium">
-                                    Selected Instructors:
-                                  </span>
-                                  <span className="text-sm font-semibold text-orange-900">
-                                    {selectedInstructors.size} instructor
-                                    {selectedInstructors.size !== 1 ? "s" : ""}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </CardContent>
-                        </Card>
-                      )}
-
-                      {/* Step 4: Summary */}
-                      {currentWizardStep === 4 && (
+                      {/* Step 3: Summary */}
+                      {currentWizardStep === 3 && (
                         <Card className="border-green-100 bg-gradient-to-br from-green-50 to-lime-50">
                           <CardHeader className="pb-3">
                             <div className="flex items-center gap-2 text-green-700">
@@ -1888,11 +1895,21 @@ export function FormBuilder({
                                 {selectedInstructors.size > 0 && (
                                   <span>
                                     <span className="text-gray-500">
-                                      Shared with:
+                                      Peer Evaluation Recipients:
                                     </span>{" "}
                                     <span className="font-medium">
                                       {selectedInstructors.size} instructor
                                       {selectedInstructors.size !== 1 ? "s" : ""}
+                                    </span>
+                                  </span>
+                                )}
+                                {peerToPeerEvaluation && (
+                                  <span>
+                                    <span className="text-gray-500">
+                                      Peer Evaluation:
+                                    </span>{" "}
+                                    <span className="font-medium text-green-600">
+                                      Enabled
                                     </span>
                                   </span>
                                 )}
@@ -1936,19 +1953,7 @@ export function FormBuilder({
                               schedule or proceed to summary.
                             </p>
                           )}
-                          {currentWizardStep === 3 && !isEvaluationForm && (
-                            <p className="text-sm text-orange-900">
-                              <strong>Optional:</strong> Select instructors
-                              to share responses with or proceed to summary.
-                            </p>
-                          )}
-                          {currentWizardStep === 3 && isEvaluationForm && (
-                            <p className="text-sm text-green-900">
-                              <strong>Ready to publish!</strong> Review your
-                              evaluation settings and publish the form.
-                            </p>
-                          )}
-                          {currentWizardStep === 4 && (
+                          {currentWizardStep === 3 && (
                             <p className="text-sm text-green-900">
                               <strong>
                                 {isPublished
@@ -2375,7 +2380,7 @@ export function FormBuilder({
 
       {/* Image Cropper Dialog */}
       <Dialog open={cropperDialogOpen} onOpenChange={setCropperDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
           <DialogHeader>
             <DialogTitle>Crop Image</DialogTitle>
             <DialogDescription>

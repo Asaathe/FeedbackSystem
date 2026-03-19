@@ -1224,6 +1224,77 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       );
     }
 
+    // =============================================
+    // CREATE NOTIFICATIONS FOR ASSIGNED USERS
+    // =============================================
+    // Get all assigned user IDs for notification
+    let assignedUserIds = [];
+    if (deploymentData.userIds && Array.isArray(deploymentData.userIds)) {
+      assignedUserIds = deploymentData.userIds;
+    } else if (effectiveTargetAudience) {
+      // Get users based on target audience
+      let userQuery = "";
+      if (effectiveTargetAudience === "All Users") {
+        userQuery = "SELECT id FROM Users WHERE status = 'active'";
+      } else if (effectiveTargetAudience.startsWith("Students")) {
+        userQuery = "SELECT u.id FROM Users u WHERE u.role = 'student' AND u.status = 'active'";
+      } else if (effectiveTargetAudience.startsWith("Instructors")) {
+        userQuery = "SELECT u.id FROM Users u WHERE u.role = 'instructor' AND u.status = 'active'";
+      } else if (effectiveTargetAudience.startsWith("Alumni")) {
+        userQuery = "SELECT u.id FROM Users u WHERE u.role = 'alumni' AND u.status = 'active'";
+      }
+      
+      if (userQuery) {
+        try {
+          const users = await queryDatabase(db, userQuery);
+          assignedUserIds = users.map(u => u.id);
+        } catch (e) {
+          console.error("Failed to get users for notification:", e);
+        }
+      }
+    }
+
+    // Get form details for notification
+    const formDetails = await queryDatabase(db, "SELECT title, category FROM Forms WHERE id = ?", [formId]);
+    const formTitle = formDetails.length > 0 ? formDetails[0].title : 'Feedback Form';
+    const formCategory = formDetails.length > 0 ? formDetails[0].category : '';
+
+    // Create notifications asynchronously
+    if (assignedUserIds.length > 0) {
+      const notificationService = require('./notificationService');
+      
+      for (const assignedUserId of assignedUserIds) {
+        try {
+          await notificationService.createNotification({
+            user_id: assignedUserId,
+            type: 'form_assigned',
+            title: `New ${formCategory || 'Feedback'} Form Assigned`,
+            message: `You have been assigned the form "${formTitle}".${endDate ? ` Please complete it by ${endDate}.` : ' Please complete it at your earliest convenience.'}`,
+            related_form_id: formId,
+            metadata: {
+              form_title: formTitle,
+              form_category: formCategory,
+              due_date: endDate,
+              priority: 'high'
+            }
+          });
+
+          // Also send email notification
+          const userEmail = await notificationService.getUserEmail(assignedUserId);
+          if (userEmail) {
+            const notification = {
+              type: 'form_assigned',
+              title: `New ${formCategory || 'Feedback'} Form Assigned`,
+              message: `You have been assigned the form "${formTitle}".${endDate ? ` Please complete it by ${endDate}.` : ' Please complete it at your earliest convenience.'}`
+            };
+            await notificationService.sendNotificationEmail(assignedUserId, notification, userEmail);
+          }
+        } catch (e) {
+          console.error("Failed to create notification for user:", assignedUserId, e);
+        }
+      }
+    }
+
     return {
       success: true,
       message: `Form deployed successfully and assigned to ${assignedCount} users`,

@@ -763,7 +763,7 @@ export function FeedbackTemplate() {
 
       {/* Preview Dialog - Full Form Preview */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
           <DialogHeader>
             <DialogTitle>Form View</DialogTitle>
             <DialogDescription>

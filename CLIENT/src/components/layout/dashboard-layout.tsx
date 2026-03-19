@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { formatImageUrl } from "../../utils/imageUtils";
+import { NotificationPanel } from "../ui/notification-panel";
 
 import {
   DropdownMenu,
@@ -215,6 +216,21 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
             </Button>
           </div>
           <div className="flex items-center gap-2">
+            {/* Notification Bell - Only for student, alumni, and instructor */}
+            {(role === 'student' || role === 'alumni' || role === 'instructor') && (
+              <NotificationPanel 
+                userRole={role as 'student' | 'alumni' | 'instructor'}
+                onNotificationClick={(notification) => {
+                  // Handle notification click - navigate based on type
+                  if (notification.type === 'form_assigned' || notification.type === 'feedback_reminder') {
+                    onNavigate('submit-feedback');
+                  } else if (notification.type === 'employment_update_required') {
+                    onNavigate('employment');
+                  }
+                }}
+              />
+            )}
+            
             {/* User Profile Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

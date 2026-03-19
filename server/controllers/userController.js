@@ -637,7 +637,12 @@ const getEmploymentInfo = async (req, res) => {
         companyAddress: employment.company_address,
         supervisorName: employment.supervisor_name,
         supervisorEmail: employment.supervisor_email,
-        yearStarted: employment.year_started
+        yearStarted: employment.year_started,
+        employmentType: employment.employment_type,
+        monthlySalary: employment.monthly_salary,
+        isRelevantToDegree: employment.is_relevant_to_degree,
+        lastUpdateSent: employment.last_update_sent,
+        lastUpdateReceived: employment.last_update_received
       }
     });
   } catch (error) {
@@ -663,7 +668,11 @@ const updateEmploymentInfo = async (req, res) => {
       companyAddress, 
       supervisorName, 
       supervisorEmail, 
-      yearStarted 
+      yearStarted,
+      employmentType,
+      monthlySalary,
+      isRelevantToDegree,
+      lastUpdateReceived
     } = req.body;
     
     // Check if employment table exists
@@ -694,7 +703,11 @@ const updateEmploymentInfo = async (req, res) => {
           company_address = ?,
           supervisor_name = ?,
           supervisor_email = ?,
-          year_started = ?
+          year_started = ?,
+          employment_type = ?,
+          monthly_salary = ?,
+          is_relevant_to_degree = ?,
+          last_update_received = ?
         WHERE alumni_user_id = ?`,
         [
           companyName || null,
@@ -705,6 +718,10 @@ const updateEmploymentInfo = async (req, res) => {
           supervisorName || null,
           supervisorEmail || null,
           yearStarted || null,
+          employmentType || null,
+          monthlySalary || null,
+          isRelevantToDegree || null,
+          lastUpdateReceived || null,
           userId
         ]
       );
@@ -712,8 +729,8 @@ const updateEmploymentInfo = async (req, res) => {
       // Create new employment record
       await queryDatabase(
         db,
-        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started, employment_type, monthly_salary, is_relevant_to_degree, last_update_received)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           userId,
           companyName || null,
@@ -723,7 +740,11 @@ const updateEmploymentInfo = async (req, res) => {
           companyAddress || null,
           supervisorName || null,
           supervisorEmail || null,
-          yearStarted || null
+          yearStarted || null,
+          employmentType || null,
+          monthlySalary || null,
+          isRelevantToDegree || null,
+          lastUpdateReceived || null
         ]
       );
     }
@@ -734,6 +755,114 @@ const updateEmploymentInfo = async (req, res) => {
     });
   } catch (error) {
     console.error("Update employment info controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Confirm employment info for current alumni user (when no changes)
+ */
+const confirmEmploymentInfo = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const { lastUpdateReceived } = req.body;
+    
+    // Update the last_update_received timestamp
+    await queryDatabase(
+      db,
+      `UPDATE alumni_employment SET last_update_received = ? WHERE alumni_user_id = ?`,
+      [lastUpdateReceived || new Date().toISOString(), userId]
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: "Employment information confirmed successfully"
+    });
+  } catch (error) {
+    console.error("Confirm employment info controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
+ * Send annual employment update request email
+ */
+const sendEmploymentUpdateRequest = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get user email and name
+    const userRecords = await queryDatabase(
+      db,
+      "SELECT full_name, email FROM users WHERE id = ?",
+      [userId]
+    );
+    
+    if (userRecords.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    
+    const user = userRecords[0];
+    const emailService = require("../utils/emailService");
+    
+    // Send employment update request email
+    const subject = "Annual Employment Information Update Request - FeedbACTS";
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #2563eb;">Employment Information Update Request</h2>
+        <p>Dear ${user.full_name},</p>
+        <p>We hope this message finds you well. As part of our ongoing effort to track alumni career outcomes, we kindly request that you update your employment information.</p>
+        <p>Your current employment status helps us:</p>
+        <ul>
+          <li>Measure the success of our graduates in the workforce</li>
+          <li>Improve our career services and connections</li>
+          <li>Maintain an accurate alumni directory</li>
+        </ul>
+        <div style="margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+            Update Employment Information
+          </a>
+        </div>
+        <p>Or copy this link: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment</p>
+        <p style="margin-top: 20px;">If your employment information has not changed, you can simply confirm your existing information.</p>
+        <p style="color: #666; font-size: 14px; margin-top: 30px;">
+          This is an automated message from FeedbACTS System.<br>
+          Please do not reply to this email.
+        </p>
+      </div>
+    `;
+    
+    const emailSent = await emailService.sendEmail(user.email, subject, html);
+    
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send update request email"
+      });
+    }
+    
+    // Update the last_update_sent timestamp
+    await queryDatabase(
+      db,
+      `UPDATE alumni_employment SET last_update_sent = ? WHERE alumni_user_id = ?`,
+      [new Date().toISOString(), userId]
+    );
+    
+    return res.status(200).json({
+      success: true,
+      message: "Employment update request sent successfully"
+    });
+  } catch (error) {
+    console.error("Send employment update request controller error:", error);
     return res.status(500).json({
       success: false,
       message: "Internal server error"
@@ -870,5 +999,7 @@ module.exports = {
   rejectUser,
   getEmploymentInfo,
   updateEmploymentInfo,
+  confirmEmploymentInfo,
+  sendEmploymentUpdateRequest,
   getAlumniData
 };
