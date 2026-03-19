@@ -194,6 +194,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Fetch notifications when panel opens
@@ -203,13 +204,24 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     }
   }, [isOpen]);
 
-  // Fetch unread count periodically
+  // Fetch unread count periodically - always show bell, fetch count in background
   useEffect(() => {
     const fetchUnreadCount = async () => {
-      const count = await getUnreadCount();
-      setUnreadCount(count);
+      try {
+        const count = await getUnreadCount();
+        // Only update count if we get a valid number (non-negative)
+        if (typeof count === 'number' && count >= 0) {
+          setUnreadCount(count);
+        }
+      } catch (error) {
+        // On error, keep the current count (default is 0)
+        console.log('Using default unread count');
+      } finally {
+        setHasAttemptedFetch(true);
+      }
     };
 
+    // Initial fetch
     fetchUnreadCount();
     // Refresh every 30 seconds
     const interval = setInterval(fetchUnreadCount, 30000);
@@ -295,15 +307,15 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
         id="notification-bell"
         variant="ghost"
         size="sm"
-        className="relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+        className="relative p-2 text-black hover:bg-gray-200 rounded-md w-10 h-10"
         onClick={() => setIsOpen(!isOpen)}
         title={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center">
+          <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white font-medium">
+            <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-medium">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           </span>
@@ -361,7 +373,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Bell className="w-12 h-12 text-gray-300 mb-3" />
                 <p className="text-gray-500">No notifications yet</p>
-                <p className="text-sm text-gray-400 mt-1">
+                <p className="text-sm text-gray-400 mt-1 px-4" >   
                   You'll see updates here when you receive notifications
                 </p>
               </div>
@@ -404,16 +416,18 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
 /**
  * Simplified notification bell for dashboard headers
- * Can be used standalone or with the full panel
+ * Standalone component that renders just the bell button with unread count badge
  */
 interface NotificationBellProps {
   className?: string;
   showLabel?: boolean;
+  onClick?: () => void;
 }
 
 export const NotificationBell: React.FC<NotificationBellProps> = ({
   className = '',
   showLabel = false,
+  onClick,
 }) => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
@@ -446,32 +460,33 @@ export const NotificationBell: React.FC<NotificationBellProps> = ({
   }
 
   return (
-    <NotificationPanel>
+    <div className="relative">
       <Button
         variant="ghost"
         size="sm"
-        className={`relative p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 ${className}`}
+        className={`p-2 text-black hover:bg-gray-200 rounded-md w-10 h-10 ${className}`}
+        onClick={onClick}
         title={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ''}`}
       >
         <Bell className="w-5 h-5" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
-            <span className="relative inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white font-medium">
-              {unreadCount > 9 ? '9+' : unreadCount}
-            </span>
-          </span>
-        )}
-        {showLabel && (
-          <span className="ml-2 text-sm text-gray-600">
-            Notifications
-            {unreadCount > 0 && (
-              <span className="ml-1 text-red-500">({unreadCount})</span>
-            )}
-          </span>
-        )}
       </Button>
-    </NotificationPanel>
+      {unreadCount > 0 && (
+        <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-medium">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        </span>
+      )}
+      {showLabel && (
+        <span className="ml-2 text-sm text-gray-600">
+          Notifications
+          {unreadCount > 0 && (
+            <span className="ml-1 text-red-500">({unreadCount})</span>
+          )}
+        </span>
+      )}
+    </div>
   );
 };
 
