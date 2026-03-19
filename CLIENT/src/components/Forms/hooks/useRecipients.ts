@@ -432,6 +432,8 @@ export function useRecipients() {
       courseYearSection?: string,
       company?: string
     ) => {
+      console.log("[DEBUG] deployToGroup called with:", { formId, targetAudience, department, courseYearSection, company });
+      
       const result = await deployForm(formId, {
         startDate:
           startDate || new Date().toISOString().split("T")[0],

@@ -1,4 +1,5 @@
 // Database Configuration
+
 const mysql = require("mysql");
 
 const dbConfig = {
@@ -16,7 +17,7 @@ const dbConfig = {
   keepAliveInitialDelay: 10000,
   connectTimeout: 10000,
   reconnect: true,
-  // Retry settings
+ 
   reconnectAttempts: 10,
   reconnectDelay: 1000
 };

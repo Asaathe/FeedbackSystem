@@ -926,6 +926,8 @@ const saveAsTemplate = async (formId, userId) => {
  */
 const deployForm = async (formId, userId, deploymentData = {}) => {
   try {
+    console.log("[DEBUG] deployForm called with:", { formId, userId, deploymentData });
+    
     // Check if form exists and user owns it
     const forms = await queryDatabase(
       db,
@@ -946,6 +948,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
 
     // Support both targetFilters.target_audience and direct targetAudience
     const effectiveTargetAudience = targetFilters?.target_audience || targetAudience;
+    console.log("[DEBUG] effectiveTargetAudience:", effectiveTargetAudience, "targetFilters:", targetFilters, "targetAudience:", targetAudience);
 
     // Format time values to HH:MM:SS format for MySQL TIME type
     const deploymentStartTime = startTime ? (startTime.includes(':') ? (startTime.split(':').length === 2 ? `${startTime}:00` : startTime) : null) : null;
@@ -1008,10 +1011,26 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           WHERE u.role = 'instructor' AND u.status = 'active'
         `;
       } else if (targetAudience === "Alumni") {
+        console.log("[DEBUG] Deploying to Alumni, targetAudience:", targetAudience);
+        
+        // Debug: First check if there are any alumni users in the Users table
+        const allAlumniUsers = await queryDatabase(
+          db,
+          "SELECT id, role, status FROM Users WHERE role = 'alumni' AND status = 'active'"
+        );
+        console.log("[DEBUG] Total alumni users in Users table:", allAlumniUsers.length);
+        
+        // Debug: Check alumni table
+        const alumniRecords = await queryDatabase(
+          db,
+          "SELECT * FROM alumni"
+        );
+        console.log("[DEBUG] Total records in alumni table:", alumniRecords.length);
+        
+        // Use a simpler query that doesn't require the alumni table
         userQuery = `
           SELECT u.id
           FROM Users u
-          LEFT JOIN alumni a ON u.id = a.user_id
           WHERE u.role = 'alumni' AND u.status = 'active'
         `;
       } else if (targetAudience.startsWith("Students - ")) {
@@ -1036,23 +1055,71 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         `;
         queryParams.push(department);
       } else if (targetAudience.startsWith("Alumni - ")) {
-        // Specific company
-        const company = targetAudience.replace("Alumni - ", "");
-        userQuery = `
-          SELECT u.id
-          FROM Users u
-          LEFT JOIN alumni a ON u.id = a.user_id
-          WHERE u.role = 'alumni' AND u.status = 'active' AND a.company = ?
-        `;
-        queryParams.push(company);
+        // Specific company, degree, or graduation year
+        // Format can be: "Alumni - <company>" or "Alumni - <degree> - <year>"
+        const alumniFilter = targetAudience.replace("Alumni - ", "");
+        
+        // Check if it contains a year pattern (4 digits at the end)
+        const yearMatch = alumniFilter.match(/^(.+?)\s*-\s*(\d{4})$/);
+        
+        if (yearMatch) {
+          // Format: "Alumni - <degree> - <year>"
+          const degree = yearMatch[1].trim();
+          const gradYear = yearMatch[2];
+          console.log("[DEBUG] Alumni filter by degree and year:", degree, gradYear);
+          
+          userQuery = `
+            SELECT u.id
+            FROM Users u
+            LEFT JOIN alumni a ON u.id = a.user_id
+            WHERE u.role = 'alumni' AND u.status = 'active' 
+            AND a.degree = ? AND a.grad_year = ?
+          `;
+          queryParams.push(degree, gradYear);
+        } else {
+          // Format: "Alumni - <company>"
+          console.log("[DEBUG] Alumni filter by company:", alumniFilter);
+          userQuery = `
+            SELECT u.id
+            FROM Users u
+            LEFT JOIN alumni a ON u.id = a.user_id
+            WHERE u.role = 'alumni' AND u.status = 'active' AND a.company = ?
+          `;
+          queryParams.push(alumniFilter);
+        }
       }
 
       if (userQuery) {
         const users = await queryDatabase(db, userQuery, queryParams);
+        console.log("[DEBUG] Users found for Alumni filter:", users.length, "users:", users);
 
-        // Create assignment records for each user
-        if (users.length > 0) {
+        // If no users found with specific filter, try to get all alumni
+        if (users.length === 0 && targetAudience.startsWith("Alumni - ")) {
+          console.log("[DEBUG] No users found with specific filter, falling back to all alumni");
+          userQuery = `
+            SELECT u.id
+            FROM Users u
+            WHERE u.role = 'alumni' AND u.status = 'active'
+          `;
+          queryParams = [];
+          const fallbackUsers = await queryDatabase(db, userQuery, queryParams);
+          console.log("[DEBUG] Fallback - all alumni users found:", fallbackUsers.length);
+          
+          if (fallbackUsers.length > 0) {
+            const assignments = fallbackUsers.map(user => [formId, user.id, new Date()]);
+            await queryDatabase(
+              db,
+              "INSERT INTO form_assignments (form_id, user_id, assigned_at) VALUES ? ON DUPLICATE KEY UPDATE assigned_at = VALUES(assigned_at)",
+              [assignments]
+            );
+            assignedCount = fallbackUsers.length;
+            console.log("[DEBUG] Created form_assignments for fallback users:", assignedCount);
+          }
+        } else if (users.length > 0) {
+          // Create assignment records for each user
           const assignments = users.map(user => [formId, user.id, new Date()]);
+          
+          console.log("[DEBUG] Creating form_assignments with data:", assignments);
           
           // Use INSERT ... ON DUPLICATE KEY UPDATE to handle duplicates gracefully
           await queryDatabase(
@@ -1062,6 +1129,9 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           );
           
           assignedCount = users.length;
+          console.log("[DEBUG] Created form_assignments for", assignedCount, "users");
+        } else {
+          console.log("[DEBUG] No users found for Alumni target");
         }
       }
     }

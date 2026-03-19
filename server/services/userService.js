@@ -148,6 +148,8 @@ const getFilteredUsers = async (filters) => {
  */
 const getAssignedForms = async (userId) => {
   try {
+    console.log("[DEBUG] getAssignedForms called for userId:", userId);
+    
     // Get user role
     const users = await queryDatabase(
       db,
@@ -160,6 +162,7 @@ const getAssignedForms = async (userId) => {
     }
 
     const userRole = users[0].role;
+    console.log("[DEBUG] User role:", userRole);
 
     // Map role to target audience
     const roleMapping = {
@@ -192,6 +195,8 @@ const getAssignedForms = async (userId) => {
     `,
       [userId, userId]
     );
+    
+    console.log("[DEBUG] Forms query result:", forms.length, "forms found");
 
     return {
       success: true,

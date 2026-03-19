@@ -1,7 +1,7 @@
 // FeedbACTS System - Main Server File
 // Environment variables are loaded via process.env (configured in .env)
 
-require("dotenv").config();
+require("dotenv").config({ quiet: true });
 
 const express = require("express");
 const cors = require("cors");

@@ -1569,6 +1569,7 @@ export const deployForm = async (formId: string, deploymentData: {
   };
 }): Promise<{ success: boolean; message: string }> => {
   logDebug('deployForm called with formId:', formId, 'deploymentData:', deploymentData);
+  console.log("[DEBUG] Frontend deployForm called, formId:", formId, "target_audience:", deploymentData.targetFilters?.target_audience);
 
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');

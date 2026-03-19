@@ -776,6 +776,20 @@ const getAlumniData = async (req, res) => {
     
     const employment = employmentRecords.length > 0 ? employmentRecords[0] : null;
     
+    // Get alumni record from alumni table
+    let alumniRecords = [];
+    try {
+      alumniRecords = await queryDatabase(
+        db,
+        "SELECT * FROM alumni WHERE user_id = ?",
+        [userId]
+      );
+    } catch (err) {
+      console.log("Alumni table query failed:", err.message);
+    }
+    
+    const alumni = alumniRecords.length > 0 ? alumniRecords[0] : null;
+    
     // Get count of alumni network - check if alumni table exists
     let networkCount = [{ count: 0 }];
     try {

@@ -281,37 +281,96 @@ const getMySubjects = async (req, res) => {
     
     // If user is an instructor, get their subjects from subject_offerings
     if (userRole === 'instructor') {
-      const query = `
+      // Get all subject offerings for this instructor
+      const baseQuery = `
         SELECT 
+          so.id as subject_instructor_id,
           so.id as offering_id,
+          ef.id as form_id,
           so.subject_id,
           es.subject_code,
-          es.subject_name,
-          es.department,
-          so.program_id,
-          c.course_section,
-          so.year_level,
-          so.section,
-          so.academic_year,
+          COALESCE(f.title, es.subject_name) as form_name,
+          es.description,
+          es.department as category,
+          so.status,
           so.semester,
+          so.academic_year,
           so.instructor_id,
           u.full_name as instructor_name,
-          i.image as instructor_image
+          i.image as instructor_image,
+          f.start_date,
+          f.end_date,
+          COALESCE((
+            SELECT MAX(sr.shared_at)
+            FROM shared_responses sr
+            WHERE sr.form_id = ef.form_id AND sr.shared_with_instructor_id = so.instructor_id
+          ), NULL) as shared_at,
+          COALESCE((
+            SELECT AVG(sf.overall_rating)
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+            AND sf.overall_rating IS NOT NULL
+          ), 0) as avg_rating,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+          ), 0) as response_count,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+          ), 0) as total_responses
         FROM subject_offerings so
         LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+        LEFT JOIN evaluation_forms ef ON ef.subject_id = so.subject_id AND ef.instructor_id = so.instructor_id AND ef.academic_year = so.academic_year AND ef.semester = so.semester
+        LEFT JOIN Forms f ON ef.form_id = f.id
         LEFT JOIN course_management c ON so.program_id = c.id
         LEFT JOIN users u ON so.instructor_id = u.id
         LEFT JOIN instructors i ON u.id = i.user_id
-        WHERE so.instructor_id = ? AND so.academic_year = ? AND so.semester = ? AND so.status = 'active'
-        ORDER BY es.subject_code
+        WHERE so.instructor_id = ?
+        ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code
       `;
       
-      db.query(query, [userId, acadYear, sem], (err, results) => {
+      db.query(baseQuery, [userId], (err, results) => {
         if (err) {
           console.error("Error fetching instructor subjects:", err);
           return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
         }
-        return res.status(200).json({ success: true, subjects: results });
+        
+        // Get instructor details for the response
+        const instructorQuery = `
+          SELECT 
+            u.id as user_id,
+            u.full_name,
+            u.email,
+            i.department,
+            i.school_role as instructor_id,
+            i.image
+          FROM users u
+          LEFT JOIN instructors i ON u.id = i.user_id
+          WHERE u.id = ?
+        `;
+        
+        db.query(instructorQuery, [userId], (err2, instructorResults) => {
+          if (err2) {
+            console.error("Error fetching instructor details:", err2);
+            return res.status(500).json({ success: false, message: "Failed to fetch instructor details" });
+          }
+          
+          const instructor = instructorResults.length > 0 ? instructorResults[0] : null;
+          
+          // Log for debugging
+          console.log("Instructor subjects query results:", {
+            userId,
+            acadYear,
+            sem,
+            totalResults: results.length,
+            firstResult: results[0]
+          });
+          
+          return res.status(200).json({ success: true, instructor, subjects: results });
+        });
       });
       return;
     }

@@ -1437,9 +1437,7 @@ export function FormBuilder({
                                   onValueChange={(value) => {
                                     if (selectedAudienceType === "Alumni") {
                                       setSelectedDepartment(value);
-                                      setFormTarget(
-                                        `${selectedAudienceType} - ${value}`
-                                      );
+                                      // Don't set formTarget with degree - will be set with year only
                                     } else if (selectedAudienceType === "Employers") {
                                       setSelectedCourseYearSection(value);
                                       setFormTarget(
@@ -1500,7 +1498,7 @@ export function FormBuilder({
                             )}
 
                             {/* Graduation Year Selection for Alumni */}
-                            {selectedAudienceType === "Alumni" && selectedDepartment && (
+                            {selectedAudienceType === "Alumni" && (
                               <div className="space-y-2">
                                 <Label className="text-sm font-medium">
                                   Graduation Year
@@ -1509,8 +1507,9 @@ export function FormBuilder({
                                   value={selectedCourseYearSection}
                                   onValueChange={(value) => {
                                     setSelectedCourseYearSection(value);
+                                    // For Alumni: Final Target should only include Year, not Degree
                                     setFormTarget(
-                                      `${selectedAudienceType} - ${selectedDepartment} - ${value}`
+                                      `${selectedAudienceType} - ${value}`
                                     );
                                   }}
                                 >
@@ -1595,7 +1594,6 @@ export function FormBuilder({
                                 selectedDepartment &&
                                 selectedCourseYearSection) ||
                                 (selectedAudienceType === "Alumni" &&
-                                selectedDepartment &&
                                 selectedCourseYearSection) ||
                                 (selectedAudienceType === "Instructors" &&
                                   selectedCourseYearSection) ||

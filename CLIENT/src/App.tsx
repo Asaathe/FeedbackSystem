@@ -418,7 +418,7 @@ export default function App() {
         case "submit-feedback":
           return <FeedbackSubmission />;
         case "my-submissions":
-          return <MySubmissions />;
+          return <MySubmissions userRole={userRole} />;
         case "settings":
           return (
             <div className="text-center py-12">
@@ -459,7 +459,7 @@ export default function App() {
         case "submit-feedback":
           return <FeedbackSubmission userRole={userRole} />;
         case "my-submissions":
-          return <MySubmissions />;
+          return <MySubmissions userRole={userRole} />;
         case "profile":
           return <UserProfile onNavigate={setCurrentPage} />;
         default:
@@ -478,7 +478,7 @@ export default function App() {
       case "submit-feedback":
         return <FeedbackSubmission userRole={userRole} />;
       case "my-submissions":
-        return <MySubmissions />;
+        return <MySubmissions userRole={userRole} />;
       case "profile":
         return <UserProfile onNavigate={setCurrentPage} />;
       default:

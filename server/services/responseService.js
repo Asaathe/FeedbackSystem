@@ -11,6 +11,8 @@ const { queryDatabase } = require("../utils/helpers");
  */
 const submitFormResponse = async (formId, userId, answers) => {
   try {
+    console.log("[DEBUG] submitFormResponse called:", { formId, userId });
+    
     // Check if form exists and is active
     const forms = await queryDatabase(
       db,
@@ -62,6 +64,7 @@ const submitFormResponse = async (formId, userId, answers) => {
       [formId, userId]
     );
 
+    console.log("[DEBUG] Response submitted successfully, responseId:", insertResult.insertId);
     return {
       success: true,
       message: "Response submitted successfully",
@@ -458,6 +461,8 @@ const deleteResponse = async (responseId, userId) => {
  */
 const getUserResponses = async (userId) => {
   try {
+    console.log("[DEBUG] getUserResponses called for userId:", userId);
+    
     const responses = await queryDatabase(
       db,
       `
@@ -472,6 +477,8 @@ const getUserResponses = async (userId) => {
     `,
       [userId]
     );
+    
+    console.log("[DEBUG] Responses found:", responses.length);
 
     // Get questions for all forms
     const formIds = [...new Set(responses.map(r => r.form_id))];
