@@ -193,6 +193,16 @@ const getAllSubjects = async (req, res) => {
           WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
           AND ifb.overall_rating IS NOT NULL
         )) / 2, 0) as avg_rating,
+        COALESCE(
+          (
+            SELECT AVG(COALESCE(sf.overall_rating, 
+              CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
+            ))
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+          ),
+          0
+        ) as subject_avg,
         (SELECT COUNT(DISTINCT st.user_id) FROM students st 
          INNER JOIN users u2 ON st.user_id = u2.id 
          WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
@@ -789,16 +799,26 @@ const getInstructorSubjects = async (req, res) => {
           FROM instructor_feedback ifb
           WHERE ifb.section_id = so.id
         ), 0) as instructor_feedback_count,
-        COALESCE((
-          SELECT AVG(sf.overall_rating)
-          FROM subject_feedback sf
-          WHERE sf.section_id = so.id AND sf.overall_rating IS NOT NULL
-        ), 0) as subject_avg,
-        COALESCE((
-          SELECT AVG(ifb.overall_rating)
-          FROM instructor_feedback ifb
-          WHERE ifb.section_id = so.id AND ifb.overall_rating IS NOT NULL
-        ), 0) as instructor_avg
+        COALESCE(
+          (
+            SELECT AVG(COALESCE(sf.overall_rating, 
+              CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
+            ))
+            FROM subject_feedback sf
+            WHERE sf.section_id = so.id
+          ),
+          0
+        ) as subject_avg,
+        COALESCE(
+          (
+            SELECT AVG(COALESCE(ifb.overall_rating, 
+              CAST(JSON_UNQUOTE(JSON_EXTRACT(ifb.category_averages, '$.overall.average')) AS DECIMAL(10,2))
+            ))
+            FROM instructor_feedback ifb
+            WHERE ifb.section_id = so.id
+          ),
+          0
+        ) as instructor_avg
       FROM subject_offerings so
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
@@ -1200,6 +1220,247 @@ const getEvaluationResultsBySection = async (req, res) => {
   }
 };
 
+/**
+ * Get feedback category breakdown with rubric-style results
+ * Separates instructor_feedback and subject_feedback data
+ * Includes all categories and subcategories from the feedback template
+ */
+const getFeedbackCategoryBreakdown = async (req, res) => {
+  try {
+    const { subjectId } = req.params;
+    const { feedback_type } = req.query; // 'instructor' or 'subject'
+    
+    // Get current settings
+    const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
+    const settings = await new Promise((resolve, reject) => {
+      db.query(settingsQuery, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    // Get subject info
+    const subjectQuery = `
+      SELECT 
+        so.id as section_id,
+        so.subject_id,
+        es.subject_code,
+        es.subject_name,
+        so.section,
+        so.year_level,
+        so.instructor_id,
+        u.full_name as instructor_name
+      FROM subject_offerings so
+      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+      LEFT JOIN users u ON so.instructor_id = u.id
+      WHERE so.id = ?
+      LIMIT 1
+    `;
+    
+    const subjectInfo = await new Promise((resolve, reject) => {
+      db.query(subjectQuery, [subjectId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    if (!subjectInfo.length) {
+      return res.status(200).json({ success: true, data: null });
+    }
+    
+    const subject = subjectInfo[0];
+    
+    // Get feedback template categories (parent categories and subcategories)
+    const categoriesQuery = `
+      SELECT 
+        c.id as category_id,
+        c.category_name,
+        c.parent_category_id,
+        c.feedback_type
+      FROM feedback_template_categories c
+      WHERE c.is_active = 1
+      ORDER BY c.parent_category_id IS NOT NULL, c.parent_category_id, c.display_order, c.id
+    `;
+    
+    const templateCategories = await new Promise((resolve, reject) => {
+      db.query(categoriesQuery, (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    // Separate parent categories and subcategories
+    const parentCategories = templateCategories.filter(c => !c.parent_category_id);
+    const subcategoriesByParent = {};
+    templateCategories.filter(c => c.parent_category_id).forEach(cat => {
+      if (!subcategoriesByParent[cat.parent_category_id]) {
+        subcategoriesByParent[cat.parent_category_id] = [];
+      }
+      subcategoriesByParent[cat.parent_category_id].push(cat);
+    });
+    
+    // Build results object
+    const result = {
+      section_id: subject.section_id,
+      subject_code: subject.subject_code,
+      subject_name: subject.subject_name,
+      section: subject.section,
+      year_level: subject.year_level,
+      instructor_name: subject.instructor_name,
+      categories_template: parentCategories.map(p => ({
+        id: p.category_id,
+        name: p.category_name,
+        feedback_type: p.feedback_type,
+        subcategories: subcategoriesByParent[p.category_id] || []
+      })),
+      instructor_breakdown: null,
+      subject_breakdown: null
+    };
+    
+    // Function to get category averages from feedback responses using category_averages JSON column
+    const getCategoryAverages = async (tableName, feedbackType) => {
+      // Get all responses for this section including category_averages
+      const responsesQuery = `SELECT responses, overall_rating, category_averages FROM ${tableName} WHERE section_id = ?`;
+      const responses = await new Promise((resolve, reject) => {
+        db.query(responsesQuery, [subjectId], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      const totalResponses = responses.length;
+      const overallSum = responses.reduce((sum, r) => sum + (parseFloat(r.overall_rating) || 0), 0);
+      const overallAvg = totalResponses > 0 ? (overallSum / totalResponses).toFixed(2) : 'N/A';
+      
+      // Get feedback type filter value
+      const typeFilter = feedbackType === 'instructor' ? 'instructor' : 'subject';
+      
+      // Get parent categories filtered by feedback type (these are the ones stored in category_averages)
+      const filteredParentCategories = parentCategories.filter(cat => 
+        cat.feedback_type === typeFilter || cat.feedback_type === 'both'
+      );
+      
+      // Build a mapping from category ID to category name for this feedback type
+      // Note: templateCategories uses 'category_id' from the query alias, not 'id'
+      const categoryIdToName = {};
+      const categoryNameToId = {};
+      filteredParentCategories.forEach(cat => {
+        const catId = cat.category_id || cat.id;
+        categoryIdToName[catId] = cat.category_name;
+        categoryNameToId[cat.category_name] = catId;
+      });
+      
+      // Initialize all parent categories from categories_template with null
+      // Use parentCategories to get all main categories displayed in the template
+      const categorySums = {};
+      parentCategories.forEach(cat => {
+        categorySums[cat.category_name] = null;
+      });
+      
+      // Process responses - use category_averages JSON if available
+      responses.forEach(response => {
+        try {
+          // Try to use category_averages JSON column first
+          if (response.category_averages) {
+            const catAvgs = typeof response.category_averages === 'string' 
+              ? JSON.parse(response.category_averages) 
+              : response.category_averages;
+            
+            if (catAvgs && typeof catAvgs === 'object') {
+              Object.entries(catAvgs).forEach(([key, value]) => {
+                // Skip 'overall' key
+                if (key === 'overall') return;
+                
+                // The key is a category ID (e.g., "64", "65")
+                // The value is an object with: name, average, count, questions
+                const keyNum = parseInt(key);
+                
+                if (!isNaN(keyNum) && typeof value === 'object' && value !== null) {
+                  // Use the name directly from category_averages
+                  const catName = value.name;
+                  const avgValue = value.average;
+                  
+                  if (catName && avgValue !== undefined && typeof avgValue === 'number') {
+                    if (categorySums[catName] === null) {
+                      categorySums[catName] = { sum: avgValue, count: 1 };
+                    } else {
+                      categorySums[catName].sum += avgValue;
+                      categorySums[catName].count += 1;
+                    }
+                  }
+                }
+              });
+            }
+          }
+          // Fallback to questions if category_averages is not available
+          else if (response.responses) {
+            const parsed = typeof response.responses === 'string' ? JSON.parse(response.responses) : response.responses;
+            if (parsed && parsed.questions) {
+              // Map questions to parent categories by index order
+              const questionKeys = Object.keys(parsed.questions).sort();
+              questionKeys.forEach((qKey, index) => {
+                if (index < filteredParentCategories.length) {
+                  const value = parsed.questions[qKey];
+                  if (typeof value === 'number') {
+                    const catName = filteredParentCategories[index].category_name;
+                    if (categorySums[catName] === null) {
+                      categorySums[catName] = { sum: value, count: 1 };
+                    } else {
+                      categorySums[catName].sum += value;
+                      categorySums[catName].count += 1;
+                    }
+                  }
+                }
+              });
+            }
+          }
+        } catch (e) {}
+      });
+      
+      // Calculate averages for each category
+      const categories = {};
+      let totalCatAvg = 0;
+      let catCount = 0;
+      
+      Object.keys(categorySums).forEach(catName => {
+        const data = categorySums[catName];
+        if (data !== null) {
+          const avg = data.sum / data.count;
+          categories[catName] = parseFloat(avg.toFixed(2));
+          totalCatAvg += avg;
+          catCount++;
+        } else {
+          categories[catName] = null;
+        }
+      });
+      
+      // Calculate overall from categories
+      const calculatedOverall = catCount > 0 ? (totalCatAvg / catCount).toFixed(2) : overallAvg;
+      
+      return {
+        total_responses: totalResponses,
+        overall_average: calculatedOverall,
+        categories: categories
+      };
+    };
+    
+    // Get instructor feedback breakdown
+    if (!feedback_type || feedback_type === 'instructor') {
+      result.instructor_breakdown = await getCategoryAverages('instructor_feedback', 'instructor');
+    }
+    
+    // Get subject feedback breakdown
+    if (!feedback_type || feedback_type === 'subject') {
+      result.subject_breakdown = await getCategoryAverages('subject_feedback', 'subject');
+    }
+    
+    return res.status(200).json({ success: true, data: result });
+  } catch (error) {
+    console.error("Get feedback category breakdown error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
 // Export all functions
 module.exports = {
   getAllInstructors,
@@ -1212,5 +1473,6 @@ module.exports = {
   getInstructorDashboardStats,
   assignFormToSubject,
   getSubjectEvaluationResults,
-  getEvaluationResultsBySection
+  getEvaluationResultsBySection,
+  getFeedbackCategoryBreakdown
 };

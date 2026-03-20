@@ -19,7 +19,7 @@ import {
   Award
 } from "lucide-react";
 import { toast } from "sonner";
-import { getSubjectEvaluationResults, getEvaluationSummary, getEvaluationResultsBySection } from "../../services/subjectService";
+import { getSubjectEvaluationResults, getEvaluationSummary, getEvaluationResultsBySection, getFeedbackCategoryBreakdown } from "../../services/subjectService";
 
 interface Instructor {
   user_id: number;
@@ -82,6 +82,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const [sectionResults, setSectionResults] = useState<SectionResult[]>([]);
   const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
   const [loadingAllSubjects, setLoadingAllSubjects] = useState(false);
+  const [categoryBreakdown, setCategoryBreakdown] = useState<any>(null);
+  const [loadingBreakdown, setLoadingBreakdown] = useState(false);
 
   useEffect(() => {
     fetchInstructors();
@@ -231,11 +233,13 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
   const fetchSubjectFeedback = async (subjectId: number) => {
     setLoadingFeedback(true);
+    setLoadingBreakdown(true);
     console.log('Fetching feedback for subjectId:', subjectId);
     try {
-      const [analyticsResult, sectionResult] = await Promise.all([
+      const [analyticsResult, sectionResult, breakdownResult] = await Promise.all([
         getSubjectEvaluationResults(subjectId.toString()),
-        getEvaluationResultsBySection(subjectId.toString())
+        getEvaluationResultsBySection(subjectId.toString()),
+        getFeedbackCategoryBreakdown(subjectId.toString())
       ]);
       
       if (analyticsResult.success) {
@@ -245,11 +249,16 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
       if (sectionResult.success) {
         setSectionResults(sectionResult.results || []);
       }
+      
+      if (breakdownResult.success) {
+        setCategoryBreakdown(breakdownResult.data || null);
+      }
     } catch (error) {
       console.error('Error fetching feedback:', error);
       toast.error('Failed to fetch feedback');
     } finally {
       setLoadingFeedback(false);
+      setLoadingBreakdown(false);
     }
   };
 
@@ -351,14 +360,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     const responseRate = selectedSubject.student_count > 0 
       ? ((selectedSubject.feedback_count / selectedSubject.student_count) * 100).toFixed(1)
       : '0';
-    const responseFraction = selectedSubject.student_count > 0 
-      ? `${selectedSubject.feedback_count}/${selectedSubject.student_count}`
-      : '0/0';
-    
-    // Determine which rating to show based on which tab user came from
+    // Determine which view we're in
     const isInstructorView = currentView === 'instructors' || selectedInstructor;
-    const displayRating = isInstructorView ? selectedSubject.instructor_avg : selectedSubject.subject_avg;
-    const ratingLabel = isInstructorView ? 'Instructor Rating' : 'Subject Rating';
     
     return (
       <div className="space-y-6">
@@ -375,80 +378,167 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </div>
         </div>
 
-        {/* Summary Cards - All Key Info in One View */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 ">
-          {/* Course/Section Title */}
-          <Card className="border-green-100 ">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">Course</CardTitle>
-              <BookOpen className="w-5 h-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-lg font-bold">{selectedSubject.subject_code}</div>
-              <p className="text-xs text-gray-600 mt-1">{selectedSubject.subject_name}</p>
-              <p className="text-xs text-gray-500 mt-1">Section {selectedSubject.section}</p>
+        {/* Rubric Breakdown Table - Only show relevant breakdown based on view */}
+        {loadingBreakdown ? (
+          <Card className="border-gray-200">
+            <CardContent className="py-12 text-center">
+              <Loader2 className="w-10 h-10 animate-spin text-green-500 mx-auto" />
+              <p className="mt-4 text-gray-600 font-medium">Loading feedback breakdown...</p>
+              <p className="text-sm text-gray-400">Please wait while we fetch the evaluation results</p>
             </CardContent>
           </Card>
-
-          {/* Total Enrolled Students */}
-          <Card className="border-green-100">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">Enrolled Students</CardTitle>
-              <Users className="w-5 h-5 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl">{selectedSubject.student_count}</div>
-              <p className="text-xs text-gray-600 mt-1">Total enrolled</p>
-            </CardContent>
-          </Card>
-
-          {/* Feedbacks Submitted & Response Rate */}
-          <Card className="border-green-100">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">Response Rate</CardTitle>
-              <MessageSquare className="w-5 h-5 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl">{responseRate}%</div>
-              <p className="text-xs text-gray-600 mt-1">{responseFraction} respondents</p>
-            </CardContent>
-          </Card>
-
-          {/* Rating - Shows either Instructor or Subject based on view */}
-          <Card className="border-green-100">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm text-gray-600">{ratingLabel}</CardTitle>
-              {isInstructorView ? <GraduationCap className="w-5 h-5 text-teal-500" /> : <BookOpen className="w-5 h-5 text-orange-500" />}
-            </CardHeader>
-            <CardContent>
-              <div className="text-3xl flex items-center gap-1">
-                {parseFloat((displayRating || 0).toString()).toFixed(1)}
-                <Star className="w-6 h-6 text-yellow-500" />
-              </div>
-              <Progress value={parseFloat((displayRating || 0).toString()) * 20} className="mt-2 h-2" />
-              <p className="text-xs text-gray-500 mt-2">
-                {isInstructorView ? 'From instructor_feedback table' : 'From subject_feedback table'}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Formula Explanation */}
-        <Card className="border-green-100 bg-gray-50">
-          <CardContent className="py-4">
-            <h4 className="font-medium text-gray-700 mb-2">Rating Calculation Formula</h4>
-            <div className="text-sm text-gray-600 space-y-1">
-              {isInstructorView ? (
-                <p><span className="font-medium">Instructor Rating</span> = Average of all instructor feedback ratings for this section (from instructor_feedback table)</p>
+        ) : categoryBreakdown && categoryBreakdown.categories_template ? (
+          <div className="space-y-6">
+            {/* Show Instructor Breakdown in By Instructor view, Subject Breakdown in By Subject view */}
+            {isInstructorView ? (
+              /* Instructor Feedback Breakdown */
+              <Card className="border-teal-200">
+                <CardHeader className="bg-teal-50 py-4">
+                  <CardTitle className="text-lg text-teal-800 flex items-center gap-2">
+                    <GraduationCap className="w-5 h-5" />
+                    Instructor Feedback Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-teal-50">
+                        <TableHead className="text-teal-800 font-semibold py-4 px-4">Category</TableHead>
+                        <TableHead className="text-teal-800 font-semibold text-center py-4 px-4">Average Score</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(categoryBreakdown.categories_template || [])
+                        .filter((cat: any) => cat.feedback_type === 'instructor' || cat.feedback_type === 'both')
+                        .map((cat: any) => {
+                        const avg = categoryBreakdown.instructor_breakdown?.categories?.[cat.name];
+                        const hasData = avg !== null && avg !== undefined;
+                        return (
+                          <TableRow key={`instructor-${cat.id}`} className={!hasData ? "bg-gray-30" : ""}>
+                            <TableCell className="font-medium py-4 px-4">
+                              {cat.name}
+                            </TableCell>
+                            <TableCell className="text-center py-4 px-4">
+                              {hasData ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Star className="w-4 h-4 text-yellow-500" />
+                                  <span className="font-medium">{avg}</span>
+                                </div>
+                              ) : <span className="text-gray-400">N/A</span>}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="bg-teal-50 font-semibold">
+                        <TableCell className="py-4 px-4">Overall Average</TableCell>
+                        <TableCell className="text-center text-lg py-4 px-4">
+                          {categoryBreakdown.instructor_breakdown?.overall_average ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <Star className="w-5 h-5 text-yellow-500" />
+                              <span className="text-lg font-bold">
+                                {categoryBreakdown.instructor_breakdown?.overall_average}
+                              </span>
+                            </div>
+                          ) : 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                  <div className="p-4 bg-teal-50 text-sm text-teal-700">
+                    Total Responses: {categoryBreakdown.instructor_breakdown?.total_responses || 0}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              /* Subject Feedback Breakdown */
+              <Card className="border-orange-200">
+                <CardHeader className="bg-orange-50 py-4">
+                  <CardTitle className="text-lg text-orange-800 flex items-center gap-2">
+                    <BookOpen className="w-5 h-5" />
+                    Subject Feedback Breakdown
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-orange-50">
+                        <TableHead className="text-orange-800 font-semibold py-4 px-4">Category</TableHead>
+                        <TableHead className="text-orange-800 font-semibold text-center py-4 px-4">Average Score</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(categoryBreakdown.categories_template || [])
+                        .filter((cat: any) => cat.feedback_type === 'subject' || cat.feedback_type === 'both')
+                        .map((cat: any) => {
+                        const avg = categoryBreakdown.subject_breakdown?.categories?.[cat.name];
+                        const hasData = avg !== null && avg !== undefined;
+                        return (
+                          <TableRow key={`subject-${cat.id}`} className={!hasData ? "bg-gray-30" : ""}>
+                            <TableCell className="font-medium py-4 px-4">
+                              {cat.name}
+                            </TableCell>
+                            <TableCell className="text-center py-4 px-4">
+                              {hasData ? (
+                                <div className="flex items-center justify-center gap-1">
+                                  <Star className="w-4 h-4 text-yellow-500" />
+                                  <span className="font-medium">{avg}</span>
+                                </div>
+                              ) : <span className="text-gray-400">N/A</span>}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                      <TableRow className="bg-orange-50 font-semibold">
+                        <TableCell className="py-4 px-4">Overall Average</TableCell>
+                        <TableCell className="text-center text-lg py-4 px-4">
+                          {categoryBreakdown.subject_breakdown?.overall_average ? (
+                            <div className="flex items-center justify-center gap-1">
+                              <Star className="w-5 h-5 text-yellow-500" />
+                              <span className="text-lg font-bold">
+                                {categoryBreakdown.subject_breakdown?.overall_average}
+                              </span>
+                            </div>
+                          ) : 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                  <div className="p-4 bg-orange-50 text-sm text-orange-700">
+                    Total Responses: {categoryBreakdown.subject_breakdown?.total_responses || 0}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        ) : (
+          <Card className="border-gray-200">
+            <CardContent className="py-12 text-center">
+              <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              {!categoryBreakdown?.categories_template || categoryBreakdown.categories_template.length === 0 ? (
+                <>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Evaluation Template Configured</h3>
+                  <p className="text-gray-500 max-w-md mx-auto">
+                    No feedback categories have been set up for this evaluation.
+                    Please configure the feedback template to see category breakdowns.
+                  </p>
+                </>
               ) : (
-                <p><span className="font-medium">Subject Rating</span> = Average of all subject feedback ratings for this section (from subject_feedback table)</p>
+                <>
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">No Feedback Data Available</h3>
+                  <p className="text-gray-500 max-w-md mx-auto">
+                    There are no evaluation responses yet for this subject.
+                    Students need to submit their feedback first before any breakdown can be displayed.
+                  </p>
+                  <div className="mt-6 bg-gray-50 rounded-lg p-4 max-w-md mx-auto">
+                    <p className="text-sm text-gray-600">
+                      <span className="font-medium">Tip:</span> Students can submit evaluations through the student portal once feedback forms are published.
+                    </p>
+                  </div>
+                </>
               )}
-              <p className="text-xs text-gray-500 mt-2">
-                Note: These are separate evaluations. Instructor and Subject ratings are NOT combined.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }

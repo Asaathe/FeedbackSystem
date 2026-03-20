@@ -37,6 +37,9 @@ router.get("/results/:subjectId", verifyToken, subjectEvaluationController.getSu
 // Get evaluation results by section
 router.get("/results-by-section/:subjectId", verifyToken, subjectEvaluationController.getEvaluationResultsBySection);
 
+// Get category-based feedback breakdown (rubric style)
+router.get("/category-breakdown/:subjectId", verifyToken, subjectEvaluationController.getFeedbackCategoryBreakdown);
+
 // Feedback endpoint - returns empty stats (use Forms system for feedback)
 router.get("/subjects/:subjectId/feedback", verifyToken, (req, res) => {
   res.status(200).json({

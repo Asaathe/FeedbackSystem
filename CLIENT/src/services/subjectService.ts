@@ -410,6 +410,29 @@ export const getEvaluationResultsBySection = async (subjectId: string, academic_
   }
 };
 
+// Get feedback category breakdown with rubric-style results
+export const getFeedbackCategoryBreakdown = async (subjectId: string, feedbackType?: 'instructor' | 'subject') => {
+  try {
+    const params = new URLSearchParams();
+    if (feedbackType) params.append('feedback_type', feedbackType);
+
+    const queryString = params.toString();
+    const url = queryString 
+      ? `${API_BASE_URL}/subject-evaluation/category-breakdown/${subjectId}?${queryString}`
+      : `${API_BASE_URL}/subject-evaluation/category-breakdown/${subjectId}`;
+
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
+
+    const result = await response.json();
+    return result;
+  } catch (error) {
+    console.error('Error fetching category breakdown:', error);
+    return { success: false, message: 'Failed to fetch category breakdown', data: null };
+  }
+};
+
 // Programs API
 export const getPrograms = async () => {
   try {
