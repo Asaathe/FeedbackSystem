@@ -3,6 +3,113 @@
 const db = require("../config/database");
 
 // ============================================
+// HELPER FUNCTION: Calculate Category Averages
+// ============================================
+
+/**
+ * Calculate category averages from responses
+ * Groups questions by their parent category and calculates average per main category
+ * @param {object} responses - Object with question IDs as keys and ratings as values
+ * @returns {Promise<object>} Object with category averages
+ */
+const calculateCategoryAverages = async (responses) => {
+  return new Promise((resolve, reject) => {
+    try {
+      if (!responses || typeof responses !== 'object' || Object.keys(responses).length === 0) {
+        return resolve({});
+      }
+
+      // Get all categories with parent-child relationships
+      const categoryQuery = `
+        SELECT id, category_name, parent_category_id 
+        FROM feedback_template_categories 
+        WHERE is_active = 1
+        ORDER BY display_order ASC
+      `;
+
+      db.query(categoryQuery, [], (err, categories) => {
+        if (err) {
+          console.error("Error fetching categories for calculation:", err);
+          return resolve({});
+        }
+
+        // Build a map of question ID -> parent category ID
+        const questionToParent = {};
+        const mainCategories = {}; // id -> { name, questions: [], ratings: [] }
+
+        // First, identify main categories (those with parent_category_id = NULL)
+        categories.forEach(cat => {
+          if (cat.parent_category_id === null || cat.parent_category_id === 0) {
+            mainCategories[cat.id] = {
+              name: cat.category_name,
+              questions: [],
+              ratings: []
+            };
+          }
+        });
+
+        // Build question to parent mapping from subcategories
+        categories.forEach(cat => {
+          if (cat.parent_category_id !== null && cat.parent_category_id !== 0) {
+            questionToParent[cat.id] = cat.parent_category_id;
+          }
+        });
+
+        // Group responses by category
+        for (const [questionId, rating] of Object.entries(responses)) {
+          const qId = parseInt(questionId);
+          const ratingNum = Number(rating);
+
+          if (isNaN(qId) || isNaN(ratingNum)) continue;
+
+          const parentId = questionToParent[qId];
+          if (parentId && mainCategories[parentId]) {
+            mainCategories[parentId].questions.push(questionId);
+            mainCategories[parentId].ratings.push(ratingNum);
+          }
+        }
+
+        // Calculate averages for each category
+        const categoryAverages = {};
+        let totalSum = 0;
+        let totalCount = 0;
+
+        for (const [catId, catData] of Object.entries(mainCategories)) {
+          if (catData.ratings.length > 0) {
+            const catSum = catData.ratings.reduce((a, b) => a + b, 0);
+            const catAvg = catSum / catData.ratings.length;
+            categoryAverages[catId] = {
+              name: catData.name,
+              average: Math.round(catAvg * 100) / 100,
+              count: catData.ratings.length,
+              questions: catData.questions.reduce((obj, q, idx) => {
+                obj[q] = catData.ratings[idx];
+                return obj;
+              }, {})
+            };
+            totalSum += catSum;
+            totalCount += catData.ratings.length;
+          }
+        }
+
+        // Add overall rating
+        if (totalCount > 0) {
+          categoryAverages.overall = {
+            average: Math.round((totalSum / totalCount) * 100) / 100,
+            count: totalCount
+          };
+        }
+
+        return resolve(categoryAverages);
+      });
+    } catch (error) {
+      console.error("Error in calculateCategoryAverages:", error);
+      return resolve({});
+    }
+  });
+};
+
+// ============================================
 // FEEDBACK TEMPLATE CATEGORIES
 // ============================================
 
@@ -683,27 +790,33 @@ const submitSubjectFeedback = async (req, res) => {
       }
     }
 
-    function insertFeedback() {
+    async function insertFeedback() {
       // Calculate overall_rating from responses if not provided
       let finalOverallRating = overall_rating;
-      if (finalOverallRating === undefined || finalOverallRating === null) {
-        try {
+      let categoryAverages = {};
+      
+      try {
+        // Calculate category averages
+        categoryAverages = await calculateCategoryAverages(responses);
+        
+        if (finalOverallRating === undefined || finalOverallRating === null) {
           const responseValues = Object.values(responses || {});
           if (responseValues.length > 0) {
             const sum = responseValues.reduce((a, b) => a + (Number(b) || 0), 0);
             finalOverallRating = sum / responseValues.length;
           }
-        } catch (e) {
-          console.error('Error calculating overall rating:', e);
-          finalOverallRating = null;
         }
+      } catch (e) {
+        console.error('Error calculating ratings:', e);
+        finalOverallRating = finalOverallRating || null;
+        categoryAverages = {};
       }
       
       const insertQuery = `
-        INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, academic_year, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, category_averages, academic_year, semester)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(responses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+      db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(responses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
         if (insertErr) {
           // Check for duplicate
           if (insertErr.code === 'ER_DUP_ENTRY') {
@@ -775,27 +888,33 @@ const submitInstructorFeedback = async (req, res) => {
       }
     }
 
-    function insertFeedback() {
+    async function insertFeedback() {
       // Calculate overall_rating from responses if not provided
       let finalOverallRating = overall_rating;
-      if (finalOverallRating === undefined || finalOverallRating === null) {
-        try {
+      let categoryAverages = {};
+      
+      try {
+        // Calculate category averages
+        categoryAverages = await calculateCategoryAverages(responses);
+        
+        if (finalOverallRating === undefined || finalOverallRating === null) {
           const responseValues = Object.values(responses || {});
           if (responseValues.length > 0) {
             const sum = responseValues.reduce((a, b) => a + (Number(b) || 0), 0);
             finalOverallRating = sum / responseValues.length;
           }
-        } catch (e) {
-          console.error('Error calculating overall rating:', e);
-          finalOverallRating = null;
         }
+      } catch (e) {
+        console.error('Error calculating ratings:', e);
+        finalOverallRating = finalOverallRating || null;
+        categoryAverages = {};
       }
       
       const insertQuery = `
-        INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, academic_year, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, category_averages, academic_year, semester)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(responses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+      db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(responses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
         if (insertErr) {
           // Check for duplicate
           if (insertErr.code === 'ER_DUP_ENTRY') {
@@ -870,27 +989,33 @@ const submitFeedback = async (req, res) => {
         }
       }
 
-      function doInsertSubjectFeedback(acadYear, sem) {
+      async function doInsertSubjectFeedback(acadYear, sem) {
         // Calculate overall_rating from responses if not provided
         let finalOverallRating = overall_rating;
-        if (finalOverallRating === undefined || finalOverallRating === null) {
-          try {
+        let categoryAverages = {};
+        
+        try {
+          // Calculate category averages
+          categoryAverages = await calculateCategoryAverages(feedbackResponses);
+          
+          if (finalOverallRating === undefined || finalOverallRating === null) {
             const responseValues = Object.values(feedbackResponses || {});
             if (responseValues.length > 0) {
               const sum = responseValues.reduce((a, b) => a + (Number(b) || 0), 0);
               finalOverallRating = sum / responseValues.length;
             }
-          } catch (e) {
-            console.error('Error calculating overall rating:', e);
-            finalOverallRating = null;
           }
+        } catch (e) {
+          console.error('Error calculating ratings:', e);
+          finalOverallRating = finalOverallRating || null;
+          categoryAverages = {};
         }
         
         const insertQuery = `
-          INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, academic_year, semester)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, category_averages, academic_year, semester)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(feedbackResponses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+        db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(feedbackResponses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
           if (insertErr) {
             if (insertErr.code === 'ER_DUP_ENTRY') {
               return res.status(400).json({ success: false, message: "You have already submitted feedback for this subject" });
@@ -925,27 +1050,33 @@ const submitFeedback = async (req, res) => {
         doInsertInstructorFeedback(acadYear, sem);
       }
 
-      function doInsertInstructorFeedback(acadYear, sem) {
+      async function doInsertInstructorFeedback(acadYear, sem) {
         // Calculate overall_rating from responses if not provided
         let finalOverallRating = overall_rating;
-        if (finalOverallRating === undefined || finalOverallRating === null) {
-          try {
+        let categoryAverages = {};
+        
+        try {
+          // Calculate category averages
+          categoryAverages = await calculateCategoryAverages(feedbackResponses);
+          
+          if (finalOverallRating === undefined || finalOverallRating === null) {
             const responseValues = Object.values(feedbackResponses || {});
             if (responseValues.length > 0) {
               const sum = responseValues.reduce((a, b) => a + (Number(b) || 0), 0);
               finalOverallRating = sum / responseValues.length;
             }
-          } catch (e) {
-            console.error('Error calculating overall rating:', e);
-            finalOverallRating = null;
           }
+        } catch (e) {
+          console.error('Error calculating ratings:', e);
+          finalOverallRating = finalOverallRating || null;
+          categoryAverages = {};
         }
         
         const insertQuery = `
-          INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, academic_year, semester)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, category_averages, academic_year, semester)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(feedbackResponses), finalOverallRating, acadYear, sem], (insertErr, result) => {
+        db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(feedbackResponses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
           if (insertErr) {
             if (insertErr.code === 'ER_DUP_ENTRY') {
               return res.status(400).json({ success: false, message: "You have already submitted feedback for this instructor" });

@@ -44,6 +44,8 @@ interface Subject {
   student_count: number;
   feedback_count: number;
   avg_rating: number;
+  subject_avg?: number;  // Separate instructor feedback average
+  instructor_avg?: number;  // Separate subject feedback average
   instructor_name?: string;
 }
 
@@ -146,6 +148,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
       const data = await response.json();
       if (data.success) {
+        // For "By Instructor" view - show ONLY instructor feedback ratings
         const mappedSubjects = (data.subjects || []).map((subject: any) => ({
           id: subject.section_id || subject.offering_id || subject.id || 0,
           section_id: subject.section_id || subject.offering_id || subject.id || 0,
@@ -156,7 +159,10 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           department: subject.department || '',
           student_count: subject.student_count || 0,
           feedback_count: subject.feedback_count || 0,
-          avg_rating: ((subject.subject_avg || 0) + (subject.instructor_avg || 0)) / 2 || 0
+          subject_avg: subject.subject_avg || 0,
+          instructor_avg: subject.instructor_avg || 0,
+          // For "By Instructor" - show ONLY instructor rating
+          avg_rating: subject.instructor_avg || 0
         }));
         setSubjects(mappedSubjects);
       } else {
@@ -187,6 +193,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
       const data = await response.json();
       if (data.success) {
+        // For "By Subjects" view - show ONLY subject feedback ratings
         const mappedSubjects = (data.subjects || []).map((subject: any) => ({
           id: subject.section_id || subject.offering_id || subject.id || 0,
           section_id: subject.section_id || subject.offering_id || subject.id || 0,
@@ -197,7 +204,10 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           department: subject.department || '',
           student_count: subject.student_count || 0,
           feedback_count: subject.feedback_count || 0,
-          avg_rating: ((subject.subject_avg || 0) + (subject.instructor_avg || 0)) / 2 || 0,
+          subject_avg: subject.subject_avg || 0,
+          instructor_avg: subject.instructor_avg || 0,
+          // For "By Subjects" - show ONLY subject rating
+          avg_rating: subject.subject_avg || 0,
           instructor_name: subject.instructor_name || 'Unknown Instructor'
         }));
         setAllSubjects(mappedSubjects);
@@ -327,84 +337,116 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     );
   }
 
-  // View: Selected Subject - shows analytics and individual responses
+  // View: Selected Subject - Simplified view showing key metrics
+  // Shows either instructor rating or subject rating based on which view user came from
   if (selectedSubject) {
+    // Calculate response rate for this subject
+    const responseRate = selectedSubject.student_count > 0 
+      ? ((selectedSubject.feedback_count / selectedSubject.student_count) * 100).toFixed(1)
+      : '0';
+    const responseFraction = selectedSubject.student_count > 0 
+      ? `${selectedSubject.feedback_count}/${selectedSubject.student_count}`
+      : '0/0';
+    
+    // Determine which rating to show based on which tab user came from
+    const isInstructorView = currentView === 'instructors' || selectedInstructor;
+    const displayRating = isInstructorView ? selectedSubject.instructor_avg : selectedSubject.subject_avg;
+    const ratingLabel = isInstructorView ? 'Instructor Rating' : 'Subject Rating';
+    
     return (
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4" >
           <Button variant="ghost" size="icon" onClick={selectedInstructor ? handleBackToSubjects : () => setSelectedSubject(null)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
             <h2 className="text-2xl font-bold">{selectedSubject.subject_name}</h2>
             <p className="text-gray-600">
-              {selectedSubject.subject_code} • {selectedInstructor?.full_name || selectedSubject.instructor_name || 'Unknown Instructor'}
+              {selectedSubject.subject_code} • Section {selectedSubject.section} • {selectedInstructor?.full_name || selectedSubject.instructor_name || 'Unknown Instructor'}
             </p>
           </div>
         </div>
 
-        {/* Results by Section Table - Responses vs Enrolled */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <CardTitle className="text-lg">Evaluation Results by Section</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {loadingFeedback ? (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
-                <p className="mt-2 text-gray-600">Loading results...</p>
+        {/* Summary Cards - All Key Info in One View */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 ">
+          {/* Course/Section Title */}
+          <Card className="border-green-100 ">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm text-gray-600">Course</CardTitle>
+              <BookOpen className="w-5 h-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-bold">{selectedSubject.subject_code}</div>
+              <p className="text-xs text-gray-600 mt-1">{selectedSubject.subject_name}</p>
+              <p className="text-xs text-gray-500 mt-1">Section {selectedSubject.section}</p>
+            </CardContent>
+          </Card>
+
+          {/* Total Enrolled Students */}
+          <Card className="border-green-100">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm text-gray-600">Enrolled Students</CardTitle>
+              <Users className="w-5 h-5 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl">{selectedSubject.student_count}</div>
+              <p className="text-xs text-gray-600 mt-1">Total enrolled</p>
+            </CardContent>
+          </Card>
+
+          {/* Feedbacks Submitted & Response Rate */}
+          <Card className="border-green-100">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm text-gray-600">Response Rate</CardTitle>
+              <MessageSquare className="w-5 h-5 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl">{responseRate}%</div>
+              <p className="text-xs text-gray-600 mt-1">{responseFraction} respondents</p>
+            </CardContent>
+          </Card>
+
+          {/* Rating - Shows either Instructor or Subject based on view */}
+          <Card className="border-green-100">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm text-gray-600">{ratingLabel}</CardTitle>
+              {isInstructorView ? <GraduationCap className="w-5 h-5 text-teal-500" /> : <BookOpen className="w-5 h-5 text-orange-500" />}
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl flex items-center gap-1">
+                {parseFloat((displayRating || 0).toString()).toFixed(1)}
+                <Star className="w-6 h-6 text-yellow-500" />
               </div>
-            ) : sectionResults.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Section</TableHead>
-                    <TableHead className="text-center">Responses / Enrolled</TableHead>
-                    <TableHead className="text-center">Average Rating</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {sectionResults.map((result, index) => (
-                    <TableRow key={`${result.respondents}-${index}`}>
-                      <TableCell className="font-medium">{result.respondents}</TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          <span className="font-medium">{result.total_responses}</span>
-                          <span className="text-gray-400">/</span>
-                          <span>{result.total_enrolled}</span>
-                          {Number(result.total_enrolled) > 0 && (
-                            <span className="text-xs text-gray-500 ml-1">
-                              ({((result.total_responses / Number(result.total_enrolled)) * 100).toFixed(0)}%)
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {result.average !== 'N/A' ? (
-                          <div className="flex items-center justify-center gap-1">
-                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
-                            <span className="font-medium">{result.average}</span>
-                          </div>
-                        ) : '-'}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No section data available</p>
-                <p className="text-sm text-gray-400 mt-1">Students need to be enrolled in programs for section breakdown</p>
-              </div>
-            )}
+              <Progress value={parseFloat((displayRating || 0).toString()) * 20} className="mt-2 h-2" />
+              <p className="text-xs text-gray-500 mt-2">
+                {isInstructorView ? 'From instructor_feedback table' : 'From subject_feedback table'}
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Formula Explanation */}
+        <Card className="border-green-100 bg-gray-50">
+          <CardContent className="py-4">
+            <h4 className="font-medium text-gray-700 mb-2">Rating Calculation Formula</h4>
+            <div className="text-sm text-gray-600 space-y-1">
+              {isInstructorView ? (
+                <p><span className="font-medium">Instructor Rating</span> = Average of all instructor feedback ratings for this section (from instructor_feedback table)</p>
+              ) : (
+                <p><span className="font-medium">Subject Rating</span> = Average of all subject feedback ratings for this section (from subject_feedback table)</p>
+              )}
+              <p className="text-xs text-gray-500 mt-2">
+                Note: These are separate evaluations. Instructor and Subject ratings are NOT combined.
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // View: Selected Instructor - shows their subjects
+  // View: Selected Instructor - shows their subjects with expanded inline details
   if (selectedInstructor) {
     return (
       <div className="space-y-6">
@@ -470,10 +512,13 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </Card>
         </div>
 
-        {/* Subjects List */}
+        {/* Subjects List - NOW WITH EXPANDED INLINE DETAILS (no second click needed) */}
         <Card className="border-green-100">
           <CardHeader>
             <CardTitle className="text-lg">Subjects & Feedback Results</CardTitle>
+            <p className="text-sm text-gray-500 font-normal">
+              Click any subject to view detailed evaluation results. Formula: Total Rating = Average of all feedback ratings for that section.
+            </p>
           </CardHeader>
           <CardContent>
             {loadingSubjects ? (
@@ -482,40 +527,74 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                 <p className="mt-2 text-gray-600">Loading subjects...</p>
               </div>
             ) : subjects.length > 0 ? (
-              <div className="space-y-3">
-                {subjects.map((subject) => (
-                  <div 
-                    key={subject.section_id}
-                    className="p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors cursor-pointer"
-                    onClick={() => handleSubjectClick(subject)}
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1">
-                        <h3 className="font-medium">{subject.subject_name}</h3>
-                        <p className="text-sm text-gray-600">
-                          {subject.subject_code} • Section {subject.section} • {subject.year_level}
-                        </p>
+              <div className="space-y-4">
+                {subjects.map((subject) => {
+                  // Calculate response rate
+                  const responseRate = subject.student_count > 0 
+                    ? ((subject.feedback_count / subject.student_count) * 100).toFixed(1)
+                    : '0';
+                  const responseFraction = subject.student_count > 0 
+                    ? `${subject.feedback_count}/${subject.student_count}`
+                    : '0/0';
+                  
+                  return (
+                    <div 
+                      key={subject.section_id}
+                      className="p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50/30 transition-all cursor-pointer"
+                      onClick={() => handleSubjectClick(subject)}
+                    >
+                      {/* Subject Header */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-lg">{subject.subject_name}</h3>
+                          <p className="text-sm text-gray-600">
+                            {subject.subject_code} • Section {subject.section} • Year Level {subject.year_level}
+                          </p>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-gray-400" />
                       </div>
-                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                      
+                      {/* Expanded Details - Shown Inline (Instructor Feedback Only) */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        {/* Total Enrolled Students */}
+                        <div className="bg-blue-50 rounded-lg p-3 text-center">
+                          <Users className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-blue-700">{subject.student_count}</div>
+                          <div className="text-xs text-blue-600">Enrolled</div>
+                        </div>
+                        
+                        {/* Feedbacks Submitted */}
+                        <div className="bg-green-50 rounded-lg p-3 text-center">
+                          <MessageSquare className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-green-700">{subject.feedback_count}</div>
+                          <div className="text-xs text-green-600">Feedbacks</div>
+                        </div>
+                        
+                        {/* Response Rate */}
+                        <div className="bg-purple-50 rounded-lg p-3 text-center">
+                          <BarChart3 className="w-5 h-5 text-purple-600 mx-auto mb-1" />
+                          <div className="text-lg font-bold text-purple-700">{responseRate}%</div>
+                          <div className="text-xs text-purple-600">Rate</div>
+                          <div className="text-xs text-gray-500">({responseFraction})</div>
+                        </div>
+                        
+                        {/* INSTRUCTOR RATING ONLY - for By Instructor view */}
+                        <div className="bg-teal-50 rounded-lg p-3 text-center">
+                          <GraduationCap className="w-5 h-5 text-teal-600 mx-auto mb-1" />
+                          <div className="text-2xl font-bold text-teal-700">
+                            {parseFloat((subject.avg_rating || 0).toString()).toFixed(1)}
+                          </div>
+                          <div className="text-xs text-teal-600">Instructor Rating</div>
+                        </div>
+                      </div>
+                      
+                      {/* Formula Explanation */}
+                      <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                        <span className="font-medium">Formula:</span> Instructor Rating = Average of all instructor feedback ratings for this section
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 mt-3">
-                      <div className="flex items-center gap-1">
-                        <Users className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">{subject.student_count} students</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <MessageSquare className="w-4 h-4 text-gray-500" />
-                        <span className="text-sm text-gray-600">{subject.feedback_count} feedbacks</span>
-                      </div>
-                      <div className="flex items-center gap-1 ml-auto">
-                        <Star className="w-4 h-4 text-yellow-500" />
-                        <span className="text-sm font-medium">
-                          {parseFloat((subject.avg_rating || 0).toString()).toFixed(1)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">
@@ -638,62 +717,94 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             )}
           </div>
           ) : (
-            /* Subjects Cards Grid */
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            /* Subjects Cards Grid - WITH EXPANDED INLINE DETAILS */
+            <div className="space-y-4">
               {loadingAllSubjects ? (
-                <div className="col-span-full text-center py-12">
+                <div className="text-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
                   <p className="mt-2 text-gray-600">Loading subjects...</p>
                 </div>
               ) : filteredSubjects.length === 0 ? (
-                <div className="col-span-full text-center py-12">
+                <div className="text-center py-12">
                   <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500">No subjects found</p>
                 </div>
               ) : (
-                filteredSubjects.map((subject) => (
-                  <Card 
-                    key={subject.section_id} 
-                    className="border-green-100 hover:border-green-300 cursor-pointer transition-colors"
-                    onClick={() => handleSubjectClick(subject)}
-                  >
-                    <CardContent className="p-6">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                          <GraduationCap className="w-6 h-6 text-green-600" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{subject.subject_name}</h3>
-                          <p className="text-sm text-gray-600">{subject.subject_code}</p>
-                          <p className="text-xs text-gray-400">Section {subject.section} • {subject.year_level}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <p className="text-sm text-gray-600 mb-3">
-                          <span className="font-medium">Instructor:</span> {subject.instructor_name || 'Unknown'}
-                        </p>
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <div className="text-xl font-bold text-blue-600">{subject.student_count}</div>
-                            <div className="text-xs text-gray-500">Students</div>
-                          </div>
-                          <div>
-                            <div className="text-xl font-bold text-green-600">{subject.feedback_count}</div>
-                            <div className="text-xs text-gray-500">Feedbacks</div>
-                          </div>
-                          <div>
-                            <div className="text-xl font-bold text-yellow-600 flex items-center justify-center gap-1">
-                              {subject.avg_rating !== undefined && subject.avg_rating !== null ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
-                              {subject.avg_rating > 0 && <Star className="w-4 h-4 text-yellow-500" />}
+                filteredSubjects.map((subject) => {
+                  // Calculate response rate
+                  const responseRate = subject.student_count > 0 
+                    ? ((subject.feedback_count / subject.student_count) * 100).toFixed(1)
+                    : '0';
+                  const responseFraction = subject.student_count > 0 
+                    ? `${subject.feedback_count}/${subject.student_count}`
+                    : '0/0';
+                  
+                  return (
+                    <Card 
+                      key={subject.section_id} 
+                      className="border-green-100 hover:border-green-300 cursor-pointer transition-all"
+                      onClick={() => handleSubjectClick(subject)}
+                    >
+                      <CardContent className="p-4">
+                        {/* Subject Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                              <GraduationCap className="w-6 h-6 text-green-600" />
                             </div>
-                            <div className="text-xs text-gray-500">Avg Rating</div>
+                            <div>
+                              <h3 className="font-semibold text-lg">{subject.subject_name}</h3>
+                              <p className="text-sm text-gray-600">{subject.subject_code} • Section {subject.section} • Year {subject.year_level}</p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                <span className="font-medium">Instructor:</span> {subject.instructor_name || 'Unknown'}
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </div>
+                        
+                        {/* Expanded Inline Details (Subject Feedback Only) */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                          {/* Total Enrolled Students */}
+                          <div className="bg-blue-50 rounded-lg p-3 text-center">
+                            <Users className="w-5 h-5 text-blue-600 mx-auto mb-1" />
+                            <div className="text-lg font-bold text-blue-700">{subject.student_count}</div>
+                            <div className="text-xs text-blue-600">Enrolled</div>
+                          </div>
+                          
+                          {/* Feedbacks Submitted */}
+                          <div className="bg-green-50 rounded-lg p-3 text-center">
+                            <MessageSquare className="w-5 h-5 text-green-600 mx-auto mb-1" />
+                            <div className="text-lg font-bold text-green-700">{subject.feedback_count}</div>
+                            <div className="text-xs text-green-600">Feedbacks</div>
+                          </div>
+                          
+                          {/* Response Rate */}
+                          <div className="bg-purple-50 rounded-lg p-3 text-center">
+                            <BarChart3 className="w-5 h-5 text-purple-600 mx-auto mb-1" />
+                            <div className="text-lg font-bold text-purple-700">{responseRate}%</div>
+                            <div className="text-xs text-purple-600">Rate</div>
+                            <div className="text-xs text-gray-500">({responseFraction})</div>
+                          </div>
+                          
+                          {/* SUBJECT RATING ONLY - for By Subjects view */}
+                          <div className="bg-orange-50 rounded-lg p-3 text-center">
+                            <BookOpen className="w-5 h-5 text-orange-600 mx-auto mb-1" />
+                            <div className="text-2xl font-bold text-orange-700">
+                              {subject.avg_rating !== undefined && subject.avg_rating !== null ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
+                            </div>
+                            <div className="text-xs text-orange-600">Subject Rating</div>
                           </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))
+                        
+                        {/* Formula Explanation */}
+                        <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
+                          <span className="font-medium">Formula:</span> Subject Rating = Average of all subject feedback ratings for this section
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
               )}
             </div>
           )}
