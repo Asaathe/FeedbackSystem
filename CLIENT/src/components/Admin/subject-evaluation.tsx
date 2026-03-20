@@ -15,7 +15,8 @@ import {
   Filter,
   Loader2,
   BarChart3,
-  GraduationCap
+  GraduationCap,
+  Award
 } from "lucide-react";
 import { toast } from "sonner";
 import { getSubjectEvaluationResults, getEvaluationSummary, getEvaluationResultsBySection } from "../../services/subjectService";
@@ -43,6 +44,8 @@ interface Subject {
   department: string;
   student_count: number;
   feedback_count: number;
+  instructor_feedback_count: number;  // Instructor feedback count for "By Instructor" view
+  subject_feedback_count: number;      // Subject feedback count for "By Subject" view
   avg_rating: number;
   subject_avg?: number;  // Separate instructor feedback average
   instructor_avg?: number;  // Separate subject feedback average
@@ -159,6 +162,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           department: subject.department || '',
           student_count: subject.student_count || 0,
           feedback_count: subject.feedback_count || 0,
+          instructor_feedback_count: subject.instructor_feedback_count || 0,
+          subject_feedback_count: subject.subject_feedback_count || 0,
           subject_avg: subject.subject_avg || 0,
           instructor_avg: subject.instructor_avg || 0,
           // For "By Instructor" - show ONLY instructor rating
@@ -204,6 +209,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           department: subject.department || '',
           student_count: subject.student_count || 0,
           feedback_count: subject.feedback_count || 0,
+          instructor_feedback_count: subject.instructor_feedback_count || 0,
+          subject_feedback_count: subject.subject_feedback_count || 0,
           subject_avg: subject.subject_avg || 0,
           instructor_avg: subject.instructor_avg || 0,
           // For "By Subjects" - show ONLY subject rating
@@ -450,23 +457,29 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   if (selectedInstructor) {
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={handleBackToInstructors}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <Avatar className="w-12 h-12">
-            {selectedInstructor.image ? (
-              <img src={selectedInstructor.image} alt={selectedInstructor.full_name} className="w-full h-full object-cover" />
-            ) : (
-              <AvatarFallback className="bg-green-500 text-white">
-                {getInitials(selectedInstructor.full_name)}
-              </AvatarFallback>
-            )}
-          </Avatar>
-          <div>
-            <h2 className="text-2xl font-bold">{selectedInstructor.full_name}</h2>
-            <p className="text-gray-600">{selectedInstructor.school_role} • {selectedInstructor.email}</p>
+        {/* Instructor Information Header - Enhanced */}
+        <div className="bg-gradient-to-r from-green-50 to-teal-50 border border-green-200 rounded-xl p-6">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={handleBackToInstructors} className="hover:bg-green-100">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <Avatar className="w-20 h-20 border-2 border-green-300">
+              {selectedInstructor.image ? (
+                <img src={selectedInstructor.image} alt={selectedInstructor.full_name} className="w-full h-full object-cover" />
+              ) : (
+                <AvatarFallback className="bg-green-500 text-white text-xl">
+                  {getInitials(selectedInstructor.full_name)}
+                </AvatarFallback>
+              )}
+            </Avatar>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <GraduationCap className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-green-700">Instructor Information</span>
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">{selectedInstructor.full_name}</h2>
+              <p className="text-gray-600">{selectedInstructor.school_role} • {selectedInstructor.email}</p>
+            </div>
           </div>
         </div>
 
@@ -478,7 +491,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
               <BookOpen className="w-5 h-5 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl">{subjects.length}</div>
+              <div className="text-xl font-semibold">{subjects.length}</div>
               <p className="text-xs text-gray-600 mt-1">Teaching this semester</p>
             </CardContent>
           </Card>
@@ -489,7 +502,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
               <MessageSquare className="w-5 h-5 text-green-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl">{selectedInstructor.total_feedbacks}</div>
+              <div className="text-xl font-semibold">{selectedInstructor.total_feedbacks}</div>
               <p className="text-xs text-gray-600 mt-1">Student responses</p>
             </CardContent>
           </Card>
@@ -500,7 +513,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
               <Star className="w-5 h-5 text-yellow-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl flex items-center gap-1">
+              <div className="text-xl flex items-center gap-1 font-semibold">
                 {selectedInstructor.avg_rating !== undefined && selectedInstructor.avg_rating > 0 
                   ? parseFloat(selectedInstructor.avg_rating.toString()).toFixed(1) 
                   : 'N/A'}
@@ -517,7 +530,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           <CardHeader>
             <CardTitle className="text-lg">Subjects & Feedback Results</CardTitle>
             <p className="text-sm text-gray-500 font-normal">
-              Click any subject to view detailed evaluation results. Formula: Total Rating = Average of all feedback ratings for that section.
+              Click any subject to view detailed evaluation results. 
             </p>
           </CardHeader>
           <CardContent>
@@ -529,12 +542,12 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             ) : subjects.length > 0 ? (
               <div className="space-y-4">
                 {subjects.map((subject) => {
-                  // Calculate response rate
+                  // Calculate response rate using instructor_feedback_count for By Instructor view
                   const responseRate = subject.student_count > 0 
-                    ? ((subject.feedback_count / subject.student_count) * 100).toFixed(1)
+                    ? ((subject.instructor_feedback_count / subject.student_count) * 100).toFixed(1)
                     : '0';
                   const responseFraction = subject.student_count > 0 
-                    ? `${subject.feedback_count}/${subject.student_count}`
+                    ? `${subject.instructor_feedback_count}/${subject.student_count}`
                     : '0/0';
                   
                   return (
@@ -557,41 +570,38 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                       {/* Expanded Details - Shown Inline (Instructor Feedback Only) */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                         {/* Total Enrolled Students */}
-                        <div className="bg-blue-50 rounded-lg p-3 text-center">
-                          <Users className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-blue-700">{subject.student_count}</div>
+                        <div className="bg-blue-50 rounded-lg p-2 text-center">
+                          <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+                          <div className="text-base font-semibold text-blue-700">{subject.student_count}</div>
                           <div className="text-xs text-blue-600">Enrolled</div>
                         </div>
                         
-                        {/* Feedbacks Submitted */}
-                        <div className="bg-green-50 rounded-lg p-3 text-center">
-                          <MessageSquare className="w-5 h-5 text-green-600 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-green-700">{subject.feedback_count}</div>
-                          <div className="text-xs text-green-600">Feedbacks</div>
+                        {/* Instructor Feedbacks Submitted - For By Instructor view */}
+                        <div className="bg-green-50 rounded-lg p-2 text-center">
+                          <MessageSquare className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                          <div className="text-base font-semibold text-green-700">{subject.instructor_feedback_count}</div>
+                          <div className="text-xs text-green-600">Instructor Feedbacks</div>
                         </div>
                         
                         {/* Response Rate */}
-                        <div className="bg-purple-50 rounded-lg p-3 text-center">
-                          <BarChart3 className="w-5 h-5 text-purple-600 mx-auto mb-1" />
-                          <div className="text-lg font-bold text-purple-700">{responseRate}%</div>
+                        <div className="bg-purple-50 rounded-lg p-2 text-center">
+                          <BarChart3 className="w-4 h-4 text-purple-600 mx-auto mb-1" />
+                          <div className="text-base font-semibold text-purple-700">{responseRate}%</div>
                           <div className="text-xs text-purple-600">Rate</div>
                           <div className="text-xs text-gray-500">({responseFraction})</div>
                         </div>
                         
                         {/* INSTRUCTOR RATING ONLY - for By Instructor view */}
-                        <div className="bg-teal-50 rounded-lg p-3 text-center">
-                          <GraduationCap className="w-5 h-5 text-teal-600 mx-auto mb-1" />
-                          <div className="text-2xl font-bold text-teal-700">
+                        <div className="bg-teal-50 rounded-lg p-2 text-center">
+                          <GraduationCap className="w-4 h-4 text-teal-600 mx-auto mb-1" />
+                          <div className="text-lg font-semibold text-teal-700">
                             {parseFloat((subject.avg_rating || 0).toString()).toFixed(1)}
                           </div>
                           <div className="text-xs text-teal-600">Instructor Rating</div>
                         </div>
                       </div>
                       
-                      {/* Formula Explanation */}
-                      <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                        <span className="font-medium">Formula:</span> Instructor Rating = Average of all instructor feedback ratings for this section
-                      </div>
+                     
                     </div>
                   );
                 })}
@@ -731,12 +741,12 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                 </div>
               ) : (
                 filteredSubjects.map((subject) => {
-                  // Calculate response rate
+                  // Calculate response rate using subject_feedback_count for By Subject view
                   const responseRate = subject.student_count > 0 
-                    ? ((subject.feedback_count / subject.student_count) * 100).toFixed(1)
+                    ? ((subject.subject_feedback_count / subject.student_count) * 100).toFixed(1)
                     : '0';
                   const responseFraction = subject.student_count > 0 
-                    ? `${subject.feedback_count}/${subject.student_count}`
+                    ? `${subject.subject_feedback_count}/${subject.student_count}`
                     : '0/0';
                   
                   return (
@@ -766,41 +776,38 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                         {/* Expanded Inline Details (Subject Feedback Only) */}
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
                           {/* Total Enrolled Students */}
-                          <div className="bg-blue-50 rounded-lg p-3 text-center">
-                            <Users className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                            <div className="text-lg font-bold text-blue-700">{subject.student_count}</div>
+                          <div className="bg-blue-50 rounded-lg p-2 text-center">
+                            <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+                            <div className="text-base font-semibold text-blue-700">{subject.student_count}</div>
                             <div className="text-xs text-blue-600">Enrolled</div>
                           </div>
                           
-                          {/* Feedbacks Submitted */}
-                          <div className="bg-green-50 rounded-lg p-3 text-center">
-                            <MessageSquare className="w-5 h-5 text-green-600 mx-auto mb-1" />
-                            <div className="text-lg font-bold text-green-700">{subject.feedback_count}</div>
-                            <div className="text-xs text-green-600">Feedbacks</div>
+                          {/* Subject Feedbacks Submitted - For By Subject view */}
+                          <div className="bg-green-50 rounded-lg p-2 text-center">
+                            <MessageSquare className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                            <div className="text-base font-semibold text-green-700">{subject.subject_feedback_count}</div>
+                            <div className="text-xs text-green-600">Subject Feedbacks</div>
                           </div>
                           
                           {/* Response Rate */}
-                          <div className="bg-purple-50 rounded-lg p-3 text-center">
-                            <BarChart3 className="w-5 h-5 text-purple-600 mx-auto mb-1" />
-                            <div className="text-lg font-bold text-purple-700">{responseRate}%</div>
+                          <div className="bg-purple-50 rounded-lg p-2 text-center">
+                            <BarChart3 className="w-4 h-4 text-purple-600 mx-auto mb-1" />
+                            <div className="text-base font-semibold text-purple-700">{responseRate}%</div>
                             <div className="text-xs text-purple-600">Rate</div>
                             <div className="text-xs text-gray-500">({responseFraction})</div>
                           </div>
                           
                           {/* SUBJECT RATING ONLY - for By Subjects view */}
-                          <div className="bg-orange-50 rounded-lg p-3 text-center">
-                            <BookOpen className="w-5 h-5 text-orange-600 mx-auto mb-1" />
-                            <div className="text-2xl font-bold text-orange-700">
+                          <div className="bg-orange-50 rounded-lg p-2 text-center">
+                            <BookOpen className="w-4 h-4 text-orange-600 mx-auto mb-1" />
+                            <div className="text-lg font-semibold text-orange-700">
                               {subject.avg_rating !== undefined && subject.avg_rating !== null ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
                             </div>
                             <div className="text-xs text-orange-600">Subject Rating</div>
                           </div>
                         </div>
                         
-                        {/* Formula Explanation */}
-                        <div className="mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
-                          <span className="font-medium">Formula:</span> Subject Rating = Average of all subject feedback ratings for this section
-                        </div>
+                     
                       </CardContent>
                     </Card>
                   );
