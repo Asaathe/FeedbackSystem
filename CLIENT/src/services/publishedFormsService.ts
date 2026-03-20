@@ -26,6 +26,12 @@ export interface PublishedForm {
   status: 'published';
   publishedAt: string;
   dueDate?: string;
+  startDate?: string;
+  // Separate date/time fields for availability check
+  startDateOnly?: string | null;
+  startTimeOnly?: string | null;
+  endDateOnly?: string | null;
+  endTimeOnly?: string | null;
   assignment_status?: string; // pending, completed, expired
 }
 
@@ -117,6 +123,8 @@ export const getFormsForUserRole = async (userRole: string): Promise<PublishedFo
           const matchesRolePrefix = targetAudience.startsWith(mappedRole + ' - ');
           const shouldInclude = matchesAllUsers || matchesRole || matchesRolePrefix;
 
+          console.log('[Client Filter] Form:', form.title, 'targetAudience:', targetAudience, 'mappedRole:', mappedRole, 'matches:', { matchesAllUsers, matchesRole, matchesRolePrefix, shouldInclude });
+          
           return shouldInclude;
         });
 
@@ -132,7 +140,35 @@ export const getFormsForUserRole = async (userRole: string): Promise<PublishedFo
           image: form.image_url,
           status: 'published',
           publishedAt: form.created_at,
-          dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          // Handle dueDate - parse properly or use default
+          dueDate: (() => {
+            if (!form.end_date || form.end_date === 'null') {
+              return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
+            }
+            try {
+              const parsed = form.end_date.includes(' ') 
+                ? new Date(form.end_date.replace(' ', 'T')) 
+                : new Date(form.end_date);
+              return !isNaN(parsed.getTime()) ? parsed.toLocaleDateString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
+            } catch (e) {
+              return new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString();
+            }
+          })(),
+          // Safely parse start_date - handle null, undefined, or invalid values
+          startDate: (form.start_date && form.start_date !== 'null' && form.start_date !== 'undefined') 
+            ? (() => {
+                const dateTimeStr = form.start_time ? `${form.start_date} ${form.start_time}` : `${form.start_date} 00:00:00`;
+                const parsed = new Date(dateTimeStr.replace(' ', 'T'));
+                return !isNaN(parsed.getTime()) ? parsed.toISOString() : null;
+              })()
+            : null,
+          // Store separate date/time fields for availability check
+          // Extract just the date portion (YYYY-MM-DD) from the datetime string
+          // Handle both string and object types from MySQL
+          startDateOnly: form.start_date ? (typeof form.start_date === 'object' && form.start_date !== null ? String(form.start_date).split('T')[0] : String(form.start_date).split('T')[0]) : null,
+          startTimeOnly: form.start_time ? (typeof form.start_time === 'object' && form.start_time !== null ? String(form.start_time) : form.start_time) : null,
+          endDateOnly: form.end_date ? (typeof form.end_date === 'object' && form.end_date !== null ? String(form.end_date).split('T')[0] : String(form.end_date).split('T')[0]) : null,
+          endTimeOnly: form.end_time ? (typeof form.end_time === 'object' && form.end_time !== null ? String(form.end_time) : form.end_time) : null,
           assignment_status: form.assignment_status || 'pending'
         }));
     }

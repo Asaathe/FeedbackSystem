@@ -926,7 +926,9 @@ const saveAsTemplate = async (formId, userId) => {
  */
 const deployForm = async (formId, userId, deploymentData = {}) => {
   try {
-    console.log("[DEBUG] deployForm called with:", { formId, userId, deploymentData });
+    // Extract dates directly from deploymentData
+    const incomingStartDate = deploymentData.startDate;
+    const incomingEndDate = deploymentData.endDate;
     
     // Check if form exists and user owns it
     const forms = await queryDatabase(
@@ -955,10 +957,14 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     const deploymentEndTime = endTime ? (endTime.includes(':') ? (endTime.split(':').length === 2 ? `${endTime}:00` : endTime) : null) : null;
 
     // Update form status to active and set dates
+    // Extract just YYYY-MM-DD from the date string to avoid timezone issues
+    const saveStartDate = startDate ? startDate.split('T')[0] : form.start_date;
+    const saveEndDate = endDate ? endDate.split('T')[0] : form.end_date;
+    
     await queryDatabase(
       db,
       "UPDATE Forms SET status = 'active', start_date = ?, end_date = ?, updated_at = NOW() WHERE id = ?",
-      [startDate || form.start_date, endDate || form.end_date, formId]
+      [saveStartDate, saveEndDate, formId]
     );
 
     // Remove all existing assignments for this form before creating new ones
@@ -1184,6 +1190,10 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       [formId]
     );
 
+    // Extract YYYY-MM-DD from dates to avoid timezone issues
+    const deployStartDate = startDate ? startDate.split('T')[0] : (form.start_date ? String(form.start_date).split('T')[0] : null);
+    const deployEndDate = endDate ? endDate.split('T')[0] : (form.end_date ? String(form.end_date).split('T')[0] : null);
+    
     if (existingDeployment.length > 0) {
       // Update existing deployment
       await queryDatabase(
@@ -1197,8 +1207,8 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           deployment_status = 'active'
         WHERE form_id = ?`,
         [
-          startDate || form.start_date,
-          endDate || form.end_date,
+          deployStartDate,
+          deployEndDate,
           deploymentStartTime,
           deploymentEndTime,
           JSON.stringify(deploymentFilters),
@@ -1215,8 +1225,8 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         [
           formId,
           userId,
-          startDate || form.start_date,
-          endDate || form.end_date,
+          deployStartDate,
+          deployEndDate,
           deploymentStartTime,
           deploymentEndTime,
           JSON.stringify(deploymentFilters)

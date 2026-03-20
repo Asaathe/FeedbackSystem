@@ -54,6 +54,11 @@ interface FeedbackForm {
   description: string;
   category: string;
   dueDate: string;
+  startDate?: string;
+  startDateOnly?: string;
+  startTimeOnly?: string;
+  endDateOnly?: string;
+  endTimeOnly?: string;
   imageUrl?: string;
   questions: FormQuestion[];
   questionCount?: number;
@@ -235,6 +240,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
               description: form.description,
               category: form.category,
               dueDate: form.end_date || "No due date",
+              startDate: form.start_date || null,
               imageUrl: form.image_url,
               questions: form.questions || [],
               questionCount: form.questions?.length || 0,
@@ -273,20 +279,21 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
         console.log("Loading forms for role:", role);
         const publishedForms = await getFormsForUserRole(role);
 
-        console.log("Published forms received:", publishedForms.length);
-
         const forms = publishedForms.map((form) => ({
           id: form.id,
           title: form.title,
           description: form.description,
           category: form.category,
           dueDate: form.dueDate || "No due date",
+          startDateOnly: form.startDateOnly || undefined,
+          startTimeOnly: form.startTimeOnly || undefined,
+          endDateOnly: form.endDateOnly || undefined,
+          endTimeOnly: form.endTimeOnly || undefined,
           imageUrl: form.image,
           questions: form.questions,
           questionCount: form.questionCount,
         }));
 
-        console.log("Mapped forms:", forms);
         setAvailableForms(forms);
       } catch (error) {
         console.error("Error loading forms:", error);
@@ -300,6 +307,22 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
   }, [userRole]);
 
   const handleSelectForm = async (form: FeedbackForm) => {
+    // Check if the form hasn't started yet
+    if (isNotStarted(form)) {
+      const formattedStartDate = form.startDateOnly && form.startTimeOnly
+        ? new Date(form.startDateOnly + ' ' + form.startTimeOnly).toLocaleDateString('en-US', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+        : 'the scheduled start time';
+      alert(`This feedback form is not yet available.\n\nIt will be available starting from: ${formattedStartDate}`);
+      return;
+    }
+
     try {
       // Fetch the full form data including questions
       const result = await getForm(form.id);
@@ -373,14 +396,77 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     return isNaN(date.getTime()) ? false : date < new Date();
   };
 
+  // Check if a form hasn't started yet (before start date and time)
+  // Uses the separate startDateOnly and startTimeOnly fields from form_deployments
+  const isNotStarted = (form: FeedbackForm) => {
+    const startDate = form.startDateOnly;
+    const startTime = form.startTimeOnly;
+    const formId = form.id;
+    
+    // If no start date, form is available immediately
+    if (!startDate || startDate === 'null' || startDate === 'undefined' || startDate === '') return false;
+    
+    // Combine date and time - ensure we have proper format
+    const datePart = String(startDate).split('T')[0]; // Handle if already a datetime string
+    const timeStr = startTime && String(startTime) !== 'null' && String(startTime) !== 'undefined' && String(startTime) !== ''
+      ? String(startTime).split('T')[1]?.split('.')[0] || startTime 
+      : '00:00:00';
+    
+    // Validate before parsing
+    if (!datePart || datePart.includes('undefined') || datePart.includes('null')) return false;
+    
+    // Parse as Manila time (+08:00) by appending timezone offset
+    const start = new Date(`${datePart}T${timeStr}+08:00`);
+    const now = new Date();
+    
+    // Return true if current time is before the start datetime
+    return isNaN(start.getTime()) ? false : start > now;
+  };
+
+  // Check if a form has ended (after end date and time)
+  const isFormEnded = (form: FeedbackForm) => {
+    const endDate = form.endDateOnly;
+    const endTime = form.endTimeOnly;
+    const formId = form.id;
+    
+    // If no end date, form never ends
+    if (!endDate || endDate === 'null' || endDate === 'undefined' || endDate === '') return false;
+    
+    // Combine date and time - ensure we have proper format
+    const datePart = String(endDate).split('T')[0]; // Handle if already a datetime string
+    const timeStr = endTime && String(endTime) !== 'null' && String(endTime) !== 'undefined' && String(endTime) !== ''
+      ? String(endTime).split('T')[1]?.split('.')[0] || endTime 
+      : '23:59:59';
+    
+    // Validate before parsing
+    if (!datePart || datePart.includes('undefined') || datePart.includes('null')) return false;
+    
+    // Parse as Manila time (+08:00) by appending timezone offset - FIX: was not applying timezone
+    const end = new Date(`${datePart}T${timeStr}+08:00`);
+    const now = new Date();
+    
+    // Return true if current time is after the end datetime
+    return isNaN(end.getTime()) ? false : end < now;
+  };
+
   // Filter out submitted forms and sort by due date
+  // Forms that haven't started or have ended are included but shown as disabled
   const pendingForms = availableForms
     .filter(form => {
       // Filter out already submitted forms
-      if (submittedFormIds.has(form.id)) return false;
+      if (submittedFormIds.has(form.id)) {
+        return false;
+      }
+      
+      // Exclude forms that have ended - they should appear in My Submissions instead
+      if (isFormEnded(form)) {
+        return false;
+      }
       
       // Exclude overdue forms - they should appear in My Submissions instead
-      if (isOverdue(form.dueDate)) return false;
+      if (isOverdue(form.dueDate)) {
+        return false;
+      }
       
       // Only show forms that are not yet due (pending)
       return true;
@@ -704,51 +790,9 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4 z-10">
-                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
-                        <Badge
-                          variant="outline"
-                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
-                        >
-                          {form.category}
-                        </Badge>
-                        {isOverdue(form.dueDate) ? (
-                          <div className="flex items-center gap-1 text-white bg-red-600 px-2 py-1 rounded text-xs shadow-md">
-                            <AlertCircle className="w-3 h-3" />
-                            <span>Overdue</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
-                            <Clock className="w-3 h-3" />
-                            <span>Due {form.dueDate}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
                   </div>
                 ) : (
-                  <div className={`relative h-32 sm:h-48 w-full overflow-hidden flex items-center justify-center ${isOverdue(form.dueDate) ? 'bg-gradient-to-br from-red-50 to-orange-50' : 'bg-gradient-to-br from-green-50 to-lime-50'}`}>
-                    <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-4 right-2 sm:right-4">
-                      <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                        <Badge
-                          variant="outline"
-                          className="bg-white border-green-200 text-green-700 text-xs shadow-md"
-                        >
-                          {form.category}
-                        </Badge>
-                        {isOverdue(form.dueDate) ? (
-                          <div className="flex items-center gap-1 text-white bg-red-600 px-2 py-1 rounded text-xs shadow-md">
-                            <AlertCircle className="w-3 h-3" />
-                            <span>Overdue</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-orange-600 bg-white px-2 py-1 rounded text-xs shadow-md">
-                            <Clock className="w-3 h-3" />
-                            <span>Due {form.dueDate}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                  <div className={`h-32 sm:h-48 w-full overflow-hidden flex items-center justify-center ${isOverdue(form.dueDate) ? 'bg-gradient-to-br from-red-50 to-orange-50' : 'bg-gradient-to-br from-green-50 to-lime-50'}`}>
                   </div>
                 )}
                 <CardHeader className="pb-3 sm:pb-6">
@@ -764,16 +808,46 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
+                  {/* Category and Due Date Badge */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <Badge
+                      variant="outline"
+                      className="bg-green-50 border-green-200 text-green-700 text-xs"
+                    >
+                      {form.category}
+                    </Badge>
+                    {isNotStarted(form) ? (
+                      <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs">
+                        <Clock className="w-3 h-3" />
+                        <span>Starts {form.startDateOnly && form.startTimeOnly ? new Date(form.startDateOnly + ' ' + form.startTimeOnly).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'soon'}</span>
+                      </div>
+                    ) : isOverdue(form.dueDate) ? (
+                      <div className="flex items-center gap-1 text-white bg-red-600 px-2 py-1 rounded text-xs">
+                        <AlertCircle className="w-3 h-3" />
+                        <span>Overdue</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs">
+                        <Clock className="w-3 h-3" />
+                        <span>Due {form.dueDate}</span>
+                      </div>
+                    )}
+                  </div>
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                     <div className="flex items-center gap-2 text-sm text-gray-600">
                       <ClipboardList className="w-4 h-4" />
                       <span>{form.questionCount || form.questions.length} questions</span>
                     </div>
                     <Button
-                      className={`h-10 px-4 sm:px-6 text-sm whitespace-nowrap ${isOverdue(form.dueDate) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
+                      className={`h-10 px-4 sm:px-6 text-sm whitespace-nowrap ${isNotStarted(form) || isFormEnded(form) ? 'bg-gray-400 cursor-not-allowed text-black' : isOverdue(form.dueDate) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
                       onClick={() => handleSelectForm(form)}
+                      disabled={isNotStarted(form) || isFormEnded(form)}
                     >
-                      {isOverdue(form.dueDate) ? 'Complete Now' : 'Start Feedback'}
+                      {isNotStarted(form) 
+                        ? `Available ${form.startDateOnly && form.startTimeOnly ? new Date(form.startDateOnly + ' ' + form.startTimeOnly).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'soon'}` 
+                        : isFormEnded(form) 
+                          ? 'Expired' 
+                          : isOverdue(form.dueDate) ? 'Complete Now' : 'Start Feedback'}
                     </Button>
                   </div>
                 </CardContent>
@@ -830,7 +904,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-white text-2xl mb-1">
-                  University Feedback System
+                  FeedbACTS System
                 </h1>
                 <p className="text-green-50 text-sm">
                   Your feedback helps us improve educational excellence
@@ -896,7 +970,10 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
             
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-3">
+                <h2 className="text-2xl mb-2">{selectedForm.title}</h2>
+                <p className="text-gray-600 mb-3">{selectedForm.description}</p>
+                {/* Category and Due Date Badge */}
+                <div className="flex flex-wrap items-center gap-2">
                   <Badge className="bg-green-100 text-green-700 border-green-200">
                     {selectedForm.category}
                   </Badge>
@@ -907,8 +984,6 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
                     </div>
                   )}
                 </div>
-                <h2 className="text-2xl mb-2">{selectedForm.title}</h2>
-                <p className="text-gray-600">{selectedForm.description}</p>
               </div>
               {selectedForm.imageUrl && (
                 <div className="hidden md:block w-32 h-32 rounded-lg overflow-hidden shadow-md flex-shrink-0">

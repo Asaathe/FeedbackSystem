@@ -313,7 +313,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       >
         <Bell className="w-5 h-5" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center">
+          <span className="absolute top-0 right-1 flex h-4 w-4 items-center justify-center">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
             <span className="relative inline-flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white font-medium">
               {unreadCount > 9 ? '9+' : unreadCount}

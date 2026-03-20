@@ -511,26 +511,32 @@ export function FormBuilder({
               scheduleEndTime,
             });
 
+            console.log('📅 Raw scheduleStartDate BEFORE formatting:', scheduleStartDate);
+            
             // Format dates to YYYY-MM-DD format (remove time component)
-            // Handle both ISO format with timezone (2026-02-10T16:00:00.000Z) and without (2026-02-10T16:00:00)
+            // Handle ISO format dates - extract just the date part
             if (scheduleStartDate && scheduleStartDate.includes('T')) {
-              // Parse the date as UTC and convert to local time
-              const dateObj = new Date(scheduleStartDate);
-              // Get local date components
-              const year = dateObj.getFullYear();
-              const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-              const day = dateObj.getDate().toString().padStart(2, '0');
-              scheduleStartDate = `${year}-${month}-${day}`;
+              // Extract YYYY-MM-DD from ISO string (e.g., "2026-03-20T00:00:00.000Z")
+              const before = scheduleStartDate;
+              scheduleStartDate = scheduleStartDate.split('T')[0];
+              console.log('📅 scheduleStartDate AFTER split:', before, '->', scheduleStartDate);
             }
+            // For YYYY-MM-DD format from date picker, keep as-is
+            if (scheduleStartDate && !scheduleStartDate.includes('T') && scheduleStartDate.includes('-')) {
+              // Already in correct format, do nothing
+              console.log('📅 scheduleStartDate is already YYYY-MM-DD format:', scheduleStartDate);
+            }
+            
             if (scheduleEndDate && scheduleEndDate.includes('T')) {
-              // Parse the date as UTC and convert to local time
-              const dateObj = new Date(scheduleEndDate);
-              // Get local date components
-              const year = dateObj.getFullYear();
-              const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
-              const day = dateObj.getDate().toString().padStart(2, '0');
-              scheduleEndDate = `${year}-${month}-${day}`;
+              // Extract YYYY-MM-DD from ISO string
+              scheduleEndDate = scheduleEndDate.split('T')[0];
             }
+            // For YYYY-MM-DD format from date picker, keep as-is
+            if (scheduleEndDate && !scheduleEndDate.includes('T') && scheduleEndDate.includes('-')) {
+              // Already in correct format, do nothing
+            }
+            
+            console.log('📅 Final scheduleStartDate:', scheduleStartDate);
 
             const scheduleData = {
               startDate: scheduleStartDate,
@@ -538,6 +544,8 @@ export function FormBuilder({
               startTime: scheduleStartTime,
               endTime: scheduleEndTime,
             };
+            
+            console.log('📅 Schedule data being sent:', scheduleData);
             console.log("📋 Setting schedule:", scheduleData);
             setSubmissionSchedule(scheduleData);
 

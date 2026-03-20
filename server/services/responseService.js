@@ -37,15 +37,55 @@ const submitFormResponse = async (formId, userId, answers) => {
       return { success: false, message: "You have already submitted this form" };
     }
 
-    // Check form date constraints
+    // Check form date constraints - only use form_deployments table
     const now = new Date();
-    if (form.start_date && new Date(form.start_date) > now) {
-      return { success: false, message: "Form is not yet open for submission" };
+    console.log("[DEBUG] Current time:", now.toISOString());
+    
+    // Check form_deployments for schedule
+    const deployments = await queryDatabase(
+      db,
+      "SELECT * FROM form_deployments WHERE form_id = ? AND deployment_status = 'active' ORDER BY created_at DESC LIMIT 1",
+      [formId]
+    );
+    
+    console.log("[DEBUG] Deployments found:", deployments.length);
+    
+    // If there's an active deployment, check its dates
+    if (deployments.length > 0) {
+      const deployment = deployments[0];
+      console.log("[DEBUG] Deployment:", deployment);
+      console.log("[DEBUG] start_date:", deployment.start_date, "start_time:", deployment.start_time);
+      console.log("[DEBUG] end_date:", deployment.end_date, "end_time:", deployment.end_time);
+      
+      if (deployment.start_date) {
+        const startTime = deployment.start_time || '00:00:00';
+        // Create date with explicit timezone handling - append +08:00 to ensure correct parsing
+        const startDateStr = `${deployment.start_date}T${startTime}:00+08:00`;
+        const startDate = new Date(startDateStr);
+        console.log("[DEBUG] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
+        // Compare with current time
+        if (startDate > now) {
+          console.log("[DEBUG] Form not yet open - blocking submission");
+          return { success: false, message: "Form is not yet open for submission" };
+        }
+      }
+      
+      if (deployment.end_date) {
+        const endTime = deployment.end_time || '23:59:59';
+        // Create date with explicit timezone handling
+        const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
+        const endDate = new Date(endDateStr);
+        console.log("[DEBUG] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
+        // Compare with current time
+        if (endDate < now) {
+          console.log("[DEBUG] Form has ended - blocking submission");
+          return { success: false, message: "Form submission period has ended" };
+        }
+      }
+    } else {
+      console.log("[DEBUG] No active deployment found - allowing submission");
     }
-
-    if (form.end_date && new Date(form.end_date) < now) {
-      return { success: false, message: "Form submission period has ended" };
-    }
+    // If no active deployment, allow submission (form is always open)
 
     // Insert response
     const insertResult = await queryDatabase(

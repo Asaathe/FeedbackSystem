@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
-import { Badge } from "../ui/badge";
 import { ClipboardList, Clock, CheckCircle, AlertCircle } from "lucide-react";
 import { Progress } from "../ui/progress";
 import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
@@ -168,20 +167,8 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
               >
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="mb-1">
                       <h3>{form.title}</h3>
-                      <Badge 
-                        variant="secondary"
-                        className={
-                          form.priority === 'high' 
-                            ? 'bg-red-100 text-red-700' 
-                            : form.priority === 'medium'
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-blue-100 text-blue-700'
-                        }
-                      >
-                        {form.priority}
-                      </Badge>
                     </div>
                     {form.course && <p className="text-sm text-gray-600">{form.course}</p>}
                     {form.instructor && <p className="text-sm text-gray-500">{form.instructor}</p>}
@@ -198,9 +185,6 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
                     onClick={() => onNavigate?.('submit-feedback')}
                   >
                     {submittedFormIds.has(form.id) ? 'Already Submitted' : 'Start Feedback'}
-                  </Button>
-                  <Button variant="outline" className="border-green-200 hover:bg-green-50">
-                    View Details
                   </Button>
                 </div>
               </div>

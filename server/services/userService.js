@@ -148,8 +148,6 @@ const getFilteredUsers = async (filters) => {
  */
 const getAssignedForms = async (userId) => {
   try {
-    console.log("[DEBUG] getAssignedForms called for userId:", userId);
-    
     // Get user role
     const users = await queryDatabase(
       db,
@@ -162,7 +160,6 @@ const getAssignedForms = async (userId) => {
     }
 
     const userRole = users[0].role;
-    console.log("[DEBUG] User role:", userRole);
 
     // Map role to target audience
     const roleMapping = {
@@ -175,7 +172,7 @@ const getAssignedForms = async (userId) => {
 
     const targetAudience = roleMapping[userRole] || "All Users";
 
-    // Get forms from form_assignments table
+    // Get forms from form_assignments table with deployment schedule info
     const forms = await queryDatabase(
       db,
       `
@@ -185,10 +182,18 @@ const getAssignedForms = async (userId) => {
         (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
         (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id AND user_id = ?) as submission_count,
         fa.status as assignment_status,
-        fa.assigned_at
+        fa.assigned_at,
+        fa.user_id as assigned_user_id,
+        DATE_FORMAT(fd.start_date + INTERVAL 8 HOUR, '%Y-%m-%d') as deployment_start_date,
+        fd.start_time as deployment_start_time,
+        fd.start_date as raw_start_date,
+        DATE_FORMAT(fd.end_date + INTERVAL 8 HOUR, '%Y-%m-%d') as deployment_end_date,
+        fd.end_time as deployment_end_time,
+        f.target_audience as form_target_audience
       FROM form_assignments fa
       LEFT JOIN Forms f ON fa.form_id = f.id
       LEFT JOIN Users u ON f.created_by = u.id
+      LEFT JOIN form_deployments fd ON f.id = fd.form_id
       WHERE fa.user_id = ?
         AND f.status = 'active'
       ORDER BY fa.assigned_at DESC
@@ -196,8 +201,6 @@ const getAssignedForms = async (userId) => {
       [userId, userId]
     );
     
-    console.log("[DEBUG] Forms query result:", forms.length, "forms found");
-
     return {
       success: true,
       forms: forms.map((form) => ({
@@ -211,7 +214,11 @@ const getAssignedForms = async (userId) => {
         submission_count: form.submission_count || 0,
         question_count: form.question_count || 0,
         created_at: form.created_at,
-        end_date: form.end_date,
+        // Use deployment schedule from form_deployments table
+        start_date: form.deployment_start_date,
+        start_time: form.deployment_start_time,
+        end_date: form.deployment_end_date,
+        end_time: form.deployment_end_time,
         creator_name: form.creator_name,
         assignment_status: form.assignment_status || "pending",
         assigned_at: form.assigned_at,
