@@ -99,7 +99,7 @@ const sendFeedbackInvitation = async (
 };
 
 /**
- * Send feedback request to multiple supervisors
+ * Send feedback request to multiple supervisors (batch - simultaneous)
  * @param {Array} recipients - Array of {email, name, company, alumnusName, formTitle, link}
  * @returns {Promise<Object>} - Results summary
  */
@@ -110,24 +110,85 @@ const sendBulkFeedbackInvitations = async (recipients) => {
     errors: [],
   };
 
-  for (const recipient of recipients) {
-    const success = await sendFeedbackInvitation(
-      recipient.email,
-      recipient.name,
-      recipient.company,
-      recipient.alumnusName,
-      recipient.formTitle,
-      recipient.link
-    );
+  if (!recipients || recipients.length === 0) {
+    return results;
+  }
 
-    if (success) {
+  // Send all emails simultaneously using Promise.all
+  const emailPromises = recipients.map(async (recipient) => {
+    try {
+      const success = await sendFeedbackInvitation(
+        recipient.email,
+        recipient.name,
+        recipient.company,
+        recipient.alumnusName,
+        recipient.formTitle,
+        recipient.link
+      );
+      return { email: recipient.email, success };
+    } catch (error) {
+      console.error(`Error sending email to ${recipient.email}:`, error);
+      return { email: recipient.email, success: false };
+    }
+  });
+
+  // Wait for all emails to be sent simultaneously
+  const emailResults = await Promise.all(emailPromises);
+
+  // Count successes and failures
+  emailResults.forEach((result) => {
+    if (result.success) {
       results.success++;
     } else {
       results.failed++;
-      results.errors.push(recipient.email);
+      results.errors.push(result.email);
     }
+  });
+
+  return results;
+};
+
+/**
+ * Send batch emails simultaneously
+ * @param {Array} emails - Array of {to, subject, html}
+ * @returns {Promise<Object>} - Results summary
+ */
+const sendBatchEmails = async (emails) => {
+  const results = {
+    success: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  if (!emails || emails.length === 0) {
+    return results;
   }
 
+  // Send all emails simultaneously using Promise.all
+  const emailPromises = emails.map(async (email) => {
+    try {
+      const success = await sendEmail(email.to, email.subject, email.html);
+      return { to: email.to, success };
+    } catch (error) {
+      console.error(`Error sending email to ${email.to}:`, error);
+      return { to: email.to, success: false };
+    }
+  });
+
+  // Wait for all emails to be sent simultaneously
+  const emailResults = await Promise.all(emailPromises);
+
+  // Count successes and failures
+  emailResults.forEach((result) => {
+    if (result.success) {
+      results.success++;
+    } else {
+      results.failed++;
+      results.errors.push(result.to);
+    }
+  });
+
+  console.log(`Batch email sending complete: ${results.success} succeeded, ${results.failed} failed`);
   return results;
 };
 
@@ -136,4 +197,5 @@ module.exports = {
   sendEmail,
   sendFeedbackInvitation,
   sendBulkFeedbackInvitations,
+  sendBatchEmails,
 };

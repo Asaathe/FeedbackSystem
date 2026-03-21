@@ -3,6 +3,107 @@ const express = require('express');
 const router = express.Router();
 const notificationService = require('../services/notificationService');
 const { verifyToken } = require('../middleware/auth');
+const emailService = require('../utils/emailService');
+
+// Email templates for notifications
+const getEmailTemplate = (notification) => {
+  const templates = {
+    'form_assigned': {
+      subject: `New Feedback Form Assigned: ${notification.title}`,
+      getHtml: (n) => `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #2563eb;">New Feedback Form Assigned</h2>
+          <p>Dear User,</p>
+          <p>${n.message}</p>
+          <div style="margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/submit-feedback" 
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Complete Feedback Form
+            </a>
+          </div>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            This is an automated message from FeedbACTS System.<br>
+            Please do not reply to this email.
+          </p>
+        </div>
+      `
+    },
+    'employment_update_required': {
+      subject: `Action Required: Employment Update - ${notification.title}`,
+      getHtml: (n) => `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2 style="color: #7c3aed;">Annual Employment Update Required</h2>
+          <p>Dear Alumni,</p>
+          <p>${n.message}</p>
+          <div style="margin: 30px 0;">
+            <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" 
+               style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+              Update Employment Information
+            </a>
+          </div>
+          <p style="color: #666; font-size: 14px; margin-top: 30px;">
+            This is an automated message from FeedbACTS System.<br>
+            Please do not reply to this email.
+          </p>
+        </div>
+      `
+    }
+  };
+  return templates[notification.type];
+};
+
+/**
+ * Send batch notification emails simultaneously
+ * @param {Array} userIds - Array of user IDs
+ * @param {Array} notifications - Array of notification objects
+ * @returns {Promise<Object>} - Results summary
+ */
+const sendBatchNotificationEmails = async (userIds, notifications) => {
+  const results = {
+    success: 0,
+    failed: 0,
+    errors: [],
+  };
+
+  if (!userIds || userIds.length === 0) {
+    return results;
+  }
+
+  try {
+    // Get all user emails in parallel
+    const userEmailPromises = userIds.map(async (userId) => {
+      const email = await notificationService.getUserEmail(userId);
+      return { userId, email };
+    });
+
+    const userEmails = await Promise.all(userEmailPromises);
+
+    // Build email batch
+    const emailBatch = [];
+    userEmails.forEach(({ userId, email }) => {
+      if (email) {
+        const notification = notifications.find(n => n.user_id === userId);
+        if (notification) {
+          const template = getEmailTemplate(notification);
+          if (template) {
+            emailBatch.push({
+              to: email,
+              subject: template.subject,
+              html: template.getHtml(notification)
+            });
+          }
+        }
+      }
+    });
+
+    // Send all emails simultaneously
+    const emailResults = await emailService.sendBatchEmails(emailBatch);
+    return emailResults;
+  } catch (error) {
+    console.error('Error sending batch notification emails:', error);
+    return results;
+  }
+};
 
 /**
  * Get all notifications for the current user
@@ -185,17 +286,10 @@ router.post('/form-assignment', verifyToken, async (req, res) => {
 
     const result = await notificationService.createBulkNotifications(notifications);
     
-    // Send emails asynchronously if requested
+    // Send emails in batch if requested (simultaneous sending)
     if (send_email) {
       setImmediate(async () => {
-        for (const userId of user_ids) {
-          const userEmail = await notificationService.getUserEmail(userId);
-          if (userEmail) {
-            // Get the first notification for this user
-            const notification = notifications.find(n => n.user_id === userId);
-            await notificationService.sendNotificationEmail(userId, notification, userEmail);
-          }
-        }
+        await sendBatchNotificationEmails(user_ids, notifications);
       });
     }
 
@@ -253,16 +347,10 @@ router.post('/employment-update', verifyToken, async (req, res) => {
 
     const result = await notificationService.createBulkNotifications(notifications);
     
-    // Send emails asynchronously if requested
+    // Send emails in batch if requested (simultaneous sending)
     if (send_email) {
       setImmediate(async () => {
-        for (const userId of user_ids) {
-          const userEmail = await notificationService.getUserEmail(userId);
-          if (userEmail) {
-            const notification = notifications.find(n => n.user_id === userId);
-            await notificationService.sendNotificationEmail(userId, notification, userEmail);
-          }
-        }
+        await sendBatchNotificationEmails(user_ids, notifications);
       });
     }
 
