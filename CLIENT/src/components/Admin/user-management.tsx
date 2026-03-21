@@ -1476,7 +1476,6 @@ export function UserManagement() {
                   <TableHead className="min-w-[200px]">User</TableHead>
                   <TableHead className="min-w-[200px]">Email</TableHead>
                   <TableHead className="min-w-[100px]">Role</TableHead>
-                  <TableHead className="min-w-[120px]">Department</TableHead>
                   <TableHead className="min-w-[100px]">Status</TableHead>
                   <TableHead className="text-right min-w-[100px]">Actions</TableHead>
                 </TableRow>
@@ -1508,7 +1507,6 @@ export function UserManagement() {
                         {user.role}
                       </Badge>
                     </TableCell>
-                    <TableCell>{getDisplayDepartment(user)}</TableCell>
                     <TableCell>
                       <Badge 
                         variant="secondary"

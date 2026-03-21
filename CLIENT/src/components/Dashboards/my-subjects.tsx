@@ -69,9 +69,35 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   const [ratings, setRatings] = useState<Record<number, number>>({});
   const [submitting, setSubmitting] = useState(false);
   const [loadingForm, setLoadingForm] = useState(false);
+  // Lockout state to prevent re-submission after receiving "already submitted" message
+  // Initialize from sessionStorage to persist across navigations
+  const getInitialLockedState = (): Record<string, boolean> => {
+    try {
+      const stored = sessionStorage.getItem('feedbackSubmissionLocked');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  };
+  const [submissionLocked, setSubmissionLocked] = useState<Record<string, boolean>>(getInitialLockedState);
 
   useEffect(() => {
     fetchMySubjects();
+  }, []);
+
+  // Also refresh lockout state from sessionStorage on mount to ensure it's current
+  useEffect(() => {
+    const stored = sessionStorage.getItem('feedbackSubmissionLocked');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Object.keys(parsed).length > 0) {
+          setSubmissionLocked(parsed);
+        }
+      } catch (e) {
+        // ignore parse errors
+      }
+    }
   }, []);
 
   // Check if evaluation is active
@@ -133,6 +159,11 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   };
 
   const handleRateSubject = (subject: Subject) => {
+    // Check if submission is already locked (student already tried and got "already submitted")
+    if (isSubmissionLocked(subject.subject_id, 'subject')) {
+      toast.error("You have already submitted feedback for this subject");
+      return;
+    }
     setSelectedSubject(subject);
     setFeedbackType('subject');
     setRatings({});
@@ -140,6 +171,11 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   };
 
   const handleRateInstructor = (subject: Subject) => {
+    // Check if submission is already locked (student already tried and got "already submitted")
+    if (isSubmissionLocked(subject.subject_id, 'instructor')) {
+      toast.error("You have already submitted feedback for this instructor");
+      return;
+    }
     setSelectedSubject(subject);
     setFeedbackType('instructor');
     setRatings({});
@@ -152,6 +188,12 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
 
   const handleSubmitFeedback = async () => {
     if (!selectedSubject || !feedbackType) return;
+
+    // Check if submission is locked before attempting
+    if (isSubmissionLocked(selectedSubject.subject_id, feedbackType)) {
+      toast.error("You have already submitted feedback for this " + (feedbackType === 'subject' ? 'subject' : 'instructor'));
+      return;
+    }
 
     // Check if all subcategories are rated (not main categories)
     const subcategories = categories.filter(c => c.parent_category_id && c.parent_category_id !== 0);
@@ -203,6 +245,11 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
         setFeedbackType(null);
         setRatings({});
       } else {
+        // Lock submission on ANY error to be safe - prevents re-submission attempts
+        // This ensures students can't retry after any submission failure
+        if (selectedSubject && feedbackType) {
+          lockSubmission(selectedSubject.subject_id, feedbackType);
+        }
         toast.error(data.message || 'Failed to submit feedback');
       }
     } catch (error) {
@@ -237,7 +284,30 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
     return colors[department] || 'bg-gray-100 text-gray-700';
   };
 
+  // Check if feedback submission is locked for a specific subject-type combination
+  const isSubmissionLocked = (subjectId: number, type: 'subject' | 'instructor') => {
+    const key = `${subjectId}-${type}`;
+    return submissionLocked[key] === true;
+  };
+
+  // Lock feedback submission for a specific subject-type combination
+  const lockSubmission = (subjectId: number, type: 'subject' | 'instructor') => {
+    const key = `${subjectId}-${type}`;
+    const newState = { ...submissionLocked, [key]: true };
+    setSubmissionLocked(newState);
+    // Persist to sessionStorage to survive page navigation
+    try {
+      sessionStorage.setItem('feedbackSubmissionLocked', JSON.stringify(newState));
+    } catch (e) {
+      console.error('Failed to save lockout state:', e);
+    }
+  };
+
   const isFeedbackSubmitted = (subjectId: number, type: 'subject' | 'instructor') => {
+    // First check if submission is locked (most restrictive)
+    if (isSubmissionLocked(subjectId, type)) {
+      return true;
+    }
     const subject = subjects.find(s => s.subject_id === subjectId);
     if (!subject) return false;
     return type === 'subject' ? subject.has_subject_feedback : subject.has_instructor_feedback;

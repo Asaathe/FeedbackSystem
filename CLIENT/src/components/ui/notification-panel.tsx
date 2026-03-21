@@ -1,7 +1,7 @@
 // Notification Panel Component with Bell Icon
 // Reusable component for displaying notifications in dashboards
 
-import React, { useState, useEffect, useRef, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, ReactNode, useCallback } from 'react';
 import { 
   Bell, 
   X, 
@@ -196,6 +196,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const bellButtonRef = useRef<HTMLButtonElement>(null);
+  const [panelPosition, setPanelPosition] = useState<{ top: number; right: number; width?: number }>({ top: 0, right: 0 });
 
   // Fetch notifications when panel opens
   useEffect(() => {
@@ -242,6 +244,50 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Calculate panel position based on bell button position
+  const updatePanelPosition = useCallback(() => {
+    if (bellButtonRef.current && isOpen) {
+      const buttonRect = bellButtonRef.current.getBoundingClientRect();
+      const viewportWidth = window.innerWidth;
+      
+      // Position panel using fixed positioning relative to viewport
+      // Position below the button with some spacing
+      const top = buttonRect.bottom + 8;
+      
+      // Calculate right position to maximize space in upper right
+      // Use button's right position plus some offset for better positioning
+      const right = viewportWidth - buttonRect.right;
+      
+      // Calculate max width based on available space
+      const maxWidth = Math.min(
+        viewportWidth - right - 32, // Subtract right offset and padding
+        600 // Max panel width
+      );
+      
+      setPanelPosition({
+        top,
+        right: Math.max(16, right),
+        width: Math.max(350, maxWidth)
+      });
+    }
+  }, [isOpen]);
+
+  // Update panel position when opened and on scroll
+  useEffect(() => {
+    if (isOpen) {
+      updatePanelPosition();
+      
+      // Add scroll listener to update position when page scrolls
+      window.addEventListener('scroll', updatePanelPosition, true);
+      window.addEventListener('resize', updatePanelPosition);
+      
+      return () => {
+        window.removeEventListener('scroll', updatePanelPosition, true);
+        window.removeEventListener('resize', updatePanelPosition);
+      };
+    }
+  }, [isOpen, updatePanelPosition]);
 
   const fetchNotifications = async () => {
     setIsLoading(true);
@@ -305,6 +351,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       {/* Bell Icon Button */}
       <Button
         id="notification-bell"
+        ref={bellButtonRef}
         variant="ghost"
         size="sm"
         className="relative p-2 text-black hover:bg-gray-200 rounded-md w-10 h-10"
@@ -328,7 +375,13 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       {/* Notification Panel Dropdown */}
       {isOpen && (
         <div 
-          className="fixed right-4 top-16 z-50 w-[350px] sm:w-[400px] md:w-[450px] max-w-[calc(100vw-2rem)] bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden"
+          className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden"
+          style={{
+            top: panelPosition.top,
+            right: panelPosition.right,
+            width: panelPosition.width || 400,
+            maxHeight: 'calc(100vh - 100px)',
+          }}
         >
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gray-50">
@@ -363,8 +416,9 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             </div>
           </div>
 
-          {/* Notification List */}
+          {/* Notification List with custom scrollbar styling */}
           <ScrollArea className="h-[calc(80vh-180px)]">
+            <div className="custom-scrollbar">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -390,6 +444,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
                 ))}
               </div>
             )}
+            </div>
           </ScrollArea>
 
           {/* Footer */}

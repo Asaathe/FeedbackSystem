@@ -365,15 +365,15 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     
     return (
       <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4" >
+        {/* Header - Subject Title Card */}
+        <div className="flex items-center gap-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm">
           <Button variant="ghost" size="icon" onClick={selectedInstructor ? handleBackToSubjects : () => setSelectedSubject(null)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
             <h2 className="text-2xl font-bold">{selectedSubject.subject_name}</h2>
             <p className="text-gray-600">
-              {selectedSubject.subject_code} • Section {selectedSubject.section} • {selectedInstructor?.full_name || selectedSubject.instructor_name || 'Unknown Instructor'}
+              {selectedSubject.subject_code} • Section {selectedSubject.section} • Year Level {selectedSubject.year_level}
             </p>
           </div>
         </div>

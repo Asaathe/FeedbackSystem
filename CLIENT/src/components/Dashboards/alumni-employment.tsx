@@ -43,6 +43,8 @@ interface FormErrors {
   industryType?: string;
   yearStarted?: string;
   employmentType?: string;
+  supervisorName?: string;
+  supervisorEmail?: string;
 }
 
 export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
@@ -71,6 +73,10 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [showUpdateForm, setShowUpdateForm] = useState(false);
+  
+  // Annual update requirement state
+  const [isAnnualUpdateRequired, setIsAnnualUpdateRequired] = useState(false);
+  const [showAnnualNotification, setShowAnnualNotification] = useState(false);
 
   useEffect(() => {
     // Load existing employment data if any
@@ -92,6 +98,21 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
             lastUpdateReceived: data.data.lastUpdateReceived || null
           }));
           setIsEmploymentFormSubmitted(true);
+          
+          // Check if annual update is required (more than 11 months since last update)
+          const lastUpdate = data.data.lastUpdateReceived ? new Date(data.data.lastUpdateReceived) : null;
+          console.log('Last Update Received:', lastUpdate);
+          if (lastUpdate) {
+            const monthsSinceUpdate = (new Date().getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24 * 30);
+            console.log('Months since update:', monthsSinceUpdate);
+            if (monthsSinceUpdate >= 11) {
+              console.log('Setting annual update required to true');
+              setIsAnnualUpdateRequired(true);
+              setShowAnnualNotification(true);
+              // Trigger annual update email notification
+              triggerAnnualUpdateEmail();
+            }
+          }
         }
       } catch (error) {
         console.error('Error loading employment data:', error);
@@ -144,6 +165,20 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       errors.employmentType = 'Employment type is required';
     }
     
+    if (!employmentInfo.supervisorName.trim()) {
+      errors.supervisorName = 'Supervisor name is required';
+    }
+    
+    if (!employmentInfo.supervisorEmail.trim()) {
+      errors.supervisorEmail = 'Supervisor email is required';
+    } else {
+      // Basic email validation
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(employmentInfo.supervisorEmail)) {
+        errors.supervisorEmail = 'Please enter a valid email address';
+      }
+    }
+    
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -178,6 +213,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
         setWorkflowState('success');
         setFeedbackMessage({ type: 'success', message: 'Employment information updated successfully!' });
         setShowUpdateForm(false);
+        // Reset annual update requirement after successful update
+        setIsAnnualUpdateRequired(false);
+        setShowAnnualNotification(false);
         
         // Update the last received timestamp
         setEmploymentInfo(prev => ({
@@ -195,6 +233,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       setWorkflowState('success');
       setFeedbackMessage({ type: 'success', message: 'Employment information updated successfully!' });
       setShowUpdateForm(false);
+      // Reset annual update requirement after successful update
+      setIsAnnualUpdateRequired(false);
+      setShowAnnualNotification(false);
       setEmploymentInfo(prev => ({
         ...prev,
         lastUpdateReceived: new Date().toISOString()
@@ -225,6 +266,10 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
         setWorkflowState('success');
         setFeedbackMessage({ type: 'success', message: 'Employment information confirmed! Thank you for keeping us updated.' });
         
+        // Reset annual update requirement
+        setIsAnnualUpdateRequired(false);
+        setShowAnnualNotification(false);
+        
         // Update the last received timestamp
         setEmploymentInfo(prev => ({
           ...prev,
@@ -239,10 +284,29 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       // For demo purposes, still show success
       setWorkflowState('success');
       setFeedbackMessage({ type: 'success', message: 'Employment information confirmed! Thank you for keeping us updated.' });
+      // Reset annual update requirement
+      setIsAnnualUpdateRequired(false);
+      setShowAnnualNotification(false);
       setEmploymentInfo(prev => ({
         ...prev,
         lastUpdateReceived: new Date().toISOString()
       }));
+    }
+  };
+
+  // Trigger annual update email notification
+  const triggerAnnualUpdateEmail = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      await fetch('/api/users/employment/annual-notification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+    } catch (error) {
+      console.error('Error sending annual update notification:', error);
     }
   };
 
@@ -311,7 +375,42 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
   }
 
   return (
-    <div className="space-y-6">
+   
+   <div className="space-y-6">
+    {/* TEMP: Test Button for Annual Update - Remove in production *
+      <Button
+        onClick={async () => {
+          setIsAnnualUpdateRequired(true);
+          setShowAnnualNotification(true);
+          // Also trigger the email notification
+          try {
+            const token = sessionStorage.getItem('authToken');
+            const response = await fetch('/api/users/employment/annual-notification', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+              },
+            });
+            const result = await response.json();
+            console.log('Annual notification result:', result);
+            if (result.success) {
+              alert('Test email notification sent!');
+            } else {
+              alert('Email notification failed: ' + result.message);
+            }
+          } catch (error) {
+            console.error('Error sending test notification:', error);
+            alert('Error sending notification - check console');
+          }
+        }}
+        variant="outline"
+        size="sm"
+        className="mb-4 text-xs"
+      >
+        [TEST] Trigger Annual Update + Email
+      </Button>
+
       {/* Page Header */}
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
         <div className="flex items-center gap-3">
@@ -341,69 +440,90 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
         </div>
       )}
 
-      {/* Update Request Status Card */}
-      {isEmploymentFormSubmitted && (
-        <Card className="border-blue-100">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="w-5 h-5 text-blue-500" />
-              Update Request Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Send className="w-4 h-4 text-gray-500" />
-                  <p className="text-sm font-medium text-gray-700">Last Update Request Sent</p>
-                </div>
-                <p className="text-lg font-semibold">{formatDate(employmentInfo.lastUpdateSent)}</p>
+      {/* Annual Update Notification */}
+      {showAnnualNotification && (
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 animate-pulse">
+          <AlertCircle className="w-5 h-5" />
+          <div className="flex-1">
+            <p className="font-medium">Annual Employment Update Required</p>
+            <p className="text-sm">It's been over 11 months since your last employment update. Please review and update your employment information.</p>
+          </div>
+          <Button 
+            onClick={() => {
+              setShowUpdateForm(true);
+              setShowAnnualNotification(false);
+            }}
+            size="sm"
+            className="bg-red-600 hover:bg-red-700"
+          >
+            Update Now
+          </Button>
+        </div>
+      )}
+
+      {/* Update Request Status Card - Only visible when annual update is required */}
+      {isAnnualUpdateRequired && (
+      <Card className="border-red-300 border-2 shadow-lg animate-pulse">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg text-red-700">
+            <AlertCircle className="w-5 h-5 text-red-500" />
+            ⚠️ Annual Update Required
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="bg-red-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Send className="w-4 h-4 text-red-500" />
+                <p className="text-sm font-medium text-red-700">Last Update Request Sent</p>
               </div>
-              <div className="bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle className="w-4 h-4 text-gray-500" />
-                  <p className="text-sm font-medium text-gray-700">Last Update Received</p>
-                </div>
-                <p className="text-lg font-semibold">{formatDate(employmentInfo.lastUpdateReceived)}</p>
-              </div>
+              <p className="text-lg font-semibold">{formatDate(employmentInfo.lastUpdateSent)}</p>
             </div>
-            
-            <div className="mt-6 pt-4 border-t border-gray-200">
-              <p className="text-sm text-gray-600 mb-4">
-                Need to update your employment information? Choose one of the options below:
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Button 
-                  onClick={() => {
-                    setShowUpdateForm(true);
-                    setFeedbackMessage(null);
-                  }}
-                  className="bg-green-500 hover:bg-green-600 flex items-center gap-2"
-                >
-                  <TrendingUp className="w-4 h-4" />
-                  Update Employment Details
-                </Button>
-                <Button 
-                  onClick={handleConfirmEmployment}
-                  variant="outline"
-                  className="border-blue-500 text-blue-600 hover:bg-blue-50 flex items-center gap-2"
-                  disabled={workflowState === 'confirming'}
-                >
-                  {workflowState === 'confirming' ? (
-                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <CheckCircle className="w-4 h-4" />
-                  )}
-                  Confirm Existing Information
-                </Button>
+            <div className="bg-red-50 rounded-lg p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CheckCircle className="w-4 h-4 text-red-500" />
+                <p className="text-sm font-medium text-red-700">Last Update Received</p>
               </div>
+              <p className="text-lg font-semibold">{formatDate(employmentInfo.lastUpdateReceived)}</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+          
+          <div className="mt-6 pt-4 border-t border-red-200">
+            <p className="text-sm text-red-600 mb-4">
+              It's been over 11 months since your last update. Please review and update your employment information:
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button 
+                onClick={() => {
+                  setShowUpdateForm(true);
+                  setShowAnnualNotification(false);
+                }}
+                className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+              >
+                <TrendingUp className="w-4 h-4" />
+                Update Employment Details
+              </Button>
+              <Button 
+                onClick={handleConfirmEmployment}
+                variant="outline"
+                className="border-red-500 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                disabled={workflowState === 'confirming'}
+              >
+                {workflowState === 'confirming' ? (
+                  <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <CheckCircle className="w-4 h-4" />
+                )}
+                Confirm Existing Information
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
       )}
 
       {/* Employment Information Display/Form */}
-      <Card className="border-green-100">
+      <Card className={isAnnualUpdateRequired ? "border-red-300 border-2 shadow-lg" : "border-green-100"}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-green-500" />
@@ -468,6 +588,20 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                       <p className="font-medium">{employmentInfo.monthlySalary}</p>
                     </div>
                   )}
+                </div>
+                
+                {/* Manual Update Button - Always available */}
+                <div className="mt-6 pt-4 border-t border-green-200 flex justify-center">
+                  <Button 
+                    onClick={() => {
+                      setShowUpdateForm(true);
+                      setFeedbackMessage(null);
+                    }}
+                    className="bg-green-500 hover:bg-green-600 flex items-center gap-2"
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Update My Employment Information
+                  </Button>
                 </div>
               </div>
             </div>
@@ -627,29 +761,36 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
 
                 {/* Supervisor Name */}
                 <div className="space-y-2">
-                  <Label htmlFor="supervisorName">Supervisor / Employer Name</Label>
+                  <Label htmlFor="supervisorName">Supervisor / Employer Name *</Label>
                   <Input
                     id="supervisorName"
                     placeholder="Enter supervisor name"
                     value={employmentInfo.supervisorName}
                     onChange={(e) => handleEmploymentChange('supervisorName', e.target.value)}
+                    className={formErrors.supervisorName ? 'border-red-500' : ''}
                   />
+                  {formErrors.supervisorName && (
+                    <p className="text-xs text-red-500">{formErrors.supervisorName}</p>
+                  )}
                 </div>
 
                 {/* Supervisor Email */}
                 <div className="space-y-2">
-                  <Label htmlFor="supervisorEmail">Supervisor / Employer Email</Label>
+                  <Label htmlFor="supervisorEmail">Supervisor / Employer Email *</Label>
                   <div className="relative">
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <Input
                       id="supervisorEmail"
                       type="email"
                       placeholder="supervisor@company.com"
-                      className="pl-10"
+                      className={`pl-10 ${formErrors.supervisorEmail ? 'border-red-500' : ''}`}
                       value={employmentInfo.supervisorEmail}
                       onChange={(e) => handleEmploymentChange('supervisorEmail', e.target.value)}
                     />
                   </div>
+                  {formErrors.supervisorEmail && (
+                    <p className="text-xs text-red-500">{formErrors.supervisorEmail}</p>
+                  )}
                 </div>
               </div>
 

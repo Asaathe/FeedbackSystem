@@ -143,6 +143,7 @@ export default function StudentPromotion() {
     graduationYear: new Date().getFullYear(),
     degree: "",
     honors: "",
+    notes: "",
   });
 
   const token = sessionStorage.getItem('authToken');
@@ -338,6 +339,7 @@ export default function StudentPromotion() {
           graduationYear: graduationData.graduationYear,
           degree: graduationData.degree,
           honors: graduationData.honors,
+          notes: graduationData.notes || '',
         }),
       });
       const data = await response.json();
@@ -894,7 +896,7 @@ export default function StudentPromotion() {
               <Button
                 onClick={handleGraduateClick}
                 disabled={selectedStudents.length === 0}
-                className="w-full"
+                className="w-full bg-green-600 hover:bg-green-700"
               >
                 <Award className="h-4 w-4 mr-2" />
                 Graduate Selected Students
@@ -1042,20 +1044,18 @@ export default function StudentPromotion() {
                             </TableCell>
                             <TableCell className="text-sm text-gray-600">{item.notes}</TableCell>
                             <TableCell>
-                              {item.promotion_type !== 'graduation' && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
-                                  onClick={() => {
-                                    setSelectedHistoryItem(item);
-                                    setUndoDialogOpen(true);
-                                  }}
-                                >
-                                  <RotateCcw className="h-3 w-3 mr-1" />
-                                  Undo
-                                </Button>
-                              )}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
+                                onClick={() => {
+                                  setSelectedHistoryItem(item);
+                                  setUndoDialogOpen(true);
+                                }}
+                              >
+                                <RotateCcw className="h-3 w-3 mr-1" />
+                                Undo
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1098,7 +1098,7 @@ export default function StudentPromotion() {
 
       {/* Graduation Dialog */}
       <Dialog open={graduationDialogOpen} onOpenChange={setGraduationDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Graduate Students</DialogTitle>
             <DialogDescription>
@@ -1140,7 +1140,7 @@ export default function StudentPromotion() {
             <Button variant="outline" onClick={() => setGraduationDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setConfirmDialogOpen(true)}>
+            <Button onClick={() => setConfirmDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
               Continue
             </Button>
           </DialogFooter>
@@ -1261,7 +1261,7 @@ export default function StudentPromotion() {
 
       {/* Confirmation Dialog */}
       <Dialog open={confirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {activeTab === "graduate" ? "Confirm Graduation" : "Confirm Promotion"}
@@ -1288,7 +1288,7 @@ export default function StudentPromotion() {
             <Button
               onClick={activeTab === "graduate" ? handleGraduate : handlePromote}
               disabled={loading}
-              className={activeTab === "graduate" ? "bg-yellow-600 hover:bg-yellow-700" : ""}
+              className="bg-green-600 hover:bg-green-700"
             >
               {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               {activeTab === "graduate" ? "Graduate Students" : "Promote Students"}
@@ -1299,7 +1299,7 @@ export default function StudentPromotion() {
 
       {/* Undo Promotion Dialog */}
       <Dialog open={undoDialogOpen} onOpenChange={setUndoDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <RotateCcw className="h-5 w-5 text-orange-600" />

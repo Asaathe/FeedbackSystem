@@ -420,26 +420,26 @@ const getPromotionHistory = async (filters = {}) => {
       SELECT 
         sph.id,
         sph.student_id,
-        u.full_name as student_name,
-        u.email as student_email,
-        s.studentID,
+        COALESCE(u.full_name, 'Unknown') as student_name,
+        COALESCE(u.email, '') as student_email,
+        COALESCE(s.studentID, '') as studentID,
         sph.promotion_type,
         sph.promotion_date,
         sph.notes,
         sph.created_at,
-        cm_old.program_code as old_program_code,
-        cm_old.year_level as old_year_level,
-        cm_old.section as old_section,
-        cm_new.program_code as new_program_code,
-        cm_new.year_level as new_year_level,
-        cm_new.section as new_section,
-        promoter.full_name as promoted_by_name
+        COALESCE(cm_old.program_code, '') as old_program_code,
+        COALESCE(cm_old.year_level, 0) as old_year_level,
+        COALESCE(cm_old.section, '') as old_section,
+        COALESCE(cm_new.program_code, '') as new_program_code,
+        COALESCE(cm_new.year_level, 0) as new_year_level,
+        COALESCE(cm_new.section, '') as new_section,
+        COALESCE(promoter.full_name, 'Unknown') as promoted_by_name
       FROM student_promotion_history sph
-      INNER JOIN users u ON sph.user_id = u.id
-      INNER JOIN students s ON sph.student_id = s.id
+      LEFT JOIN users u ON sph.user_id = u.id
+      LEFT JOIN students s ON sph.student_id = s.id
       LEFT JOIN course_management cm_old ON sph.previous_program_id = cm_old.id
       LEFT JOIN course_management cm_new ON sph.new_program_id = cm_new.id
-      INNER JOIN users promoter ON sph.promoted_by = promoter.id
+      LEFT JOIN users promoter ON sph.promoted_by = promoter.id
       WHERE 1=1
     `;
     
