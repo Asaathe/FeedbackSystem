@@ -871,6 +871,92 @@ const sendEmploymentUpdateRequest = async (req, res) => {
 };
 
 /**
+ * Send annual employment update notification email (automatic)
+ */
+const sendAnnualUpdateNotification = async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    // Get user email and name
+    const userRecords = await queryDatabase(
+      db,
+      "SELECT full_name, email FROM users WHERE id = ?",
+      [userId]
+    );
+    
+    if (userRecords.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
+    }
+    
+    const user = userRecords[0];
+    const emailService = require("../utils/emailService");
+    
+    // Send annual employment update notification email
+    const subject = "🔔 Annual Employment Information Update Required - FeedbACTS";
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #dc2626;">⚠️ Annual Employment Update Required</h2>
+        <p>Dear ${user.full_name},</p>
+        <p><strong>It's been over 11 months since your last employment update.</strong></p>
+        <p>We kindly request that you take a moment to review and update your current employment information. This helps us:</p>
+        <ul>
+          <li>Track the career progression of our alumni</li>
+          <li>Maintain accurate employment statistics</li>
+          <li>Connect you with relevant career opportunities</li>
+          <li>Improve our alumni network</li>
+        </ul>
+        <div style="margin: 30px 0;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+            Update My Employment Information
+          </a>
+        </div>
+        <p>Or copy this link: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment</p>
+        <p style="margin-top: 20px; padding: 15px; background-color: #fef2f2; border-left: 4px solid #dc2626;">
+          <strong>Note:</strong> This reminder will continue to appear until you update your employment information.
+        </p>
+        <p style="color: #666; font-size: 14px; margin-top: 30px;">
+          This is an automated message from FeedbACTS System.<br>
+          Please do not reply to this email.
+        </p>
+      </div>
+    `;
+    
+    const emailSent = await emailService.sendEmail(user.email, subject, html);
+    
+    if (!emailSent) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send annual update notification email"
+      });
+    }
+    
+    // Also create an in-app notification
+    const notificationService = require("../services/notificationService");
+    await notificationService.createNotification({
+      user_id: userId,
+      type: 'EMPLOYMENT_UPDATE_REQUIRED',
+      title: 'Annual Employment Update Required',
+      message: 'It\'s been over 11 months since your last employment update. Please review and update your employment information.',
+      related_employment_id: null
+    });
+    
+    return res.status(200).json({
+      success: true,
+      message: "Annual update notification sent successfully"
+    });
+  } catch (error) {
+    console.error("Send annual update notification controller error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error"
+    });
+  }
+};
+
+/**
  * Get all alumni data for dashboard
  */
 const getAlumniData = async (req, res) => {
@@ -1001,5 +1087,6 @@ module.exports = {
   updateEmploymentInfo,
   confirmEmploymentInfo,
   sendEmploymentUpdateRequest,
+  sendAnnualUpdateNotification,
   getAlumniData
 };
