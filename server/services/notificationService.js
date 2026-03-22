@@ -287,20 +287,30 @@ const sendNotificationEmail = async (userId, notification, userEmail) => {
       `
     },
     'employment_update_required': {
-      subject: `Action Required: Employment Update - ${notification.title}`,
+      subject: `Employment Information Update - ACTS Computer College`,
       getHtml: (n) => `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #7c3aed;">Annual Employment Update Required</h2>
+          <h2 style="color: #2563eb;">Employment Information Update</h2>
           <p>Dear Alumni,</p>
-          <p>${n.message}</p>
+          <p>Good day.</p>
+          <p>We hope this message finds you well.</p>
+          <p>We are reaching out from <strong>ACTS Computer College</strong> to kindly remind you to update your employment information. Your continued participation helps us:</p>
+          <ul>
+            <li>Track the career progression of our alumni</li>
+            <li>Maintain accurate employment statistics</li>
+            <li>Connect you with relevant career opportunities</li>
+          </ul>
           <div style="margin: 30px 0;">
             <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" 
-               style="background-color: #7c3aed; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+               style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
               Update Employment Information
             </a>
           </div>
+          <p>Or copy this link: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment</p>
+          <p>Should you have any questions, please contact us at feedbacts@gmail.com.</p>
+          <p>Thank you very much for your time and support.</p>
           <p style="color: #666; font-size: 14px; margin-top: 30px;">
-            This is an automated message from FeedbACTS System.<br>
+            This is an automated message from ACTS Computer College - FeedbACTS System.<br>
             Please do not reply to this email.
           </p>
         </div>

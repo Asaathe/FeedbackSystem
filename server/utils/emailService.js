@@ -78,10 +78,15 @@ const sendFeedbackInvitation = async (
 
   const html = `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #2563eb;">Feedback Request</h2>
+      <h2 style="color: #49d182;">Feedback Request</h2>
       <p>Dear ${supervisorName},</p>
-      <p>${alumnusName} has indicated that you are their current supervisor at <strong>${companyName}</strong>.</p>
-      <p>We would greatly appreciate if you could take a few minutes to provide feedback about ${alumnusName}'s performance and professionalism.</p>
+      <p>Good day.</p>
+      <p>We hope this message finds you well.</p>
+      <p>We are reaching out from the <strong>ACTS Computer College</strong>, in relation to our graduate, <strong>${alumnusName}</strong>, who is currently employed at your organization. As part of our continuous effort to improve the quality of education and ensure alignment with industry standards, we are conducting a feedback initiative involving the employers of our alumni.</p>
+      <p>This initiative aims to gather valuable insights regarding our graduates' performance, skills, and overall preparedness in the workplace. Your feedback will greatly contribute to enhancing our academic programs and better preparing future graduates for professional success.</p>
+      <p>In the coming days, you may receive a short evaluation form from our system. We kindly ask for a few minutes of your time to complete it. Rest assured that all responses will be treated with strict confidentiality and will be used solely for academic and institutional improvement purposes.</p>
+      <p>Should you have any questions or require further information, please feel free to contact us at feedbacts@gmail.com.</p>
+      <p>Thank you very much for your time and support.</p>
       <div style="margin: 30px 0;">
         <a href="${feedbackLink}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
           Provide Feedback
@@ -90,6 +95,7 @@ const sendFeedbackInvitation = async (
       <p>Or copy this link: ${feedbackLink}</p>
       <p style="color: #666; font-size: 14px; margin-top: 30px;">
         This is an automated message from FeedbACTS System.<br>
+        ACTS Computer College<br>
         Please do not reply to this email.
       </p>
     </div>

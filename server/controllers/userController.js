@@ -815,17 +815,20 @@ const sendEmploymentUpdateRequest = async (req, res) => {
     const emailService = require("../utils/emailService");
     
     // Send employment update request email
-    const subject = "Annual Employment Information Update Request - FeedbACTS";
+    const subject = "Employment Information Update - ACTS Computer College";
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2563eb;">Employment Information Update Request</h2>
+        <h2 style="color: #2563eb;">Employment Information Update</h2>
         <p>Dear ${user.full_name},</p>
-        <p>We hope this message finds you well. As part of our ongoing effort to track alumni career outcomes, we kindly request that you update your employment information.</p>
-        <p>Your current employment status helps us:</p>
+        <p>Good day.</p>
+        <p>We hope this message finds you well.</p>
+        <p>We are reaching out from <strong>ACTS Computer College</strong> as part of our ongoing effort to stay connected with our alumni and track their career journeys.</p>
+        <p>We would greatly appreciate if you could take a few moments to update your current employment information. Your participation helps us:</p>
         <ul>
           <li>Measure the success of our graduates in the workforce</li>
           <li>Improve our career services and connections</li>
           <li>Maintain an accurate alumni directory</li>
+          <li>Connect you with relevant career opportunities</li>
         </ul>
         <div style="margin: 30px 0;">
           <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
@@ -834,8 +837,10 @@ const sendEmploymentUpdateRequest = async (req, res) => {
         </div>
         <p>Or copy this link: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment</p>
         <p style="margin-top: 20px;">If your employment information has not changed, you can simply confirm your existing information.</p>
+        <p>Should you have any questions or require further information, please feel free to contact us at feedbacts@gmail.com.</p>
+        <p>Thank you very much for your time and continued support.</p>
         <p style="color: #666; font-size: 14px; margin-top: 30px;">
-          This is an automated message from FeedbACTS System.<br>
+          This is an automated message from ACTS Computer College - FeedbACTS System.<br>
           Please do not reply to this email.
         </p>
       </div>
@@ -895,13 +900,15 @@ const sendAnnualUpdateNotification = async (req, res) => {
     const emailService = require("../utils/emailService");
     
     // Send annual employment update notification email
-    const subject = "🔔 Annual Employment Information Update Required - FeedbACTS";
+    const subject = "Employment Information Update - ACTS Computer College";
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #dc2626;">⚠️ Annual Employment Update Required</h2>
+        <h2 style="color: #26d826;">Employment Information Update</h2>
         <p>Dear ${user.full_name},</p>
-        <p><strong>It's been over 11 months since your last employment update.</strong></p>
-        <p>We kindly request that you take a moment to review and update your current employment information. This helps us:</p>
+        <p>Good day.</p>
+        <p>We hope this message finds you well.</p>
+        <p>We are reaching out from <strong>ACTS Computer College</strong> to kindly remind you to update your employment information. It has been some time since your last update, and we would appreciate if you could take a few moments to review and confirm your current employment details.</p>
+        <p>Your continued participation helps us:</p>
         <ul>
           <li>Track the career progression of our alumni</li>
           <li>Maintain accurate employment statistics</li>
@@ -909,16 +916,16 @@ const sendAnnualUpdateNotification = async (req, res) => {
           <li>Improve our alumni network</li>
         </ul>
         <div style="margin: 30px 0;">
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" style="background-color: #dc2626; color: white; padding: 14px 28px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
-            Update My Employment Information
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+            Update Employment Information
           </a>
         </div>
         <p>Or copy this link: ${process.env.FRONTEND_URL || 'http://localhost:5173'}/alumni-employment</p>
-        <p style="margin-top: 20px; padding: 15px; background-color: #fef2f2; border-left: 4px solid #dc2626;">
-          <strong>Note:</strong> This reminder will continue to appear until you update your employment information.
-        </p>
+        <p style="margin-top: 20px;">If your employment information has not changed, you can simply confirm your existing information.</p>
+        <p>Should you have any questions or require further information, please feel free to contact us at feedbacts@gmail.com.</p>
+        <p>Thank you very much for your time and continued support.</p>
         <p style="color: #666; font-size: 14px; margin-top: 30px;">
-          This is an automated message from FeedbACTS System.<br>
+          This is an automated message from ACTS Computer College - FeedbACTS System.<br>
           Please do not reply to this email.
         </p>
       </div>
