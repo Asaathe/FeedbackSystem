@@ -797,37 +797,61 @@ export function FeedbackTemplate() {
                     categories.filter(c => !c.parent_category_id).map((category, categoryIndex) => (
                       <div key={category.id}>
                         {/* Category Section */}
-                        <div className="bg-green-50 rounded-lg border border-green-200 p-4 mt-4">
-                          <div className="flex items-center gap-2">
+                        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mt-4">
+                          <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
                               <Layers className="w-4 h-4 text-white" />
                             </div>
                             <div>
-                              <h3 className="font-semibold text-green-800">{category.category_name}</h3>
+                              <h3 className="font-semibold text-gray-800">{category.category_name}</h3>
                               {category.description && (
-                                <p className="text-sm text-green-600 mt-0.5">{category.description}</p>
+                                <p className="text-sm text-gray-600 mt-0.5">{category.description}</p>
                               )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Subcategories with ratings */}
+                        {/* Subcategories with ratings - Google Forms Checkbox Grid Style */}
                         {getSubcategories(category.id).length > 0 && (
-                          <div className="space-y-4 mt-4 pl-4">
-                            {getSubcategories(category.id).map((sub, subIndex) => (
-                              <div key={sub.id} className="space-y-2">
-                                <div className="flex items-start gap-2">
-                                  <Label className="text-base">
-                                    {sub.category_name}
-                                    <span className="text-red-500 ml-1">*</span>
-                                  </Label>
-                                </div>
-                                {sub.description && (
-                                  <p className="text-sm text-gray-500">{sub.description}</p>
-                                )}
-                                <div className="pt-2">
-                                  {/* Rating Scale Checkboxes Preview - Landscape */}
-                                  <div className="flex flex-wrap gap-2">
+                          <div className="mt-4 overflow-x-auto border rounded-lg shadow-sm">
+                            <table className="w-full border-collapse bg-white">
+                              <thead>
+                                <tr className="bg-gray-100">
+                                  <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm min-w-[180px] border-b border-r">
+                                    Criteria
+                                  </th>
+                                  {[
+                                    { value: 5, label: 'Strongly Agree' },
+                                    { value: 4, label: 'Agree' },
+                                    { value: 3, label: 'Neutral' },
+                                    { value: 2, label: 'Disagree' },
+                                    { value: 1, label: 'Strongly Disagree' }
+                                  ].map((option) => (
+                                    <th 
+                                      key={option.value} 
+                                      className="text-center py-3 px-4 font-semibold text-gray-700 text-sm min-w-[90px] border-b border-r last:border-r-0"
+                                    >
+                                      {option.label}
+                                    </th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {getSubcategories(category.id).map((sub, subIndex) => (
+                                  <tr 
+                                    key={sub.id} 
+                                    className={`border-b last:border-b-0 ${subIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-green-50/50 transition-colors`}
+                                  >
+                                    <td className="py-3 px-4 border-r">
+                                      <div className="flex flex-col">
+                                        <span className="text-sm font-medium text-gray-800">
+                                          {sub.category_name}
+                                        </span>
+                                        {sub.description && (
+                                          <span className="text-xs text-gray-500 mt-0.5">{sub.description}</span>
+                                        )}
+                                      </div>
+                                    </td>
                                     {[
                                       { value: 5, label: 'Strongly Agree' },
                                       { value: 4, label: 'Agree' },
@@ -835,15 +859,18 @@ export function FeedbackTemplate() {
                                       { value: 2, label: 'Disagree' },
                                       { value: 1, label: 'Strongly Disagree' }
                                     ].map((option) => (
-                                      <div key={option.value} className="flex items-center gap-1">
-                                        <div className="w-4 h-4 rounded border-2 border-gray-300"></div>
-                                        <span className="text-sm text-gray-700">{option.label}</span>
-                                      </div>
+                                      <td key={option.value} className="text-center py-3 px-4 border-r last:border-r-0">
+                                        <div className="flex justify-center">
+                                          <div className="w-5 h-5 rounded-md border-2 border-gray-300 bg-white hover:border-green-500 hover:bg-green-50 cursor-pointer transition-all flex items-center justify-center shadow-sm">
+                                            {/* Checkbox placeholder - unchecked state */}
+                                          </div>
+                                        </div>
+                                      </td>
                                     ))}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                       </div>

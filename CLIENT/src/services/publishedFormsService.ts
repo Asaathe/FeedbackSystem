@@ -272,6 +272,7 @@ export interface SharedResponse {
   id: string;
   formId: string;
   formTitle: string;
+  formDescription?: string;
   category?: string;
   courseCode: string;
   section: string;
@@ -316,21 +317,26 @@ export const getSharedResponsesForInstructor = async (): Promise<SharedResponse[
 
     const result = await response.json();
     if (result.success && result.responses) {
-      return result.responses.map((item: any) => ({
-        id: item.id?.toString() || '',
-        formId: item.form_id?.toString() || '',
-        formTitle: item.form_title || '',
-        courseCode: item.course_code || '',
-        section: item.section || '',
-        sharedBy: item.shared_by || 'Administrator',
-        sharedDate: item.shared_date ? new Date(item.shared_date).toLocaleDateString() : '',
-        totalResponses: item.total_responses || 0,
-        responses: item.responses?.map((resp: any) => ({
-          id: resp.id?.toString() || '',
-          answers: resp.answers || [],
-          submittedDate: resp.submitted_date ? new Date(resp.submitted_date).toLocaleDateString() : '',
-        })) || [],
-      }));
+      return result.responses.map((item: any) => {
+        const formTitle = item.formTitle || item.form_title || '';
+        return {
+          id: item.id?.toString() || '',
+          formId: item.formId?.toString() || item.form_id?.toString() || '',
+          formTitle,
+          formDescription: item.formDescription || item.form_description || '',
+          category: item.category || 'General',
+          courseCode: item.courseCode || item.course_code || formTitle,
+          section: item.section || 'General',
+          sharedBy: item.sharedBy || item.shared_by || 'Administrator',
+          sharedDate: item.sharedDate || item.shared_date ? new Date(item.sharedDate || item.shared_date).toLocaleDateString() : '',
+          totalResponses: item.totalResponses || item.total_responses || 0,
+          responses: item.responses?.map((resp: any) => ({
+            id: resp.id?.toString() || '',
+            answers: resp.answers || [],
+            submittedDate: resp.submittedDate || resp.submitted_date ? new Date(resp.submittedDate || resp.submitted_date).toLocaleDateString() : '',
+          })) || [],
+        };
+      });
     }
 
     return [];

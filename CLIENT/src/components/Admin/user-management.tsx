@@ -1456,19 +1456,14 @@ export function UserManagement() {
                 >
                   Alumni
                 </TabsTrigger>
-                <TabsTrigger 
-                  value="employer" 
-                  className="flex-1 hover:bg-green-50 hover:text-green-700 data-[state=active]:bg-green-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 rounded-md transition-all duration-200 text-xs sm:text-sm font-medium"
-                >
-                  Employers
-                </TabsTrigger>
+                
             </TabsList>
         </div>
 
         {/* Users Table */}
         <Card className="border-green-100">
           <CardContent className="p-4">
-              <TabsContent value={activeTab} className="mt-0">
+              <div className="mt-0">
               <div className="overflow-x-auto scrollbar-modern">
                 <Table>
               <TableHeader>
@@ -1605,7 +1600,7 @@ export function UserManagement() {
                   </Button>
                 </div>
               )}
-              </TabsContent>
+              </div>
             </CardContent>
       </Card>
       </Tabs>

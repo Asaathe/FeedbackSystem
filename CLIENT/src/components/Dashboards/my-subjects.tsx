@@ -364,27 +364,25 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
         </div>
 
         {/* Instructor Info */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <CardTitle className="text-lg">
-              {feedbackType === 'instructor' ? 'Instructor' : 'Subject'} Details
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-4">
-              <Avatar className="w-12 h-12">
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-6">
+              <Avatar className="w-20 h-20 border-4 border-white shadow-lg">
                 {selectedSubject.instructor_image ? (
                   <img src={selectedSubject.instructor_image} alt={selectedSubject.instructor_name} className="w-full h-full object-cover" />
                 ) : (
-                  <AvatarFallback className="bg-green-500 text-white">
+                  <AvatarFallback className="bg-green-500 text-white text-2xl">
                     {getInitials(selectedSubject.instructor_name)}
                   </AvatarFallback>
                 )}
               </Avatar>
               <div>
-                <p className="font-medium">{selectedSubject.instructor_name}</p>
-                <p className="text-sm text-gray-500">
+                <p className="text-xl font-bold text-gray-800">{selectedSubject.instructor_name}</p>
+                <p className="text-sm text-green-700 font-medium">
                   {feedbackType === 'instructor' ? 'Your Instructor' : 'Instructor for this subject'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {selectedSubject.subject_name} ({selectedSubject.subject_code})
                 </p>
               </div>
             </div>
@@ -410,74 +408,103 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
                 const mainCategories = categories.filter(c => !c.parent_category_id && c.parent_category_id !== 0);
                 const getSubcategories = (parentId: number) => categories.filter(c => c.parent_category_id === parentId);
                 
-                return mainCategories.map((mainCat) => (
-                  <div key={mainCat.id} className="space-y-4">
-                    {/* Main Category Heading */}
-                    <div className="bg-green-50 rounded-lg border border-green-200 p-4 mt-4">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
-                          <Layers className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold text-green-800 text-lg">{mainCat.category_name}</h3>
-                          {mainCat.description && (
-                            <p className="text-sm text-green-600 mt-0.5">{mainCat.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Subcategories with ratings */}
-                    {getSubcategories(mainCat.id).map((subcat) => (
-                      <div key={subcat.id} className="ml-4 space-y-3">
-                        <div className="flex items-start gap-2">
-                          <Label className="text-base">
-                            {subcat.category_name}
-                            <span className="text-red-500 ml-1">*</span>
-                          </Label>
-                        </div>
-                        {subcat.description && (
-                          <p className="text-sm text-gray-500">{subcat.description}</p>
-                        )}
-                        <div className="pt-2">
-                          <div className="flex flex-wrap gap-2">
-                            {[
-                              { value: 5, label: 'Strongly Agree' },
-                              { value: 4, label: 'Agree' },
-                              { value: 3, label: 'Neutral' },
-                              { value: 2, label: 'Disagree' },
-                              { value: 1, label: 'Strongly Disagree' }
-                            ].map((option) => (
-                              <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => handleRatingChange(subcat.id, option.value)}
-                                className={`
-                                  flex items-center gap-2 px-3 py-2 rounded-lg border-2 transition-all duration-200
-                                  ${ratings[subcat.id] === option.value 
-                                    ? 'border-green-500 bg-green-50 text-green-700' 
-                                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                                  }
-                                `}
-                              >
-                                <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                                  ratings[subcat.id] === option.value 
-                                    ? 'border-green-500 bg-green-500' 
-                                    : 'border-gray-300'
-                                }`}>
-                                  {ratings[subcat.id] === option.value && (
-                                    <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                                  )}
-                                </div>
-                                <span className="text-sm font-medium">{option.label}</span>
-                              </button>
-                            ))}
+                return mainCategories.map((mainCat) => {
+                  const subcategories = getSubcategories(mainCat.id);
+                  
+                  return (
+                    <div key={mainCat.id} className="space-y-4">
+                      {/* Main Category Heading - Google Forms Style */}
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 mt-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                            <Layers className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-semibold text-gray-800 text-lg">{mainCat.category_name}</h3>
+                            {mainCat.description && (
+                              <p className="text-sm text-gray-600 mt-0.5">{mainCat.description}</p>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                ));
+                      
+                      {/* Subcategories with ratings - Google Forms Checkbox Grid Style */}
+                      {subcategories.length > 0 && (
+                        <div className="overflow-x-auto border rounded-lg shadow-sm">
+                          <table className="w-full border-collapse bg-white">
+                            <thead>
+                              <tr className="bg-gray-100">
+                                <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm min-w-[180px] border-b border-r">
+                                  Criteria
+                                </th>
+                                {[
+                                  { value: 5, label: 'Strongly Agree' },
+                                  { value: 4, label: 'Agree' },
+                                  { value: 3, label: 'Neutral' },
+                                  { value: 2, label: 'Disagree' },
+                                  { value: 1, label: 'Strongly Disagree' }
+                                ].map((option) => (
+                                  <th 
+                                    key={option.value} 
+                                    className="text-center py-3 px-4 font-semibold text-gray-700 text-sm min-w-[90px] border-b border-r last:border-r-0"
+                                  >
+                                    {option.label}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {subcategories.map((subcat, subIndex) => (
+                                <tr 
+                                  key={subcat.id} 
+                                  className={`border-b last:border-b-0 ${subIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-green-50/50 transition-colors cursor-pointer`}
+                                >
+                                  <td className="py-3 px-4 border-r">
+                                    <div className="flex flex-col">
+                                      <span className="text-sm font-medium text-gray-800">
+                                        {subcat.category_name}
+                                      </span>
+                                      {subcat.description && (
+                                        <span className="text-xs text-gray-500 mt-0.5">{subcat.description}</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  {[
+                                    { value: 5, label: 'Strongly Agree' },
+                                    { value: 4, label: 'Agree' },
+                                    { value: 3, label: 'Neutral' },
+                                    { value: 2, label: 'Disagree' },
+                                    { value: 1, label: 'Strongly Disagree' }
+                                  ].map((option) => (
+                                    <td 
+                                      key={option.value} 
+                                      className="text-center py-3 px-4 border-r last:border-r-0 cursor-pointer hover:bg-green-100/50 transition-colors"
+                                      onClick={() => handleRatingChange(subcat.id, option.value)}
+                                    >
+                                      <div className="flex justify-center">
+                                        <div className={`w-5 h-5 rounded-md border-2 transition-all flex items-center justify-center shadow-sm ${
+                                          ratings[subcat.id] === option.value
+                                            ? 'border-green-500 bg-green-500'
+                                            : 'border-gray-300 bg-white hover:border-green-400 hover:bg-green-50'
+                                        }`}>
+                                          {ratings[subcat.id] === option.value && (
+                                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
               })()}
 
               <Button 

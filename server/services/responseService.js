@@ -62,11 +62,17 @@ const submitFormResponse = async (formId, userId, answers) => {
         // Create date with explicit timezone handling - append +08:00 to ensure correct parsing
         const startDateStr = `${deployment.start_date}T${startTime}:00+08:00`;
         const startDate = new Date(startDateStr);
-        console.log("[DEBUG] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
-        // Compare with current time
-        if (startDate > now) {
-          console.log("[DEBUG] Form not yet open - blocking submission");
-          return { success: false, message: "Form is not yet open for submission" };
+        
+        // Validate the date was parsed correctly before using toISOString()
+        if (isNaN(startDate.getTime())) {
+          console.log("[DEBUG] Invalid start_date format:", deployment.start_date);
+        } else {
+          console.log("[DEBUG] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
+          // Compare with current time
+          if (startDate > now) {
+            console.log("[DEBUG] Form not yet open - blocking submission");
+            return { success: false, message: "Form is not yet open for submission" };
+          }
         }
       }
       
@@ -75,11 +81,17 @@ const submitFormResponse = async (formId, userId, answers) => {
         // Create date with explicit timezone handling
         const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
         const endDate = new Date(endDateStr);
-        console.log("[DEBUG] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
-        // Compare with current time
-        if (endDate < now) {
-          console.log("[DEBUG] Form has ended - blocking submission");
-          return { success: false, message: "Form submission period has ended" };
+        
+        // Validate the date was parsed correctly before using toISOString()
+        if (isNaN(endDate.getTime())) {
+          console.log("[DEBUG] Invalid end_date format:", deployment.end_date);
+        } else {
+          console.log("[DEBUG] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
+          // Compare with current time
+          if (endDate < now) {
+            console.log("[DEBUG] Form has ended - blocking submission");
+            return { success: false, message: "Form submission period has ended" };
+          }
         }
       }
     } else {
@@ -309,6 +321,7 @@ const getSharedResponses = async (userId) => {
       SELECT 
         f.id as form_id,
         f.title as form_title,
+        f.description as form_description,
         f.category,
         f.target_audience,
         sr.shared_at as shared_date,
@@ -332,10 +345,11 @@ const getSharedResponses = async (userId) => {
         id: r.form_id,
         formId: r.form_id,
         formTitle: r.form_title,
-        category: r.target_audience || r.category || 'General',
+        formDescription: r.form_description || '',
+        category: r.category || 'General',
         courseCode: r.form_title,
-        section: r.category || r.target_audience || 'General',
-        sections: [r.category || r.target_audience || 'General'],
+        section: r.category || 'General',
+        sections: [r.category || 'General'],
         totalResponses: r.total_responses || 0,
         sharedBy: r.shared_by_name || "Administrator",
         sharedDate: r.shared_date ? new Date(r.shared_date).toLocaleDateString() : new Date().toLocaleDateString(),
