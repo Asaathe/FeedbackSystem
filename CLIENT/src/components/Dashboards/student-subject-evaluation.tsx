@@ -720,7 +720,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
             <div className="flex items-center gap-2 bg-white/60 px-3 py-2 rounded-lg">
               <Calendar className="w-4 h-4 text-green-600" />
               <span className="text-sm font-medium">
-                {currentSettings.college?.semester || currentSettings.seniorHigh?.semester} Sem, {currentSettings.college?.academic_year || currentSettings.seniorHigh?.academic_year}
+                {(currentSettings.college?.semester || currentSettings.seniorHigh?.semester || 'No active period')} {(currentSettings.college?.academic_year || currentSettings.seniorHigh?.academic_year || '')}
               </span>
             </div>
           )}

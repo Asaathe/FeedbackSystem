@@ -707,7 +707,9 @@ const updateEmploymentInfo = async (req, res) => {
           employment_type = ?,
           monthly_salary = ?,
           is_relevant_to_degree = ?,
-          last_update_received = ?
+          last_update_received = ?,
+          update_status = 'scheduled',
+          next_email_date = DATE_ADD(NOW(), INTERVAL 1 DAY)
         WHERE alumni_user_id = ?`,
         [
           companyName || null,
@@ -729,8 +731,8 @@ const updateEmploymentInfo = async (req, res) => {
       // Create new employment record
       await queryDatabase(
         db,
-        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started, employment_type, monthly_salary, is_relevant_to_degree, last_update_received)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started, employment_type, monthly_salary, is_relevant_to_degree, last_update_received, update_status, next_email_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', DATE_ADD(NOW(), INTERVAL 1 DAY))`,
         [
           userId,
           companyName || null,
@@ -770,10 +772,10 @@ const confirmEmploymentInfo = async (req, res) => {
     const userId = req.userId;
     const { lastUpdateReceived } = req.body;
     
-    // Update the last_update_received timestamp
+    // Update the last_update_received timestamp and status
     await queryDatabase(
       db,
-      `UPDATE alumni_employment SET last_update_received = ? WHERE alumni_user_id = ?`,
+      `UPDATE alumni_employment SET last_update_received = ?, update_status = 'scheduled', next_email_date = DATE_ADD(NOW(), INTERVAL 1 DAY) WHERE alumni_user_id = ?`,
       [lastUpdateReceived || new Date().toISOString(), userId]
     );
     

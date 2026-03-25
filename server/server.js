@@ -7,6 +7,7 @@ const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const cron = require("node-cron");
 const path = require("path");
 const fs = require("fs");
 
@@ -156,6 +157,10 @@ app.use("/api/subjects", subjectRoutes);
 const feedbackTemplateRoutes = require("./routes/feedbackTemplates");
 app.use("/api/feedback-templates", feedbackTemplateRoutes);
 
+// Alumni Employment Tracker routes
+const employmentTrackerRoutes = require("./routes/employmentTracker");
+app.use("/api/employment-tracker", employmentTrackerRoutes);
+
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
@@ -181,5 +186,24 @@ app.listen(port, () => {
   console.log(`Server running on port ${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
 });
+
+// ============================================
+// SCHEDULED TASKS - Employment Update Scheduler
+// ============================================
+// Run daily at midnight to check for alumni due for employment update
+const employmentUpdateScheduler = require('./services/employmentUpdateScheduler');
+
+// Schedule the job to run every day at midnight
+cron.schedule('0 0 * * *', async () => {
+  console.log('[CRON] Running daily employment update check...');
+  try {
+    const result = await employmentUpdateScheduler.checkAndScheduleEmploymentUpdates();
+    console.log(`[CRON] Employment update check completed: ${result.sent} sent, ${result.failed} failed`);
+  } catch (error) {
+    console.error('[CRON] Employment update check failed:', error);
+  }
+});
+
+console.log('[CRON] Employment update scheduler initialized - runs daily at midnight');
 
 module.exports = app;

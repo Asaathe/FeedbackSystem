@@ -551,7 +551,7 @@ const getAllSubjectOfferings = async (req, res) => {
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
       LEFT JOIN users u ON so.instructor_id = u.id
-      WHERE 1=1
+      WHERE so.status != 'archived'
     `;
     
     const params = [];
@@ -603,10 +603,11 @@ const createSubjectOffering = async (req, res) => {
       return res.status(400).json({ success: false, message: "Subject, program, academic year, and semester are required" });
     }
     
-    // Check for duplicate
+    // Check for duplicate - only check active offerings, not archived ones
+    // This allows creating a new offering for a new semester even if the same subject was offered before
     const checkQuery = `
       SELECT id FROM subject_offerings 
-      WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ?
+      WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ? AND status != 'archived'
     `;
     
     db.query(checkQuery, [subject_id, program_id, year_level, section, academic_year, semester], (checkErr, checkResults) => {
@@ -616,7 +617,7 @@ const createSubjectOffering = async (req, res) => {
       }
       
       if (checkResults.length > 0) {
-        return res.status(400).json({ success: false, message: "Subject offering already exists" });
+        return res.status(400).json({ success: false, message: "Subject offering already exists for this semester" });
       }
       
       const insertQuery = `

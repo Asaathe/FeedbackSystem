@@ -81,54 +81,63 @@ async function setupDatabase() {
       console.log("💡 The setup script will safely skip creating tables that already exist.");
     }
 
-    // Read and execute the schema file
-    const schemaPath = path.join(__dirname, "schema/feedback_system.sql");
-    console.log("📋 Reading schema file...");
+    // Read and execute the schema files
+    const schemaFiles = [
+      "schema/feedback_system.sql",
+      "schema/academic_periods.sql",
+      "schema/add_archived_to_feedback.sql"
+    ];
     
-    if (!fs.existsSync(schemaPath)) {
-      throw new Error(`Schema file not found: ${schemaPath}`);
-    }
-
-    const schemaSQL = fs.readFileSync(schemaPath, "utf8");
-    console.log("🏗️  Executing schema...");
-
-    // Split SQL into individual statements
-    const statements = schemaSQL
-      .split(";")
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0);
-
-    for (let i = 0; i < statements.length; i++) {
-      const statement = statements[i];
+    for (const schemaFile of schemaFiles) {
+      const schemaPath = path.join(__dirname, schemaFile);
+      console.log(`📋 Reading ${schemaFile}...`);
       
-      try {
-        await new Promise((resolve, reject) => {
-          db.query(statement, (err) => {
-            if (err) {
-              // Skip DELIMITER statements and comments
-              if (statement.includes("DELIMITER") || statement.trim().startsWith("--") || statement.trim().startsWith("/*")) {
-                resolve();
-              } else if (err.message.includes("already exists")) {
-                // Table already exists - this is safe, continue
-                console.log(`ℹ️  Statement ${i + 1} skipped (table already exists):`, err.message);
-                resolve();
-              } else {
-                console.error(`❌ Error executing statement ${i + 1}:`, err.message);
-                console.error("Statement:", statement.substring(0, 100) + "...");
-                reject(err);
-              }
-            } else {
-              resolve();
-            }
-          });
-        });
-      } catch (err) {
-        // Continue with other statements even if one fails
-        console.log(`⚠️  Statement ${i + 1} skipped or failed:`, err.message);
+      if (!fs.existsSync(schemaPath)) {
+        console.log(`⚠️  Schema file not found: ${schemaPath} - skipping`);
+        continue;
       }
-    }
 
-    console.log("✅ Schema execution completed");
+      const schemaSQL = fs.readFileSync(schemaPath, "utf8");
+      console.log(`🏗️  Executing ${schemaFile}...`);
+
+      // Split SQL into individual statements
+      const statements = schemaSQL
+        .split(";")
+        .map(stmt => stmt.trim())
+        .filter(stmt => stmt.length > 0);
+
+      for (let i = 0; i < statements.length; i++) {
+        const statement = statements[i];
+        
+        try {
+          await new Promise((resolve, reject) => {
+            db.query(statement, (err) => {
+              if (err) {
+                // Skip DELIMITER statements and comments
+                if (statement.includes("DELIMITER") || statement.trim().startsWith("--") || statement.trim().startsWith("/*")) {
+                  resolve();
+                } else if (err.message.includes("already exists")) {
+                  // Table already exists - this is safe, continue
+                  console.log(`ℹ️  Statement ${i + 1} skipped (table already exists):`, err.message);
+                  resolve();
+                } else {
+                  console.error(`❌ Error executing statement ${i + 1}:`, err.message);
+                  console.error("Statement:", statement.substring(0, 100) + "...");
+                  reject(err);
+                }
+              } else {
+                resolve();
+              }
+            });
+          });
+        } catch (err) {
+          // Continue with other statements even if one fails
+          console.log(`⚠️  Statement ${i + 1} skipped or failed:`, err.message);
+        }
+      }
+
+      console.log(`✅ ${schemaFile} execution completed`);
+    }
 
     // Test the connection with a simple query
     console.log("🧪 Testing database connection...");

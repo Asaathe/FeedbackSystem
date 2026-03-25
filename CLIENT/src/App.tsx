@@ -159,6 +159,12 @@ const FeedbackTemplate = lazy(() =>
   }))
 );
 
+const AlumniEmploymentTracker = lazy(() =>
+  import("./components/Admin/alumni-employment-tracker").then((m) => ({
+    default: m.AlumniEmploymentTracker,
+  }))
+);
+
 
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -404,6 +410,8 @@ export default function App() {
           return <SystemSettings onNavigate={setCurrentPage} />;
         case "feedback-template":
           return <FeedbackTemplate />;
+        case "employment-tracker":
+          return <AlumniEmploymentTracker onNavigate={setCurrentPage} />;
        
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;

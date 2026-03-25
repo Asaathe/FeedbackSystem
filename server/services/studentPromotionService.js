@@ -366,6 +366,14 @@ const graduateStudents = async (studentIds, graduationYear, promotedBy, graduati
           [student.user_id]
         );
         
+        // Create employment tracking record for the new alumni
+        await queryDatabase(
+          db,
+          `INSERT INTO alumni_employment (alumni_user_id, update_status, created_at) 
+           VALUES (?, 'pending', NOW())`,
+          [student.user_id]
+        );
+        
         // Insert promotion history as graduation type
         await queryDatabase(
           db,

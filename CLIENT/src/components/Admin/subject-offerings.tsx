@@ -9,6 +9,7 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
+  DialogDescription,
   DialogTrigger,
   DialogFooter,
 } from "../ui/dialog";
@@ -101,6 +102,13 @@ interface CourseSection {
 interface SystemSettings {
   current_semester: string;
   current_academic_year: string;
+  department: string;
+}
+
+// Separate settings for College and Senior High
+interface AcademicPeriodSettings {
+  college: SystemSettings;
+  seniorHigh: SystemSettings;
 }
 
 interface OfferingStudent {
@@ -118,9 +126,17 @@ export function SubjectOfferings() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [programs, setPrograms] = useState<Program[]>([]);
   const [courseSections, setCourseSections] = useState<CourseSection[]>([]);
-  const [systemSettings, setSystemSettings] = useState<SystemSettings>({
-    current_semester: "1st",
-    current_academic_year: "2025-2026",
+  const [systemSettings, setSystemSettings] = useState<AcademicPeriodSettings>({
+    college: {
+      current_semester: "1st",
+      current_academic_year: "2025-2026",
+      department: "College",
+    },
+    seniorHigh: {
+      current_semester: "1st",
+      current_academic_year: "2025-2026",
+      department: "Senior High",
+    },
   });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -149,6 +165,9 @@ export function SubjectOfferings() {
     semester: "",
     instructor_id: "",
   });
+  
+  // Track selected department for settings
+  const [selectedDepartment, setSelectedDepartment] = useState<string>("College");
     
   const [saving, setSaving] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
@@ -220,21 +239,28 @@ export function SubjectOfferings() {
   const loadSystemSettings = async () => {
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch(`${API_BASE_URL}/settings/current-semester?department=College`, {
+      const response = await fetch(`${API_BASE_URL}/settings/current-semester`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       const result = await response.json();
       if (result.success && result.data) {
-        const collegeSettings = result.data.college || {};
-        const newSettings = {
-          current_semester: collegeSettings.semester || "1st",
-          current_academic_year: collegeSettings.academic_year || "2025-2026",
+        const newSettings: AcademicPeriodSettings = {
+          college: {
+            current_semester: result.data.college?.semester || "1st",
+            current_academic_year: result.data.college?.academic_year || "2025-2026",
+            department: "College",
+          },
+          seniorHigh: {
+            current_semester: result.data.seniorHigh?.semester || "1st",
+            current_academic_year: result.data.seniorHigh?.academic_year || "2025-2026",
+            department: "Senior High",
+          },
         };
         setSystemSettings(newSettings);
-        setFilterAcademicYear(newSettings.current_academic_year);
-        setFilterSemester(newSettings.current_semester);
+        setFilterAcademicYear(newSettings.college.current_academic_year);
+        setFilterSemester(newSettings.college.current_semester);
         return newSettings;
       }
       return null;
@@ -253,14 +279,17 @@ export function SubjectOfferings() {
         loadSystemSettings()
       ]);
       
-      // Use settings from the call (which updates state) or fallback to state
-      const settingsToUse = settings || systemSettings;
+      // Get settings based on selected department
+      const deptSettings = selectedDepartment === "College" 
+        ? (settings?.college || systemSettings.college)
+        : (settings?.seniorHigh || systemSettings.seniorHigh);
+      
       setFormData({
         subject_id: "",
         program_id: "",
         course_section: "",
-        academic_year: settingsToUse.current_academic_year,
-        semester: settingsToUse.current_semester,
+        academic_year: deptSettings.current_academic_year,
+        semester: deptSettings.current_semester,
         instructor_id: "",
       });
     }
@@ -427,8 +456,38 @@ export function SubjectOfferings() {
             <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>Create Subject Offering</DialogTitle>
+                <DialogDescription>
+                  Fill in the details to create a new subject offering for the selected department and semester.
+                </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Department *</Label>
+                  <Select 
+                    value={selectedDepartment} 
+                    onValueChange={(value) => {
+                      setSelectedDepartment(value);
+                      // Update semester/AY based on department
+                      const deptSettings = value === "College" 
+                        ? systemSettings.college 
+                        : systemSettings.seniorHigh;
+                      setFormData(prev => ({
+                        ...prev,
+                        academic_year: deptSettings.current_academic_year,
+                        semester: deptSettings.current_semester,
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="College">College</SelectItem>
+                      <SelectItem value="Senior High">Senior High</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                  
                 <div className="space-y-2">
                   <Label>Subject *</Label>
                   <Select 
@@ -439,7 +498,7 @@ export function SubjectOfferings() {
                       <SelectValue placeholder="Select a subject" />
                     </SelectTrigger>
                     <SelectContent>
-                      {subjects.filter(s => s.status === 'active' && s.id).map((subject) => (
+                      {subjects.filter(s => s.status === 'active' && s.id && (selectedDepartment === "College" ? s.department === "College" : s.department === "Senior High")).map((subject) => (
                         <SelectItem key={subject.id} value={subject.id.toString()}>
                           {subject.subject_code} - {subject.subject_name}
                         </SelectItem>
@@ -458,7 +517,7 @@ export function SubjectOfferings() {
                       <SelectValue placeholder="Select a program" />
                     </SelectTrigger>
                     <SelectContent>
-                      {uniquePrograms.filter(p => p.id).map((program) => (
+                      {uniquePrograms.filter(p => p.id && (selectedDepartment === "College" ? p.department === "College" : p.department === "Senior High")).map((program) => (
                         <SelectItem key={program.id} value={program.id.toString()}>
                           {program.program_code} - {program.program_name}
                         </SelectItem>
@@ -477,7 +536,7 @@ export function SubjectOfferings() {
                       <SelectValue placeholder="Select a course section" />
                     </SelectTrigger>
                     <SelectContent>
-                      {courseSections.filter(cs => cs.value).map((cs, index) => (
+                      {courseSections.filter(cs => cs.value && cs.department === selectedDepartment).map((cs, index) => (
                         <SelectItem key={`${cs.program_code}-${cs.year_level}-${cs.section}-${index}`} value={cs.value}>
                           {cs.program_code} - Year {cs.year_level} - Section {cs.section}
                         </SelectItem>
@@ -490,13 +549,13 @@ export function SubjectOfferings() {
                   <div className="space-y-2">
                     <Label>Academic Year</Label>
                     <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                      {systemSettings.current_academic_year}
+                      {selectedDepartment === "College" ? systemSettings.college.current_academic_year : systemSettings.seniorHigh.current_academic_year}
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Semester</Label>
+                    <Label>{selectedDepartment === "College" ? "Semester" : "Quarter"}</Label>
                     <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                      {systemSettings.current_semester} Semester
+                      {selectedDepartment === "College" ? systemSettings.college.current_semester : systemSettings.seniorHigh.current_semester} {selectedDepartment === "College" ? "Semester" : "Quarter"}
                     </div>
                   </div>
                 </div>
@@ -677,6 +736,9 @@ export function SubjectOfferings() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Subject Offering</DialogTitle>
+            <DialogDescription>
+              Update the instructor assignment for this subject offering.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
@@ -761,6 +823,9 @@ export function SubjectOfferings() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Delete Subject Offering</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. Students enrolled in this offering will be unassigned.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <p>Are you sure you want to delete this subject offering?</p>
@@ -797,9 +862,9 @@ export function SubjectOfferings() {
               <Users className="w-4 h-4" />
               {selectedOffering?.subject_code} - {selectedOffering?.program_code}
             </DialogTitle>
-            <p className="text-xs text-gray-500">
+            <DialogDescription className="text-xs">
               Yr {selectedOffering?.year_level} Sec {selectedOffering?.section} | {selectedOffering?.academic_year} - {selectedOffering?.semester}
-            </p>
+            </DialogDescription>
           </DialogHeader>
           <div className="overflow-y-auto" style={{ maxHeight: '160px' }}>
             {loadingStudents ? (

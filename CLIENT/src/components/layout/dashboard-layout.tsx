@@ -109,6 +109,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
         { id: 'subjecteval', label: 'Subject Evaluation', icon: Book },
         { id: 'subjects', label: 'Subject Management', icon: Book },
         { id: 'subject-offerings', label: 'Subject Offerings', icon: BookOpen },
+        { id: 'employment-tracker', label: 'Alumni E-Tracker', icon: Briefcase },
         { id: 'settings', label: 'System Settings', icon: Settings },
 
       ]

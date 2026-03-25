@@ -307,14 +307,14 @@ export function CourseManagement() {
               <GraduationCap className="w-4 h-4 text-green-600" />
               <span className="text-sm text-gray-700">
                 <span className="font-medium">College:</span>{" "}
-                {systemSettings.college.semester} Semester, SY {systemSettings.college.academic_year}
+                {systemSettings.college?.semester} Semester, SY {systemSettings.college?.academic_year}
               </span>
             </div>
             <div className="flex items-center gap-2">
               <Building2 className="w-4 h-4 text-purple-600" />
               <span className="text-sm text-gray-700">
                 <span className="font-medium">Senior High:</span>{" "}
-                {systemSettings.seniorHigh.semester} Semester, SY {systemSettings.seniorHigh.academic_year}
+                {systemSettings.seniorHigh?.semester} Semester, SY {systemSettings.seniorHigh?.academic_year}
               </span>
             </div>
           </div>

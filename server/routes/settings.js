@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
 const { verifyToken, requireAdmin } = require("../middleware/auth");
+const semesterService = require("../services/semesterService");
+const { getCurrentSettings } = require("../utils/settingsHelper");
 
 /**
  * Get all system settings
@@ -28,6 +30,8 @@ router.get("/", verifyToken, requireAdmin, async (req, res) => {
 /**
  * Get current semester and academic year for a department
  * GET /api/settings/current-semester?department=College
+ * Uses academic_periods table with auto-detection based on current date
+ * Returns null values when no active period is found
  */
 router.get("/current-semester", async (req, res) => {
   try {
@@ -35,68 +39,32 @@ router.get("/current-semester", async (req, res) => {
     
     // If no department provided, return settings for both departments
     if (!department) {
-      const collegeQuery = "SELECT * FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year') AND (department = 'College' OR department IS NULL) ORDER BY department, setting_key";
+      // Use getCurrentSettings which checks academic_periods first
+      // Returns null if no active period found (no fallback to system_settings)
+      const settings = await getCurrentSettings();
       
-      db.query(collegeQuery, (err, results) => {
-        if (err) {
-          console.error("Error fetching current semester:", err);
-          return res.status(500).json({ success: false, message: "Database error" });
+      return res.json({
+        success: true,
+        data: {
+          college: settings.college,
+          seniorHigh: settings.seniorHigh,
+          source: settings.source
         }
-        
-        // Organize results by department
-        const collegeSettings = results.filter(s => s.department === 'College');
-        const generalSettings = results.filter(s => s.department === null);
-        
-        const collegeSemester = collegeSettings.find(s => s.setting_key === 'current_semester');
-        const collegeYear = collegeSettings.find(s => s.setting_key === 'current_academic_year');
-        
-        const seniorHighSemester = generalSettings.find(s => s.setting_key === 'current_semester');
-        const seniorHighYear = generalSettings.find(s => s.setting_key === 'current_academic_year');
-        
-        return res.json({
-          success: true,
-          data: {
-            college: {
-              semester: collegeSemester?.setting_value || '1st',
-              academic_year: collegeYear?.setting_value || '2025-2026'
-            },
-            seniorHigh: {
-              semester: seniorHighSemester?.setting_value || '1st',
-              academic_year: seniorHighYear?.setting_value || '2025-2026'
-            }
-          }
-        });
       });
     } else {
-      // Get settings for specific department
-      const query = "SELECT * FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year') AND (department = ? OR department IS NULL) ORDER BY department DESC";
+      // Get settings for specific department using getCurrentSettings
+      const settings = await getCurrentSettings(department);
       
-      db.query(query, [department], (err, results) => {
-        if (err) {
-          console.error("Error fetching current semester:", err);
-          return res.status(500).json({ success: false, message: "Database error" });
+      return res.json({
+        success: true,
+        data: {
+          department: settings.department,
+          semester: settings.semester,
+          academic_year: settings.academic_year,
+          period_id: settings.period_id,
+          period_type: settings.period_type,
+          source: settings.source
         }
-        
-        // Department-specific settings take priority over general settings
-        const deptSettings = results.find(s => s.department === department);
-        const generalSettings = results.find(s => s.department === null);
-        
-        const semester = deptSettings?.setting_key === 'current_semester' 
-          ? deptSettings.setting_value 
-          : generalSettings?.setting_value || '1st';
-          
-        const academicYear = deptSettings?.setting_key === 'current_academic_year'
-          ? deptSettings.setting_value
-          : (results.find(s => s.setting_key === 'current_academic_year')?.setting_value || '2025-2026');
-        
-        return res.json({
-          success: true,
-          data: {
-            department,
-            semester,
-            academic_year: academicYear
-          }
-        });
       });
     }
   } catch (error) {
@@ -275,5 +243,230 @@ router.delete("/:key", verifyToken, requireAdmin, async (req, res) => {
     return res.status(500).json({ success: false, message: "Server error" });
   }
 });
+
+// =============================================
+// Academic Period Management Routes
+// =============================================
+
+/**
+ * Get all academic periods
+ * GET /api/settings/academic-periods?department=College&status=active
+ */
+router.get("/academic-periods", verifyToken, async (req, res) => {
+  try {
+    const { department, status, academic_year, period_type } = req.query;
+    
+    const result = await semesterService.getAcademicPeriods({
+      department,
+      status,
+      academic_year,
+      period_type
+    });
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("Get academic periods error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Get single academic period by ID
+ * GET /api/settings/academic-periods/:id
+ */
+router.get("/academic-periods/:id", verifyToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await semesterService.getPeriodById(id);
+    
+    if (!result.success) {
+      return res.status(404).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("Get academic period error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Create a new academic period
+ * POST /api/settings/academic-periods
+ */
+router.post("/academic-periods", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { 
+      department, 
+      period_type, 
+      academic_year, 
+      period_number, 
+      start_date, 
+      end_date, 
+      auto_transition,
+      transition_time
+    } = req.body;
+    
+    if (!department || !period_type || !academic_year || !period_number || !start_date || !end_date) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Department, period type, academic year, period number, start date, and end date are required" 
+      });
+    }
+    
+    const result = await semesterService.createAcademicPeriod({
+      department,
+      period_type,
+      academic_year,
+      period_number,
+      start_date,
+      end_date,
+      auto_transition: auto_transition || false,
+      transition_time: transition_time || '00:00:00',
+      created_by: req.user?.id
+    });
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.status(201).json(result);
+  } catch (error) {
+    console.error("Create academic period error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Update an academic period
+ * PUT /api/settings/academic-periods/:id
+ */
+router.put("/academic-periods/:id", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { 
+      period_number, 
+      start_date, 
+      end_date, 
+      auto_transition, 
+      transition_time,
+      status
+    } = req.body;
+    
+    const result = await semesterService.updateAcademicPeriod(id, {
+      period_number,
+      start_date,
+      end_date,
+      auto_transition,
+      transition_time,
+      status
+    });
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("Update academic period error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Delete an academic period
+ * DELETE /api/settings/academic-periods/:id
+ */
+router.delete("/academic-periods/:id", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await semesterService.deleteAcademicPeriod(id);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("Delete academic period error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Set current period (trigger semester transition)
+ * POST /api/settings/academic-periods/:id/set-current
+ */
+router.post("/academic-periods/:id/set-current", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reset_type = 'both' } = req.body;
+    
+    if (!['subjects', 'evaluations', 'both'].includes(reset_type)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Reset type must be 'subjects', 'evaluations', or 'both'" 
+      });
+    }
+    
+    const result = await semesterService.setCurrentPeriod(id, reset_type, req.user?.id);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("Set current period error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Get semester status for a department
+ * GET /api/settings/semester-status?department=College
+ */
+router.get("/semester-status", verifyToken, async (req, res) => {
+  try {
+    const { department } = req.query;
+    
+    if (!department) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Department parameter is required" 
+      });
+    }
+    
+    const result = await semesterService.getSemesterStatus(department);
+    return res.json(result);
+  } catch (error) {
+    console.error("Get semester status error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * Get semester transition history
+ * GET /api/settings/semester-history?department=College
+ */
+router.get("/semester-history", verifyToken, async (req, res) => {
+  try {
+    const { department, limit = 20 } = req.query;
+    
+    const result = await semesterService.getTransitionHistory({
+      department,
+      limit: parseInt(limit)
+    });
+    
+    return res.json(result);
+  } catch (error) {
+    console.error("Get semester history error:", error);
+    return res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// =============================================
+// End Academic Period Management Routes
+// =============================================
 
 module.exports = router;

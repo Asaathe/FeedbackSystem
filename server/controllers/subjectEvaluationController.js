@@ -3,6 +3,7 @@
 // Legacy tables removed: subjects, subject_evaluation_forms, subject_evaluation_responses, subject_instructors, student_enrollments
 
 const db = require("../config/database");
+const { getCurrentSettings } = require("../utils/settingsHelper");
 
 /**
  * Get all instructors with their subjects (for subject-evaluation.tsx)
@@ -11,23 +12,14 @@ const getAllInstructors = async (req, res) => {
   try {
     const { academic_year, semester } = req.query;
     
-    // Get current settings if not provided
+    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
     let sem = semester;
     
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-      
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      const settings = await getCurrentSettings();
+      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+      sem = settings.college?.semester || settings.semester || sem;
     }
     
     // Query using subject_offerings and evaluation_subjects
@@ -142,23 +134,14 @@ const getAllSubjects = async (req, res) => {
   try {
     const { academic_year, semester } = req.query;
     
-    // Get current settings if not provided
+    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
     let sem = semester;
     
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-      
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      const settings = await getCurrentSettings();
+      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+      sem = settings.college?.semester || settings.semester || sem;
     }
     
     // Query from subject_offerings - show ALL offerings regardless of semester
@@ -248,7 +231,7 @@ const getMySubjects = async (req, res) => {
     const userId = req.user.id;
     const { academic_year, semester } = req.query;
     
-    // Get user role
+    // Get user role and details
     const userQuery = "SELECT role FROM users WHERE id = ?";
     const userResults = await new Promise((resolve, reject) => {
       db.query(userQuery, [userId], (err, results) => {
@@ -263,27 +246,97 @@ const getMySubjects = async (req, res) => {
     
     const userRole = userResults[0].role;
     
-    // Get current settings if not provided
+    // Get current settings from academic_periods table (date-based detection)
     let acadYear = academic_year;
     let sem = semester;
+    let periodFilterApplied = false;
     
+    // Get settings - if no params provided, use current period from academic_periods
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
+      const settings = await getCurrentSettings();
       
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      // Determine department based on user role
+      let department = 'College'; // default
+      
+      if (userRole === 'student') {
+        // Get student's year level to determine department
+        const studentQuery = "SELECT year_level FROM students WHERE user_id = ?";
+        const studentResults = await new Promise((resolve, reject) => {
+          db.query(studentQuery, [userId], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        
+        if (studentResults.length > 0) {
+          const yearLevel = studentResults[0].year_level;
+          // Year levels 11-12 are Senior High, 1-4 are College
+          department = (yearLevel >= 11 && yearLevel <= 12) ? 'Senior High' : 'College';
+        }
+      } else if (userRole === 'instructor') {
+        // Get instructor's department
+        const instructorQuery = "SELECT department FROM instructors WHERE user_id = ?";
+        const instructorResults = await new Promise((resolve, reject) => {
+          db.query(instructorQuery, [userId], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        
+        if (instructorResults.length > 0 && instructorResults[0].department) {
+          department = instructorResults[0].department;
+        }
+      }
+      
+      // Get the period for the determined department
+      // Handle "Both" department - get both College and SHS periods
+      const isBothDepartment = department === 'Both';
+      
+      // If department is "Both", we need to get all offerings without period filter
+      // to capture both College and Senior High subjects
+      let deptSettings = null;
+      if (!isBothDepartment) {
+        deptSettings = department === 'Senior High' ? settings.seniorHigh : settings.college;
+      }
+      
+      // Only apply period filter if we have valid settings from academic_periods table
+      // AND department is not "Both" (which needs all periods)
+      if (deptSettings && deptSettings.semester && deptSettings.academic_year) {
+        acadYear = deptSettings.academic_year;
+        sem = deptSettings.semester;
+        periodFilterApplied = true;
+      } else if (isBothDepartment) {
+        // For "Both" department, don't filter by period - show all offerings
+        console.log("📋 getMySubjects - Department is 'Both', showing all subject offerings without period filter");
+      } else {
+        // No academic period found - log this for debugging
+        console.log("⚠️ No academic period found for department:", department, "| Settings:", settings);
+      }
+      
+      console.log("📋 getMySubjects - User:", userId, "| Role:", userRole, "| Dept:", department, "| IsBoth:", isBothDepartment, "| Sem:", sem, "| AcadYear:", acadYear, "| FilterApplied:", periodFilterApplied);
     }
     
     // If user is an instructor, get their subjects from subject_offerings
     if (userRole === 'instructor') {
+      // DEBUG: Log what we're looking for
+      console.log("🔍 DEBUG: Looking for subjects where instructor_id =", userId);
+      console.log("🔍 DEBUG: acadYear =", acadYear, "| sem =", sem);
+      
+      // First, let's check if there are ANY subject offerings for this instructor
+      const checkQuery = `SELECT id, subject_id, academic_year, semester, instructor_id FROM subject_offerings WHERE instructor_id = ?`;
+      db.query(checkQuery, [userId], (checkErr, checkResults) => {
+        if (checkErr) {
+          console.error("DEBUG: Error checking subject offerings:", checkErr);
+        } else {
+          console.log("🔍 DEBUG: Found", checkResults.length, "subject offerings for instructor_id =", userId);
+          if (checkResults.length > 0) {
+            console.log("🔍 DEBUG: Sample offerings:", JSON.stringify(checkResults.slice(0, 3)));
+            console.log("🔍 DEBUG: Unique academic_year values:", [...new Set(checkResults.map(r => r.academic_year))]);
+            console.log("🔍 DEBUG: Unique semester values:", [...new Set(checkResults.map(r => r.semester))]);
+          }
+        }
+      });
+      
       // Get all subject offerings for this instructor
       const baseQuery = `
         SELECT 
@@ -332,10 +385,15 @@ const getMySubjects = async (req, res) => {
         LEFT JOIN users u ON so.instructor_id = u.id
         LEFT JOIN instructors i ON u.id = i.user_id
         WHERE so.instructor_id = ?
+        ${acadYear && sem ? 'AND so.academic_year = ? AND so.semester = ?' : ''}
         ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code
       `;
       
-      db.query(baseQuery, [userId], (err, results) => {
+      const queryParams = acadYear && sem ? [userId, acadYear, sem] : [userId];
+      console.log("🔍 DEBUG: Query params:", queryParams);
+      console.log("🔍 DEBUG: Using period filter:", acadYear && sem ? "YES" : "NO");
+      
+      db.query(baseQuery, queryParams, (err, results) => {
         if (err) {
           console.error("Error fetching instructor subjects:", err);
           return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
@@ -478,23 +536,14 @@ const getInstructorDetails = async (req, res) => {
     const { instructorId } = req.params;
     const { academic_year, semester } = req.query;
     
-    // Get current settings if not provided
+    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
     let sem = semester;
     
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-      
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      const settings = await getCurrentSettings();
+      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+      sem = settings.college?.semester || settings.semester || sem;
     }
     
     // Get instructor info
@@ -571,23 +620,14 @@ const getEvaluationStudents = async (req, res) => {
   try {
     const { targetType, targetIds, academic_year, semester } = req.query;
     
-    // Get current settings if not provided
+    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
     let sem = semester;
     
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-      
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      const settings = await getCurrentSettings();
+      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+      sem = settings.college?.semester || settings.semester || sem;
     }
     
     let students = [];
@@ -691,22 +731,11 @@ const getInstructorDashboardStats = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Get current settings
-    const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-    const settings = await new Promise((resolve, reject) => {
-      db.query(settingsQuery, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
+    // Get current settings (uses academic_periods table first, falls back to system_settings)
+    const settings = await getCurrentSettings();
     
-    let semester = '1st';
-    let academicYear = '2025-2026';
-    
-    settings.forEach(s => {
-      if (s.setting_key === 'current_semester') semester = s.setting_value;
-      if (s.setting_key === 'current_academic_year') academicYear = s.setting_value;
-    });
+    let semester = settings.college?.semester || settings.semester || '1st';
+    let academicYear = settings.college?.academic_year || settings.academic_year || '2025-2026';
     
     // Get instructor's subjects count
     const subjectsQuery = `
@@ -771,8 +800,56 @@ const assignFormToSubject = async (req, res) => {
 const getInstructorSubjects = async (req, res) => {
   try {
     const { instructorId } = req.params;
+    const { academic_year, semester } = req.query;
     
-    // Get all subjects for this instructor, regardless of semester
+    // Get current settings from academic_periods table
+    const settings = await getCurrentSettings();
+    
+    // Get instructor's department
+    const instructorQuery = "SELECT department FROM instructors WHERE user_id = ?";
+    const instructorResults = await new Promise((resolve, reject) => {
+      db.query(instructorQuery, [instructorId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+    
+    let department = 'College';
+    if (instructorResults.length > 0 && instructorResults[0].department) {
+      department = instructorResults[0].department;
+    }
+    
+    // Get period for this department - only apply if we have valid values
+    // Handle "Both" department - get both College and Senior High periods
+    let collegeSettings = null;
+    let shsSettings = null;
+    
+    if (settings) {
+      collegeSettings = settings.college;
+      shsSettings = settings.seniorHigh;
+    }
+    
+    // Determine acadYear and sem - use query params if provided, otherwise use settings
+    let acadYear = academic_year;
+    let sem = semester;
+    
+    // If department is "Both", we need to handle both College and SHS periods
+    // We'll query without period filter to get all offerings for this instructor
+    const isBothDepartment = department === 'Both';
+    
+    // Only use settings if no explicit query params provided AND settings have valid values
+    // Skip period filter for "Both" department to get all their offerings
+    if (!isBothDepartment && (!acadYear || !sem)) {
+      const deptSettings = department === 'Senior High' ? shsSettings : collegeSettings;
+      if (deptSettings && deptSettings.semester && deptSettings.academic_year) {
+        acadYear = deptSettings.academic_year;
+        sem = deptSettings.semester;
+      }
+    }
+    
+    console.log("📋 getInstructorSubjects - Instructor:", instructorId, "| Dept:", department, "| IsBoth:", isBothDepartment, "| Sem:", sem, "| AcadYear:", acadYear);
+    
+    // Get subjects for this instructor, filtered by current period
     const query = `
       SELECT 
         so.id as offering_id,
@@ -823,10 +900,15 @@ const getInstructorSubjects = async (req, res) => {
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
       WHERE so.instructor_id = ? AND so.status = 'active'
+      ${acadYear && sem ? 'AND so.academic_year = ? AND so.semester = ?' : ''}
       ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code
     `;
     
-    db.query(query, [instructorId], (err, subjects) => {
+    const queryParams = acadYear && sem ? [instructorId, acadYear, sem] : [instructorId];
+    console.log("🔍 DEBUG: Query params:", queryParams);
+    console.log("🔍 DEBUG: Using period filter:", acadYear && sem ? "YES" : "NO");
+    
+    db.query(query, queryParams, (err, subjects) => {
       if (err) {
         console.error("Error fetching instructor subjects:", err);
         return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
@@ -850,23 +932,14 @@ const getSubjectEvaluationResults = async (req, res) => {
     
     console.log('getSubjectEvaluationResults called with subjectId:', subjectId);
     
-    // Get current settings if not provided
+    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
     let sem = semester;
     
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-      
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      const settings = await getCurrentSettings();
+      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+      sem = settings.college?.semester || settings.semester || sem;
     }
     
     // Get subject feedback for this section
@@ -1051,23 +1124,14 @@ const getEvaluationResultsBySection = async (req, res) => {
     const { subjectId } = req.params;
     const { academic_year, semester } = req.query;
     
-    // Get current settings if not provided
+    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
     let sem = semester;
     
     if (!acadYear || !sem) {
-      const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-      const settings = await new Promise((resolve, reject) => {
-        db.query(settingsQuery, (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-      
-      settings.forEach(s => {
-        if (s.setting_key === 'current_academic_year') acadYear = s.setting_value;
-        if (s.setting_key === 'current_semester') sem = s.setting_value;
-      });
+      const settings = await getCurrentSettings();
+      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+      sem = settings.college?.semester || settings.semester || sem;
     }
     
     // Get subject info using section_id
@@ -1230,14 +1294,10 @@ const getFeedbackCategoryBreakdown = async (req, res) => {
     const { subjectId } = req.params;
     const { feedback_type } = req.query; // 'instructor' or 'subject'
     
-    // Get current settings
-    const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-    const settings = await new Promise((resolve, reject) => {
-      db.query(settingsQuery, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
+    // Get current settings (uses academic_periods table first, falls back to system_settings)
+    const settings = await getCurrentSettings();
+    const semester = settings.college?.semester || settings.semester || '1st';
+    const academicYear = settings.college?.academic_year || settings.academic_year || '2025-2026';
     
     // Get subject info
     const subjectQuery = `

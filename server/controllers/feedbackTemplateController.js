@@ -1,6 +1,7 @@
 // Feedback Template Controller
 // Handles feedback template categories and evaluation periods
 const db = require("../config/database");
+const { getCurrentSettings } = require("../utils/settingsHelper");
 
 // ============================================
 // HELPER FUNCTION: Calculate Category Averages
@@ -580,43 +581,72 @@ const getStudentEnrolledSubjects = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Get current academic year and semester
-    const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-    let semester = '1st';
-    let academicYear = '2025-2026';
+    // Get student's program and enrolled year_level from subject_offerings
+    const studentQuery = "SELECT program_id FROM students WHERE user_id = ?";
+    const studentResults = await new Promise((resolve, reject) => {
+      db.query(studentQuery, [userId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
     
-    db.query(settingsQuery, (settingsErr, settingsResults) => {
-      if (settingsErr) {
-        console.error("Error fetching settings:", settingsErr);
-      } else if (settingsResults.length > 0) {
-        settingsResults.forEach((setting) => {
-          if (setting.setting_key === 'current_semester') {
-            semester = setting.setting_value;
-          } else if (setting.setting_key === 'current_academic_year') {
-            academicYear = setting.setting_value;
+    const studentProgramId = studentResults && studentResults.length > 0 ? studentResults[0].program_id : null;
+    
+    // Get year_level from course_management to determine department (Senior High = 11, 12)
+    let yearLevel = null;
+    if (studentProgramId) {
+      const yearLevelQuery = "SELECT year_level FROM course_management WHERE id = ? LIMIT 1";
+      const yearLevelResults = await new Promise((resolve, reject) => {
+        db.query(yearLevelQuery, [studentProgramId], (err, results) => {
+          if (err) {
+            console.error("Error getting year_level from course_management:", err);
+            reject(err);
+          } else {
+            console.log("Year level from course_management for program_id", studentProgramId, ":", results);
+            resolve(results);
           }
         });
+      });
+      if (yearLevelResults.length > 0) {
+        yearLevel = yearLevelResults[0].year_level;
+        console.log("Detected year_level from course_management:", yearLevel);
+      }
+    }
+    
+    // Determine department based on year level (11-12 = Senior High, 1-10 = College)
+    let department = 'College';
+    if (yearLevel) {
+      department = (yearLevel >= 11 && yearLevel <= 12) ? 'Senior High' : 'College';
+    }
+    
+    // Get current academic year and semester based on department
+    const settings = await getCurrentSettings();
+    const deptSettings = department === 'Senior High' ? settings.seniorHigh : settings.college;
+    
+    let semester = deptSettings?.semester || null;
+    let academicYear = deptSettings?.academic_year || null;
+    
+    console.log("📋 getStudentEnrolledSubjects - Student:", userId, "| YearLevel:", yearLevel, "| Dept:", department, "| Period:", semester, academicYear);
+    
+    // Get active evaluation period
+    const periodQuery = `
+      SELECT id, name, start_date, end_date, is_active
+      FROM evaluation_periods
+      WHERE is_active = TRUE
+      LIMIT 1
+    `;
+    db.query(periodQuery, (periodErr, periodResults) => {
+      if (periodErr) {
+        console.error("Error fetching period:", periodErr);
       }
       
-      // Get active evaluation period
-      const periodQuery = `
-        SELECT id, name, start_date, end_date, is_active
-        FROM evaluation_periods
-        WHERE is_active = TRUE
-        LIMIT 1
-      `;
-      db.query(periodQuery, (periodErr, periodResults) => {
-        if (periodErr) {
-          console.error("Error fetching period:", periodErr);
-        }
-        
-        const activePeriod = periodResults && periodResults.length > 0 ? periodResults[0] : null;
-        
-        // First get student's program info
-        const studentProgramQuery = "SELECT program_id FROM students WHERE user_id = ?";
-        db.query(studentProgramQuery, [userId], (studentErr, studentResults) => {
-          if (studentErr) {
-            console.error("Error fetching student info:", studentErr);
+      const activePeriod = periodResults && periodResults.length > 0 ? periodResults[0] : null;
+      
+      // First get student's program info
+      const studentProgramQuery = "SELECT program_id FROM students WHERE user_id = ?";
+      db.query(studentProgramQuery, [userId], (studentErr, studentResults) => {
+        if (studentErr) {
+          console.error("Error fetching student info:", studentErr);
           }
           
           const studentProgramId = studentResults && studentResults.length > 0 ? studentResults[0].program_id : null;
@@ -626,7 +656,10 @@ const getStudentEnrolledSubjects = async (req, res) => {
           
           // Query from subject_offerings (main table for subject offerings)
           // Try without program filter if program_id is null
+          // Build query with semester/academic_year filter if available
           let subjectOfferingsQuery = null;
+          const hasPeriodFilter = semester && academicYear;
+          
           if (studentProgramId) {
             subjectOfferingsQuery = `
               SELECT 
@@ -651,6 +684,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
               LEFT JOIN users u ON so.instructor_id = u.id
               LEFT JOIN instructors inst ON u.id = inst.user_id
               WHERE so.program_id = ?
+              ${hasPeriodFilter ? 'AND so.academic_year = ? AND so.semester = ?' : ''}
             `;
           } else {
             // If no program_id, get all active subject offerings
@@ -676,6 +710,7 @@ const getStudentEnrolledSubjects = async (req, res) => {
               LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
               LEFT JOIN users u ON so.instructor_id = u.id
               LEFT JOIN instructors inst ON u.id = inst.user_id
+              ${hasPeriodFilter ? 'WHERE so.academic_year = ? AND so.semester = ?' : ''}
             `;
           }
           
@@ -685,7 +720,11 @@ const getStudentEnrolledSubjects = async (req, res) => {
             console.log("Subject offerings query:", subjectOfferingsQuery);
             
             if (subjectOfferingsQuery) {
-              const queryParams = studentProgramId ? [studentProgramId] : [];
+              // Build params: programId + (semester + academicYear if filtering)
+              let queryParams = studentProgramId ? [studentProgramId] : [];
+              if (hasPeriodFilter && semester && academicYear) {
+                queryParams = [...queryParams, academicYear, semester];
+              }
               console.log("Query params:", queryParams);
               subjectOfferingResults = await new Promise((resolve, reject) => {
                 db.query(subjectOfferingsQuery, queryParams, (err, results) => {
@@ -733,7 +772,6 @@ const getStudentEnrolledSubjects = async (req, res) => {
           });
         });
       });
-    });
   } catch (error) {
     console.error("Get student enrolled subjects error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
@@ -772,19 +810,17 @@ const submitSubjectFeedback = async (req, res) => {
       }
     });
 
-    function getAcademicYearAndSemester() {
-      // Get academic year and semester from settings if not provided
+    async function getAcademicYearAndSemester() {
+      // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
       if (!acadYear || !sem) {
-        const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-        db.query(settingsQuery, (settingsErr, settingsResults) => {
-          if (!settingsErr && settingsResults.length > 0) {
-            settingsResults.forEach((setting) => {
-              if (setting.setting_key === 'current_semester') sem = setting.setting_value;
-              if (setting.setting_key === 'current_academic_year') acadYear = setting.setting_value;
-            });
-          }
-          insertFeedback();
-        });
+        try {
+          const settings = await getCurrentSettings();
+          sem = settings.college?.semester || settings.semester || sem;
+          acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+        } catch (err) {
+          console.error("Error getting settings:", err);
+        }
+        insertFeedback();
       } else {
         insertFeedback();
       }
@@ -870,19 +906,17 @@ const submitInstructorFeedback = async (req, res) => {
       proceedWithInsert();
     }
 
-    function proceedWithInsert() {
-      // Get academic year and semester from settings if not provided
+    async function proceedWithInsert() {
+      // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
       if (!acadYear || !sem) {
-        const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-        db.query(settingsQuery, (settingsErr, settingsResults) => {
-          if (!settingsErr && settingsResults.length > 0) {
-            settingsResults.forEach((setting) => {
-              if (setting.setting_key === 'current_semester') sem = setting.setting_value;
-              if (setting.setting_key === 'current_academic_year') acadYear = setting.setting_value;
-            });
-          }
-          insertFeedback();
-        });
+        try {
+          const settings = await getCurrentSettings();
+          sem = settings.college?.semester || settings.semester || sem;
+          acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+        } catch (err) {
+          console.error("Error getting settings:", err);
+        }
+        insertFeedback();
       } else {
         insertFeedback();
       }
@@ -968,22 +1002,20 @@ const submitFeedback = async (req, res) => {
         }
       });
 
-      function insertSubjectFeedback() {
+      async function insertSubjectFeedback() {
         let acadYear = academic_year;
         let sem = semester;
 
-        // Get academic year and semester from settings if not provided
+        // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
         if (!acadYear || !sem) {
-          const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-          db.query(settingsQuery, (settingsErr, settingsResults) => {
-            if (!settingsErr && settingsResults.length > 0) {
-              settingsResults.forEach((setting) => {
-                if (setting.setting_key === 'current_semester') sem = setting.setting_value;
-                if (setting.setting_key === 'current_academic_year') acadYear = setting.setting_value;
-              });
-            }
-            doInsertSubjectFeedback(acadYear, sem);
-          });
+          try {
+            const settings = await getCurrentSettings();
+            sem = settings.college?.semester || settings.semester || sem;
+            acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+          } catch (err) {
+            console.error("Error getting settings:", err);
+          }
+          doInsertSubjectFeedback(acadYear, sem);
         } else {
           doInsertSubjectFeedback(acadYear, sem);
         }
@@ -1034,18 +1066,16 @@ const submitFeedback = async (req, res) => {
       let acadYear = academic_year;
       let sem = semester;
 
-      // Get academic year and semester from settings if not provided
+      // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
       if (!acadYear || !sem) {
-        const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-        db.query(settingsQuery, (settingsErr, settingsResults) => {
-          if (!settingsErr && settingsResults.length > 0) {
-            settingsResults.forEach((setting) => {
-              if (setting.setting_key === 'current_semester') sem = setting.setting_value;
-              if (setting.setting_key === 'current_academic_year') acadYear = setting.setting_value;
-            });
-          }
-          doInsertInstructorFeedback(acadYear, sem);
-        });
+        try {
+          const settings = await getCurrentSettings();
+          sem = settings.college?.semester || settings.semester || sem;
+          acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+        } catch (err) {
+          console.error("Error getting settings:", err);
+        }
+        doInsertInstructorFeedback(acadYear, sem);
       } else {
         doInsertInstructorFeedback(acadYear, sem);
       }
@@ -1103,59 +1133,50 @@ const getStudentFeedbackStatus = async (req, res) => {
   try {
     const userId = req.user.id;
     
-    // Get academic year and semester
-    const settingsQuery = "SELECT setting_key, setting_value FROM system_settings WHERE setting_key IN ('current_semester', 'current_academic_year')";
-    let semester = '1st Semester';
-    let academicYear = '2025-2026';
+    // Get academic year and semester (uses academic_periods table first, falls back to system_settings)
+    const settings = await getCurrentSettings();
+    let semester = settings.college?.semester || settings.semester || '1st Semester';
+    let academicYear = settings.college?.academic_year || settings.academic_year || '2025-2026';
     
-    db.query(settingsQuery, (settingsErr, settingsResults) => {
-      if (!settingsErr && settingsResults.length > 0) {
-        settingsResults.forEach((setting) => {
-          if (setting.setting_key === 'current_semester') semester = setting.setting_value;
-          if (setting.setting_key === 'current_academic_year') academicYear = setting.setting_value;
-        });
+    // Get subject feedback status
+    const subjectQuery = `
+      SELECT subject_id, submitted_at
+      FROM subject_feedback
+      WHERE student_id = ? AND academic_year = ? AND semester = ?
+    `;
+    db.query(subjectQuery, [userId, academicYear, semester], (subjectErr, subjectResults) => {
+      if (subjectErr) {
+        console.error("Error fetching subject feedback:", subjectErr);
       }
       
-      // Get subject feedback status
-      const subjectQuery = `
-        SELECT subject_id, submitted_at
-        FROM subject_feedback
+      const subjectFeedbackMap = {};
+      (subjectResults || []).forEach(row => {
+        subjectFeedbackMap[row.subject_id] = row.submitted_at;
+      });
+      
+      // Get instructor feedback status
+      const instructorQuery = `
+        SELECT instructor_id, subject_id, submitted_at
+        FROM instructor_feedback
         WHERE student_id = ? AND academic_year = ? AND semester = ?
       `;
-      db.query(subjectQuery, [userId, academicYear, semester], (subjectErr, subjectResults) => {
-        if (subjectErr) {
-          console.error("Error fetching subject feedback:", subjectErr);
+      db.query(instructorQuery, [userId, academicYear, semester], (instructorErr, instructorResults) => {
+        if (instructorErr) {
+          console.error("Error fetching instructor feedback:", instructorErr);
         }
         
-        const subjectFeedbackMap = {};
-        (subjectResults || []).forEach(row => {
-          subjectFeedbackMap[row.subject_id] = row.submitted_at;
+        const instructorFeedbackMap = {};
+        (instructorResults || []).forEach(row => {
+          instructorFeedbackMap[`${row.subject_id}-${row.instructor_id}`] = row.submitted_at;
         });
         
-        // Get instructor feedback status
-        const instructorQuery = `
-          SELECT instructor_id, subject_id, submitted_at
-          FROM instructor_feedback
-          WHERE student_id = ? AND academic_year = ? AND semester = ?
-        `;
-        db.query(instructorQuery, [userId, academicYear, semester], (instructorErr, instructorResults) => {
-          if (instructorErr) {
-            console.error("Error fetching instructor feedback:", instructorErr);
-          }
-          
-          const instructorFeedbackMap = {};
-          (instructorResults || []).forEach(row => {
-            instructorFeedbackMap[`${row.subject_id}-${row.instructor_id}`] = row.submitted_at;
-          });
-          
-          return res.status(200).json({ 
+        return res.status(200).json({ 
             success: true, 
             subject_feedback: subjectFeedbackMap,
             instructor_feedback: instructorFeedbackMap
           });
         });
       });
-    });
   } catch (error) {
     console.error("Get student feedback status error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });

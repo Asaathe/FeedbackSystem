@@ -549,7 +549,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
         <h2 className="text-2xl font-bold text-gray-900">My Subjects</h2>
         <p className="text-gray-600 mt-1">
-          View your enrolled subjects for {semester || 'current'} {academicYear || ''} semester
+          View your enrolled subjects for {semester || 'current semester'} {academicYear ? academicYear : ''}
         </p>
       </div>
 
@@ -636,7 +636,7 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
                   </div>
                   <div className="flex items-center gap-1">
                     <Calendar className="w-4 h-4" />
-                    <span>{semester} {academicYear}</span>
+                    <span>{semester || 'No active period'} {academicYear || ''}</span>
                   </div>
                 </div>
 
