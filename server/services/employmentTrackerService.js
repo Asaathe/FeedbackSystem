@@ -18,8 +18,13 @@ const getAlumniEmploymentTracker = async (filters = {}, page = 1, limit = 20) =>
 
     // Apply filters
     if (filters.status && filters.status !== 'all') {
-      whereClause += " AND ae.update_status = ?";
-      params.push(filters.status);
+      // Handle special 'due' filter - alumni due for update (11+ months since last update)
+      if (filters.status === 'due') {
+        whereClause += " AND ae.last_update_received IS NOT NULL AND DATEDIFF(NOW(), ae.last_update_received) >= 335";
+      } else {
+        whereClause += " AND ae.update_status = ?";
+        params.push(filters.status);
+      }
     }
 
     if (filters.search) {
@@ -54,6 +59,7 @@ const getAlumniEmploymentTracker = async (filters = {}, page = 1, limit = 20) =>
         ae.next_email_date,
         ae.update_email_count,
         ae.response_deadline,
+        ae.graduation_date,
         ae.created_at,
         CASE 
           WHEN ae.update_status = 'pending' THEN 'No update request has been sent yet'

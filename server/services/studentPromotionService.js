@@ -367,11 +367,13 @@ const graduateStudents = async (studentIds, graduationYear, promotedBy, graduati
         );
         
         // Create employment tracking record for the new alumni
+        // Use graduationDate if provided, otherwise default to current date
+        const empGradDate = graduationData.graduationDate || new Date().toISOString().split('T')[0];
         await queryDatabase(
           db,
-          `INSERT INTO alumni_employment (alumni_user_id, update_status, created_at) 
-           VALUES (?, 'pending', NOW())`,
-          [student.user_id]
+          `INSERT INTO alumni_employment (alumni_user_id, update_status, created_at, graduation_date) 
+           VALUES (?, 'pending', NOW(), ?)`,
+          [student.user_id, empGradDate]
         );
         
         // Insert promotion history as graduation type

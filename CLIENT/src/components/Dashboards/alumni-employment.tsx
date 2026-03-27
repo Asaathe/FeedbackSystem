@@ -4,6 +4,7 @@ import { Button } from "../ui/button";
 import { Building2, Mail, TrendingUp, Send, CheckCircle, XCircle, Clock, AlertCircle } from "lucide-react";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
+import { Badge } from "../ui/badge";
 import {
   Select,
   SelectContent,
@@ -91,26 +92,98 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
         const data = await response.json();
         
         if (data.success && data.data) {
-          setEmploymentInfo(prev => ({
-            ...prev,
-            ...data.data,
-            lastUpdateSent: data.data.lastUpdateSent || null,
-            lastUpdateReceived: data.data.lastUpdateReceived || null
-          }));
-          setIsEmploymentFormSubmitted(true);
+          // Check if there is actual employment data submitted (not just an empty record)
+          console.log('[DEBUG] Checking employment fields:', {
+            companyName: data.data.companyName,
+            jobTitle: data.data.jobTitle,
+            employmentStatus: data.data.employmentStatus,
+            industryType: data.data.industryType,
+            yearStarted: data.data.yearStarted,
+            employmentType: data.data.employmentType
+          });
           
-          // Check if annual update is required (more than 11 months since last update)
-          const lastUpdate = data.data.lastUpdateReceived ? new Date(data.data.lastUpdateReceived) : null;
-          console.log('Last Update Received:', lastUpdate);
-          if (lastUpdate) {
-            const monthsSinceUpdate = (new Date().getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24 * 30);
-            console.log('Months since update:', monthsSinceUpdate);
-            if (monthsSinceUpdate >= 11) {
-              console.log('Setting annual update required to true');
+          // Check with proper truthy value check (handle empty strings)
+          // employmentStatus can be empty string which is falsy - treat it as valid if other fields exist
+          const hasActualEmploymentData = Boolean(
+            data.data.companyName && 
+            data.data.jobTitle && 
+            // employmentStatus can be empty string but if other fields exist, data is valid
+            data.data.industryType &&
+            data.data.yearStarted &&
+            data.data.employmentType
+          );
+          console.log('[DEBUG] hasActualEmploymentData:', hasActualEmploymentData);
+          
+          // Additional check: if we have companyName and jobTitle, consider it valid employment data
+          // Even if employmentStatus is empty, the alumni has provided employment info
+          const hasBasicEmploymentInfo = Boolean(data.data.companyName && data.data.jobTitle);
+          console.log('[DEBUG] hasBasicEmploymentInfo:', hasBasicEmploymentInfo);
+          
+          // Get update status from backend (scheduled/updated/sent/pending)
+          const updateStatus = data.data.updateStatus || data.data.update_status || 'pending';
+          console.log('[DEBUG] Update Status:', updateStatus, '| Full data:', JSON.stringify(data.data));
+          
+          // PRIMARY CHECK: If status is updated/scheduled, always hide warning
+          if (updateStatus === 'updated' || updateStatus === 'scheduled') {
+            console.log('[DEBUG] Status is updated/scheduled - hiding warning');
+            setIsAnnualUpdateRequired(false);
+            setShowAnnualNotification(false);
+            
+            // STILL set form as submitted if status is updated/scheduled
+            // This means alumni has already responded to the update request
+            setIsEmploymentFormSubmitted(true);
+            
+            // Set employment info if available
+            if (hasActualEmploymentData || hasBasicEmploymentInfo) {
+              setEmploymentInfo(prev => ({
+                ...prev,
+                ...data.data,
+                lastUpdateSent: data.data.lastUpdateSent || null,
+                lastUpdateReceived: data.data.lastUpdateReceived || null
+              }));
+            }
+            return;
+          }
+          
+          // Status is sent/pending - check if employment data exists
+          if (hasActualEmploymentData || hasBasicEmploymentInfo) {
+            // Has employment data - check months since last update
+            const lastUpdateReceived = data.data.lastUpdateReceived ? new Date(data.data.lastUpdateReceived) : null;
+            const lastUpdateSent = data.data.lastUpdateSent ? new Date(data.data.lastUpdateSent) : null;
+            setEmploymentInfo(prev => ({
+              ...prev,
+              ...data.data,
+              lastUpdateSent: data.data.lastUpdateSent || null,
+              lastUpdateReceived: data.data.lastUpdateReceived || null
+            }));
+            setIsEmploymentFormSubmitted(true);
+            
+            // Check if 11+ months have passed since last update
+            if (lastUpdateReceived) {
+              const monthsSinceUpdate = (new Date().getTime() - lastUpdateReceived.getTime()) / (1000 * 60 * 60 * 24 * 30);
+              console.log('[DEBUG] Months since update:', monthsSinceUpdate);
+              if (monthsSinceUpdate >= 11) {
+                setIsAnnualUpdateRequired(true);
+                setShowAnnualNotification(true);
+                triggerAnnualUpdateEmail();
+              } else {
+                setIsAnnualUpdateRequired(false);
+                setShowAnnualNotification(false);
+              }
+            } else if (lastUpdateSent) {
               setIsAnnualUpdateRequired(true);
               setShowAnnualNotification(true);
-              // Trigger annual update email notification
-              triggerAnnualUpdateEmail();
+            }
+          } else {
+            // No employment data - check if email was sent
+            const lastUpdateSent = data.data.lastUpdateSent ? new Date(data.data.lastUpdateSent) : null;
+            console.log('[DEBUG] No employment data - checking lastUpdateSent:', lastUpdateSent);
+            if (lastUpdateSent) {
+              console.log('[DEBUG] Showing warning - email was sent');
+              setIsAnnualUpdateRequired(true);
+              setShowAnnualNotification(true);
+            } else {
+              console.log('[DEBUG] No employment data, no email sent');
             }
           }
         }
@@ -209,6 +282,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       
       const data = await response.json();
       if (data.success) {
+        console.log('[DEBUG] Employment update successful, re-fetching data...');
         setIsEmploymentFormSubmitted(true);
         setWorkflowState('success');
         setFeedbackMessage({ type: 'success', message: 'Employment information updated successfully!' });
@@ -222,6 +296,18 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
           ...prev,
           lastUpdateReceived: new Date().toISOString()
         }));
+        
+        // Re-fetch employment data to get updated status from server
+        try {
+          const token = sessionStorage.getItem('authToken');
+          const refreshResponse = await fetch('/api/users/employment', {
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+          const refreshData = await refreshResponse.json();
+          console.log('[DEBUG] Refreshed data - updateStatus:', refreshData.data?.updateStatus, refreshData.data?.update_status);
+        } catch (refreshError) {
+          console.error('[DEBUG] Error refreshing data:', refreshError);
+        }
       } else {
         setWorkflowState('error');
         setFeedbackMessage({ type: 'error', message: data.message || 'Failed to update employment information.' });
@@ -375,42 +461,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
   }
 
   return (
-   
-   <div className="space-y-6">
-    {/* TEMP: Test Button for Annual Update - Remove in production *
-      <Button
-        onClick={async () => {
-          setIsAnnualUpdateRequired(true);
-          setShowAnnualNotification(true);
-          // Also trigger the email notification
-          try {
-            const token = sessionStorage.getItem('authToken');
-            const response = await fetch('/api/users/employment/annual-notification', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`,
-              },
-            });
-            const result = await response.json();
-            console.log('Annual notification result:', result);
-            if (result.success) {
-              alert('Test email notification sent!');
-            } else {
-              alert('Email notification failed: ' + result.message);
-            }
-          } catch (error) {
-            console.error('Error sending test notification:', error);
-            alert('Error sending notification - check console');
-          }
-        }}
-        variant="outline"
-        size="sm"
-        className="mb-4 text-xs"
-      >
-        [TEST] Trigger Annual Update + Email
-      </Button>
-
+    <div className="space-y-6">
       {/* Page Header */}
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
         <div className="flex items-center gap-3">

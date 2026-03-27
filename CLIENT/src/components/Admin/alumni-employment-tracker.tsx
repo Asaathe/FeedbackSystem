@@ -26,10 +26,7 @@ import {
   Calendar,
   Search,
   RefreshCw,
-  ChevronDown,
-  ChevronUp,
   Users,
-  AlertCircle,
   CheckSquare,
   Square
 } from "lucide-react";
@@ -54,6 +51,7 @@ interface AlumniTrackerRecord {
   response_deadline: string | null;
   days_since_last_update: number;
   status_description: string;
+  graduation_date?: string | null;
 }
 
 interface Props {
@@ -206,7 +204,6 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [selectedRecords, setSelectedRecords] = useState<number[]>([]);
   const [selectedAlumniForStepper, setSelectedAlumniForStepper] = useState<AlumniTrackerRecord | null>(null);
-  const [expandedRecord, setExpandedRecord] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
@@ -217,7 +214,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
       const token = sessionStorage.getItem('authToken');
       const params = new URLSearchParams({
         page: page.toString(),
-        limit: '20'
+        limit: '10'
       });
       
       if (statusFilter !== 'all') {
@@ -318,6 +315,32 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
     } catch (error) {
       console.error('Error sending bulk emails:', error);
       toast.error('Failed to send bulk emails');
+    }
+  };
+
+  // Run the scheduler manually (for testing)
+  const handleRunScheduler = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch('/api/employment-tracker/test-run', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        toast.success(`Scheduler ran: ${data.result.sent} emails sent, ${data.result.failed} failed`);
+        fetchTrackerData(currentPage);
+      } else {
+        toast.error(data.message || 'Failed to run scheduler');
+      }
+    } catch (error) {
+      console.error('Error running scheduler:', error);
+      toast.error('Failed to run scheduler');
     }
   };
 
@@ -430,6 +453,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                 <SelectItem value="sent">Email Sent</SelectItem>
                 <SelectItem value="updated">Employment Updated</SelectItem>
                 <SelectItem value="scheduled">Next Email Scheduled</SelectItem>
+                <SelectItem value="due">Due for Update (11+ months)</SelectItem>
               </SelectContent>
             </Select>
 
@@ -446,11 +470,12 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
               </Button>
               <Button
                 variant="outline"
-                onClick={() => fetchTrackerData(currentPage)}
-                className="flex items-center gap-2"
+                onClick={handleRunScheduler}
+                className="flex items-center gap-2 text-purple-600 border-purple-200 hover:bg-purple-50"
+                title="Run the employment update scheduler now (for testing)"
               >
-                <RefreshCw className="w-4 h-4" />
-                Refresh
+                <Clock className="w-4 h-4" />
+                Run Scheduler
               </Button>
             </div>
           </div>
@@ -463,7 +488,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-10">
+                <TableHead className="w-10 pl-4">
                   <Button
                     variant="ghost"
                     size="sm"
@@ -477,18 +502,18 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                     )}
                   </Button>
                 </TableHead>
-                <TableHead>Alumni</TableHead>
+                <TableHead className="pl-4">Alumni</TableHead>
                 <TableHead>Company</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Update</TableHead>
                 <TableHead>Next Email</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
+                <TableHead className="text-center">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <div className="flex items-center justify-center">
                       <RefreshCw className="w-6 h-6 animate-spin text-purple-500" />
                       <span className="ml-2">Loading...</span>
@@ -497,7 +522,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                 </TableRow>
               ) : records.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-gray-500">
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />
                     <p>No alumni employment records found</p>
                   </TableCell>
@@ -509,7 +534,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                       className={`${selectedRecords.includes(record.id) ? 'bg-purple-50' : ''} ${selectedAlumniForStepper?.id === record.id ? 'ring-2 ring-purple-500' : ''} cursor-pointer hover:bg-gray-50`}
                       onClick={() => setSelectedAlumniForStepper(record)}
                     >
-                      <TableCell>
+                      <TableCell className="pl-4 w-10">
                         <Button
                           variant="ghost"
                           size="sm"
@@ -523,7 +548,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                           )}
                         </Button>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="pl-4">
                         <div>
                           <div className="font-medium">{record.alumni_name}</div>
                           <div className="text-xs text-gray-500">{record.alumni_email}</div>
@@ -554,19 +579,8 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                           <span className="text-gray-400">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">
+                      <TableCell className="text-right pr-8">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setExpandedRecord(expandedRecord === record.id ? null : record.id)}
-                          >
-                            {expandedRecord === record.id ? (
-                              <ChevronUp className="w-4 h-4" />
-                            ) : (
-                              <ChevronDown className="w-4 h-4" />
-                            )}
-                          </Button>
                           {record.update_status !== 'updated' && (
                             <Button
                               size="sm"
@@ -581,67 +595,40 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                       </TableCell>
                     </TableRow>
                     
-                    {/* Expanded row with detailed stepper */}
-                    {expandedRecord === record.id && (
-                      <TableRow>
-                        <TableCell colSpan={8} className="bg-purple-50 p-4">
-                          <div className="max-w-4xl mx-auto">
-                            <h4 className="font-medium mb-4 flex items-center gap-2">
-                              <Users className="w-4 h-4" />
-                              Progress Tracker: {record.alumni_name}
-                            </h4>
-                            <ProgressStepper currentStatus={record.update_status} />
-                            
-                            <div className="grid grid-cols-3 gap-4 mt-6">
-                              <div className="bg-white p-3 rounded-lg">
-                                <div className="text-xs text-gray-500">Email Sent</div>
-                                <div className="font-medium">{formatDate(record.last_update_sent)}</div>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg">
-                                <div className="text-xs text-gray-500">Employment Updated</div>
-                                <div className="font-medium">{formatDate(record.last_update_received)}</div>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg">
-                                <div className="text-xs text-gray-500">Next Scheduled</div>
-                                <div className="font-medium">{formatDate(record.next_email_date)}</div>
-                              </div>
-                            </div>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    )}
+
                   </React.Fragment>
                 ))
               )}
             </TableBody>
           </Table>
+          {/* Pagination - inside table card for seamless appearance */}
+          {totalPages > 1 && (
+            <div className="border-t bg-gray-50 py-3">
+              <div className="flex items-center justify-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchTrackerData(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <span className="flex items-center px-4 text-sm text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fetchTrackerData(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchTrackerData(currentPage - 1)}
-            disabled={currentPage === 1}
-          >
-            Previous
-          </Button>
-          <span className="flex items-center px-4 text-sm">
-            Page {currentPage} of {totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchTrackerData(currentPage + 1)}
-            disabled={currentPage === totalPages}
-          >
-            Next
-          </Button>
-        </div>
-      )}
 
     </div>
   );

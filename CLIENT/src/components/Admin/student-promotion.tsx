@@ -141,6 +141,7 @@ export default function StudentPromotion() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [graduationData, setGraduationData] = useState({
     graduationYear: new Date().getFullYear(),
+    graduationDate: new Date().toISOString().split('T')[0],
     degree: "",
     honors: "",
     notes: "",
@@ -337,6 +338,7 @@ export default function StudentPromotion() {
         body: JSON.stringify({
           studentIds: selectedStudents,
           graduationYear: graduationData.graduationYear,
+          graduationDate: graduationData.graduationDate,
           degree: graduationData.degree,
           honors: graduationData.honors,
           notes: graduationData.notes || '',
@@ -1116,6 +1118,16 @@ export default function StudentPromotion() {
                 onChange={(e) => setGraduationData({ ...graduationData, graduationYear: parseInt(e.target.value) })}
                 className="mt-1"
               />
+            </div>
+            <div>
+              <label className="text-sm font-medium">Graduation Date</label>
+              <Input
+                type="date"
+                value={graduationData.graduationDate}
+                onChange={(e) => setGraduationData({ ...graduationData, graduationDate: e.target.value })}
+                className="mt-1"
+              />
+              <p className="text-xs text-slate-500 mt-1">This date will be used for employment tracking</p>
             </div>
             <div>
               <label className="text-sm font-medium">Degree</label>

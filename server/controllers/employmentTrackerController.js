@@ -157,11 +157,38 @@ const getTrackerStatistics = async (req, res) => {
   }
 };
 
+/**
+ * Manual test endpoint to simulate the CRON job (for testing purposes)
+ * Call this to test the employment update scheduler immediately
+ */
+const testRunScheduler = async (req, res) => {
+  try {
+    const employmentUpdateScheduler = require('../services/employmentUpdateScheduler');
+    
+    console.log('[TEST] Manually triggering employment update scheduler...');
+    const result = await employmentUpdateScheduler.checkAndScheduleEmploymentUpdates();
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Test run completed',
+      result
+    });
+  } catch (error) {
+    console.error('Test run scheduler error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Test run failed',
+      error: error.message
+    });
+  }
+};
+
 module.exports = {
   getAlumniEmploymentTracker,
   getAlumniEmploymentRecord,
   sendUpdateRequestEmail,
   sendBulkUpdateRequestEmails,
   updateTrackingStatus,
-  getTrackerStatistics
+  getTrackerStatistics,
+  testRunScheduler
 };

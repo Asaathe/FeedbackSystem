@@ -50,4 +50,11 @@ router.post('/bulk-send', employmentTrackerController.sendBulkUpdateRequestEmail
  */
 router.patch('/:id/status', employmentTrackerController.updateTrackingStatus);
 
+/**
+ * POST /api/employment-tracker/test-run
+ * Manual test endpoint to simulate the CRON job (for testing)
+ * This triggers the employment update scheduler immediately
+ */
+router.post('/test-run', employmentTrackerController.testRunScheduler);
+
 module.exports = router;

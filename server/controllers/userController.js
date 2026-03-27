@@ -642,7 +642,11 @@ const getEmploymentInfo = async (req, res) => {
         monthlySalary: employment.monthly_salary,
         isRelevantToDegree: employment.is_relevant_to_degree,
         lastUpdateSent: employment.last_update_sent,
-        lastUpdateReceived: employment.last_update_received
+        lastUpdateReceived: employment.last_update_received,
+        graduationDate: employment.graduation_date,
+        updateStatus: employment.update_status || 'pending',
+        update_status: employment.update_status || 'pending',
+        nextEmailDate: employment.next_email_date
       }
     });
   } catch (error) {
@@ -672,7 +676,8 @@ const updateEmploymentInfo = async (req, res) => {
       employmentType,
       monthlySalary,
       isRelevantToDegree,
-      lastUpdateReceived
+      lastUpdateReceived,
+      graduationDate
     } = req.body;
     
     // Check if employment table exists
@@ -693,6 +698,11 @@ const updateEmploymentInfo = async (req, res) => {
     
     if (existingRecords.length > 0) {
       // Update existing employment record
+      // Calculate next email date: 11 months from last_update_received
+      const nextEmailDate = lastUpdateReceived ? 
+        new Date(new Date(lastUpdateReceived).setMonth(new Date(lastUpdateReceived).getMonth() + 11)) : 
+        new Date();
+      
       await queryDatabase(
         db,
         `UPDATE alumni_employment SET 
@@ -708,8 +718,9 @@ const updateEmploymentInfo = async (req, res) => {
           monthly_salary = ?,
           is_relevant_to_degree = ?,
           last_update_received = ?,
-          update_status = 'scheduled',
-          next_email_date = DATE_ADD(NOW(), INTERVAL 1 DAY)
+          graduation_date = ?,
+          update_status = 'updated',
+          next_email_date = ?
         WHERE alumni_user_id = ?`,
         [
           companyName || null,
@@ -724,15 +735,22 @@ const updateEmploymentInfo = async (req, res) => {
           monthlySalary || null,
           isRelevantToDegree || null,
           lastUpdateReceived || null,
+          graduationDate || null,
+          nextEmailDate,
           userId
         ]
       );
     } else {
       // Create new employment record
+      // Calculate next email date: 11 months from last_update_received
+      const nextEmailDate = lastUpdateReceived ? 
+        new Date(new Date(lastUpdateReceived).setMonth(new Date(lastUpdateReceived).getMonth() + 11)) : 
+        new Date();
+      
       await queryDatabase(
         db,
-        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started, employment_type, monthly_salary, is_relevant_to_degree, last_update_received, update_status, next_email_date)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'scheduled', DATE_ADD(NOW(), INTERVAL 1 DAY))`,
+        `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started, employment_type, monthly_salary, is_relevant_to_degree, last_update_received, graduation_date, update_status, next_email_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'updated', ?)`,
         [
           userId,
           companyName || null,
@@ -746,7 +764,9 @@ const updateEmploymentInfo = async (req, res) => {
           employmentType || null,
           monthlySalary || null,
           isRelevantToDegree || null,
-          lastUpdateReceived || null
+          lastUpdateReceived || null,
+          graduationDate || null,
+          nextEmailDate
         ]
       );
     }
@@ -772,11 +792,15 @@ const confirmEmploymentInfo = async (req, res) => {
     const userId = req.userId;
     const { lastUpdateReceived } = req.body;
     
+    // Calculate next email date: 11 months from last_update_received
+    const updateDate = lastUpdateReceived ? new Date(lastUpdateReceived) : new Date();
+    const nextEmailDate = new Date(updateDate.getFullYear(), updateDate.getMonth() + 11, updateDate.getDate());
+    
     // Update the last_update_received timestamp and status
     await queryDatabase(
       db,
-      `UPDATE alumni_employment SET last_update_received = ?, update_status = 'scheduled', next_email_date = DATE_ADD(NOW(), INTERVAL 1 DAY) WHERE alumni_user_id = ?`,
-      [lastUpdateReceived || new Date().toISOString(), userId]
+      `UPDATE alumni_employment SET last_update_received = ?, update_status = 'updated', next_email_date = ? WHERE alumni_user_id = ?`,
+      [lastUpdateReceived || new Date().toISOString(), nextEmailDate, userId]
     );
     
     return res.status(200).json({
@@ -820,7 +844,7 @@ const sendEmploymentUpdateRequest = async (req, res) => {
     const subject = "Employment Information Update - ACTS Computer College";
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2 style="color: #2563eb;">Employment Information Update</h2>
+        <h2 style="color: #25eb7b;">Employment Information Update</h2>
         <p>Dear ${user.full_name},</p>
         <p>Good day.</p>
         <p>We hope this message finds you well.</p>

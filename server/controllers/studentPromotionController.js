@@ -94,7 +94,7 @@ const promoteStudents = async (req, res) => {
  */
 const graduateStudents = async (req, res) => {
   try {
-    const { studentIds, graduationYear, degree, honors, ceremonyDate, jobtitle, notes } = req.body;
+    const { studentIds, graduationYear, graduationDate, degree, honors, ceremonyDate, jobtitle, notes } = req.body;
     const promotedBy = req.userId;
     
     // Validation
@@ -116,6 +116,7 @@ const graduateStudents = async (req, res) => {
       degree,
       honors,
       ceremonyDate,
+      graduationDate,
       jobtitle,
       notes
     };

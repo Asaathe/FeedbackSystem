@@ -6,7 +6,7 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { toast } from "sonner";
-import { Settings, Save, RefreshCw, GraduationCap, Building2, Plus, Calendar, ArrowRightLeft, Clock, Trash2, History } from "lucide-react";
+import { Settings, Save, RefreshCw, GraduationCap, Building2, Plus, Calendar, ArrowRightLeft, Clock, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -53,22 +53,6 @@ interface SemesterStatus {
   next_period: AcademicPeriod | null;
   recent_transitions: any[];
   period_type: string;
-}
-
-interface TransitionLog {
-  id: number;
-  department: string;
-  from_period_id: number | null;
-  to_period_id: number | null;
-  from_academic_year: string | null;
-  from_period_number: number | null;
-  to_academic_year: string | null;
-  to_period_number: number | null;
-  reset_type: string;
-  triggered_by: string;
-  created_at: string;
-  from_period_name: string | null;
-  to_period_name: string | null;
 }
 
 const semesterOptions = [
@@ -125,7 +109,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   const [selectedDept, setSelectedDept] = useState<string>("College");
   const [periods, setPeriods] = useState<AcademicPeriod[]>([]);
   const [semesterStatus, setSemesterStatus] = useState<SemesterStatus | null>(null);
-  const [transitionLogs, setTransitionLogs] = useState<TransitionLog[]>([]);
   const [loadingPeriods, setLoadingPeriods] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showTransitionModal, setShowTransitionModal] = useState(false);
@@ -162,7 +145,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   useEffect(() => {
     fetchAcademicPeriods();
     fetchSemesterStatus();
-    fetchTransitionHistory();
   }, [selectedDept]);
 
   const fetchAcademicPeriods = async () => {
@@ -201,24 +183,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
       }
     } catch (error) {
       console.error("Error fetching semester status:", error);
-    }
-  };
-
-  const fetchTransitionHistory = async () => {
-    try {
-      const token = sessionStorage.getItem("authToken");
-      const response = await fetch(
-        `/api/settings/semester-history?department=${selectedDept}&limit=10`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      const data = await response.json();
-      if (data.success) {
-        setTransitionLogs(data.logs || []);
-      }
-    } catch (error) {
-      console.error("Error fetching transition history:", error);
     }
   };
 
@@ -306,7 +270,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
         setShowTransitionModal(false);
         fetchAcademicPeriods();
         fetchSemesterStatus();
-        fetchTransitionHistory();
       } else {
         toast.error(data.message || "Failed to trigger transition");
       }
@@ -583,42 +546,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                 )}
               </CardContent>
             </Card>
-
-            {/* Transition History */}
-            <Card className="border-gray-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <History className="w-5 h-5" />
-                  Transition History
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {transitionLogs.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No transition history yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {transitionLogs.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm">
-                        <div className="flex items-center gap-2">
-                          <ArrowRightLeft className="w-4 h-4 text-blue-500" />
-                          <span>
-                            {log.from_period_name || 'N/A'} → {log.to_period_name || 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-gray-500">
-                            Reset: {log.reset_type}
-                          </span>
-                          <span className="text-gray-400 text-xs">
-                            {new Date(log.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </div>
         </TabsContent>
 
@@ -758,40 +685,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                         ))}
                       </tbody>
                     </table>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Transition History */}
-            <Card className="border-gray-100">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <History className="w-5 h-5" />
-                  Transition History
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {transitionLogs.length === 0 ? (
-                  <p className="text-gray-500 text-center py-4">No transition history yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {transitionLogs.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm">
-                        <div className="flex items-center gap-2">
-                          <ArrowRightLeft className="w-4 h-4 text-purple-500" />
-                          <span>
-                            {log.from_period_name || 'N/A'} → {log.to_period_name || 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          <span className="text-gray-500">Reset: {log.reset_type}</span>
-                          <span className="text-gray-400 text-xs">
-                            {new Date(log.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 )}
               </CardContent>
