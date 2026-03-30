@@ -1,6 +1,6 @@
 // Database Configuration
 
-const mysql = require("mysql");
+const mysql = require('mysql2');
 
 const dbConfig = {
   host: process.env.DB_HOST ,
@@ -16,13 +16,9 @@ const dbConfig = {
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   connectTimeout: 10000,
-  reconnect: true,
- 
-  reconnectAttempts: 10,
-  reconnectDelay: 1000
 };
 
-// Create connection pool (more resilient than single connection)
+// Create connection pool
 const pool = mysql.createPool(dbConfig);
 
 // Test the connection on startup
@@ -46,7 +42,6 @@ pool.on("error", (err) => {
   console.error("Database pool error:", err.code);
   if (err.code === "PROTOCOL_CONNECTION_LOST" || err.code === "ECONNRESET" || err.code === "ECONNREFUSED") {
     console.log("Database connection lost. Attempting to reconnect...");
-    // Force a new connection test
     setTimeout(testConnection, 1000);
   }
 });
@@ -56,7 +51,6 @@ const getFreshConnection = () => {
   return new Promise((resolve, reject) => {
     const connection = mysql.createConnection({
       ...dbConfig,
-      reconnect: true
     });
     
     connection.connect((err) => {
