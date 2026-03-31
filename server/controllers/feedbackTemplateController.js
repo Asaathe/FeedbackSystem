@@ -122,18 +122,24 @@ const getCategories = async (req, res) => {
     const { feedback_type } = req.query;
     
     let query = `
-      SELECT id, category_name, description, display_order, feedback_type, is_active, created_at, updated_at, parent_category_id
-      FROM feedback_template_categories
+      SELECT c.id, c.category_name, c.description, c.display_order, c.feedback_type, c.is_active, c.created_at, c.updated_at, c.parent_category_id
+      FROM feedback_template_categories c
     `;
     
     let params = [];
     
     if (feedback_type) {
-      query += " WHERE feedback_type = ? OR feedback_type = 'general'";
-      params.push(feedback_type);
+      // Include categories that:
+      // 1. Match the feedback_type directly, OR
+      // 2. Are 'general' type (shared categories), OR
+      // 3. Are subcategories of categories that match the feedback_type
+      // Use LEFT JOIN to get parent category info for subcategories
+      query += ` LEFT JOIN feedback_template_categories p ON c.parent_category_id = p.id
+        WHERE c.feedback_type = ? OR c.feedback_type = 'general' OR p.feedback_type = ? OR p.feedback_type = 'general'`;
+      params.push(feedback_type, feedback_type);
     }
     
-    query += " ORDER BY display_order ASC";
+    query += " ORDER BY c.parent_category_id IS NULL DESC, c.parent_category_id ASC, c.display_order ASC";
     
     db.query(query, params, (err, results) => {
       if (err) {
