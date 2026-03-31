@@ -154,7 +154,7 @@ export function FeedbackTemplate() {
     }
   };
 
-  const mainCategories = categories.filter(c => !c.parent_category_id);
+  const mainCategories = categories.filter(c => !c.parent_category_id && (c.feedback_type === categoryType || c.feedback_type === 'general'));
   
   const getSubcategories = (parentId: number) => {
     return categories.filter(c => c.parent_category_id === parentId);

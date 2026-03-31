@@ -56,9 +56,9 @@ interface SemesterStatus {
 }
 
 const semesterOptions = [
-  { value: "1st", label: "1st Semester" },
-  { value: "2nd", label: "2nd Semester" },
-  { value: "Summer", label: "Summer" },
+  { value: "1", label: "1st Semester" },
+  { value: "2", label: "2nd Semester" },
+  { value: "3", label: "Summer" },
 ];
 
 const quarterOptions = [
@@ -116,6 +116,22 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   const [resetType, setResetType] = useState<"subjects" | "evaluations" | "both">("both");
   const [transitioning, setTransitioning] = useState(false);
 
+  // Reset newPeriod when modal is opened
+  useEffect(() => {
+    if (showAddModal) {
+      setNewPeriod({
+        department: selectedDept,
+        period_type: selectedDept === 'College' ? 'semester' : 'quarter',
+        academic_year: "2025-2026",
+        period_number: 1,
+        start_date: "",
+        end_date: "",
+        auto_transition: false,
+        transition_time: "06:00:00",
+      });
+    }
+  }, [showAddModal]);
+
   // New Period Form State
   const [newPeriod, setNewPeriod] = useState({
     department: "College",
@@ -133,7 +149,8 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
     setNewPeriod(prev => ({
       ...prev,
       department: selectedDept,
-      period_type: selectedDept === 'College' ? 'semester' : 'quarter'
+      period_type: selectedDept === 'College' ? 'semester' : 'quarter',
+      period_number: 1 // Reset period number when department changes
     }));
   }, [selectedDept]);
 
