@@ -1,5 +1,6 @@
 // Form Management Service
 // Handles CRUD operations for forms via API
+import API_BASE from '../config${API_BASE}/api';
 
 // Import types from form types module
 import { EvaluationSubject, EvaluationInstructor } from '../components/Forms/types/form';
@@ -84,7 +85,7 @@ export const getForm = async (formId: string): Promise<{ success: boolean; form?
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/forms/${formId}`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -168,7 +169,7 @@ export const getForms = async (
       limit: limit.toString(),
     });
 
-    const apiUrl = `/api/forms?${params}`;
+    const apiUrl = `${API_BASE}/api/forms?${params}`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -268,7 +269,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       status: formData.status || 'draft',
     };
 
-    logDebug('Making POST request to: /api/forms');
+    logDebug('Making POST request to: ${API_BASE}/api/forms');
     logDebug('Request data:', requestData);
 
     // Map camelCase to snake_case for API
@@ -295,7 +296,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       })));
     }
 
-    const response = await fetch('/api/forms', {
+    const response = await fetch('${API_BASE}/api/forms', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -337,7 +338,7 @@ export const updateForm = async (
       return { success: false, message: 'No authentication token found' };
     }
 
-    logDebug(`Making PATCH request to: /api/forms/${formId}`);
+    logDebug(`Making PATCH request to: ${API_BASE}/api/forms/${formId}`);
 
     // Map camelCase to snake_case for API
     const mappedUpdates: any = { ...updates };
@@ -356,7 +357,7 @@ export const updateForm = async (
     
     console.log('🔍 CLIENT: Mapped updates:', JSON.stringify(mappedUpdates));
 
-    const response = await fetch(`/api/forms/${formId}`, {
+    const response = await fetch(`${API_BASE}/api/forms/${formId}`, {
       method: 'PATCH',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -394,9 +395,9 @@ export const deleteForm = async (formId: string): Promise<{ success: boolean; me
       return { success: false, message: 'No authentication token found' };
     }
 
-    logDebug(`Making DELETE request to: /api/forms/${formId}`);
+    logDebug(`Making DELETE request to: ${API_BASE}/api/forms/${formId}`);
 
-    const response = await fetch(`/api/forms/${formId}`, {
+    const response = await fetch(`${API_BASE}/api/forms/${formId}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -433,9 +434,9 @@ export const duplicateForm = async (formId: string): Promise<{ success: boolean;
       return { success: false, message: 'No authentication token found' };
     }
 
-    logDebug(`Making POST request to: /api/forms/${formId}/duplicate`);
+    logDebug(`Making POST request to: ${API_BASE}/api/forms/${formId}/duplicate`);
 
-    const response = await fetch(`/api/forms/${formId}/duplicate`, {
+    const response = await fetch(`${API_BASE}/api/forms/${formId}/duplicate`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -475,7 +476,7 @@ export const saveAsTemplate = async (formId: string): Promise<{ success: boolean
     }
 
     // Call the new API endpoint that handles both template creation and form status update
-    const response = await fetch(`/api/forms/${formId}/save-as-template`, {
+    const response = await fetch(`${API_BASE}/api/forms/${formId}/save-as-template`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -538,7 +539,7 @@ export const getFilteredUsers = async (filters: {
     if (filters.department) params.append('department', filters.department);
     if (filters.company) params.append('company', filters.company);
 
-    const apiUrl = `/api/users/filter?${params}`;
+    const apiUrl = `${API_BASE}/api/users/filter?${params}`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -593,7 +594,7 @@ export const getSharedInstructors = async (formId: string): Promise<{ success: b
       return { success: false, instructors: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/forms/${formId}/shared-instructors`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/shared-instructors`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -630,7 +631,7 @@ export const getFormAssignments = async (formId: string): Promise<{ success: boo
       return { success: false, assignments: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/forms/${formId}/assignments`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/assignments`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -688,7 +689,7 @@ export const getFormCategories = async (): Promise<{ success: boolean; categorie
       return { success: false, categories: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/form-categories';
+    const apiUrl = '${API_BASE}/api/form-categories';
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -748,7 +749,7 @@ export const addFormCategory = async (name: string, description?: string): Promi
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/form-categories';
+    const apiUrl = '${API_BASE}/api/form-categories';
     logDebug(`Making POST request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -795,7 +796,7 @@ export const updateFormCategory = async (categoryId: number, name: string, descr
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/form-categories/${categoryId}`;
+    const apiUrl = `${API_BASE}/api/form-categories/${categoryId}`;
     logDebug(`Making PATCH request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -842,7 +843,7 @@ export const deleteFormCategory = async (categoryId: number): Promise<{ success:
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/form-categories/${categoryId}`;
+    const apiUrl = `${API_BASE}/api/form-categories/${categoryId}`;
     logDebug(`Making DELETE request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -898,7 +899,7 @@ export async function assignFormToUsers(
     console.log('👥 User IDs:', userIds);
     console.log('🎯 Target audience:', targetAudience);
 
-    const apiUrl = `/api/forms/${formId}/deploy`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/deploy`;
     logDebug(`Making POST request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -954,7 +955,7 @@ export async function getAssignedForms(status: string = 'all') {
       throw new Error('No authentication token found');
     }
 
-    const apiUrl = `/api/users/assigned-forms?status=${status}`;
+    const apiUrl = `${API_BASE}/api/users/assigned-forms?status=${status}`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -999,7 +1000,7 @@ export async function updateAssignmentStatus(formId: string, status: string) {
       throw new Error('No authentication token found');
     }
 
-    const apiUrl = `/api/forms/${formId}/assignment-status`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/assignment-status`;
     logDebug(`Making PATCH request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1045,7 +1046,7 @@ export async function getAssignmentStats(formId: string) {
       throw new Error('No authentication token found');
     }
 
-    const apiUrl = `/api/forms/${formId}/assignment-stats`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/assignment-stats`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1090,7 +1091,7 @@ export const getAlumniCompanies = async (): Promise<{ success: boolean; companie
       return { success: false, companies: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/alumni/companies';
+    const apiUrl = '${API_BASE}/api/alumni/companies';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1127,7 +1128,7 @@ export const getEmployerCompanies = async (): Promise<{ success: boolean; compan
       return { success: false, companies: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/employers/companies';
+    const apiUrl = '${API_BASE}/api/employers/companies';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1164,7 +1165,7 @@ export const getAlumniDegrees = async (): Promise<{ success: boolean; degrees: s
       return { success: false, degrees: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/alumni/degrees';
+    const apiUrl = '${API_BASE}/api/alumni/degrees';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1201,7 +1202,7 @@ export const getAlumniGraduationYears = async (): Promise<{ success: boolean; gr
       return { success: false, graduationYears: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/alumni/graduation-years';
+    const apiUrl = '${API_BASE}/api/alumni/graduation-years';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1238,7 +1239,7 @@ export const getAlumniEmploymentCompanies = async (): Promise<{ success: boolean
       return { success: false, companies: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/alumni-employment/companies';
+    const apiUrl = '${API_BASE}/api/alumni-employment/companies';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1285,7 +1286,7 @@ export const getSupervisorsByCompany = async (company?: string): Promise<{ succe
       return { success: false, supervisors: [], message: 'No authentication token found' };
     }
 
-    let apiUrl = '/api/alumni-employment/supervisors';
+    let apiUrl = '${API_BASE}/api/alumni-employment/supervisors';
     if (company) {
       apiUrl += `?company=${encodeURIComponent(company)}`;
     }
@@ -1326,7 +1327,7 @@ export const getAlumniByCompany = async (company?: string): Promise<{ success: b
       return { success: false, users: [], message: 'No authentication token found' };
     }
 
-    let apiUrl = '/api/alumni-employment/alumni-by-company';
+    let apiUrl = '${API_BASE}/api/alumni-employment/alumni-by-company';
     if (company) {
       apiUrl += `?company=${encodeURIComponent(company)}`;
     }
@@ -1376,7 +1377,7 @@ export const sendFeedbackInvitation = async (params: SendFeedbackInvitationParam
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/forms/send-feedback-invitation';
+    const apiUrl = '${API_BASE}/api/forms/send-feedback-invitation';
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -1410,7 +1411,7 @@ export const getInstructorDepartments = async (): Promise<{ success: boolean; de
       return { success: false, departments: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/instructors/departments';
+    const apiUrl = '${API_BASE}/api/instructors/departments';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1447,7 +1448,7 @@ export const getStudentSections = async (): Promise<{ success: boolean; sections
       return { success: false, sections: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/students/sections';
+    const apiUrl = '${API_BASE}/api/students/sections';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1485,7 +1486,7 @@ export const getActiveCourseSections = async (department?: string): Promise<{ su
     }
 
     // Build URL with optional department parameter
-    let apiUrl = '/api/programs/sections';
+    let apiUrl = '${API_BASE}/api/programs/sections';
     if (department) {
       apiUrl += `?department=${encodeURIComponent(department)}`;
     }
@@ -1528,7 +1529,7 @@ export const getDepartmentsFromPrograms = async (): Promise<{ success: boolean; 
       return { success: false, departments: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/programs/departments';
+    const apiUrl = '${API_BASE}/api/programs/departments';
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1578,7 +1579,7 @@ export const deployForm = async (formId: string, deploymentData: {
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/forms/${formId}/deploy`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/deploy`;
     logDebug(`Making POST request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1630,7 +1631,7 @@ export const getFormResponses = async (formId: string): Promise<{ success: boole
       return { success: false, responses: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = `/api/forms/${formId}/responses`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/responses`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1699,7 +1700,7 @@ export const getEvaluationSubjects = async (): Promise<{ success: boolean; subje
       return { success: false, subjects: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/subject-evaluation/subjects';
+    const apiUrl = '${API_BASE}/api/subject-evaluation/subjects';
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1744,7 +1745,7 @@ export const getEvaluationInstructors = async (): Promise<{ success: boolean; in
       return { success: false, instructors: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '/api/subject-evaluation/instructors';
+    const apiUrl = '${API_BASE}/api/subject-evaluation/instructors';
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1798,7 +1799,7 @@ export const deployEvaluationForm = async (
     const results = [];
     for (const subjectId of subjectIds) {
       console.log("📋 [deployEvaluationForm] Sending request for subjectId:", subjectId);
-      const response = await fetch(`/api/subject-evaluation/subjects/${subjectId}/assign-form`, {
+      const response = await fetch(`${API_BASE}/api/subject-evaluation/subjects/${subjectId}/assign-form`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -1846,7 +1847,7 @@ export const submitEvaluation = async (
       return { success: false, message: 'Authentication required' };
     }
     
-    const response = await fetch('/api/subject-evaluation/evaluation-submissions', {
+    const response = await fetch('${API_BASE}/api/subject-evaluation/evaluation-submissions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1883,7 +1884,7 @@ export const getMyEvaluations = async (): Promise<{ success: boolean; evaluation
       return { success: false, evaluations: [], message: 'Authentication required' };
     }
     
-    const response = await fetch('/api/subject-evaluation/my-evaluations', {
+    const response = await fetch('${API_BASE}/api/subject-evaluation/my-evaluations', {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -1915,7 +1916,7 @@ export const submitPublicFeedback = async (params: PublicFeedbackParams): Promis
   logDebug('submitPublicFeedback called');
 
   try {
-    const apiUrl = '/api/forms/public/submit';
+    const apiUrl = '${API_BASE}/api/forms/public/submit';
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {

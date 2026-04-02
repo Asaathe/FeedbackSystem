@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "https://feedbacksystem-production-e7d4.up.railway.app/api/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://feedbacksystem-production-e7d4.up.railway.app/uploads/:path*" }
+  ]
+}

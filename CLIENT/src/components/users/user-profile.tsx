@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import API_BASE from "../../config/api";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
@@ -118,7 +119,7 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
           return;
         }
 
-        const response = await fetch('/api/auth/verify', {
+        const response = await fetch(`${API_BASE}/api/auth/verify`, {
           headers: {
             'Authorization': `Bearer ${token}`,
           },
@@ -190,7 +191,7 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
         if (formData.fullName) updateData.full_name = formData.fullName;
       }
 
-      const response = await fetch('/api/auth/profile', {
+      const response = await fetch(`${API_BASE}/api/auth/profile`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

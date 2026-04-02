@@ -1,4 +1,5 @@
 import { ReactNode, useState, useEffect } from "react";
+import API_BASE from "../../config/api";
 import { Button } from "../ui/button";
 import {
   LayoutDashboard,
@@ -51,7 +52,7 @@ export function DashboardLayout({ children, currentPage, onNavigate, onLogout, r
       const token = sessionStorage.getItem('authToken');
       if (token) {
         try {
-          const response = await fetch('/api/auth/verify', {
+          const response = await fetch(`${API_BASE}/api/auth/verify`, {
             headers: {
               'Authorization': `Bearer ${token}`,
             },

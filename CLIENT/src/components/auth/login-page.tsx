@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import API_BASE from "../../config/api";
 
 interface LoginPageProps {
   onLogin: (role: string) => void;
@@ -80,7 +81,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
 
     try {
       console.log('Login attempt with:', { email: formData.email.trim().toLowerCase() });
-      const response = await fetch('/api/auth/login', {
+      const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
