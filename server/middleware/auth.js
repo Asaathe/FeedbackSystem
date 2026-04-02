@@ -92,7 +92,7 @@ const requireFormOwnership = (req, res, next) => {
   }
 
   // Check if user owns the form
-  const query = "SELECT created_by FROM Forms WHERE id = ?";
+  const query = "SELECT created_by FROM forms WHERE id = ?";
   
   db.query(query, [formId], (err, results) => {
     if (err) {
@@ -127,7 +127,7 @@ const requireRole = (allowedRoles) => {
     // Get user role from database with additional security checks
     const query = `
       SELECT u.role, u.status, u.email_verified
-      FROM Users u
+      FROM users u
       WHERE u.id = ? AND u.status = 'active'
     `;
     
@@ -210,7 +210,7 @@ const requireFormAccess = (req, res, next) => {
              WHEN f.status = 'draft' AND f.created_by = ? THEN 'owner'
              ELSE 'no_access'
            END as access_level
-    FROM Forms f 
+    FROM forms f 
     WHERE f.id = ?
   `;
   

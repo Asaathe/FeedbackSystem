@@ -415,7 +415,7 @@ const getMySubjects = async (req, res) => {
         FROM subject_offerings so
         LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
         LEFT JOIN evaluation_forms ef ON ef.subject_id = so.subject_id AND ef.instructor_id = so.instructor_id AND ef.academic_year = so.academic_year AND ef.semester = so.semester
-        LEFT JOIN Forms f ON ef.form_id = f.id
+        LEFT JOIN forms f ON ef.form_id = f.id
         LEFT JOIN course_management c ON so.program_id = c.id
         LEFT JOIN users u ON so.instructor_id = u.id
         LEFT JOIN instructors i ON u.id = i.user_id

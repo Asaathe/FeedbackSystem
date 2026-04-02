@@ -9,7 +9,7 @@ const { validateFormData, validateQuestion } = require("../utils/validation");
  * @param {object} filters - Filter options
  * @returns {Promise<object>} Result with forms and pagination
  */
-const getAllForms = async (filters = {}) => {
+const getAllforms = async (filters = {}) => {
   try {
     const {
       type = "all",
@@ -50,7 +50,7 @@ const getAllForms = async (filters = {}) => {
     // Get total count
     const countQuery = `
       SELECT COUNT(*) as total
-      FROM Forms f
+      FROM forms f
       ${whereClause}
     `;
     const countResult = await queryDatabase(db, countQuery, params);
@@ -61,9 +61,9 @@ const getAllForms = async (filters = {}) => {
       SELECT 
         f.*,
         u.full_name as creator_name,
-        (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
-        (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id) as submission_count
-      FROM Forms f
+        (SELECT COUNT(*) FROM questions WHERE form_id = f.id) as question_count,
+        (SELECT COUNT(*) FROM form_responses WHERE form_id = f.id) as submission_count
+      FROM forms f
       LEFT JOIN users u ON f.created_by = u.id
       ${whereClause}
       ORDER BY f.created_at DESC
@@ -97,9 +97,9 @@ const getFormById = async (formId) => {
       SELECT 
         f.*,
         u.full_name as creator_name,
-        (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
-        (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id) as submission_count
-      FROM Forms f
+        (SELECT COUNT(*) FROM questions WHERE form_id = f.id) as question_count,
+        (SELECT COUNT(*) FROM form_responses WHERE form_id = f.id) as submission_count
+      FROM forms f
       LEFT JOIN users u ON f.created_by = u.id
       WHERE f.id = ?
     `,
@@ -145,7 +145,7 @@ const getFormById = async (formId) => {
       `
       SELECT 
         q.*
-      FROM Questions q
+      FROM questions q
       WHERE q.form_id = ?
       ORDER BY q.order_index ASC
     `,
@@ -321,7 +321,7 @@ const createForm = async (formData, userId) => {
     const insertResult = await queryDatabase(
       db,
       `
-      INSERT INTO Forms (
+      INSERT INTO forms (
         title, description, ai_description, type, category, target_audience, 
         start_date, end_date, image_url, is_template, 
         status, created_by, created_at, updated_at
@@ -400,7 +400,7 @@ const createForm = async (formData, userId) => {
         const questionResult = await queryDatabase(
           db,
           `
-          INSERT INTO Questions (
+          INSERT INTO questions (
             form_id, section_id, question_text, question_type, description, 
             required, order_index, min_value, max_value
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -463,7 +463,7 @@ const updateForm = async (formId, updates, userId) => {
     // Check if user owns the form
     const forms = await queryDatabase(
       db,
-      "SELECT created_by FROM Forms WHERE id = ?",
+      "SELECT created_by FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -532,7 +532,7 @@ const updateForm = async (formId, updates, userId) => {
 
     await queryDatabase(
       db,
-      `UPDATE Forms SET ${updateFields.join(", ")} WHERE id = ?`,
+      `UPDATE forms SET ${updateFields.join(", ")} WHERE id = ?`,
       updateValues
     );
 
@@ -638,18 +638,18 @@ const updateForm = async (formId, updates, userId) => {
       // Update questions with section IDs
       if (updates.questions && Array.isArray(updates.questions)) {
         // Get all existing questions for this form
-        const existingQuestions = await queryDatabase(
+        const existingquestions = await queryDatabase(
           db,
           "SELECT id FROM questions WHERE form_id = ?",
           [formId]
         );
-        const existingQuestionIds = new Set(existingQuestions.map(q => q.id));
+        const existingQuestionIds = new Set(existingquestions.map(q => q.id));
         const newQuestionIds = new Set();
 
         // Delete questions that are no longer in the update
         const questionIdsInUpdate = new Set(updates.questions.filter(q => !q.id.toString().startsWith('q_')).map(q => parseInt(q.id)));
         
-        for (const existingQuestion of existingQuestions) {
+        for (const existingQuestion of existingquestions) {
           if (!questionIdsInUpdate.has(existingQuestion.id)) {
             await queryDatabase(
               db,
@@ -789,7 +789,7 @@ const deleteForm = async (formId, userId) => {
     // Check if user owns the form
     const forms = await queryDatabase(
       db,
-      "SELECT created_by, image_url FROM Forms WHERE id = ?",
+      "SELECT created_by, image_url FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -818,7 +818,7 @@ const deleteForm = async (formId, userId) => {
     }
 
     // Delete form (cascade will handle related records)
-    await queryDatabase(db, "DELETE FROM Forms WHERE id = ?", [formId]);
+    await queryDatabase(db, "DELETE FROM forms WHERE id = ?", [formId]);
 
     return { success: true, message: "Form deleted successfully" };
   } catch (error) {
@@ -891,7 +891,7 @@ const saveAsTemplate = async (formId, userId) => {
     // Check if user owns the form
     const forms = await queryDatabase(
       db,
-      "SELECT created_by FROM Forms WHERE id = ?",
+      "SELECT created_by FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -906,7 +906,7 @@ const saveAsTemplate = async (formId, userId) => {
     // Update form to be a template
     await queryDatabase(
       db,
-      "UPDATE Forms SET is_template = TRUE, status = 'active' WHERE id = ?",
+      "UPDATE forms SET is_template = TRUE, status = 'active' WHERE id = ?",
       [formId]
     );
 
@@ -933,7 +933,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     // Check if form exists and user owns it
     const forms = await queryDatabase(
       db,
-      "SELECT * FROM Forms WHERE id = ?",
+      "SELECT * FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -963,7 +963,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     
     await queryDatabase(
       db,
-      "UPDATE Forms SET status = 'active', start_date = ?, end_date = ?, updated_at = NOW() WHERE id = ?",
+      "UPDATE forms SET status = 'active', start_date = ?, end_date = ?, updated_at = NOW() WHERE id = ?",
       [saveStartDate, saveEndDate, formId]
     );
 
@@ -1265,7 +1265,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     }
 
     // Get form details for notification
-    const formDetails = await queryDatabase(db, "SELECT title, category FROM Forms WHERE id = ?", [formId]);
+    const formDetails = await queryDatabase(db, "SELECT title, category FROM forms WHERE id = ?", [formId]);
     const formTitle = formDetails.length > 0 ? formDetails[0].title : 'Feedback Form';
     const formCategory = formDetails.length > 0 ? formDetails[0].category : '';
 
@@ -1340,7 +1340,7 @@ const shareResponsesWithInstructors = async (formId, userId, instructorIds = [])
     // Check if form exists and user owns it
     const forms = await queryDatabase(
       db,
-      "SELECT * FROM Forms WHERE id = ?",
+      "SELECT * FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -1443,7 +1443,7 @@ const deleteFormCategory = async (id) => {
 };
 
 module.exports = {
-  getAllForms,
+  getAllforms,
   getFormById,
   createForm,
   updateForm,

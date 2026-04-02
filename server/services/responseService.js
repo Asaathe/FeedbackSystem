@@ -16,7 +16,7 @@ const submitFormResponse = async (formId, userId, answers) => {
     // Check if form exists and is active
     const forms = await queryDatabase(
       db,
-      "SELECT * FROM Forms WHERE id = ? AND status = 'active'",
+      "SELECT * FROM forms WHERE id = ? AND status = 'active'",
       [formId]
     );
 
@@ -29,7 +29,7 @@ const submitFormResponse = async (formId, userId, answers) => {
     // Check if user has already submitted
     const existingResponses = await queryDatabase(
       db,
-      "SELECT * FROM Form_Responses WHERE form_id = ? AND user_id = ?",
+      "SELECT * FROM form_responses WHERE form_id = ? AND user_id = ?",
       [formId, userId]
     );
 
@@ -103,7 +103,7 @@ const submitFormResponse = async (formId, userId, answers) => {
     const insertResult = await queryDatabase(
       db,
       `
-      INSERT INTO Form_Responses (form_id, user_id, response_data, submitted_at)
+      INSERT INTO form_responses (form_id, user_id, response_data, submitted_at)
       VALUES (?, ?, ?, NOW())
     `,
       [formId, userId, JSON.stringify(answers)]
@@ -141,7 +141,7 @@ const getFormResponses = async (formId, userId) => {
     // Check if user owns the form
     const forms = await queryDatabase(
       db,
-      "SELECT created_by FROM Forms WHERE id = ?",
+      "SELECT created_by FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -165,8 +165,8 @@ const getFormResponses = async (formId, userId) => {
         u.email,
         u.full_name,
         u.role
-      FROM Form_Responses fr
-      LEFT JOIN Users u ON fr.user_id = u.id
+      FROM form_responses fr
+      LEFT JOIN users u ON fr.user_id = u.id
       WHERE fr.form_id = ?
       ORDER BY fr.submitted_at DESC
     `,
@@ -208,7 +208,7 @@ const getFormSubmissionStatus = async (formId, userId) => {
     // Get form details
     const forms = await queryDatabase(
       db,
-      "SELECT * FROM Forms WHERE id = ?",
+      "SELECT * FROM forms WHERE id = ?",
       [formId]
     );
 
@@ -254,7 +254,7 @@ const getFormSubmissionStatus = async (formId, userId) => {
     // Check if already submitted
     const existingResponses = await queryDatabase(
       db,
-      "SELECT * FROM Form_Responses WHERE form_id = ? AND user_id = ?",
+      "SELECT * FROM form_responses WHERE form_id = ? AND user_id = ?",
       [formId, userId]
     );
 
@@ -329,9 +329,9 @@ const getSharedResponses = async (userId) => {
         ub.full_name as shared_by_name,
         COUNT(fr.id) as total_responses
       FROM shared_responses sr
-      INNER JOIN Forms f ON sr.form_id = f.id
-      LEFT JOIN Users ub ON sr.shared_by = ub.id
-      LEFT JOIN Form_Responses fr ON f.id = fr.form_id
+      INNER JOIN forms f ON sr.form_id = f.id
+      LEFT JOIN users ub ON sr.shared_by = ub.id
+      LEFT JOIN form_responses fr ON f.id = fr.form_id
       WHERE sr.shared_with_instructor_id = ?
       GROUP BY f.id
       ORDER BY sr.shared_at DESC
@@ -372,7 +372,7 @@ const getSharedResponsesDetails = async (sharedId, userId) => {
     // Check if user is instructor or admin
     const users = await queryDatabase(
       db,
-      "SELECT role FROM Users WHERE id = ?",
+      "SELECT role FROM users WHERE id = ?",
       [userId]
     );
 
@@ -411,8 +411,8 @@ const getSharedResponsesDetails = async (sharedId, userId) => {
         u.full_name,
         cm.course_section,
         cm.department
-      FROM Form_Responses fr
-      LEFT JOIN Users u ON fr.user_id = u.id
+      FROM form_responses fr
+      LEFT JOIN users u ON fr.user_id = u.id
       LEFT JOIN students s ON u.id = s.user_id
       LEFT JOIN course_management cm ON s.program_id = cm.id
       WHERE fr.form_id = ?
@@ -486,7 +486,7 @@ const deleteResponse = async (responseId, userId) => {
     // Check if response exists and belongs to user
     const responses = await queryDatabase(
       db,
-      "SELECT * FROM Form_Responses WHERE id = ?",
+      "SELECT * FROM form_responses WHERE id = ?",
       [responseId]
     );
 
@@ -499,7 +499,7 @@ const deleteResponse = async (responseId, userId) => {
     }
 
     // Delete response
-    await queryDatabase(db, "DELETE FROM Form_Responses WHERE id = ?", [responseId]);
+    await queryDatabase(db, "DELETE FROM form_responses WHERE id = ?", [responseId]);
 
     return { success: true, message: "Response deleted successfully" };
   } catch (error) {
@@ -524,8 +524,8 @@ const getUserResponses = async (userId) => {
         fr.*,
         f.title as form_title,
         f.category
-      FROM Form_Responses fr
-      LEFT JOIN Forms f ON fr.form_id = f.id
+      FROM form_responses fr
+      LEFT JOIN forms f ON fr.form_id = f.id
       WHERE fr.user_id = ?
       ORDER BY fr.submitted_at DESC
     `,

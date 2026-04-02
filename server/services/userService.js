@@ -179,8 +179,8 @@ const getAssignedForms = async (userId) => {
       SELECT 
         f.*,
         u.full_name as creator_name,
-        (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
-        (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id AND user_id = ?) as submission_count,
+        (SELECT COUNT(*) FROM questions WHERE form_id = f.id) as question_count,
+        (SELECT COUNT(*) FROM form_responses WHERE form_id = f.id AND user_id = ?) as submission_count,
         fa.status as assignment_status,
         fa.assigned_at,
         fa.user_id as assigned_user_id,
@@ -191,7 +191,7 @@ const getAssignedForms = async (userId) => {
         fd.end_time as deployment_end_time,
         f.target_audience as form_target_audience
       FROM form_assignments fa
-      LEFT JOIN Forms f ON fa.form_id = f.id
+      LEFT JOIN forms f ON fa.form_id = f.id
       LEFT JOIN users u ON f.created_by = u.id
       LEFT JOIN form_deployments fd ON f.id = fd.form_id
       WHERE fa.user_id = ?
@@ -244,8 +244,8 @@ const getUserResponses = async (userId) => {
         fr.*,
         f.title as form_title,
         f.category
-      FROM Form_Responses fr
-      LEFT JOIN Forms f ON fr.form_id = f.id
+      FROM form_responses fr
+      LEFT JOIN forms f ON fr.form_id = f.id
       WHERE fr.user_id = ?
       ORDER BY fr.submitted_at DESC
     `,

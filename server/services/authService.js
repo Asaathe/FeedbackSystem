@@ -404,7 +404,7 @@ const updateUserProfile = async (userId, updates) => {
       updateValues.push(userId);
       await queryDatabase(
         db,
-        `UPDATE Users SET ${updateFields.join(", ")} WHERE id = ?`,
+        `UPDATE users SET ${updateFields.join(", ")} WHERE id = ?`,
         updateValues
       );
     }
@@ -487,7 +487,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     // Update password in database
     await queryDatabase(
       db,
-      "UPDATE Users SET password_hash = ? WHERE id = ?",
+      "UPDATE users SET password_hash = ? WHERE id = ?",
       [hashedPassword, userId]
     );
 

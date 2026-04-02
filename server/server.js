@@ -117,7 +117,7 @@ app.get("/api/test", (req, res) => {
 
 app.get("/api/db-status", (req, res) => {
   const db = require("./config/database");
-  db.query("SELECT COUNT(*) as userCount FROM Users", (err, results) => {
+  db.query("SELECT COUNT(*) as userCount FROM users", (err, results) => {
     if (err) {
       res.json({ status: "error", message: err.message, connected: false });
     } else {

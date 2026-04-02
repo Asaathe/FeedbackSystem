@@ -142,7 +142,7 @@ async function setupDatabase() {
     // Test the connection with a simple query
     console.log("🧪 Testing database connection...");
     await new Promise((resolve, reject) => {
-      db.query("SELECT COUNT(*) as userCount FROM Users", (err, results) => {
+      db.query("SELECT COUNT(*) as userCount FROM users", (err, results) => {
         if (err) {
           console.error("❌ Database test failed:", err.message);
           reject(err);

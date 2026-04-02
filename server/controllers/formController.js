@@ -5,11 +5,11 @@ const formService = require("../services/formService");
 /**
  * Get all forms
  */
-const getAllForms = async (req, res) => {
+const getAllforms = async (req, res) => {
   try {
     const { type, status, search, page, limit } = req.query;
 
-    const result = await formService.getAllForms({
+    const result = await formService.getAllforms({
       type,
       status,
       search,
@@ -310,7 +310,7 @@ const deleteFormCategory = async (req, res) => {
 
     // Check if form exists
     const formCheck = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM Forms WHERE id = ?", [id], (err, results) => {
+      db.query("SELECT * FROM forms WHERE id = ?", [id], (err, results) => {
         if (err) reject(err);
         else resolve(results);
       });
@@ -468,7 +468,7 @@ const shareResponsesWithInstructors = async (req, res) => {
 
     // Check if form exists
     const formCheck = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM Forms WHERE id = ?", [id], (err, results) => {
+      db.query("SELECT * FROM forms WHERE id = ?", [id], (err, results) => {
         if (err) reject(err);
         else resolve(results);
       });
@@ -517,7 +517,7 @@ const shareResponsesWithInstructors = async (req, res) => {
 };
 
 module.exports = {
-  getAllForms,
+  getAllforms,
   getFormById,
   createForm,
   updateForm,
