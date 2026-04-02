@@ -88,7 +88,7 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 router.post("/:id/share-responses", verifyToken, formController.shareResponsesWithInstructors);
 
 // Public routes
-router.get("/", verifyToken, formController.getAllForms);
+router.get("/", verifyToken, formController.getAllforms);
 
 // Response routes - must be before /:id to avoid route conflicts
 router.get("/my-responses", verifyToken, responseController.getMyResponses);
