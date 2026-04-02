@@ -1,6 +1,6 @@
 // Database Setup Script
 // This script ensures the database and tables are properly created
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const fs = require("fs");
 const path = require("path");
 
