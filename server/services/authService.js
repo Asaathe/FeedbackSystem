@@ -48,7 +48,7 @@ const registerUser = async (userData) => {
     // Check if user already exists
     const existingUsers = await queryDatabase(
       db,
-      "SELECT * FROM Users WHERE email = ?",
+      "SELECT * FROM users WHERE email = ?",
       [sanitizedEmail]
     );
 
@@ -162,7 +162,7 @@ const loginUser = async (email, password) => {
     // Find user
     const users = await queryDatabase(
       db,
-      "SELECT * FROM Users WHERE email = ?",
+      "SELECT * FROM users WHERE email = ?",
       [email]
     );
 
@@ -240,7 +240,7 @@ const verifyUserToken = async (token) => {
     // Get user data
     const users = await queryDatabase(
       db,
-      "SELECT id, email, full_name, role, status FROM Users WHERE id = ?",
+      "SELECT id, email, full_name, role, status FROM users WHERE id = ?",
       [decoded.userId]
     );
 
@@ -293,7 +293,7 @@ const getUserProfile = async (userId) => {
   try {
     const users = await queryDatabase(
       db,
-      "SELECT id, email, full_name, role, status, registration_date FROM Users WHERE id = ?",
+      "SELECT id, email, full_name, role, status, registration_date FROM users WHERE id = ?",
       [userId]
     );
 
@@ -378,7 +378,7 @@ const updateUserProfile = async (userId, updates) => {
     // First, get the user to determine their role
     const users = await queryDatabase(
       db,
-      "SELECT role FROM Users WHERE id = ?",
+      "SELECT role FROM users WHERE id = ?",
       [userId]
     );
 
@@ -458,7 +458,7 @@ const changePassword = async (userId, currentPassword, newPassword) => {
     // Get user from database
     const users = await queryDatabase(
       db,
-      "SELECT * FROM Users WHERE id = ?",
+      "SELECT * FROM users WHERE id = ?",
       [userId]
     );
 

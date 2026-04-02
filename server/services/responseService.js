@@ -299,7 +299,7 @@ const getSharedResponses = async (userId) => {
     // Get user role
     const users = await queryDatabase(
       db,
-      "SELECT role FROM Users WHERE id = ?",
+      "SELECT role FROM users WHERE id = ?",
       [userId]
     );
 

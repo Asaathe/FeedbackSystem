@@ -73,7 +73,7 @@ async function setupDatabase() {
     });
 
     // Check if critical tables exist
-    const criticalTables = ['Forms', 'Questions', 'Form_Responses', 'Users'];
+    const criticalTables = ['forms', 'questions', 'form_responses', 'users'];
     const existingCriticalTables = criticalTables.filter(table => existingTables.includes(table));
     
     if (existingCriticalTables.length > 0) {

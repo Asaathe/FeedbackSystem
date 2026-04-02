@@ -390,7 +390,7 @@ const sendNotificationEmail = async (userId, notification, userEmail) => {
  */
 const getUserEmail = async (userId) => {
   try {
-    const query = 'SELECT email FROM Users WHERE id = ?';
+    const query = 'SELECT email FROM users WHERE id = ?';
     const result = await queryDatabase(db, query, [userId]);
     return result.length > 0 ? result[0].email : null;
   } catch (error) {

@@ -82,7 +82,7 @@ const getFilteredUsers = async (filters) => {
           u.id, u.email, u.full_name, u.role, u.status,
           s.studentID, s.program_id, s.contact_number, s.image as profilePicture,
           cm.course_section, cm.department as course_department
-        FROM Users u
+        FROM users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN course_management cm ON s.program_id = cm.id
         WHERE ${whereClause}
@@ -92,7 +92,7 @@ const getFilteredUsers = async (filters) => {
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status,
           i.instructor_id, i.department, i.subject_taught, i.school_role, i.image as profilePicture
-        FROM Users u
+        FROM users u
         LEFT JOIN instructors i ON u.id = i.user_id
         WHERE ${whereClause}
       `;
@@ -101,7 +101,7 @@ const getFilteredUsers = async (filters) => {
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status,
           e.companyname, e.industry, e.location, e.contact
-        FROM Users u
+        FROM users u
         LEFT JOIN employers e ON u.id = e.user_id
         WHERE ${whereClause}
       `;
@@ -121,7 +121,7 @@ const getFilteredUsers = async (filters) => {
           u.id, u.email, u.full_name, u.role, u.status,
           s.image as student_image,
           i.image as instructor_image
-        FROM Users u
+        FROM users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN instructors i ON u.id = i.user_id
         WHERE ${whereClause}
@@ -151,7 +151,7 @@ const getAssignedForms = async (userId) => {
     // Get user role
     const users = await queryDatabase(
       db,
-      "SELECT role FROM Users WHERE id = ?",
+      "SELECT role FROM users WHERE id = ?",
       [userId]
     );
 
@@ -192,7 +192,7 @@ const getAssignedForms = async (userId) => {
         f.target_audience as form_target_audience
       FROM form_assignments fa
       LEFT JOIN Forms f ON fa.form_id = f.id
-      LEFT JOIN Users u ON f.created_by = u.id
+      LEFT JOIN users u ON f.created_by = u.id
       LEFT JOIN form_deployments fd ON f.id = fd.form_id
       WHERE fa.user_id = ?
         AND f.status = 'active'
@@ -311,7 +311,7 @@ const getAllUsers = async (filters = {}) => {
     const countParams = [...params];
     const countWhereClause = countConditions.length > 0 ? `WHERE ${countConditions.join(" AND ")}` : "";
     
-    const countQuery = `SELECT COUNT(*) as total FROM Users u ${countWhereClause}`;
+    const countQuery = `SELECT COUNT(*) as total FROM users u ${countWhereClause}`;
     const countResult = await queryDatabase(db, countQuery, countParams);
     const total = countResult[0].total;
 
@@ -323,7 +323,7 @@ const getAllUsers = async (filters = {}) => {
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
           s.studentID, s.program_id, s.contact_number, s.image as profilePicture,
           cm.course_section, cm.department as course_department
-        FROM Users u
+        FROM users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN course_management cm ON s.program_id = cm.id
         ${whereClause}
@@ -352,7 +352,7 @@ const getAllUsers = async (filters = {}) => {
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
           i.instructor_id, i.department, i.subject_taught, i.image as profilePicture, i.school_role
-        FROM Users u
+        FROM users u
         LEFT JOIN instructors i ON u.id = i.user_id
         ${instructorWhereClause}
         ORDER BY u.registration_date DESC
@@ -383,7 +383,7 @@ const getAllUsers = async (filters = {}) => {
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
           a.grad_year as graduationYear, a.contact as phoneNumber, a.degree, a.image as profilePicture,
           ae.company_name, ae.job_title, ae.industry_type, ae.employment_status
-        FROM Users u
+        FROM users u
         LEFT JOIN alumni a ON u.id = a.user_id
         LEFT JOIN alumni_employment ae ON u.id = ae.alumni_user_id
         ${alumniWhereClause}
@@ -414,7 +414,7 @@ const getAllUsers = async (filters = {}) => {
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
           e.companyname as companyName, e.contact as phoneNumber, e.industry, e.image as profilePicture
-        FROM Users u
+        FROM users u
         LEFT JOIN employers e ON u.id = e.user_id
         ${employerWhereClause}
         ORDER BY u.registration_date DESC
@@ -445,7 +445,7 @@ const getAllUsers = async (filters = {}) => {
           a.grad_year as graduationYear, a.degree,
           ae.company_name, ae.job_title, ae.industry_type, ae.employment_status,
           e.companyname as companyName, e.industry
-        FROM Users u
+        FROM users u
         LEFT JOIN students s ON u.id = s.user_id
         LEFT JOIN course_management cm ON s.program_id = cm.id
         LEFT JOIN instructors i ON u.id = i.user_id
@@ -485,7 +485,7 @@ const updateUserStatus = async (userId, status) => {
   try {
     await queryDatabase(
       db,
-      "UPDATE Users SET status = ? WHERE id = ?",
+      "UPDATE users SET status = ? WHERE id = ?",
       [status, userId]
     );
 
@@ -504,7 +504,7 @@ const updateUserStatus = async (userId, status) => {
 const deleteUser = async (userId) => {
   try {
     // Get user info to find profile picture
-    const users = await queryDatabase(db, "SELECT role FROM Users WHERE id = ?", [userId]);
+    const users = await queryDatabase(db, "SELECT role FROM users WHERE id = ?", [userId]);
     
     if (users.length === 0) {
       return { success: false, message: "User not found" };
@@ -552,7 +552,7 @@ const deleteUser = async (userId) => {
     }
     
     // Delete the user (cascade will handle related records)
-    await queryDatabase(db, "DELETE FROM Users WHERE id = ?", [userId]);
+    await queryDatabase(db, "DELETE FROM users WHERE id = ?", [userId]);
 
     return { success: true, message: "User deleted successfully" };
   } catch (error) {

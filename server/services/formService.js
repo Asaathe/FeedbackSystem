@@ -64,7 +64,7 @@ const getAllForms = async (filters = {}) => {
         (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
         (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id) as submission_count
       FROM Forms f
-      LEFT JOIN Users u ON f.created_by = u.id
+      LEFT JOIN users u ON f.created_by = u.id
       ${whereClause}
       ORDER BY f.created_at DESC
       LIMIT ? OFFSET ?
@@ -100,7 +100,7 @@ const getFormById = async (formId) => {
         (SELECT COUNT(*) FROM Questions WHERE form_id = f.id) as question_count,
         (SELECT COUNT(*) FROM Form_Responses WHERE form_id = f.id) as submission_count
       FROM Forms f
-      LEFT JOIN Users u ON f.created_by = u.id
+      LEFT JOIN users u ON f.created_by = u.id
       WHERE f.id = ?
     `,
       [formId]
@@ -191,7 +191,7 @@ const getFormById = async (formId) => {
         a.company as alumni_company,
         e.companyname as employer_company
       FROM form_assignments fa
-      LEFT JOIN Users u ON fa.user_id = u.id
+      LEFT JOIN users u ON fa.user_id = u.id
       LEFT JOIN students s ON u.id = s.user_id
       LEFT JOIN course_management cm ON s.program_id = cm.id
       LEFT JOIN alumni a ON u.id = a.user_id
@@ -216,7 +216,7 @@ const getFormById = async (formId) => {
         i.department,
         i.subject_taught
       FROM shared_responses sr
-      LEFT JOIN Users u ON sr.shared_with_instructor_id = u.id
+      LEFT JOIN users u ON sr.shared_with_instructor_id = u.id
       LEFT JOIN instructors i ON u.id = i.user_id
       WHERE sr.form_id = ?
     `,
@@ -998,13 +998,13 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       if (targetAudience === "All Users") {
         userQuery = `
           SELECT u.id
-          FROM Users u
+          FROM users u
           WHERE u.status = 'active'
         `;
       } else if (targetAudience === "Students") {
         userQuery = `
           SELECT u.id
-          FROM Users u
+          FROM users u
           LEFT JOIN students s ON u.id = s.user_id
           LEFT JOIN course_management cm ON s.program_id = cm.id
           WHERE u.role = 'student' AND u.status = 'active'
@@ -1012,7 +1012,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       } else if (targetAudience === "Instructors") {
         userQuery = `
           SELECT u.id
-          FROM Users u
+          FROM users u
           LEFT JOIN instructors i ON u.id = i.user_id
           WHERE u.role = 'instructor' AND u.status = 'active'
         `;
@@ -1022,7 +1022,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         // Debug: First check if there are any alumni users in the Users table
         const allAlumniUsers = await queryDatabase(
           db,
-          "SELECT id, role, status FROM Users WHERE role = 'alumni' AND status = 'active'"
+          "SELECT id, role, status FROM users WHERE role = 'alumni' AND status = 'active'"
         );
         console.log("[DEBUG] Total alumni users in Users table:", allAlumniUsers.length);
         
@@ -1036,7 +1036,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         // Use a simpler query that doesn't require the alumni table
         userQuery = `
           SELECT u.id
-          FROM Users u
+          FROM users u
           WHERE u.role = 'alumni' AND u.status = 'active'
         `;
       } else if (targetAudience.startsWith("Students - ")) {
@@ -1044,7 +1044,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         const courseSection = targetAudience.replace("Students - ", "");
         userQuery = `
           SELECT u.id
-          FROM Users u
+          FROM users u
           LEFT JOIN students s ON u.id = s.user_id
           LEFT JOIN course_management cm ON s.program_id = cm.id
           WHERE u.role = 'student' AND u.status = 'active' AND cm.course_section = ?
@@ -1055,7 +1055,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
         const department = targetAudience.replace("Instructors - ", "");
         userQuery = `
           SELECT u.id
-          FROM Users u
+          FROM users u
           LEFT JOIN instructors i ON u.id = i.user_id
           WHERE u.role = 'instructor' AND u.status = 'active' AND i.department = ?
         `;
@@ -1076,7 +1076,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           
           userQuery = `
             SELECT u.id
-            FROM Users u
+            FROM users u
             LEFT JOIN alumni a ON u.id = a.user_id
             WHERE u.role = 'alumni' AND u.status = 'active' 
             AND a.degree = ? AND a.grad_year = ?
@@ -1087,7 +1087,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           console.log("[DEBUG] Alumni filter by company:", alumniFilter);
           userQuery = `
             SELECT u.id
-            FROM Users u
+            FROM users u
             LEFT JOIN alumni a ON u.id = a.user_id
             WHERE u.role = 'alumni' AND u.status = 'active' AND a.company = ?
           `;
@@ -1104,7 +1104,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           console.log("[DEBUG] No users found with specific filter, falling back to all alumni");
           userQuery = `
             SELECT u.id
-            FROM Users u
+            FROM users u
             WHERE u.role = 'alumni' AND u.status = 'active'
           `;
           queryParams = [];
@@ -1245,13 +1245,13 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
       // Get users based on target audience
       let userQuery = "";
       if (effectiveTargetAudience === "All Users") {
-        userQuery = "SELECT id FROM Users WHERE status = 'active'";
+        userQuery = "SELECT id FROM users WHERE status = 'active'";
       } else if (effectiveTargetAudience.startsWith("Students")) {
-        userQuery = "SELECT u.id FROM Users u WHERE u.role = 'student' AND u.status = 'active'";
+        userQuery = "SELECT u.id FROM users u WHERE u.role = 'student' AND u.status = 'active'";
       } else if (effectiveTargetAudience.startsWith("Instructors")) {
-        userQuery = "SELECT u.id FROM Users u WHERE u.role = 'instructor' AND u.status = 'active'";
+        userQuery = "SELECT u.id FROM users u WHERE u.role = 'instructor' AND u.status = 'active'";
       } else if (effectiveTargetAudience.startsWith("Alumni")) {
-        userQuery = "SELECT u.id FROM Users u WHERE u.role = 'alumni' AND u.status = 'active'";
+        userQuery = "SELECT u.id FROM users u WHERE u.role = 'alumni' AND u.status = 'active'";
       }
       
       if (userQuery) {
