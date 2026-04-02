@@ -1,81 +1,44 @@
 // Database Setup Script
 // This script ensures the database and tables are properly created
-const mysql = require("mysql");
+const mysql = require("mysql2/promise");
 const fs = require("fs");
 const path = require("path");
-
-const db = mysql.createConnection({
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "root",
-  password: process.env.DB_PASSWORD || "",
-  port: process.env.DB_PORT || 3306,
-});
 
 const dbName = process.env.DB_NAME || "feedback_system";
 
 async function setupDatabase() {
+  let db;
   try {
     console.log("🚀 Starting database setup...");
-    
+
     // Connect to MySQL server (without specifying database)
-    await new Promise((resolve, reject) => {
-      db.connect((err) => {
-        if (err) {
-          console.error("❌ Failed to connect to MySQL server:", err.message);
-          reject(err);
-        } else {
-          console.log("✅ Connected to MySQL server");
-          resolve();
-        }
-      });
+    db = await mysql.createConnection({
+      host: process.env.DB_HOST || "localhost",
+      user: process.env.DB_USER || "root",
+      password: process.env.DB_PASSWORD || "",
+      port: process.env.DB_PORT || 3306,
     });
+    console.log("✅ Connected to MySQL server");
 
     // Create database if it doesn't exist
     console.log("📁 Creating database...");
-    await new Promise((resolve, reject) => {
-      db.query(`CREATE DATABASE IF NOT EXISTS ${dbName}`, (err) => {
-        if (err) {
-          console.error("❌ Failed to create database:", err.message);
-          reject(err);
-        } else {
-          console.log(`✅ Database '${dbName}' ready`);
-          resolve();
-        }
-      });
-    });
+    await db.query(`CREATE DATABASE IF NOT EXISTS ${dbName}`);
+    console.log(`✅ Database '${dbName}' ready`);
 
     // Use the database
-    await new Promise((resolve, reject) => {
-      db.query(`USE ${dbName}`, (err) => {
-        if (err) {
-          console.error("❌ Failed to use database:", err.message);
-          reject(err);
-        } else {
-          console.log(`✅ Using database '${dbName}'`);
-          resolve();
-        }
-      });
-    });
+    await db.query(`USE ${dbName}`);
+    console.log(`✅ Using database '${dbName}'`);
 
     // Check for existing tables to avoid conflicts
     console.log("🔍 Checking for existing tables...");
-    const existingTables = await new Promise((resolve, reject) => {
-      db.query("SHOW TABLES", (err, results) => {
-        if (err) {
-          console.error("❌ Failed to check existing tables:", err.message);
-          reject(err);
-        } else {
-          const tables = results.map(row => Object.values(row)[0]);
-          console.log(`📋 Found ${tables.length} existing tables:`, tables.join(", "));
-          resolve(tables);
-        }
-      });
-    });
+    const [tableRows] = await db.query("SHOW TABLES");
+    const existingTables = tableRows.map(row => Object.values(row)[0]);
+    console.log(`📋 Found ${existingTables.length} existing tables:`, existingTables.join(", "));
 
     // Check if critical tables exist
     const criticalTables = ['Forms', 'Questions', 'Form_Responses', 'Users'];
     const existingCriticalTables = criticalTables.filter(table => existingTables.includes(table));
-    
+
     if (existingCriticalTables.length > 0) {
       console.log(`⚠️  Found existing critical tables: ${existingCriticalTables.join(", ")}`);
       console.log("💡 The setup script will safely skip creating tables that already exist.");
@@ -87,11 +50,11 @@ async function setupDatabase() {
       "schema/academic_periods.sql",
       "schema/add_archived_to_feedback.sql"
     ];
-    
+
     for (const schemaFile of schemaFiles) {
       const schemaPath = path.join(__dirname, schemaFile);
       console.log(`📋 Reading ${schemaFile}...`);
-      
+
       if (!fs.existsSync(schemaPath)) {
         console.log(`⚠️  Schema file not found: ${schemaPath} - skipping`);
         continue;
@@ -108,31 +71,20 @@ async function setupDatabase() {
 
       for (let i = 0; i < statements.length; i++) {
         const statement = statements[i];
-        
+
         try {
-          await new Promise((resolve, reject) => {
-            db.query(statement, (err) => {
-              if (err) {
-                // Skip DELIMITER statements and comments
-                if (statement.includes("DELIMITER") || statement.trim().startsWith("--") || statement.trim().startsWith("/*")) {
-                  resolve();
-                } else if (err.message.includes("already exists")) {
-                  // Table already exists - this is safe, continue
-                  console.log(`ℹ️  Statement ${i + 1} skipped (table already exists):`, err.message);
-                  resolve();
-                } else {
-                  console.error(`❌ Error executing statement ${i + 1}:`, err.message);
-                  console.error("Statement:", statement.substring(0, 100) + "...");
-                  reject(err);
-                }
-              } else {
-                resolve();
-              }
-            });
-          });
+          // Skip DELIMITER statements and comments
+          if (statement.includes("DELIMITER") || statement.trim().startsWith("--") || statement.trim().startsWith("/*")) {
+            continue;
+          }
+          await db.query(statement);
         } catch (err) {
-          // Continue with other statements even if one fails
-          console.log(`⚠️  Statement ${i + 1} skipped or failed:`, err.message);
+          if (err.message.includes("already exists")) {
+            // Table already exists - this is safe, continue
+            console.log(`ℹ️  Statement ${i + 1} skipped (table already exists):`, err.message);
+          } else {
+            console.log(`⚠️  Statement ${i + 1} skipped or failed:`, err.message);
+          }
         }
       }
 
@@ -141,17 +93,8 @@ async function setupDatabase() {
 
     // Test the connection with a simple query
     console.log("🧪 Testing database connection...");
-    await new Promise((resolve, reject) => {
-      db.query("SELECT COUNT(*) as userCount FROM Users", (err, results) => {
-        if (err) {
-          console.error("❌ Database test failed:", err.message);
-          reject(err);
-        } else {
-          console.log(`✅ Database test successful - Found ${results[0].userCount} users`);
-          resolve();
-        }
-      });
-    });
+    const [testRows] = await db.query("SELECT COUNT(*) as userCount FROM Users");
+    console.log(`✅ Database test successful - Found ${testRows[0].userCount} users`);
 
     console.log("🎉 Database setup completed successfully!");
     console.log("💡 You can now start the server with: npm start");
@@ -160,7 +103,7 @@ async function setupDatabase() {
     console.error("❌ Database setup failed:", error.message);
     process.exit(1);
   } finally {
-    db.end();
+    if (db) await db.end();
   }
 }
 
