@@ -1,6 +1,6 @@
 // Form Management Service
 // Handles CRUD operations for forms via API
-import API_BASE from '../config${API_BASE}/api';
+import API_BASE from '../config/api';
 
 // Import types from form types module
 import { EvaluationSubject, EvaluationInstructor } from '../components/Forms/types/form';
