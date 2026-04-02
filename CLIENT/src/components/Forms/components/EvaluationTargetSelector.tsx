@@ -86,17 +86,58 @@ export function EvaluationTargetSelector({
   const [loadingInstructorDetails, setLoadingInstructorDetails] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
   
-  // Initial load
+  // Academic period state
+  const [academicPeriodId, setAcademicPeriodId] = useState<number | null>(null);
+
+  // Fetch current academic period on mount
   useEffect(() => {
-    fetchInstructors();
+    fetchCurrentPeriod();
   }, []);
+
+  const fetchCurrentPeriod = async () => {
+    try {
+      const token = sessionStorage.getItem('authToken');
+      if (!token) return;
+
+      // Get current period for College (default)
+      const response = await fetch('/api/settings/semester-status?department=College', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await response.json();
+      
+      if (data.success && data.current_period) {
+        setAcademicPeriodId(data.current_period.id);
+      }
+    } catch (error) {
+      console.error('Error fetching current period:', error);
+    }
+  };
+  
+  // Initial load - fetch when academic period is available
+  useEffect(() => {
+    if (academicPeriodId) {
+      fetchInstructors();
+    }
+  }, [academicPeriodId]);
   
   // Fetch instructors for dropdown
   const fetchInstructors = async () => {
     setLoadingInstructors(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch('/api/subject-evaluation/instructors', {
+      
+      // Build query params - require academic_period_id
+      const params = new URLSearchParams();
+      if (academicPeriodId) {
+        params.append('academic_period_id', academicPeriodId.toString());
+      }
+      
+      const queryString = params.toString();
+      const url = queryString 
+        ? `/api/subject-evaluation/instructors?${queryString}` 
+        : '/api/subject-evaluation/instructors';
+
+      const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -133,7 +174,15 @@ export function EvaluationTargetSelector({
     setLoadingSubjects(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      const response = await fetch(`/api/subject-evaluation/subjects/search?search=${encodeURIComponent(search)}`, {
+      
+      // Build query params - require academic_period_id
+      const params = new URLSearchParams();
+      params.append('search', search);
+      if (academicPeriodId) {
+        params.append('academic_period_id', academicPeriodId.toString());
+      }
+
+      const response = await fetch(`/api/subject-evaluation/subjects/search?${params.toString()}`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

@@ -245,19 +245,74 @@ const deleteSubject = async (req, res) => {
  */
 const assignInstructorToSubject = async (req, res) => {
   try {
-    const { subject_id, program_id, year_level, section, academic_year, semester, instructor_id } = req.body;
+    const { subject_id, program_id, year_level, section, academic_year, semester, instructor_id, department } = req.body;
     
     if (!subject_id || !program_id || !academic_year || !semester) {
       return res.status(400).json({ success: false, message: "Subject ID, program, academic year, and semester are required" });
     }
     
-    // Check if offering exists
-    const checkQuery = `
-      SELECT id FROM subject_offerings 
-      WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ?
-    `;
+    // Get academic_period_id
+    let academicPeriodId = null;
+    try {
+      let dept = department;
+      if (!dept) {
+        const subjectQuery = "SELECT department FROM evaluation_subjects WHERE id = ?";
+        const subjectResult = await new Promise((resolve, reject) => {
+          db.query(subjectQuery, [subject_id], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        if (subjectResult.length > 0) {
+          dept = subjectResult[0].department;
+        }
+      }
+      
+      let periodNumber = 1;
+      const semStr = String(semester).toLowerCase();
+      if (semStr === '2nd' || semStr === '2') periodNumber = 2;
+      else if (semStr === '3rd' || semStr === '3' || semStr === 'summer') periodNumber = 3;
+      
+      const periodQuery = `
+        SELECT id FROM academic_periods 
+        WHERE department = ? 
+        AND academic_year = ? 
+        AND period_number = ?
+        LIMIT 1
+      `;
+      const periodResult = await new Promise((resolve, reject) => {
+        db.query(periodQuery, [dept, academic_year, periodNumber], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      if (periodResult.length > 0) {
+        academicPeriodId = periodResult[0].id;
+      }
+    } catch (periodErr) {
+      console.error("Error getting academic period:", periodErr);
+    }
     
-    db.query(checkQuery, [subject_id, program_id, year_level, section, academic_year, semester], (checkErr, checkResults) => {
+    // Check if offering exists by academic_period_id first, then fallback to old columns
+    let checkQuery, checkParams;
+    
+    if (academicPeriodId) {
+      checkQuery = `
+        SELECT id FROM subject_offerings 
+        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_period_id = ?
+      `;
+      checkParams = [subject_id, program_id, year_level, section, academicPeriodId];
+    } else {
+      // Fallback to old columns
+      checkQuery = `
+        SELECT id FROM subject_offerings 
+        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ?
+      `;
+      checkParams = [subject_id, program_id, year_level, section, academic_year, semester];
+    }
+    
+    db.query(checkQuery, checkParams, (checkErr, checkResults) => {
       if (checkErr) {
         console.error("Error checking offering:", checkErr);
         return res.status(500).json({ success: false, message: "Database error" });
@@ -265,12 +320,16 @@ const assignInstructorToSubject = async (req, res) => {
       
       if (checkResults.length > 0) {
         // Update existing offering
-        const updateQuery = `
-          UPDATE subject_offerings SET instructor_id = ? 
-          WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ?
-        `;
+        let updateQuery, updateParams;
+        if (academicPeriodId) {
+          updateQuery = "UPDATE subject_offerings SET instructor_id = ?, academic_period_id = ? WHERE id = ?";
+          updateParams = [instructor_id, academicPeriodId, checkResults[0].id];
+        } else {
+          updateQuery = "UPDATE subject_offerings SET instructor_id = ? WHERE id = ?";
+          updateParams = [instructor_id, checkResults[0].id];
+        }
         
-        db.query(updateQuery, [instructor_id, subject_id, program_id, year_level, section, academic_year, semester], (updateErr) => {
+        db.query(updateQuery, updateParams, (updateErr) => {
           if (updateErr) {
             console.error("Error updating offering:", updateErr);
             return res.status(500).json({ success: false, message: "Failed to assign instructor" });
@@ -279,13 +338,13 @@ const assignInstructorToSubject = async (req, res) => {
           return res.status(200).json({ success: true, message: "Instructor assigned successfully" });
         });
       } else {
-        // Create new offering
+        // Create new offering - include academic_period_id if available
         const insertQuery = `
-          INSERT INTO subject_offerings (subject_id, program_id, year_level, section, academic_year, semester, instructor_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO subject_offerings (subject_id, program_id, year_level, section, academic_year, semester, instructor_id, academic_period_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         
-        db.query(insertQuery, [subject_id, program_id, year_level, section, academic_year, semester, instructor_id], (insertErr, result) => {
+        db.query(insertQuery, [subject_id, program_id, year_level, section, academic_year, semester, instructor_id, academicPeriodId], (insertErr, result) => {
           if (insertErr) {
             console.error("Error creating offering:", insertErr);
             return res.status(500).json({ success: false, message: "Failed to create offering" });
@@ -326,30 +385,35 @@ const removeInstructorFromSubject = async (req, res) => {
 
 /**
  * Get subject instructors - uses subject_offerings
+ * ONLY uses academic_period_id - no fallback to academic_year/semester
  */
 const getSubjectInstructors = async (req, res) => {
   try {
     const { subjectId } = req.params;
-    const { academic_year, semester } = req.query;
+    const { academic_period_id } = req.query;
+    
+    // If no academic_period_id, return empty - no fallback
+    if (!academic_period_id) {
+      return res.status(200).json({ success: true, instructors: [] });
+    }
     
     let query = `
       SELECT DISTINCT
         u.id as instructor_id,
         u.full_name as instructor_name,
         i.department as instructor_department,
-        i.school_role
+        i.school_role,
+        ap.academic_year,
+        ap.period_number as semester
       FROM subject_offerings so
       INNER JOIN users u ON so.instructor_id = u.id
       LEFT JOIN instructors i ON u.id = i.user_id
+      LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
       WHERE so.subject_id = ? AND so.instructor_id IS NOT NULL
+      AND so.academic_period_id = ?
     `;
     
-    const params = [subjectId];
-    
-    if (academic_year && semester) {
-      query += " AND so.academic_year = ? AND so.semester = ?";
-      params.push(academic_year, semester);
-    }
+    const params = [subjectId, academic_period_id];
     
     query += " ORDER BY u.full_name";
     
@@ -369,11 +433,17 @@ const getSubjectInstructors = async (req, res) => {
 
 /**
  * Get subject students - uses subject_offerings + students table
+ * ONLY uses academic_period_id - no fallback to academic_year/semester
  */
 const getSubjectStudents = async (req, res) => {
   try {
     const { subjectId } = req.params;
-    const { academic_year, semester } = req.query;
+    const { academic_period_id } = req.query;
+    
+    // If no academic_period_id, return empty - no fallback
+    if (!academic_period_id) {
+      return res.status(200).json({ success: true, students: [] });
+    }
     
     let query = `
       SELECT DISTINCT
@@ -382,19 +452,18 @@ const getSubjectStudents = async (req, res) => {
         u.email,
         st.studentID,
         so.year_level,
-        so.section
+        so.section,
+        ap.academic_year,
+        ap.period_number as semester
       FROM subject_offerings so
       INNER JOIN students st ON so.program_id = st.program_id
       INNER JOIN users u ON st.user_id = u.id
+      LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
       WHERE so.subject_id = ? AND u.status = 'active'
+      AND so.academic_period_id = ?
     `;
     
-    const params = [subjectId];
-    
-    if (academic_year && semester) {
-      query += " AND so.academic_year = ? AND so.semester = ?";
-      params.push(academic_year, semester);
-    }
+    const params = [subjectId, academic_period_id];
     
     query += " ORDER BY u.full_name";
     
@@ -531,10 +600,11 @@ const getAllInstructorsForAssignment = async (req, res) => {
 
 /**
  * Get all subject offerings
+ * ONLY uses academic_period_id - no fallback to academic_year/semester
  */
 const getAllSubjectOfferings = async (req, res) => {
   try {
-    const { academic_year, semester, program_id, instructor_id } = req.query;
+    const { academic_period_id, program_id, instructor_id } = req.query;
     
     let query = `
       SELECT 
@@ -546,24 +616,23 @@ const getAllSubjectOfferings = async (req, res) => {
         COALESCE(c.program_code, 'N/A') as program_code,
         COALESCE(c.course_section, CONCAT('Year ', so.year_level, ' - Section ', so.section)) as course_section,
         c.department as program_department,
-        u.full_name as instructor_name
+        u.full_name as instructor_name,
+        ap.academic_year,
+        ap.period_number as semester
       FROM subject_offerings so
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
       LEFT JOIN users u ON so.instructor_id = u.id
+      LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
       WHERE so.status != 'archived'
     `;
     
     const params = [];
     
-    if (academic_year) {
-      query += " AND so.academic_year = ?";
-      params.push(academic_year);
-    }
-    
-    if (semester) {
-      query += " AND so.semester = ?";
-      params.push(semester);
+    // ONLY use academic_period_id - no fallback
+    if (academic_period_id) {
+      query += " AND so.academic_period_id = ?";
+      params.push(academic_period_id);
     }
     
     if (program_id) {
@@ -597,20 +666,82 @@ const getAllSubjectOfferings = async (req, res) => {
  */
 const createSubjectOffering = async (req, res) => {
   try {
-    const { subject_id, program_id, year_level, section, academic_year, semester, instructor_id, status } = req.body;
+    const { subject_id, program_id, year_level, section, academic_year, semester, instructor_id, status, department, academic_period_id } = req.body;
     
     if (!subject_id || !program_id || !academic_year || !semester) {
       return res.status(400).json({ success: false, message: "Subject, program, academic year, and semester are required" });
     }
     
+    // Get academic_period_id - prioritize explicitly passed value, otherwise look it up
+    let academicPeriodId = academic_period_id || null;
+    
+    // If not explicitly provided, try to look it up based on academic_year, semester, and department
+    if (!academicPeriodId) {
+      try {
+        // Determine department from the subject if not provided
+        let dept = department;
+        if (!dept) {
+          const subjectQuery = "SELECT department FROM evaluation_subjects WHERE id = ?";
+          const subjectResult = await new Promise((resolve, reject) => {
+            db.query(subjectQuery, [subject_id], (err, results) => {
+              if (err) reject(err);
+              else resolve(results);
+            });
+          });
+          if (subjectResult.length > 0) {
+            dept = subjectResult[0].department;
+          }
+        }
+        
+        // Map semester to period_number
+        let periodNumber = 1;
+        const semStr = String(semester).toLowerCase();
+        if (semStr === '2nd' || semStr === '2') periodNumber = 2;
+        else if (semStr === '3rd' || semStr === '3' || semStr === 'summer') periodNumber = 3;
+        
+        // Find the academic period
+        const periodQuery = `
+          SELECT id FROM academic_periods 
+          WHERE department = ? 
+          AND academic_year = ? 
+          AND period_number = ?
+          LIMIT 1
+        `;
+        const periodResult = await new Promise((resolve, reject) => {
+          db.query(periodQuery, [dept, academic_year, periodNumber], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        
+        if (periodResult.length > 0) {
+          academicPeriodId = periodResult[0].id;
+        }
+      } catch (periodErr) {
+        console.error("Error getting academic period:", periodErr);
+        // Continue without academic_period_id if not found
+      }
+    }
+    
     // Check for duplicate - only check active offerings, not archived ones
     // This allows creating a new offering for a new semester even if the same subject was offered before
-    const checkQuery = `
-      SELECT id FROM subject_offerings 
-      WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ? AND status != 'archived'
-    `;
+    // Use academic_period_id if available, fallback to year/semester
+    let checkQuery, checkParams;
+    if (academicPeriodId) {
+      checkQuery = `
+        SELECT id FROM subject_offerings 
+        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_period_id = ? AND status != 'archived'
+      `;
+      checkParams = [subject_id, program_id, year_level, section, academicPeriodId];
+    } else {
+      checkQuery = `
+        SELECT id FROM subject_offerings 
+        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ? AND status != 'archived'
+      `;
+      checkParams = [subject_id, program_id, year_level, section, academic_year, semester];
+    }
     
-    db.query(checkQuery, [subject_id, program_id, year_level, section, academic_year, semester], (checkErr, checkResults) => {
+    db.query(checkQuery, checkParams, (checkErr, checkResults) => {
       if (checkErr) {
         console.error("Error checking offering:", checkErr);
         return res.status(500).json({ success: false, message: "Database error" });
@@ -621,17 +752,17 @@ const createSubjectOffering = async (req, res) => {
       }
       
       const insertQuery = `
-        INSERT INTO subject_offerings (subject_id, program_id, year_level, section, academic_year, semester, instructor_id, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO subject_offerings (subject_id, program_id, year_level, section, academic_year, semester, instructor_id, status, academic_period_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
       
-      db.query(insertQuery, [subject_id, program_id, year_level, section, academic_year, semester, instructor_id, status || 'active'], (insertErr, result) => {
+      db.query(insertQuery, [subject_id, program_id, year_level, section, academic_year, semester, instructor_id, status || 'active', academicPeriodId], (insertErr, result) => {
         if (insertErr) {
           console.error("Error creating offering:", insertErr);
           return res.status(500).json({ success: false, message: "Failed to create offering" });
         }
         
-        return res.status(201).json({ success: true, message: "Subject offering created successfully" });
+        return res.status(201).json({ success: true, message: "Subject offering created successfully", offering_id: result.insertId });
       });
     });
   } catch (error) {

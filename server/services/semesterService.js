@@ -436,19 +436,21 @@ const setCurrentPeriod = async (periodId, resetType = 'both', userId = null) => 
 
 /**
  * Handle subject offerings reset during transition
+ * Uses academic_period_id for precise targeting
  */
 const handleSubjectReset = async (connection, department, newPeriod) => {
   try {
+    const { id: academic_period_id } = newPeriod;
+    
     // 1. Archive old subject offerings by setting status to 'archived'
+    // Using academic_period_id for precise targeting instead of year/semester matching
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE subject_offerings 
         SET status = 'archived' 
         WHERE status = 'active' 
-        AND subject_id IN (
-          SELECT id FROM evaluation_subjects WHERE department = ?
-        )`,
-        [department],
+        AND academic_period_id = ?`,
+        [academic_period_id],
         (err, results) => {
           if (err) reject(err);
           else resolve(results);
@@ -456,7 +458,7 @@ const handleSubjectReset = async (connection, department, newPeriod) => {
       );
     });
 
-    console.log(`Subject offerings archived for ${department} department`);
+    console.log(`Subject offerings archived for ${department} using academic_period_id=${academic_period_id}`);
     
     // Note: New subject offerings will be created manually by admins
     // This just archives the old ones to keep historical data
@@ -468,31 +470,19 @@ const handleSubjectReset = async (connection, department, newPeriod) => {
 
 /**
  * Handle evaluation reset during transition
- * This resets: feedback submissions, total feedbacks count, average ratings
+ * Uses academic_period_id for precise targeting (more reliable than year/semester matching)
  */
 const handleEvaluationReset = async (connection, department, newPeriod) => {
   try {
-    const { academic_year, period_number, period_type } = newPeriod;
+    const { id: academic_period_id, academic_year, period_number, period_type } = newPeriod;
     
-    // Map period number to semester/quarter string for the feedback tables
-    let semesterValue = period_number.toString();
-    if (period_type === 'semester') {
-      semesterValue = period_number === 1 ? '1st' : '2nd';
-    } else {
-      semesterValue = period_number.toString();
-    }
-
-    // 1. Archive old subject feedback for this department and academic year
+    // 1. Archive old subject feedback using academic_period_id
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE subject_feedback 
         SET archived = TRUE, archived_at = NOW() 
-        WHERE subject_id IN (
-          SELECT id FROM evaluation_subjects WHERE department = ?
-        ) 
-        AND academic_year = ? 
-        AND semester = ?`,
-        [department, academic_year, semesterValue],
+        WHERE academic_period_id = ?`,
+        [academic_period_id],
         (err, results) => {
           if (err) reject(err);
           else resolve(results);
@@ -500,17 +490,13 @@ const handleEvaluationReset = async (connection, department, newPeriod) => {
       );
     });
 
-    // 2. Archive old instructor feedback for this department and academic year
+    // 2. Archive old instructor feedback using academic_period_id
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE instructor_feedback 
         SET archived = TRUE, archived_at = NOW() 
-        WHERE subject_id IN (
-          SELECT id FROM evaluation_subjects WHERE department = ?
-        ) 
-        AND academic_year = ? 
-        AND semester = ?`,
-        [department, academic_year, semesterValue],
+        WHERE academic_period_id = ?`,
+        [academic_period_id],
         (err, results) => {
           if (err) reject(err);
           else resolve(results);
@@ -518,18 +504,13 @@ const handleEvaluationReset = async (connection, department, newPeriod) => {
       );
     });
 
-    // 3. Reset total_feedbacks count in subject_offerings for this department
-    // This allows new feedback counts to start fresh
+    // 3. Reset total_feedbacks count in subject_offerings using academic_period_id
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE subject_offerings 
         SET total_feedbacks = 0 
-        WHERE subject_id IN (
-          SELECT id FROM evaluation_subjects WHERE department = ?
-        ) 
-        AND academic_year = ? 
-        AND semester = ?`,
-        [department, academic_year, semesterValue],
+        WHERE academic_period_id = ?`,
+        [academic_period_id],
         (err, results) => {
           if (err) reject(err);
           else resolve(results);
@@ -537,11 +518,11 @@ const handleEvaluationReset = async (connection, department, newPeriod) => {
       );
     });
 
-    console.log(`Evaluation reset completed for ${department} department`);
-    console.log(`- Subject feedback archived (will be filtered by new semester)`);
-    console.log(`- Instructor feedback archived (will be filtered by new semester)`);
-    console.log(`New period ready: ${period_type} ${period_number}, ${academic_year}`);
-    console.log(`Feedback counts and ratings will be calculated dynamically from new period data`);
+    console.log(`Evaluation reset completed for ${department} using academic_period_id=${academic_period_id}`);
+    console.log(`- Subject feedback archived (precise targeting by period ID)`);
+    console.log(`- Instructor feedback archived (precise targeting by period ID)`);
+    console.log(`- Feedback counts reset to 0`);
+    console.log(`New period ready: ${period_type} ${period_number}, AY ${academic_year}`);
   } catch (error) {
     console.error("Handle evaluation reset error:", error);
     throw error;

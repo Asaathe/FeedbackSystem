@@ -30,6 +30,16 @@ import {
   DialogTrigger,
   DialogClose,
 } from "../ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../ui/alert-dialog";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
 import {
@@ -84,8 +94,8 @@ export function FeedbackFormsManagement({
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [manageCategoriesOpen, setManageCategoriesOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
   const [formToDelete, setFormToDelete] = useState<FormData | null>(null);
+  const [selectedForm, setSelectedForm] = useState<FormData | null>(null);
   const [categories, setCategories] = useState<FormCategory[]>([]);
   const [loadingCategoryOperation, setLoadingCategoryOperation] =
     useState(false);
@@ -328,7 +338,6 @@ export function FeedbackFormsManagement({
       const result = await deleteForm(form.id);
       if (result.success) {
         toast.success(result.message);
-        // Reload forms to remove the deleted one
         await loadForms();
       } else {
         toast.error(result.message);
@@ -336,9 +345,6 @@ export function FeedbackFormsManagement({
     } catch (error) {
       console.error("Error deleting form:", error);
       toast.error("An error occurred while deleting the form");
-    } finally {
-      setDeleteDialogOpen(false);
-      setFormToDelete(null);
     }
   };
 
@@ -1332,35 +1338,26 @@ export function FeedbackFormsManagement({
         </Tabs>
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Delete Form</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{formToDelete?.title}"? This
-              action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setDeleteDialogOpen(false);
-                setFormToDelete(null);
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
+      {/* Delete Confirmation Alert Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Form</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{formToDelete?.title}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFormToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
               onClick={() => formToDelete && handleDeleteForm(formToDelete)}
+              className="bg-red-500 hover:bg-red-600"
             >
               Delete
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

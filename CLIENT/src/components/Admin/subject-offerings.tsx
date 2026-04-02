@@ -14,6 +14,16 @@ import {
   DialogFooter,
 } from "../ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "../ui/alert-dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -34,6 +44,7 @@ import {
   TableHeader, 
   TableRow 
 } from "../ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { toast } from "sonner";
 import { 
@@ -102,6 +113,7 @@ interface CourseSection {
 interface SystemSettings {
   current_semester: string;
   current_academic_year: string;
+  current_period_id: number | null;
   department: string;
 }
 
@@ -130,11 +142,13 @@ export function SubjectOfferings() {
     college: {
       current_semester: "1st",
       current_academic_year: "2025-2026",
+      current_period_id: null,
       department: "College",
     },
     seniorHigh: {
       current_semester: "1st",
       current_academic_year: "2025-2026",
+      current_period_id: null,
       department: "Senior High",
     },
   });
@@ -168,25 +182,79 @@ export function SubjectOfferings() {
   
   // Track selected department for settings
   const [selectedDepartment, setSelectedDepartment] = useState<string>("College");
+  // Active tab for filtering offerings
+  const [activeTab, setActiveTab] = useState<string>("college");
     
   const [saving, setSaving] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   useEffect(() => {
     // Load system settings first, then load data
+    // Only run on mount - department changes are handled by the separate useEffect
     loadSystemSettings().then((settings) => {
       loadData();
     }).catch(() => {
       loadData();
     });
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
-  const loadData = async () => {
+  // Fetch period ID when department changes and reload data
+  useEffect(() => {
+    const fetchPeriodForDepartment = async () => {
+      try {
+        const token = sessionStorage.getItem("authToken");
+        const response = await fetch(`${API_BASE_URL}/settings/semester-status?department=${selectedDepartment}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const result = await response.json();
+        
+        let newSettings;
+        if (result.success && result.current_period) {
+          // Create the new settings object
+          const key = selectedDepartment === "College" ? "college" : "seniorHigh";
+          newSettings = {
+            ...systemSettings,
+            [key]: {
+              ...systemSettings[key],
+              current_period_id: result.current_period.id
+            }
+          };
+          setSystemSettings(newSettings);
+        }
+        
+        // Use new settings if available, otherwise use current state
+        const deptKey = selectedDepartment === "College" ? "college" : "seniorHigh";
+        const deptSettings = newSettings ? newSettings[deptKey] : systemSettings[deptKey];
+        
+        // Reload data with the correct settings
+        loadData(deptSettings);
+      } catch (error) {
+        console.error("Error fetching period for department:", error);
+        // Still reload data even if period fetch fails
+        loadData();
+      }
+    };
+    
+    fetchPeriodForDepartment();
+  }, [selectedDepartment]);
+
+  const loadData = async (deptSettingsOverride?: typeof systemSettings.college) => {
     setLoading(true);
     try {
-      // Load all data without filters first to see if there are any records
+      // Use override if provided (for race condition fix), otherwise use state
+      const deptSettings = deptSettingsOverride || (
+        selectedDepartment === "College" 
+          ? systemSettings.college 
+          : systemSettings.seniorHigh
+      );
+      
+      // If we have a current_period_id, use it; otherwise load all (for backward compatibility)
+      const params = deptSettings?.current_period_id 
+        ? { academic_period_id: deptSettings.current_period_id.toString() }
+        : {};
+      
       const [offeringsResult, subjectsResult, programsResult] = await Promise.all([
-        getSubjectOfferings({}),
+        getSubjectOfferings(params),
         getSubjects(),
         getPrograms()
       ]);
@@ -239,31 +307,42 @@ export function SubjectOfferings() {
   const loadSystemSettings = async () => {
     try {
       const token = sessionStorage.getItem("authToken");
+      
+      // First get the current period (includes academic_period_id)
+      const periodResponse = await fetch(`${API_BASE_URL}/settings/semester-status?department=College`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const periodResult = await periodResponse.json();
+      
+      // Also get the basic semester settings
       const response = await fetch(`${API_BASE_URL}/settings/current-semester`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
       const result = await response.json();
-      if (result.success && result.data) {
-        const newSettings: AcademicPeriodSettings = {
-          college: {
-            current_semester: result.data.college?.semester || "1st",
-            current_academic_year: result.data.college?.academic_year || "2025-2026",
-            department: "College",
-          },
-          seniorHigh: {
-            current_semester: result.data.seniorHigh?.semester || "1st",
-            current_academic_year: result.data.seniorHigh?.academic_year || "2025-2026",
-            department: "Senior High",
-          },
-        };
-        setSystemSettings(newSettings);
-        setFilterAcademicYear(newSettings.college.current_academic_year);
-        setFilterSemester(newSettings.college.current_semester);
-        return newSettings;
-      }
-      return null;
+      
+      const newSettings: AcademicPeriodSettings = {
+        college: {
+          current_semester: result.data?.college?.semester || "1st",
+          current_academic_year: result.data?.college?.academic_year || "2025-2026",
+          current_period_id: periodResult.success ? periodResult.current_period?.id : null,
+          department: "College",
+        },
+        seniorHigh: {
+          current_semester: result.data?.seniorHigh?.semester || "1st",
+          current_academic_year: result.data?.seniorHigh?.academic_year || "2025-2026",
+          current_period_id: null, // Will be fetched when SHS is selected
+          department: "Senior High",
+        },
+      };
+      
+      setSystemSettings(newSettings);
+      setFilterAcademicYear(newSettings.college.current_academic_year);
+      setFilterSemester(newSettings.college.current_semester);
+      return newSettings;
     } catch (error) {
       console.error("Error loading system settings:", error);
       return null;
@@ -271,27 +350,57 @@ export function SubjectOfferings() {
   };
 
   const handleOpenCreateDialog = async (open: boolean) => {
-    setCreateDialogOpen(open);
+    if (!open) {
+      // Reset form when dialog closes
+      setFormData({
+        subject_id: "",
+        program_id: "",
+        course_section: "",
+        academic_year: systemSettings.college.current_academic_year,
+        semester: systemSettings.college.current_semester,
+        instructor_id: "",
+      });
+    }
+    
+    // If opening, check for active academic period first
     if (open) {
-      const [instructorsResult, courseSectionsResult, settings] = await Promise.all([
-        loadInstructors(), 
-        loadCourseSections(), 
-        loadSystemSettings()
-      ]);
+      // Load settings to check for active period
+      const token = sessionStorage.getItem("authToken");
+      const periodResponse = await fetch(`${API_BASE_URL}/settings/semester-status?department=${selectedDepartment}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const periodResult = await periodResponse.json();
+      
+      // Check if there's an active period
+      if (!periodResult.success || !periodResult.current_period) {
+        toast.error(`No active academic period found for ${selectedDepartment}. Please go to System Settings to create or activate a period first.`);
+        // Don't open the dialog
+        return;
+      }
+      
+      // Also load instructors and course sections
+      await Promise.all([loadInstructors(), loadCourseSections()]);
       
       // Get settings based on selected department
       const deptSettings = selectedDepartment === "College" 
-        ? (settings?.college || systemSettings.college)
-        : (settings?.seniorHigh || systemSettings.seniorHigh);
+        ? systemSettings.college
+        : systemSettings.seniorHigh;
       
       setFormData({
         subject_id: "",
         program_id: "",
         course_section: "",
-        academic_year: deptSettings.current_academic_year,
-        semester: deptSettings.current_semester,
+        academic_year: periodResult.current_period?.academic_year || deptSettings.current_academic_year,
+        semester: periodResult.current_period?.period_number 
+          ? (periodResult.current_period.period_number === 1 ? "1st" : periodResult.current_period.period_number === 2 ? "2nd" : "Summer")
+          : deptSettings.current_semester,
         instructor_id: "",
       });
+      
+      // Now open the dialog
+      setCreateDialogOpen(true);
+    } else {
+      setCreateDialogOpen(false);
     }
   };
 
@@ -310,6 +419,11 @@ export function SubjectOfferings() {
       // Find the selected course section to get year_level and section
       const selectedCourse = courseSections.find(c => c.value === formData.course_section);
       
+      // Get current period ID
+      const deptSettings = selectedDepartment === "College" 
+        ? systemSettings.college 
+        : systemSettings.seniorHigh;
+      
       const result = await createSubjectOffering({
         subject_id: parseInt(formData.subject_id),
         program_id: selectedCourse?.program_id || parseInt(formData.program_id),
@@ -318,6 +432,7 @@ export function SubjectOfferings() {
         academic_year: formData.academic_year,
         semester: formData.semester,
         instructor_id: formData.instructor_id ? parseInt(formData.instructor_id) : undefined,
+        academic_period_id: deptSettings.current_period_id,
       });
         
       if (result.success) {
@@ -363,20 +478,57 @@ export function SubjectOfferings() {
   const handleDeleteOffering = async () => {
     if (!selectedOffering) return;
 
+    // Store values before any state changes
+    const currentDepartment = selectedDepartment;
+    const offeringId = selectedOffering.id;
+    
     setSaving(true);
     try {
-      const result = await deleteSubjectOffering(selectedOffering.id.toString());
+      const result = await deleteSubjectOffering(offeringId.toString());
       if (result.success) {
         toast.success("Subject offering deleted successfully");
+        // AlertDialog handles closing automatically, just clear selection
+        setSelectedOffering(null);
+        
+        // Load fresh data after a small delay to allow dialog to close
+        setTimeout(async () => {
+          try {
+            const token = sessionStorage.getItem("authToken");
+            const response = await fetch(`${API_BASE_URL}/settings/semester-status?department=${currentDepartment}`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+            const periodResult = await response.json();
+            
+            if (periodResult.success && periodResult.current_period) {
+              const key = currentDepartment === "College" ? "college" : "seniorHigh";
+              const newSettings = {
+                ...systemSettings,
+                [key]: {
+                  ...systemSettings[key],
+                  current_period_id: periodResult.current_period.id
+                }
+              };
+              setSystemSettings(newSettings);
+              setTimeout(() => loadData(newSettings[key]), 0);
+            } else {
+              setTimeout(() => loadData(), 0);
+            }
+          } catch (periodError) {
+            console.warn("Failed to fetch period:", periodError);
+            setTimeout(() => loadData(), 0);
+          }
+        }, 150);
+      } else {
+        toast.error(result.message || "Failed to delete subject offering");
+        // On error, we need to manually close
         setDeleteDialogOpen(false);
         setSelectedOffering(null);
-        loadData();
-      } else {
-        toast.error(result.message);
       }
     } catch (error) {
       console.error("Error deleting offering:", error);
       toast.error("Failed to delete subject offering");
+      setDeleteDialogOpen(false);
+      setSelectedOffering(null);
     } finally {
       setSaving(false);
     }
@@ -427,6 +579,14 @@ export function SubjectOfferings() {
     (offering.subject_code || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (offering.subject_name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
     (offering.program_name || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Filter offerings by selected department (College or Senior High)
+  const collegeOfferings = filteredOfferings.filter(offering => 
+    offering.program_department === "College" || (!offering.program_department && offering.year_level && offering.year_level >= 1 && offering.year_level <= 4)
+  );
+  const seniorHighOfferings = filteredOfferings.filter(offering => 
+    offering.program_department === "Senior High" || offering.program_department === "SHS"
   );
 
   // Group unique programs for the dropdown
@@ -615,124 +775,256 @@ export function SubjectOfferings() {
         </Button>
       </div>
 
-      {/* Offerings Table */}
+      {/* Offerings Table with Tabs */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <BookOpen className="w-5 h-5" />
-            Subject Offerings ({filteredOfferings.length})
-          </CardTitle>
+          <div className="flex items-center justify-between w-full">
+            <CardTitle className="flex items-center gap-2">
+              <BookOpen className="w-5 h-5" />
+              Subject Offerings
+            </CardTitle>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
+              <TabsList>
+                <TabsTrigger value="college" className="flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4" />
+                  College
+                </TabsTrigger>
+                <TabsTrigger value="seniorHigh" className="flex items-center gap-2">
+                  <School className="w-4 h-4" />
+                  Senior High
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
-          {loading ? (
-            <div className="flex justify-center items-center h-64">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-            </div>
-          ) : filteredOfferings.length === 0 ? (
-            <div className="text-center py-12">
-              <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-4" />
-              <p className="text-gray-500">No subject offerings found</p>
-              <p className="text-sm text-gray-400 mt-1">Create a new offering to get started</p>
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Subject Name</TableHead>
-                  <TableHead>Subject Code</TableHead>
-                  <TableHead>Program</TableHead>
-                  <TableHead>Year/Section</TableHead>
-                  <TableHead>Academic Year</TableHead>
-                  <TableHead>Semester</TableHead>
-                  <TableHead>Instructor</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredOfferings.map((offering) => (
-                  <TableRow key={offering.id}>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium">{offering.subject_name}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <Badge variant="outline" className="bg-blue-50">
-                          {offering.subject_code}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <Badge variant="outline" className="bg-green-50">
-                          {offering.program_code}
-                        </Badge>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="bg-purple-50">
-                        {offering.year_level} - {offering.section}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{offering.academic_year}</TableCell>
-                    <TableCell>{offering.semester}</TableCell>
-                    <TableCell>
-                      {offering.instructor_name ? (
-                        <div className="flex items-center gap-2">
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="bg-purple-100 text-purple-600 text-xs">
-                              {offering.instructor_name?.charAt(0) || 'I'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{offering.instructor_name}</span>
-                        </div>
-                      ) : (
-                        <span className="text-gray-400 text-sm">Not assigned</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={offering.status === 'active' ? 'default' : 'secondary'}>
-                        {offering.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openViewStudentsDialog(offering)}>
-                            <Users className="mr-2 h-4 w-4" />
-                            View Students
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openEditDialog(offering)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem 
-                            onClick={() => openDeleteDialog(offering)}
-                            className="text-red-600 focus:text-red-600"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <div className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsContent value="college">
+                {loading ? (
+                  <div className="flex justify-center items-center h-64">
+                    <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  </div>
+                ) : collegeOfferings.length === 0 ? (
+                  <div className="text-center py-12">
+                    <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                    <p className="text-gray-500">No college subject offerings found</p>
+                    <p className="text-sm text-gray-400 mt-1">Create a new offering to get started</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Subject Name</TableHead>
+                        <TableHead>Subject Code</TableHead>
+                        <TableHead>Program</TableHead>
+                        <TableHead>Year/Section</TableHead>
+                        <TableHead>Academic Year</TableHead>
+                        <TableHead>Semester</TableHead>
+                        <TableHead>Instructor</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {collegeOfferings.map((offering) => (
+                      <TableRow key={offering.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{offering.subject_name}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <Badge variant="outline" className="bg-blue-50">
+                              {offering.subject_code}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <Badge variant="outline" className="bg-green-50">
+                              {offering.program_code}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-purple-50">
+                            {offering.year_level} - {offering.section}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{offering.academic_year}</TableCell>
+                        <TableCell>{offering.semester}</TableCell>
+                        <TableCell>
+                          {offering.instructor_name ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="bg-purple-100 text-purple-600 text-xs">
+                                  {offering.instructor_name?.charAt(0) || 'I'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{offering.instructor_name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Not assigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={offering.status === 'active' ? 'default' : 'secondary'}>
+                            {offering.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openViewStudentsDialog(offering)}>
+                                <Users className="mr-2 h-4 w-4" />
+                                View Students
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(offering)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => openDeleteDialog(offering)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+            
+            <TabsContent value="seniorHigh">
+              {loading ? (
+                <div className="flex justify-center items-center h-64">
+                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                </div>
+              ) : seniorHighOfferings.length === 0 ? (
+                <div className="text-center py-12">
+                  <BookOpen className="w-12 h-12 mx-auto text-gray-300 mb-4" />
+                  <p className="text-gray-500">No Senior High subject offerings found</p>
+                  <p className="text-sm text-gray-400 mt-1">Create a new offering to get started</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Subject Name</TableHead>
+                      <TableHead>Subject Code</TableHead>
+                      <TableHead>Program</TableHead>
+                      <TableHead>Year/Section</TableHead>
+                      <TableHead>Academic Year</TableHead>
+                      <TableHead>Quarter</TableHead>
+                      <TableHead>Instructor</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {seniorHighOfferings.map((offering) => (
+                      <TableRow key={offering.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium">{offering.subject_name}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <Badge variant="outline" className="bg-blue-50">
+                              {offering.subject_code}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <Badge variant="outline" className="bg-green-50">
+                              {offering.program_code}
+                            </Badge>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="bg-purple-50">
+                            {offering.year_level} - {offering.section}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{offering.academic_year}</TableCell>
+                        <TableCell>{offering.semester}</TableCell>
+                        <TableCell>
+                          {offering.instructor_name ? (
+                            <div className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="bg-purple-100 text-purple-600 text-xs">
+                                  {offering.instructor_name?.charAt(0) || 'I'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-sm">{offering.instructor_name}</span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 text-sm">Not assigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={offering.status === 'active' ? 'default' : 'secondary'}>
+                            {offering.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => openViewStudentsDialog(offering)}>
+                                <Users className="mr-2 h-4 w-4" />
+                                View Students
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openEditDialog(offering)}>
+                                <Edit className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => openDeleteDialog(offering)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </TabsContent>
+          </Tabs>
+          </div>
         </CardContent>
       </Card>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+      <Dialog open={editDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedOffering(null);
+        }
+        setEditDialogOpen(open);
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Edit Subject Offering</DialogTitle>
@@ -818,15 +1110,20 @@ export function SubjectOfferings() {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Dialog */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Subject Offering</DialogTitle>
-            <DialogDescription>
+      {/* Delete Dialog - Using AlertDialog for better focus management */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteDialogOpen(false);
+          setSelectedOffering(null);
+        }
+      }}>
+        <AlertDialogContent className="max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Subject Offering</AlertDialogTitle>
+            <AlertDialogDescription>
               This action cannot be undone. Students enrolled in this offering will be unassigned.
-            </DialogDescription>
-          </DialogHeader>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <div className="py-4">
             <p>Are you sure you want to delete this subject offering?</p>
             <div className="mt-4 p-4 bg-red-50 rounded-lg border border-red-100">
@@ -840,22 +1137,32 @@ export function SubjectOfferings() {
                 {selectedOffering?.academic_year} - {selectedOffering?.semester}
               </p>
             </div>
-            <p className="mt-4 text-sm text-gray-500">
-              This action cannot be undone. Students enrolled in this offering will be unassigned.
-            </p>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDeleteOffering} disabled={saving}>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setDeleteDialogOpen(false);
+              setSelectedOffering(null);
+            }}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteOffering} 
+              disabled={saving}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
               {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />}
               Delete
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* View Students Dialog */}
-      <Dialog open={viewStudentsDialogOpen} onOpenChange={setViewStudentsDialogOpen}>
+      <Dialog open={viewStudentsDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedOffering(null);
+          setOfferingStudents([]);
+        }
+        setViewStudentsDialogOpen(open);
+      }}>
         <DialogContent className="sm:max-w-lg max-w-[90vw] max-h-[300px] p-3 overflow-hidden">
           <DialogHeader className="pb-2 space-y-1">
             <DialogTitle className="text-sm flex items-center gap-2">

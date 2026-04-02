@@ -25,6 +25,50 @@ function autoUpdateStatuses() {
 }
 
 /**
+ * Get academic period ID from academic_year and semester/period
+ * @param {string} department - 'College' or 'Senior High'
+ * @param {string} academicYear - e.g., '2025-2026'
+ * @param {string} semester - e.g., '1st', '2nd', '1st Quarter', '1', '2'
+ * @returns {Promise<number|null>} - academic_period_id or null if not found
+ */
+async function getAcademicPeriodIdFromYearSemester(department, academicYear, semester) {
+  if (!department || !academicYear || !semester) {
+    return null;
+  }
+  
+  // Map semester to period_number
+  let periodNumber = 1;
+  const semLower = String(semester).toLowerCase();
+  
+  // Handle semester values
+  if (semLower.includes('1st') || semLower === '1') periodNumber = 1;
+  else if (semLower.includes('2nd') || semLower === '2') periodNumber = 2;
+  else if (semLower.includes('3rd') || semLower === '3' || semLower.includes('summer')) periodNumber = 3;
+  else if (semLower.includes('4th') || semLower === '4') periodNumber = 4;
+  
+  // Map department to period_type
+  const periodType = department === 'College' ? 'semester' : 'quarter';
+  
+  return new Promise((resolve) => {
+    const query = `
+      SELECT id FROM academic_periods 
+      WHERE department = ? 
+      AND academic_year = ? 
+      AND period_type = ?
+      AND period_number = ?
+      LIMIT 1
+    `;
+    db.query(query, [department, academicYear, periodType, periodNumber], (err, results) => {
+      if (err || results.length === 0) {
+        resolve(null);
+      } else {
+        resolve(results[0].id);
+      }
+    });
+  });
+}
+
+/**
  * Get active academic period from academic_periods table
  * AUTO-DETECTION: Finds period where CURRENT_DATE is between start_date and end_date
  * @param {string} department - 'College' or 'Senior High'
@@ -252,5 +296,6 @@ module.exports = {
   getCurrentSettingsSync,
   getNextAcademicYear,
   getYearLevelRange,
-  getDepartmentFromYearLevel
+  getDepartmentFromYearLevel,
+  getAcademicPeriodIdFromYearSemester
 };

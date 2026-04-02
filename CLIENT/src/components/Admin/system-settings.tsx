@@ -6,7 +6,7 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { toast } from "sonner";
-import { Settings, Save, RefreshCw, GraduationCap, Building2, Plus, Calendar, ArrowRightLeft, Clock, Trash2 } from "lucide-react";
+import { Settings, Save, RefreshCw, GraduationCap, Building2, Plus, Calendar, ArrowRightLeft, Clock, Trash2, Edit } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -111,8 +111,10 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   const [semesterStatus, setSemesterStatus] = useState<SemesterStatus | null>(null);
   const [loadingPeriods, setLoadingPeriods] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showTransitionModal, setShowTransitionModal] = useState(false);
   const [selectedPeriodId, setSelectedPeriodId] = useState<number | null>(null);
+  const [editingPeriod, setEditingPeriod] = useState<AcademicPeriod | null>(null);
   const [resetType, setResetType] = useState<"subjects" | "evaluations" | "both">("both");
   const [transitioning, setTransitioning] = useState(false);
 
@@ -176,7 +178,11 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
       );
       const data = await response.json();
       if (data.success) {
-        setPeriods(data.periods || []);
+        // Filter out completed and archived periods to reduce confusion
+        const activePeriods = (data.periods || []).filter(
+          (p: AcademicPeriod) => p.status !== 'completed' && p.status !== 'archived'
+        );
+        setPeriods(activePeriods);
       }
     } catch (error) {
       console.error("Error fetching periods:", error);
@@ -261,6 +267,50 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
     } catch (error) {
       console.error("Error deleting period:", error);
       toast.error("Failed to delete academic period");
+    }
+  };
+
+  const handleEditPeriod = (period: AcademicPeriod) => {
+    setEditingPeriod(period);
+    setShowEditModal(true);
+  };
+
+  const handleUpdatePeriod = async () => {
+    if (!editingPeriod) return;
+    
+    setSaving(true);
+    try {
+      const token = sessionStorage.getItem("authToken");
+      const response = await fetch(`/api/settings/academic-periods/${editingPeriod.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          period_number: editingPeriod.period_number,
+          start_date: editingPeriod.start_date,
+          end_date: editingPeriod.end_date,
+          status: editingPeriod.status,
+          auto_transition: editingPeriod.auto_transition,
+          transition_time: editingPeriod.transition_time,
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Academic period updated successfully");
+        setShowEditModal(false);
+        setEditingPeriod(null);
+        fetchAcademicPeriods();
+        fetchSemesterStatus();
+      } else {
+        toast.error(data.message || "Failed to update period");
+      }
+    } catch (error) {
+      console.error("Error updating period:", error);
+      toast.error("Failed to update academic period");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -473,7 +523,7 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
             {/* Periods List */}
             <Card className="border-gray-100">
               <CardHeader>
-                <CardTitle className="text-lg">Academic Periods</CardTitle>
+                <CardTitle className="text-lg">Current & Upcoming Academic Periods</CardTitle>
               </CardHeader>
               <CardContent>
                 {loadingPeriods ? (
@@ -867,6 +917,79 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
               className="bg-green-500 hover:bg-green-600"
             >
               {transitioning ? "Switching..." : "Confirm Transition"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Period Dialog */}
+      <Dialog open={showEditModal} onOpenChange={(open) => {
+        setShowEditModal(open);
+        if (!open) setEditingPeriod(null);
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Academic Period</DialogTitle>
+            <DialogDescription>
+              Update the selected period details
+            </DialogDescription>
+          </DialogHeader>
+          {editingPeriod && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Period Number</Label>
+                  <Input
+                    type="number"
+                    value={editingPeriod.period_number}
+                    onChange={(e) => setEditingPeriod({...editingPeriod, period_number: parseInt(e.target.value)})}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select
+                    value={editingPeriod.status}
+                    onValueChange={(value) => setEditingPeriod({...editingPeriod, status: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="upcoming">Upcoming</SelectItem>
+                      <SelectItem value="completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={editingPeriod.start_date?.split('T')[0] || ''}
+                  onChange={(e) => setEditingPeriod({...editingPeriod, start_date: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={editingPeriod.end_date?.split('T')[0] || ''}
+                  onChange={(e) => setEditingPeriod({...editingPeriod, end_date: e.target.value})}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowEditModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleUpdatePeriod}
+              disabled={saving}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              {saving ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </DialogContent>

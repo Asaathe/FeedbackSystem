@@ -7,78 +7,20 @@ const { getCurrentSettings } = require("../utils/settingsHelper");
 
 /**
  * Get all instructors with their subjects (for subject-evaluation.tsx)
+ * Uses academic_period_id if provided, otherwise returns all instructors with active subject offerings
  */
 const getAllInstructors = async (req, res) => {
   try {
-    const { academic_year, semester } = req.query;
+    const { academic_period_id } = req.query;
     
-    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
-    let acadYear = academic_year;
-    let sem = semester;
+    // If academic_period_id is provided, use it for filtering
+    // Otherwise, return all instructors with active subject offerings (no filter)
+    let query, queryParams;
     
-    if (!acadYear || !sem) {
-      const settings = await getCurrentSettings();
-      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
-      sem = settings.college?.semester || settings.semester || sem;
-    }
-    
-    // Query using subject_offerings and evaluation_subjects
-    const query = `
-      SELECT DISTINCT
-        u.id as user_id,
-        u.full_name,
-        u.email,
-        i.department,
-        i.school_role,
-        u.id as instructor_id,
-        i.image
-      FROM subject_offerings so
-      INNER JOIN evaluation_subjects es ON so.subject_id = es.id
-      INNER JOIN users u ON so.instructor_id = u.id
-      LEFT JOIN instructors i ON u.id = i.user_id
-      WHERE so.academic_year = ? AND so.semester = ?
-      ORDER BY u.full_name
-    `;
-    
-    // Get all instructors who have subject offerings, regardless of semester
-    // Using subject_feedback and instructor_feedback tables for feedback counts
-    // Fallback to subject_id if section_id is NULL for backward compatibility
-    const offeringQuery = `
-      SELECT DISTINCT
-        u.id as user_id,
-        u.full_name,
-        u.email,
-        i.department,
-        i.school_role,
-        u.id as instructor_id,
-        i.image,
-        (SELECT COUNT(DISTINCT so2.id) FROM subject_offerings so2 WHERE so2.instructor_id = u.id AND so2.status = 'active') as total_subjects,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM instructor_feedback ifb
-          WHERE ifb.instructor_id = u.id
-        ), 0) as total_feedbacks,
-        COALESCE((
-          SELECT AVG(ifb.overall_rating)
-          FROM instructor_feedback ifb
-          WHERE ifb.instructor_id = u.id AND ifb.overall_rating IS NOT NULL
-        ), 0) as avg_rating
-      FROM subject_offerings so
-      INNER JOIN users u ON so.instructor_id = u.id
-      LEFT JOIN instructors i ON u.id = i.user_id
-      WHERE so.instructor_id IS NOT NULL AND so.status = 'active'
-      ORDER BY u.full_name
-    `;
-    
-    db.query(offeringQuery, (err, results) => {
-      if (err) {
-        console.error("Error fetching instructors:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch instructors" });
-      }
-      
-      // Always include fallback - get all instructors from the instructors table
-      // Fallback to subject_id if section_id is NULL for backward compatibility
-      const fallbackQuery = `
+    if (academic_period_id) {
+      // Show all instructors who have ANY active subject offering in this period
+      // This includes College instructors teaching SHS, SHS instructors, etc.
+      query = `
         SELECT 
           u.id as user_id,
           u.full_name,
@@ -87,6 +29,41 @@ const getAllInstructors = async (req, res) => {
           i.school_role,
           u.id as instructor_id,
           i.image,
+          ap.academic_year,
+          ap.period_number as semester,
+          (SELECT COUNT(DISTINCT so2.id) FROM subject_offerings so2 WHERE so2.instructor_id = u.id AND so2.academic_period_id = ? AND so2.status = 'active') as total_subjects,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM instructor_feedback ifb
+            WHERE ifb.instructor_id = u.id AND ifb.academic_period_id = ?
+          ), 0) as total_feedbacks,
+          COALESCE((
+            SELECT AVG(ifb.overall_rating)
+            FROM instructor_feedback ifb
+            WHERE ifb.instructor_id = u.id AND ifb.academic_period_id = ? AND ifb.overall_rating IS NOT NULL
+          ), 0) as avg_rating
+        FROM subject_offerings so
+        INNER JOIN users u ON so.instructor_id = u.id
+        LEFT JOIN instructors i ON u.id = i.user_id
+        LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
+        WHERE so.academic_period_id = ? AND so.status = 'active'
+        GROUP BY u.id, u.full_name, u.email, i.department, i.school_role, i.image, ap.academic_year, ap.period_number
+        ORDER BY u.full_name
+      `;
+      queryParams = [academic_period_id, academic_period_id, academic_period_id, academic_period_id];
+    } else {
+      // No academic_period_id - return all instructors with active subject offerings (any department)
+      query = `
+        SELECT 
+          u.id as user_id,
+          u.full_name,
+          u.email,
+          i.department,
+          i.school_role,
+          u.id as instructor_id,
+          i.image,
+          ap.academic_year,
+          ap.period_number as semester,
           (SELECT COUNT(DISTINCT so2.id) FROM subject_offerings so2 WHERE so2.instructor_id = u.id AND so2.status = 'active') as total_subjects,
           COALESCE((
             SELECT COUNT(*)
@@ -98,28 +75,24 @@ const getAllInstructors = async (req, res) => {
             FROM instructor_feedback ifb
             WHERE ifb.instructor_id = u.id AND ifb.overall_rating IS NOT NULL
           ), 0) as avg_rating
-        FROM users u
+        FROM subject_offerings so
+        INNER JOIN users u ON so.instructor_id = u.id
         LEFT JOIN instructors i ON u.id = i.user_id
-        WHERE u.role = 'instructor' AND u.status = 'active'
+        LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
+        WHERE so.status = 'active'
+        GROUP BY u.id, u.full_name, u.email, i.department, i.school_role, i.image, ap.academic_year, ap.period_number
         ORDER BY u.full_name
       `;
+      queryParams = [];
+    }
+    
+    db.query(query, queryParams, (err, results) => {
+      if (err) {
+        console.error("Error fetching instructors:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch instructors" });
+      }
       
-      return db.query(fallbackQuery, (fallbackErr, fallbackResults) => {
-        if (fallbackErr) {
-          console.error("Error in fallback query:", fallbackErr);
-          return res.status(200).json({ success: true, instructors: results });
-        }
-        
-        // Combine both results, removing duplicates
-        const combined = [...results];
-        fallbackResults.forEach(fb => {
-          if (!combined.find(c => c.user_id === fb.user_id)) {
-            combined.push(fb);
-          }
-        });
-        
-        return res.status(200).json({ success: true, instructors: combined });
-      });
+      return res.status(200).json({ success: true, instructors: results });
     });
   } catch (error) {
     console.error("Get all instructors error:", error);
@@ -129,86 +102,148 @@ const getAllInstructors = async (req, res) => {
 
 /**
  * Get all subjects with their instructors (for subject-evaluation.tsx - By Subjects view)
+ * Uses academic_period_id if provided, otherwise returns all active subjects
  */
 const getAllSubjects = async (req, res) => {
   try {
-    const { academic_year, semester } = req.query;
+    const { academic_period_id } = req.query;
     
-    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
-    let acadYear = academic_year;
-    let sem = semester;
+    // If academic_period_id is provided, use it for filtering
+    // Otherwise, return all active subjects (no filter)
+    let query, queryParams;
     
-    if (!acadYear || !sem) {
-      const settings = await getCurrentSettings();
-      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
-      sem = settings.college?.semester || settings.semester || sem;
-    }
-    
-    // Query from subject_offerings - show ALL offerings regardless of semester
-    // Using both subject_feedback and instructor_feedback tables for feedback counts and ratings
-    // Fallback to subject_id if section_id is NULL for backward compatibility
-    const query = `
-      SELECT 
-        so.id as section_id,
-        so.id as offering_id,
-        so.subject_id,
-        es.subject_code,
-        es.subject_name,
-        es.department,
-        so.program_id,
-        c.program_name,
-        c.course_section,
-        so.year_level,
-        so.section,
-        so.academic_year,
-        so.semester,
-        so.instructor_id,
-        COALESCE(u.full_name, 'Unknown Instructor') as instructor_name,
-        i.image as instructor_image,
-        COALESCE(((
-          SELECT AVG(sf.overall_rating)
-          FROM subject_feedback sf
-          WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-          AND sf.overall_rating IS NOT NULL
-        ) + (
-          SELECT AVG(ifb.overall_rating)
-          FROM instructor_feedback ifb
-          WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
-          AND ifb.overall_rating IS NOT NULL
-        )) / 2, 0) as avg_rating,
-        COALESCE(
-          (
-            SELECT AVG(COALESCE(sf.overall_rating, 
-              CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
-            ))
+    if (academic_period_id) {
+      // Show all subjects for this academic period (both College and SHS)
+      // This allows College instructors teaching SHS to see their SHS subjects
+      query = `
+        SELECT DISTINCT
+          so.id as section_id,
+          so.id as offering_id,
+          so.subject_id,
+          es.subject_code,
+          es.subject_name,
+          es.department,
+          so.program_id,
+          c.program_name,
+          c.course_section,
+          so.year_level,
+          so.section,
+          COALESCE(ap.academic_year, so.academic_year) as academic_year,
+          COALESCE(ap.period_number, so.semester) as semester,
+          so.instructor_id,
+          COALESCE(u.full_name, 'Unknown Instructor') as instructor_name,
+          i.image as instructor_image,
+          COALESCE(((
+            SELECT AVG(sf.overall_rating)
             FROM subject_feedback sf
             WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-          ),
-          0
-        ) as subject_avg,
-        (SELECT COUNT(DISTINCT st.user_id) FROM students st 
-         INNER JOIN users u2 ON st.user_id = u2.id 
-         WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM subject_feedback sf
-          WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-        ), 0) as subject_feedback_count,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM instructor_feedback ifb
-          WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
-        ), 0) as instructor_feedback_count
-      FROM subject_offerings so
-      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-      LEFT JOIN course_management c ON so.program_id = c.id
-      LEFT JOIN users u ON so.instructor_id = u.id
-      LEFT JOIN instructors i ON u.id = i.user_id
-      WHERE so.status = 'active'
-      ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code, c.course_section
-    `;
+            AND sf.overall_rating IS NOT NULL
+          ) + (
+            SELECT AVG(ifb.overall_rating)
+            FROM instructor_feedback ifb
+            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+            AND ifb.overall_rating IS NOT NULL
+          )) / 2, 0) as avg_rating,
+          COALESCE(
+            (
+              SELECT AVG(COALESCE(sf.overall_rating, 
+                CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
+              ))
+              FROM subject_feedback sf
+              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+            ),
+            0
+          ) as subject_avg,
+          (SELECT COUNT(DISTINCT st.user_id) FROM students st 
+           INNER JOIN users u2 ON st.user_id = u2.id 
+           WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+          ), 0) as subject_feedback_count,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM instructor_feedback ifb
+            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+          ), 0) as instructor_feedback_count
+        FROM subject_offerings so
+        LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+        LEFT JOIN course_management c ON so.program_id = c.id
+        LEFT JOIN users u ON so.instructor_id = u.id
+        LEFT JOIN instructors i ON u.id = i.user_id
+        LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
+        WHERE so.academic_period_id = ? AND so.status = 'active'
+        ORDER BY ap.academic_year DESC, ap.period_number DESC, es.subject_code, c.course_section
+      `;
+      queryParams = [academic_period_id];
+    } else {
+      // No academic_period_id - return all active subjects (any department)
+      query = `
+        SELECT DISTINCT
+          so.id as section_id,
+          so.id as offering_id,
+          so.subject_id,
+          es.subject_code,
+          es.subject_name,
+          es.department,
+          so.program_id,
+          c.program_name,
+          c.course_section,
+          so.year_level,
+          so.section,
+          COALESCE(ap.academic_year, so.academic_year) as academic_year,
+          COALESCE(ap.period_number, so.semester) as semester,
+          so.instructor_id,
+          COALESCE(u.full_name, 'Unknown Instructor') as instructor_name,
+          i.image as instructor_image,
+          COALESCE(((
+            SELECT AVG(sf.overall_rating)
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+            AND sf.overall_rating IS NOT NULL
+          ) + (
+            SELECT AVG(ifb.overall_rating)
+            FROM instructor_feedback ifb
+            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+            AND ifb.overall_rating IS NOT NULL
+          )) / 2, 0) as avg_rating,
+          COALESCE(
+            (
+              SELECT AVG(COALESCE(sf.overall_rating, 
+                CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
+              ))
+              FROM subject_feedback sf
+              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+            ),
+            0
+          ) as subject_avg,
+          (SELECT COUNT(DISTINCT st.user_id) FROM students st 
+           INNER JOIN users u2 ON st.user_id = u2.id 
+           WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM subject_feedback sf
+            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+          ), 0) as subject_feedback_count,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM instructor_feedback ifb
+            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+          ), 0) as instructor_feedback_count
+        FROM subject_offerings so
+        LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+        LEFT JOIN course_management c ON so.program_id = c.id
+        LEFT JOIN users u ON so.instructor_id = u.id
+        LEFT JOIN instructors i ON u.id = i.user_id
+        LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
+        WHERE so.status = 'active'
+        ORDER BY ap.academic_year DESC, ap.period_number DESC, es.subject_code, c.course_section
+      `;
+      queryParams = [];
+    }
     
-    db.query(query, (err, results) => {
+    db.query(query, queryParams, (err, results) => {
       if (err) {
         console.error("Error fetching subjects:", err);
         return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
@@ -796,11 +831,12 @@ const assignFormToSubject = async (req, res) => {
 
 /**
  * Get subjects for a specific instructor (for subject-evaluation.tsx)
+ * Uses academic_period_id for filtering
  */
 const getInstructorSubjects = async (req, res) => {
   try {
     const { instructorId } = req.params;
-    const { academic_year, semester } = req.query;
+    const { academic_period_id, academic_year, semester } = req.query;
     
     // Get current settings from academic_periods table
     const settings = await getCurrentSettings();
@@ -819,41 +855,25 @@ const getInstructorSubjects = async (req, res) => {
       department = instructorResults[0].department;
     }
     
-    // Get period for this department - only apply if we have valid values
-    // Handle "Both" department - get both College and Senior High periods
-    let collegeSettings = null;
-    let shsSettings = null;
+    // Get period for this department - use academic_period_id if provided
+    let periodId = academic_period_id;
     
-    if (settings) {
-      collegeSettings = settings.college;
-      shsSettings = settings.seniorHigh;
-    }
-    
-    // Determine acadYear and sem - use query params if provided, otherwise use settings
-    let acadYear = academic_year;
-    let sem = semester;
-    
-    // If department is "Both", we need to handle both College and SHS periods
-    // We'll query without period filter to get all offerings for this instructor
-    const isBothDepartment = department === 'Both';
-    
-    // Only use settings if no explicit query params provided AND settings have valid values
-    // Skip period filter for "Both" department to get all their offerings
-    if (!isBothDepartment && (!acadYear || !sem)) {
-      const deptSettings = department === 'Senior High' ? shsSettings : collegeSettings;
-      if (deptSettings && deptSettings.semester && deptSettings.academic_year) {
-        acadYear = deptSettings.academic_year;
-        sem = deptSettings.semester;
+    // If academic_period_id not provided, try to get from settings
+    if (!periodId) {
+      const deptSettings = department === 'Senior High' ? settings.seniorHigh : settings.college;
+      if (deptSettings && deptSettings.period_id) {
+        periodId = deptSettings.period_id;
       }
     }
     
-    console.log("📋 getInstructorSubjects - Instructor:", instructorId, "| Dept:", department, "| IsBoth:", isBothDepartment, "| Sem:", sem, "| AcadYear:", acadYear);
+    console.log("📋 getInstructorSubjects - Instructor:", instructorId, "| Dept:", department, "| PeriodId:", periodId);
     
-    // Get subjects for this instructor, filtered by current period
-    const query = `
+    // Build query with academic_period_id filtering
+    let query = `
       SELECT 
         so.id as offering_id,
         so.subject_id,
+        so.academic_period_id,
         es.subject_code,
         es.subject_name,
         es.department,
@@ -861,8 +881,8 @@ const getInstructorSubjects = async (req, res) => {
         c.course_section,
         so.year_level,
         so.section,
-        so.academic_year,
-        so.semester,
+        COALESCE(ap.academic_year, so.academic_year) as academic_year,
+        COALESCE(ap.period_number, so.semester) as semester,
         (SELECT COUNT(DISTINCT st.user_id) FROM students st 
          INNER JOIN users u2 ON st.user_id = u2.id 
          WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
@@ -899,14 +919,22 @@ const getInstructorSubjects = async (req, res) => {
       FROM subject_offerings so
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
+      LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
       WHERE so.instructor_id = ? AND so.status = 'active'
-      ${acadYear && sem ? 'AND so.academic_year = ? AND so.semester = ?' : ''}
-      ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code
     `;
     
-    const queryParams = acadYear && sem ? [instructorId, acadYear, sem] : [instructorId];
+    let queryParams = [instructorId];
+    
+    // Apply academic_period_id filter if available
+    if (periodId) {
+      query += ' AND so.academic_period_id = ?';
+      queryParams.push(periodId);
+    }
+    
+    query += ' ORDER BY ap.academic_year DESC, ap.period_number DESC, es.subject_code';
+    
     console.log("🔍 DEBUG: Query params:", queryParams);
-    console.log("🔍 DEBUG: Using period filter:", acadYear && sem ? "YES" : "NO");
+    console.log("🔍 DEBUG: Using period filter:", periodId ? "YES" : "NO");
     
     db.query(query, queryParams, (err, subjects) => {
       if (err) {

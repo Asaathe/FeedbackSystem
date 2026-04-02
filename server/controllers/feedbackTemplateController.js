@@ -799,9 +799,10 @@ const submitSubjectFeedback = async (req, res) => {
     // Variables for academic year and semester (scoped to try block)
     let acadYear = academic_year;
     let sem = semester;
+    let academicPeriodId = null;
 
     // Validate that subject_id exists in evaluation_subjects table
-    const validateSubjectQuery = "SELECT id FROM evaluation_subjects WHERE id = ?";
+    const validateSubjectQuery = "SELECT id, department FROM evaluation_subjects WHERE id = ?";
     db.query(validateSubjectQuery, [subject_id], (validateErr, validateResults) => {
       if (validateErr) {
         console.error("Error validating subject:", validateErr);
@@ -812,22 +813,33 @@ const submitSubjectFeedback = async (req, res) => {
         // Subject doesn't exist - cannot sync from legacy table anymore
         return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
       } else {
-        getAcademicYearAndSemester();
+        const subjectDepartment = validateResults[0].department;
+        getAcademicYearAndSemester(subjectDepartment);
       }
     });
 
-    async function getAcademicYearAndSemester() {
-      // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
+    async function getAcademicYearAndSemester(subjectDepartment) {
+      // Get academic year, semester, and period_id from settings
       if (!acadYear || !sem) {
         try {
-          const settings = await getCurrentSettings();
-          sem = settings.college?.semester || settings.semester || sem;
-          acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+          // getCurrentSettings returns period_id for the active period
+          const settings = await getCurrentSettings(subjectDepartment);
+          sem = settings.semester || sem;
+          acadYear = settings.academic_year || acadYear;
+          academicPeriodId = settings.period_id || null;
+          console.log("📋 Using active academic period:", { period_id: academicPeriodId, academic_year: acadYear, semester: sem });
         } catch (err) {
           console.error("Error getting settings:", err);
         }
         insertFeedback();
       } else {
+        // Even if academic_year/semester provided, try to get the period_id
+        try {
+          const settings = await getCurrentSettings(subjectDepartment);
+          academicPeriodId = settings.period_id || null;
+        } catch (err) {
+          console.error("Error getting period_id:", err);
+        }
         insertFeedback();
       }
     }
@@ -855,10 +867,10 @@ const submitSubjectFeedback = async (req, res) => {
       }
       
       const insertQuery = `
-        INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, category_averages, academic_year, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, category_averages, academic_year, semester, academic_period_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(responses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
+      db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(responses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem, academicPeriodId], (insertErr, result) => {
         if (insertErr) {
           // Check for duplicate
           if (insertErr.code === 'ER_DUP_ENTRY') {
@@ -891,10 +903,11 @@ const submitInstructorFeedback = async (req, res) => {
     // Variables for academic year and semester (scoped to try block)
     let acadYear = academic_year;
     let sem = semester;
+    let academicPeriodId = null;
 
     // Validate that subject_id exists in evaluation_subjects table (if provided)
     if (subject_id) {
-      const validateSubjectQuery = "SELECT id FROM evaluation_subjects WHERE id = ?";
+      const validateSubjectQuery = "SELECT id, department FROM evaluation_subjects WHERE id = ?";
       db.query(validateSubjectQuery, [subject_id], (validateErr, validateResults) => {
         if (validateErr) {
           console.error("Error validating subject:", validateErr);
@@ -905,25 +918,34 @@ const submitInstructorFeedback = async (req, res) => {
           // Subject doesn't exist - cannot sync from legacy table anymore
           return res.status(400).json({ success: false, message: "Invalid subject ID. Subject does not exist in evaluation system." });
         } else {
-          proceedWithInsert();
+          const subjectDepartment = validateResults[0].department;
+          proceedWithInsert(subjectDepartment);
         }
       });
     } else {
-      proceedWithInsert();
+      proceedWithInsert(null);
     }
 
-    async function proceedWithInsert() {
-      // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
+    async function proceedWithInsert(subjectDepartment) {
+      // Get academic year, semester, and period_id from settings
       if (!acadYear || !sem) {
         try {
-          const settings = await getCurrentSettings();
-          sem = settings.college?.semester || settings.semester || sem;
-          acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+          const settings = await getCurrentSettings(subjectDepartment);
+          sem = settings.semester || sem;
+          acadYear = settings.academic_year || acadYear;
+          academicPeriodId = settings.period_id || null;
         } catch (err) {
           console.error("Error getting settings:", err);
         }
         insertFeedback();
       } else {
+        // Even if academic_year/semester provided, try to get the period_id
+        try {
+          const settings = await getCurrentSettings(subjectDepartment);
+          academicPeriodId = settings.period_id || null;
+        } catch (err) {
+          console.error("Error getting period_id:", err);
+        }
         insertFeedback();
       }
     }
@@ -951,10 +973,10 @@ const submitInstructorFeedback = async (req, res) => {
       }
       
       const insertQuery = `
-        INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, category_averages, academic_year, semester)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, category_averages, academic_year, semester, academic_period_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
-      db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(responses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
+      db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(responses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem, academicPeriodId], (insertErr, result) => {
         if (insertErr) {
           // Check for duplicate
           if (insertErr.code === 'ER_DUP_ENTRY') {
@@ -1011,23 +1033,42 @@ const submitFeedback = async (req, res) => {
       async function insertSubjectFeedback() {
         let acadYear = academic_year;
         let sem = semester;
+        let academicPeriodId = null;
 
-        // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
+        // Get subject department first
+        const subjectQuery = "SELECT department FROM evaluation_subjects WHERE id = ?";
+        const subjectResult = await new Promise((resolve, reject) => {
+          db.query(subjectQuery, [subject_id], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        const subjectDepartment = subjectResult.length > 0 ? subjectResult[0].department : null;
+
+        // Get academic year, semester, and period_id from settings
         if (!acadYear || !sem) {
           try {
-            const settings = await getCurrentSettings();
-            sem = settings.college?.semester || settings.semester || sem;
-            acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+            const settings = await getCurrentSettings(subjectDepartment);
+            sem = settings.semester || sem;
+            acadYear = settings.academic_year || acadYear;
+            academicPeriodId = settings.period_id || null;
           } catch (err) {
             console.error("Error getting settings:", err);
           }
-          doInsertSubjectFeedback(acadYear, sem);
+          doInsertSubjectFeedback(acadYear, sem, academicPeriodId);
         } else {
-          doInsertSubjectFeedback(acadYear, sem);
+          // Even if academic_year/semester provided, try to get the period_id
+          try {
+            const settings = await getCurrentSettings(subjectDepartment);
+            academicPeriodId = settings.period_id || null;
+          } catch (err) {
+            console.error("Error getting period_id:", err);
+          }
+          doInsertSubjectFeedback(acadYear, sem, academicPeriodId);
         }
       }
 
-      async function doInsertSubjectFeedback(acadYear, sem) {
+      async function doInsertSubjectFeedback(acadYear, sem, academicPeriodId) {
         // Calculate overall_rating from responses if not provided
         let finalOverallRating = overall_rating;
         let categoryAverages = {};
@@ -1050,10 +1091,10 @@ const submitFeedback = async (req, res) => {
         }
         
         const insertQuery = `
-          INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, category_averages, academic_year, semester)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO subject_feedback (student_id, subject_id, section_id, instructor_id, responses, overall_rating, category_averages, academic_year, semester, academic_period_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(feedbackResponses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
+        db.query(insertQuery, [userId, subject_id, section_id || null, instructor_id || null, JSON.stringify(feedbackResponses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem, academicPeriodId], (insertErr, result) => {
           if (insertErr) {
             if (insertErr.code === 'ER_DUP_ENTRY') {
               return res.status(400).json({ success: false, message: "You have already submitted feedback for this subject" });
@@ -1071,22 +1112,44 @@ const submitFeedback = async (req, res) => {
 
       let acadYear = academic_year;
       let sem = semester;
+      let academicPeriodId = null;
 
-      // Get academic year and semester from settings if not provided (uses academic_periods table first, falls back to system_settings)
+      // Get subject department if subject_id provided
+      let subjectDepartment = null;
+      if (subject_id) {
+        const subjectQuery = "SELECT department FROM evaluation_subjects WHERE id = ?";
+        const subjectResult = await new Promise((resolve, reject) => {
+          db.query(subjectQuery, [subject_id], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+        subjectDepartment = subjectResult.length > 0 ? subjectResult[0].department : null;
+      }
+
+      // Get academic year, semester, and period_id from settings
       if (!acadYear || !sem) {
         try {
-          const settings = await getCurrentSettings();
-          sem = settings.college?.semester || settings.semester || sem;
-          acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
+          const settings = await getCurrentSettings(subjectDepartment);
+          sem = settings.semester || sem;
+          acadYear = settings.academic_year || acadYear;
+          academicPeriodId = settings.period_id || null;
         } catch (err) {
           console.error("Error getting settings:", err);
         }
-        doInsertInstructorFeedback(acadYear, sem);
+        doInsertInstructorFeedback(acadYear, sem, academicPeriodId);
       } else {
-        doInsertInstructorFeedback(acadYear, sem);
+        // Even if academic_year/semester provided, try to get the period_id
+        try {
+          const settings = await getCurrentSettings(subjectDepartment);
+          academicPeriodId = settings.period_id || null;
+        } catch (err) {
+          console.error("Error getting period_id:", err);
+        }
+        doInsertInstructorFeedback(acadYear, sem, academicPeriodId);
       }
 
-      async function doInsertInstructorFeedback(acadYear, sem) {
+      async function doInsertInstructorFeedback(acadYear, sem, academicPeriodId) {
         // Calculate overall_rating from responses if not provided
         let finalOverallRating = overall_rating;
         let categoryAverages = {};
@@ -1109,10 +1172,10 @@ const submitFeedback = async (req, res) => {
         }
         
         const insertQuery = `
-          INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, category_averages, academic_year, semester)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          INSERT INTO instructor_feedback (student_id, instructor_id, subject_id, section_id, responses, overall_rating, category_averages, academic_year, semester, academic_period_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(feedbackResponses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem], (insertErr, result) => {
+        db.query(insertQuery, [userId, instructor_id, subject_id || null, section_id || null, JSON.stringify(feedbackResponses), finalOverallRating, JSON.stringify(categoryAverages), acadYear, sem, academicPeriodId], (insertErr, result) => {
           if (insertErr) {
             if (insertErr.code === 'ER_DUP_ENTRY') {
               return res.status(400).json({ success: false, message: "You have already submitted feedback for this instructor" });

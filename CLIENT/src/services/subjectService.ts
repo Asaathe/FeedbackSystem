@@ -510,6 +510,7 @@ export interface SubjectOffering {
   instructor_name: string | null;
   instructor_email: string | null;
   enrolled_count: number;
+  program_department?: string;
 }
 
 export const getSubjectOfferings = async (params?: {
@@ -517,6 +518,7 @@ export const getSubjectOfferings = async (params?: {
   academic_year?: string;
   semester?: string;
   program_id?: string;
+  academic_period_id?: string;
 }) => {
   try {
     const urlParams = new URLSearchParams();
@@ -524,6 +526,7 @@ export const getSubjectOfferings = async (params?: {
     if (params?.academic_year) urlParams.append('academic_year', params.academic_year);
     if (params?.semester) urlParams.append('semester', params.semester);
     if (params?.program_id) urlParams.append('program_id', params.program_id);
+    if (params?.academic_period_id) urlParams.append('academic_period_id', params.academic_period_id);
 
     const response = await fetch(`${API_BASE_URL}/subjects/offerings/all?${urlParams}`, {
       headers: getAuthHeaders(),
@@ -545,6 +548,7 @@ export const createSubjectOffering = async (data: {
   academic_year?: string;
   semester?: string;
   instructor_id?: number;
+  academic_period_id?: number | null;
 }) => {
   try {
     const response = await fetch(`${API_BASE_URL}/subjects/offerings`, {
