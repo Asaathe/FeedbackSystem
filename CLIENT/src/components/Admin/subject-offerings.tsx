@@ -189,6 +189,28 @@ export function SubjectOfferings() {
   const [loadingStudents, setLoadingStudents] = useState(false);
 
   useEffect(() => {
+    if (viewStudentsDialogOpen && selectedOffering) {
+      const fetchStudents = async () => {
+        setLoadingStudents(true);
+        try {
+          const result = await getSubjectOfferingStudents(selectedOffering.id.toString());
+          if (result.success) {
+            setOfferingStudents(result.students || []);
+          } else {
+            toast.error(result.message);
+          }
+        } catch (error) {
+          console.error("Error loading students:", error);
+          toast.error("Failed to load students");
+        } finally {
+          setLoadingStudents(false);
+        }
+      };
+      fetchStudents();
+    }
+  }, [viewStudentsDialogOpen, selectedOffering?.id]);
+
+  useEffect(() => {
     // Load system settings first, then load data
     // Only run on mount - department changes are handled by the separate useEffect
     loadSystemSettings().then((settings) => {
@@ -555,24 +577,11 @@ export function SubjectOfferings() {
     setDeleteDialogOpen(true);
   };
 
-  const openViewStudentsDialog = async (offering: SubjectOffering) => {
-    setSelectedOffering(offering);
-    setLoadingStudents(true);
-    setViewStudentsDialogOpen(true);
-      
-    try {
-      const result = await getSubjectOfferingStudents(offering.id.toString());
-      if (result.success) {
-        setOfferingStudents(result.students || []);
-      } else {
-        toast.error(result.message);
-      }
-    } catch (error) {
-      console.error("Error loading students:", error);
-      toast.error("Failed to load students");
-    } finally {
-      setLoadingStudents(false);
-    }
+  const openViewStudentsDialog = (offering: SubjectOffering) => {
+    setTimeout(() => {
+      setSelectedOffering(offering);
+      setViewStudentsDialogOpen(true);
+    }, 100);
   };
 
   const filteredOfferings = offerings.filter(offering =>
@@ -1155,24 +1164,18 @@ export function SubjectOfferings() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* View Students Dialog */}
-      <Dialog open={viewStudentsDialogOpen} onOpenChange={(open) => {
-        if (!open) {
-          setSelectedOffering(null);
-          setOfferingStudents([]);
-        }
-        setViewStudentsDialogOpen(open);
-      }}>
-        <DialogContent className="sm:max-w-lg max-w-[90vw] max-h-[300px] p-3 overflow-hidden">
-          <DialogHeader className="pb-2 space-y-1">
-            <DialogTitle className="text-sm flex items-center gap-2">
+      {/* View Students Dialog - Using AlertDialog for better focus management */}
+      <AlertDialog open={viewStudentsDialogOpen}>
+        <AlertDialogContent className="sm:max-w-lg max-w-[90vw] max-h-[300px] p-3 overflow-hidden">
+          <AlertDialogHeader className="pb-2 space-y-1">
+            <AlertDialogTitle className="text-sm flex items-center gap-2">
               <Users className="w-4 h-4" />
               {selectedOffering?.subject_code} - {selectedOffering?.program_code}
-            </DialogTitle>
-            <DialogDescription className="text-xs">
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
               Yr {selectedOffering?.year_level} Sec {selectedOffering?.section} | {selectedOffering?.academic_year} - {selectedOffering?.semester}
-            </DialogDescription>
-          </DialogHeader>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <div className="overflow-y-auto" style={{ maxHeight: '160px' }}>
             {loadingStudents ? (
               <div className="flex justify-center items-center py-8">
@@ -1192,8 +1195,8 @@ export function SubjectOfferings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {offeringStudents.map((student) => (
-                    <TableRow key={student.user_id} className="h-10">
+                  {offeringStudents.map((student, index) => (
+                    <TableRow key={student.user_id || index} className="h-10">
                       <TableCell className="text-xs py-1 font-medium">{student.studentID}</TableCell>
                       <TableCell className="text-xs py-1">
                         <div className="flex items-center gap-1">
@@ -1211,11 +1214,15 @@ export function SubjectOfferings() {
               </Table>
             )}
           </div>
-          <DialogFooter className="pt-2 pb-0">
-            <Button variant="outline" size="sm" onClick={() => setViewStudentsDialogOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          <AlertDialogFooter className="pt-2 pb-0">
+            <AlertDialogCancel onClick={() => {
+              setViewStudentsDialogOpen(false);
+              setSelectedOffering(null);
+              setOfferingStudents([]);
+            }}>Close</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
