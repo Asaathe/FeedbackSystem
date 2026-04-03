@@ -770,6 +770,29 @@ const updateEmploymentInfo = async (req, res) => {
         ]
       );
     }
+
+    const currentDate = new Date().toISOString().split('T')[0];
+    await queryDatabase(
+      db,
+      `UPDATE alumni_employment_history SET is_current = 0, end_date = ? WHERE alumni_user_id = ? AND is_current = 1`,
+      [currentDate, userId]
+    );
+    await queryDatabase(
+      db,
+      `INSERT INTO alumni_employment_history (alumni_user_id, company_name, job_title, employment_type, industry_type, company_address, monthly_salary, is_relevant_to_degree, start_date, is_current)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [
+        userId,
+        companyName || null,
+        jobTitle || null,
+        employmentType || null,
+        industryType || null,
+        companyAddress || null,
+        monthlySalary || null,
+        isRelevantToDegree || null,
+        yearStarted || null
+      ]
+    );
     
     return res.status(200).json({
       success: true,
