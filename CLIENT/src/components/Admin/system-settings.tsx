@@ -6,7 +6,7 @@ import { Label } from "../ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../ui/tabs";
 import { toast } from "sonner";
-import { Settings, Save, RefreshCw, GraduationCap, Building2, Plus, Calendar, ArrowRightLeft, Clock, Trash2, Edit } from "lucide-react";
+import { Settings, GraduationCap, Building2, Plus, Calendar, ArrowRightLeft, Trash2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +15,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
-import { Switch } from "../ui/switch";
 
 interface SystemSettingsProps {
   onNavigate?: (page: string) => void;
@@ -41,8 +40,6 @@ interface AcademicPeriod {
   start_date: string;
   end_date: string;
   is_current: boolean;
-  auto_transition: boolean;
-  transition_time: string;
   status: string;
   created_at: string;
 }
@@ -128,8 +125,7 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
         period_number: 1,
         start_date: "",
         end_date: "",
-        auto_transition: false,
-        transition_time: "06:00:00",
+        set_as_active: false,
       });
     }
   }, [showAddModal]);
@@ -142,8 +138,7 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
     period_number: 1,
     start_date: "",
     end_date: "",
-    auto_transition: false,
-    transition_time: "06:00:00",
+    set_as_active: false,
   });
 
   // Update newPeriod when selectedDept changes (for the Add Period modal)
@@ -178,11 +173,12 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
       );
       const data = await response.json();
       if (data.success) {
-        // Filter out completed and archived periods to reduce confusion
         const activePeriods = (data.periods || []).filter(
           (p: AcademicPeriod) => p.status !== 'completed' && p.status !== 'archived'
         );
         setPeriods(activePeriods);
+      } else {
+        console.error("Failed to fetch periods:", data.message);
       }
     } catch (error) {
       console.error("Error fetching periods:", error);
@@ -202,7 +198,22 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
       );
       const data = await response.json();
       if (data.success) {
-        setSemesterStatus(data);
+        // If no current_period from date-based check, try to find any active status period from the list
+        if (!data.current_period && periods.length > 0) {
+          const activePeriod = periods.find(p => p.status === 'active');
+          if (activePeriod) {
+            data.current_period = activePeriod;
+          }
+        }
+        setSemesterStatus({
+          department: data.department,
+          current_period: data.current_period,
+          next_period: data.next_period,
+          recent_transitions: data.recent_transitions || [],
+          period_type: data.period_type || selectedDept === 'College' ? 'semester' : 'quarter'
+        });
+      } else {
+        console.error("Failed to fetch semester status:", data.message);
       }
     } catch (error) {
       console.error("Error fetching semester status:", error);
@@ -223,7 +234,9 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
       });
       const data = await response.json();
       if (data.success) {
-        toast.success("Academic period created successfully");
+        toast.success(newPeriod.set_as_active 
+          ? "Academic period created and set as active" 
+          : "Academic period created successfully");
         setShowAddModal(false);
         setNewPeriod({
           department: selectedDept,
@@ -232,10 +245,9 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
           period_number: 1,
           start_date: "",
           end_date: "",
-          auto_transition: false,
-          transition_time: "06:00:00",
+          set_as_active: false,
         });
-        fetchAcademicPeriods();
+        await fetchAcademicPeriods();
         fetchSemesterStatus();
       } else {
         toast.error(data.message || "Failed to create period");
@@ -292,8 +304,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
           start_date: editingPeriod.start_date,
           end_date: editingPeriod.end_date,
           status: editingPeriod.status,
-          auto_transition: editingPeriod.auto_transition,
-          transition_time: editingPeriod.transition_time,
         }),
       });
       const data = await response.json();
@@ -542,11 +552,10 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="border-b">
-                          <th className="text-left py-3 px-2">Period</th>
+<th className="text-left py-3 px-2">Period</th>
                           <th className="text-left py-3 px-2">Academic Year</th>
                           <th className="text-left py-3 px-2">Dates</th>
                           <th className="text-left py-3 px-2">Status</th>
-                          <th className="text-left py-3 px-2">Auto</th>
                           <th className="text-left py-3 px-2">Actions</th>
                         </tr>
                       </thead>
@@ -571,15 +580,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                               }`}>
                                 {period.status}
                               </span>
-                            </td>
-                            <td className="py-3 px-2">
-                              {period.auto_transition ? (
-                                <span className="flex items-center gap-1 text-xs">
-                                  <Clock className="w-3 h-3" /> {period.transition_time}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-xs">Manual</span>
-                              )}
                             </td>
                             <td className="py-3 px-2">
                               <div className="flex gap-2">
@@ -691,7 +691,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                           <th className="text-left py-3 px-2">Academic Year</th>
                           <th className="text-left py-3 px-2">Dates</th>
                           <th className="text-left py-3 px-2">Status</th>
-                          <th className="text-left py-3 px-2">Auto</th>
                           <th className="text-left py-3 px-2">Actions</th>
                         </tr>
                       </thead>
@@ -714,15 +713,6 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                               }`}>
                                 {period.status}
                               </span>
-                            </td>
-                            <td className="py-3 px-2">
-                              {period.auto_transition ? (
-                                <span className="flex items-center gap-1 text-xs">
-                                  <Clock className="w-3 h-3" /> {period.transition_time}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-xs">Manual</span>
-                              )}
                             </td>
                             <td className="py-3 px-2">
                               <div className="flex gap-2">
@@ -836,27 +826,18 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
               </div>
             </div>
             
-            <div className="flex items-center justify-between space-y-2">
-              <div className="flex flex-col">
-                <Label>Auto Transition</Label>
-                <span className="text-xs text-gray-500">Automatically switch at end date</span>
-              </div>
-              <Switch
-                checked={newPeriod.auto_transition}
-                onCheckedChange={(checked) => setNewPeriod(prev => ({ ...prev, auto_transition: checked }))}
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="set_as_active"
+                checked={newPeriod.set_as_active}
+                onChange={(e) => setNewPeriod(prev => ({ ...prev, set_as_active: e.target.checked }))}
+                className="w-4 h-4"
               />
+              <Label htmlFor="set_as_active" className="text-sm font-normal">
+                Set as active period immediately
+              </Label>
             </div>
-            
-            {newPeriod.auto_transition && (
-              <div className="space-y-2">
-                <Label>Transition Time</Label>
-                <Input
-                  type="time"
-                  value={newPeriod.transition_time}
-                  onChange={(e) => setNewPeriod(prev => ({ ...prev, transition_time: e.target.value }))}
-                />
-              </div>
-            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowAddModal(false)}>

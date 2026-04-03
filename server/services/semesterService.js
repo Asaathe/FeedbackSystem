@@ -92,22 +92,18 @@ const getPeriodById = async (id) => {
  */
 const getCurrentPeriod = async (department) => {
   try {
-    // DATE-BASED + STATUS: Find period where department matches, status is active, and today is in range
-    // Uses department column directly - works for both College AND Senior High
-    // Use DATE() for proper date comparison
+    // Find period where department matches and status is 'active'
     const query = `
       SELECT * FROM academic_periods 
       WHERE department = ? 
       AND status = 'active'
-      AND DATE(CURDATE()) BETWEEN DATE(start_date) AND DATE(end_date)
       ORDER BY start_date DESC
       LIMIT 1
     `;
     const periods = await queryDatabase(db, query, [department]);
     
     if (periods.length === 0) {
-      // No active period matches today's date - return null
-      return { success: false, message: 'No active period found for today. Please ensure an academic period is set to active and covers the current date.' };
+      return { success: false, message: 'No active period found.' };
     }
     
     return { success: true, period: periods[0] };
@@ -155,7 +151,7 @@ const autoUpdateStatuses = async () => {
     // Set periods to 'active' if today is within their date range
     const activateQuery = `
       UPDATE academic_periods 
-      SET status = 'active' 
+      SET status = 'active', is_current = TRUE 
       WHERE status != 'archived'
       AND start_date <= ? 
       AND end_date >= ?
@@ -165,7 +161,7 @@ const autoUpdateStatuses = async () => {
     // Set periods to 'completed' if today is after their end date
     const completeQuery = `
       UPDATE academic_periods 
-      SET status = 'completed' 
+      SET status = 'completed', is_current = FALSE 
       WHERE status = 'active'
       AND end_date < ?
     `;
@@ -184,8 +180,6 @@ const autoUpdateStatuses = async () => {
 const createAcademicPeriod = async (periodData) => {
   try {
     // First auto-update statuses
-    await autoUpdateStatuses();
-    
     const { 
       department, 
       period_type, 
@@ -193,8 +187,6 @@ const createAcademicPeriod = async (periodData) => {
       period_number, 
       start_date, 
       end_date, 
-      auto_transition = false,
-      transition_time = '00:00:00',
       created_by 
     } = periodData;
 
@@ -231,21 +223,31 @@ const createAcademicPeriod = async (periodData) => {
       return { success: false, message: 'Date range overlaps with existing period' };
     }
 
-    // Auto-set status based on dates: if today is within range, set to 'active'
-    const today = new Date().toISOString().split('T')[0];
-    const status = (start_date <= today && today <= end_date) ? 'active' : 'upcoming';
-    console.log("📋 Creating period - today:", today, "| start:", start_date, "| end:", end_date, "| status set to:", status);
+    // Check for existing active period
+    const activeCheckQuery = `SELECT id FROM academic_periods WHERE department = ? AND status = 'active'`;
+    const activePeriods = await queryDatabase(db, activeCheckQuery, [department]);
     
-    // Insert new period
+    // Default status is 'upcoming', but if set_as_active is true or no active period, set as active
+    let status = 'upcoming';
+    let isCurrent = false;
+    if (periodData.set_as_active || activePeriods.length === 0) {
+      status = 'active';
+      isCurrent = true;
+      // Archive any existing active period
+      if (activePeriods.length > 0) {
+        await queryDatabase(db, 'UPDATE academic_periods SET status = ?, is_current = FALSE WHERE id = ?', ['completed', activePeriods[0].id]);
+      }
+    }
+    
     const insertQuery = `
       INSERT INTO academic_periods 
-      (department, period_type, academic_year, period_number, start_date, end_date, auto_transition, transition_time, status, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (department, period_type, academic_year, period_number, start_date, end_date, status, is_current, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     
     const result = await queryDatabase(db, insertQuery, [
       department, period_type, academic_year, period_number, 
-      start_date, end_date, auto_transition, transition_time, status, created_by
+      start_date, end_date, status, isCurrent, created_by
     ]);
 
     return {
@@ -376,12 +378,12 @@ const setCurrentPeriod = async (periodId, resetType = 'both', userId = null) => 
 
     // Handle subject offerings reset
     if (resetType === 'subjects' || resetType === 'both') {
-      await handleSubjectReset(connection, newPeriod.department, newPeriod);
+      await handleSubjectReset(connection, newPeriod.department, oldPeriod);
     }
 
     // Handle evaluation reset
     if (resetType === 'evaluations' || resetType === 'both') {
-      await handleEvaluationReset(connection, newPeriod.department, newPeriod);
+      await handleEvaluationReset(connection, newPeriod.department, oldPeriod, newPeriod);
     }
 
     // Log the transition
@@ -438,12 +440,14 @@ const setCurrentPeriod = async (periodId, resetType = 'both', userId = null) => 
  * Handle subject offerings reset during transition
  * Uses academic_period_id for precise targeting
  */
-const handleSubjectReset = async (connection, department, newPeriod) => {
+const handleSubjectReset = async (connection, department, oldPeriod) => {
   try {
-    const { id: academic_period_id } = newPeriod;
+    if (!oldPeriod) {
+      console.log("No old period to archive subjects for");
+      return;
+    }
+    const { id: academic_period_id } = oldPeriod;
     
-    // 1. Archive old subject offerings by setting status to 'archived'
-    // Using academic_period_id for precise targeting instead of year/semester matching
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE subject_offerings 
@@ -458,10 +462,7 @@ const handleSubjectReset = async (connection, department, newPeriod) => {
       );
     });
 
-    console.log(`Subject offerings archived for ${department} using academic_period_id=${academic_period_id}`);
-    
-    // Note: New subject offerings will be created manually by admins
-    // This just archives the old ones to keep historical data
+    console.log(`Subject offerings archived for ${department} using old period academic_period_id=${academic_period_id}`);
   } catch (error) {
     console.error("Handle subject reset error:", error);
     throw error;
@@ -472,11 +473,15 @@ const handleSubjectReset = async (connection, department, newPeriod) => {
  * Handle evaluation reset during transition
  * Uses academic_period_id for precise targeting (more reliable than year/semester matching)
  */
-const handleEvaluationReset = async (connection, department, newPeriod) => {
+const handleEvaluationReset = async (connection, department, oldPeriod, newPeriod) => {
   try {
-    const { id: academic_period_id, academic_year, period_number, period_type } = newPeriod;
+    if (!oldPeriod) {
+      console.log("No old period to archive evaluations for");
+      return;
+    }
+    const { id: academic_period_id } = oldPeriod;
     
-    // 1. Archive old subject feedback using academic_period_id
+    // 1. Archive old subject feedback using old period's academic_period_id
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE subject_feedback 
@@ -490,7 +495,7 @@ const handleEvaluationReset = async (connection, department, newPeriod) => {
       );
     });
 
-    // 2. Archive old instructor feedback using academic_period_id
+    // 2. Archive old instructor feedback using old period's academic_period_id
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE instructor_feedback 
@@ -504,7 +509,7 @@ const handleEvaluationReset = async (connection, department, newPeriod) => {
       );
     });
 
-    // 3. Reset total_feedbacks count in subject_offerings using academic_period_id
+    // 3. Reset total_feedbacks count in subject_offerings using old period's academic_period_id
     await new Promise((resolve, reject) => {
       connection.query(
         `UPDATE subject_offerings 
@@ -518,11 +523,11 @@ const handleEvaluationReset = async (connection, department, newPeriod) => {
       );
     });
 
-    console.log(`Evaluation reset completed for ${department} using academic_period_id=${academic_period_id}`);
+    console.log(`Evaluation reset completed for ${department} using old period academic_period_id=${academic_period_id}`);
     console.log(`- Subject feedback archived (precise targeting by period ID)`);
     console.log(`- Instructor feedback archived (precise targeting by period ID)`);
     console.log(`- Feedback counts reset to 0`);
-    console.log(`New period ready: ${period_type} ${period_number}, AY ${academic_year}`);
+    console.log(`New period ready: ${newPeriod.period_type} ${newPeriod.period_number}, AY ${newPeriod.academic_year}`);
   } catch (error) {
     console.error("Handle evaluation reset error:", error);
     throw error;

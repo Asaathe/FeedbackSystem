@@ -4,7 +4,6 @@ import { Button } from "../ui/button";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { Progress } from "../ui/progress";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { 
   BookOpen, 
   Users, 
@@ -74,7 +73,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [selectedSubject, setSelectedSubject] = useState<Subject | null>(null);
   const [responses, setResponses] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [loadingSubjects, setLoadingSubjects] = useState(false);
   const [loadingFeedback, setLoadingFeedback] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,75 +84,21 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const [loadingAllSubjects, setLoadingAllSubjects] = useState(false);
   const [categoryBreakdown, setCategoryBreakdown] = useState<any>(null);
   const [loadingBreakdown, setLoadingBreakdown] = useState(false);
-  const [academicPeriodId, setAcademicPeriodId] = useState<number | null | undefined>(undefined);
-  const [selectedDepartment, setSelectedDepartment] = useState<string>('College');
 
-  // Fetch current academic period on mount
+  // Fetch subjects when view changes to subjects
   useEffect(() => {
-    fetchCurrentPeriod();
-  }, []);
-
-  // Fetch period when department changes
-  useEffect(() => {
-    fetchCurrentPeriod();
-  }, [selectedDepartment]);
-
-  const fetchCurrentPeriod = async () => {
-    try {
-      const token = sessionStorage.getItem('authToken');
-      if (!token) {
-        // No token - still try to load without period
-        setLoading(false);
-        return;
-      }
-
-      // Get current period for the selected department (College or Senior High)
-      const response = await fetch(`/api/settings/semester-status?department=${selectedDepartment}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      
-      console.log('Semester Status Response for', selectedDepartment + ':', data);
-      
-      if (data.success && data.current_period) {
-        console.log('Found academic period:', data.current_period);
-        setAcademicPeriodId(data.current_period.id);
-      } else {
-        // No academic period found - set to null so API returns all data
-        console.log('No current academic period found for', selectedDepartment + ', will load without period filter');
-        setAcademicPeriodId(null);
-      }
-    } catch (error) {
-      console.error('Error fetching current period:', error);
-      // Continue without period on error
-      setAcademicPeriodId(null);
-    } finally {
-      // Always set loading to false after attempting to get period
-      setLoading(false);
-    }
-  };
-
-  // Fetch instructors and subjects when academic period or department changes
-  useEffect(() => {
-    // Fetch data when academic period is loaded (either with period id or without it)
-    // The API will handle both cases - with period_id filters, without returns all
-    if (academicPeriodId !== undefined) {
-      fetchInstructors();
-      
-      // Reset subjects when period changes
-      if (currentView === 'subjects') {
-        setAllSubjects([]);
-        fetchAllSubjects();
-      }
-    }
-  }, [academicPeriodId, currentView, selectedDepartment]);
-
-  // Fetch subjects when switching to subjects view
-  useEffect(() => {
-    if (currentView === 'subjects' && academicPeriodId !== undefined && allSubjects.length === 0) {
+    if (currentView === 'subjects') {
+      setAllSubjects([]);
       fetchAllSubjects();
     }
-  }, [currentView, academicPeriodId, selectedDepartment]);
+  }, [currentView]);
+
+  // Fetch instructors when view changes to instructors
+  useEffect(() => {
+    if (currentView === 'instructors') {
+      fetchInstructors();
+    }
+  }, [currentView]);
 
   const fetchInstructors = async () => {
     try {
@@ -163,18 +108,10 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         return;
       }
 
-      // Build query params - include academic_period_id if available
-      const params = new URLSearchParams();
-      if (academicPeriodId) {
-        params.append('academic_period_id', academicPeriodId.toString());
-      }
-      
-      const queryString = params.toString();
-      const url = queryString 
-        ? `/api/subject-evaluation/instructors?${queryString}` 
-        : '/api/subject-evaluation/instructors';
+      // By Instructor view: show ALL instructors (no filtering by academic period)
+      const url = '/api/subject-evaluation/instructors';
 
-      console.log('Fetching instructors from:', url, 'for department:', selectedDepartment);
+      console.log('Fetching all instructors from:', url);
 
       const response = await fetch(url, {
         headers: {
@@ -218,16 +155,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         return;
       }
 
-      // Build query params - include academic_period_id if available
-      const params = new URLSearchParams();
-      if (academicPeriodId) {
-        params.append('academic_period_id', academicPeriodId.toString());
-      }
-      
-      const queryString = params.toString();
-      const url = queryString 
-        ? `/api/subject-evaluation/instructors/${instructorId}/subjects?${queryString}` 
-        : `/api/subject-evaluation/instructors/${instructorId}/subjects`;
+      // By Instructor view: show ALL subjects for this instructor (no period filtering)
+      const url = `/api/subject-evaluation/instructors/${instructorId}/subjects`;
 
       console.log('Fetching instructor subjects from:', url);
 
@@ -280,18 +209,10 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         return;
       }
 
-      // Build query params - require academic_period_id
-      const params = new URLSearchParams();
-      if (academicPeriodId) {
-        params.append('academic_period_id', academicPeriodId.toString());
-      }
-      
-      const queryString = params.toString();
-      const url = queryString 
-        ? `/api/subject-evaluation/subjects?${queryString}` 
-        : '/api/subject-evaluation/subjects';
+      // Fetch all subjects without department filtering
+      const url = '/api/subject-evaluation/subjects';
 
-      console.log('Fetching subjects from:', url, 'for department:', selectedDepartment);
+      console.log('Fetching all subjects from:', url);
 
       const response = await fetch(url, {
         headers: {
@@ -861,19 +782,6 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
               <Filter className="w-4 h-4 mr-2" />
               Filter
             </Button>
-            {/* Department Selector - Right Edge */}
-            <div className="flex items-center gap-2 ml-auto">
-              <label className="text-sm font-medium text-gray-600 whitespace-nowrap">Department:</label>
-              <Select value={selectedDepartment} onValueChange={setSelectedDepartment}>
-                <SelectTrigger className="w-40 bg-white border-green-200 focus:ring-green-400">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="College">College</SelectItem>
-                  <SelectItem value="Senior High">Senior High</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
           {/* Instructor Cards Grid */}

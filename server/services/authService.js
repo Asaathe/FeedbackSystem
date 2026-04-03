@@ -175,10 +175,23 @@ const loginUser = async (email, password) => {
 
     const user = users[0];
     console.log('[LOGIN DEBUG] User found:', { id: user.id, email: user.email, role: user.role, status: user.status });
+    console.log('[LOGIN DEBUG] Password from request:', password);
+    console.log('[LOGIN DEBUG] Stored hash:', user.password_hash);
+
+    // Debug: check if password is being passed correctly
+    if (!password || typeof password !== 'string') {
+      console.log('[LOGIN DEBUG] Password is invalid:', password);
+      return { success: false, message: "Invalid password" };
+    }
 
     // Check password
-    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
-    console.log('[LOGIN DEBUG] Password valid:', isPasswordValid);
+    let isPasswordValid = false;
+    try {
+      isPasswordValid = await bcrypt.compare(password, user.password_hash);
+      console.log('[LOGIN DEBUG] bcrypt.compare result:', isPasswordValid);
+    } catch (bcryptError) {
+      console.log('[LOGIN DEBUG] bcrypt error:', bcryptError.message);
+    }
 
     if (!isPasswordValid) {
       console.log('[LOGIN DEBUG] Password comparison failed');

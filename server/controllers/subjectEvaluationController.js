@@ -113,8 +113,7 @@ const getAllSubjects = async (req, res) => {
     let query, queryParams;
     
     if (academic_period_id) {
-      // Show all subjects for this academic period (both College and SHS)
-      // This allows College instructors teaching SHS to see their SHS subjects
+      // Show all subjects for this academic period (no department filter)
       query = `
         SELECT DISTINCT
           so.id as section_id,

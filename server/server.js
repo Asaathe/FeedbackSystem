@@ -164,11 +164,14 @@ app.use("/api/employment-tracker", employmentTrackerRoutes);
 // Serve uploaded images statically
 app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
 
-// Serve static files in production
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../CLIENT/build")));
+// Serve static files in production only if the build folder exists
+const clientBuildPath = path.join(__dirname, "../CLIENT/build");
+const clientBuildExists = fs.existsSync(clientBuildPath);
+
+if (process.env.NODE_ENV === "production" && clientBuildExists) {
+  app.use(express.static(clientBuildPath));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../CLIENT/build", "index.html"));
+    res.sendFile(path.join(clientBuildPath, "index.html"));
   });
 }
 
@@ -205,5 +208,22 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 console.log('[CRON] Employment update scheduler initialized - runs daily at midnight');
+
+// ============================================
+// SCHEDULED TASKS - Academic Period Auto-Transition
+// ============================================
+const semesterService = require('./services/semesterService');
+
+cron.schedule('1 0 * * *', async () => {
+  console.log('[CRON] Checking academic period auto-transitions...');
+  try {
+    const result = await semesterService.checkAutoTransitions();
+    console.log(`[CRON] Auto-transition check completed: ${result.processed} periods processed`);
+  } catch (error) {
+    console.error('[CRON] Auto-transition check failed:', error);
+  }
+});
+
+console.log('[CRON] Academic period auto-transition scheduler initialized - runs daily at 12:01 AM');
 
 module.exports = app;

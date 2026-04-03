@@ -5,21 +5,38 @@ const db = require("../config/database");
  * This ensures periods are marked 'active' when their date range includes today
  * @returns {Promise<void>}
  */
+let lastAutoUpdateTimestamp = 0;
+const AUTO_UPDATE_INTERVAL_MS = 5 * 60 * 1000;
+
 function autoUpdateStatuses() {
   return new Promise((resolve) => {
+    const now = Date.now();
+    if (now - lastAutoUpdateTimestamp < AUTO_UPDATE_INTERVAL_MS) {
+      resolve();
+      return;
+    }
+    lastAutoUpdateTimestamp = now;
+    
     const today = new Date().toISOString().split('T')[0];
     
-    // Set periods to 'active' if today is within their date range
     const activateQuery = `
       UPDATE academic_periods 
-      SET status = 'active' 
+      SET status = 'active', is_current = TRUE
       WHERE status != 'archived'
-      AND start_date <= ? 
-      AND end_date >= ?
+      AND start_date <= ? AND end_date >= ?
     `;
     db.query(activateQuery, [today, today], (err) => {
       if (err) console.error("Auto-activate error:", err);
-      resolve();
+      
+      const completeQuery = `
+        UPDATE academic_periods 
+        SET status = 'completed', is_current = FALSE
+        WHERE status = 'active' AND end_date < ?
+      `;
+      db.query(completeQuery, [today], (err) => {
+        if (err) console.error("Auto-complete error:", err);
+        resolve();
+      });
     });
   });
 }
@@ -115,45 +132,16 @@ function getActiveAcademicPeriod(department = null) {
       }
 
       db.query(query, params, (err, results) => {
-        const today = new Date().toISOString().split('T')[0];
-        console.log("📋 Debug - department:", department, "| today:", today);
         if (err) {
           console.error("Error getting active academic period:", err);
           resolve(null);
           return;
         }
         
-        // Debug: Check what periods exist in DB for this department
-        if (department) {
-          const debugQuery = `SELECT id, department, period_type, academic_year, period_number, start_date, end_date, status FROM academic_periods WHERE department = ?`;
-          db.query(debugQuery, [department], (debugErr, debugResults) => {
-            if (!debugErr && debugResults.length > 0) {
-              console.log("📋 All periods in DB for", department, ":", debugResults.map(p => ({
-                id: p.id, dept: p.department, status: p.status, 
-                start: p.start_date, end: p.end_date, 
-                today: today,
-                // Compare as date strings (YYYY-MM-DD)
-                inRange: String(p.start_date).substring(0, 10) <= today && today <= String(p.end_date).substring(0, 10)
-              })));
-            }
-          });
-        }
-        
-        // Debug logging
         if (results.length > 0) {
-          console.log("✅ Found active academic period (date-based):", {
-            id: results[0].id,
-            department: results[0].department,
-            period_type: results[0].period_type,
-            academic_year: results[0].academic_year,
-            period_number: results[0].period_number,
-            start_date: results[0].start_date,
-            end_date: results[0].end_date,
-            status: results[0].status,
-            today: today
-          });
+          console.log(`✅ Active period: ${results[0].department} ${results[0].period_type} ${results[0].period_number}, AY ${results[0].academic_year}`);
         } else {
-          console.log("⚠️ No active academic period found for today" + (department ? ` (${department})` : ''));
+          console.log(`⚠️ No active period for ${department || 'any department'}`);
         }
         resolve(results.length > 0 ? results[0] : null);
       });
@@ -239,20 +227,6 @@ async function getCurrentSettings(department = null) {
 }
 
 /**
- * Get current semester for a department (synchronous helper for use in queries)
- * @param {string} department - 'College' or 'Senior High'
- * @returns {Object} - { semester, academic_year }
- */
-function getCurrentSettingsSync(department = null) {
-  // This is a simplified synchronous version that returns defaults
-  // For actual values, use getCurrentSettings() async function
-  return {
-    semester: "1st",
-    academic_year: "2025-2026"
-  };
-}
-
-/**
  * Calculate the next academic year based on current
  * @param {string} currentYear - Format: '2025-2026'
  * @returns {string} - Next year: '2026-2027'
@@ -293,7 +267,6 @@ function getDepartmentFromYearLevel(yearLevel) {
 
 module.exports = {
   getCurrentSettings,
-  getCurrentSettingsSync,
   getNextAcademicYear,
   getYearLevelRange,
   getDepartmentFromYearLevel,

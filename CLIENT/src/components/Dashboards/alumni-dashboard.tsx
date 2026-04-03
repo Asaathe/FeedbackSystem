@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Badge } from "../ui/badge";
-import { GraduationCap, Briefcase, Users, MessageSquare } from "lucide-react";
+import { GraduationCap, Briefcase, MessageSquare } from "lucide-react";
 import { Progress } from "../ui/progress";
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { getFormsForUserRole, getFormStatsForUser } from "../../services/publishedFormsService";
@@ -67,7 +67,6 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   const [recentActivity, setRecentActivity] = useState<RecentActivityItem[]>([]);
   const [skillsData, setSkillsData] = useState<SkillsData[]>([]);
   const [engagementData, setEngagementData] = useState<EngagementData[]>([]);
-  const [alumniNetworkCount, setAlumniNetworkCount] = useState(0);
 
   const loadAlumniData = async () => {
     const token = sessionStorage.getItem('authToken');
@@ -85,7 +84,6 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
         if (data.data.recentActivity) setRecentActivity(data.data.recentActivity);
         if (data.data.skills) setSkillsData(data.data.skills);
         if (data.data.engagement) setEngagementData(data.data.engagement);
-        if (data.data.alumniNetworkCount) setAlumniNetworkCount(data.data.alumniNetworkCount);
         if (data.data.employment) {
           setAlumniStats(prev => ({
             ...prev,
@@ -167,17 +165,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
           </CardContent>
         </Card>
 
-        <Card className="border-green-100">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-gray-600">Alumni Network</CardTitle>
-            <Users className="w-5 h-5 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl">{alumniNetworkCount || 0}</div>
-            <p className="text-xs text-gray-600 mt-1">Connections</p>
-          </CardContent>
-        </Card>
-      </div>
+        </div>
 
       {/* Analytics Row */}
       {skillsData.length > 0 && engagementData.length > 0 && (
@@ -340,29 +328,6 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
           </CardContent>
         </Card>
       )}
-
-      {/* Call to Action */}
-      <Card className="border-purple-100 bg-gradient-to-r from-purple-50 to-pink-50">
-        <CardContent className="pt-6">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
-              <MessageSquare className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3>Share Your Experience</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                Help improve the program by sharing how your education prepared you for your career.
-              </p>
-              <Button 
-                className="mt-3 bg-purple-500 hover:bg-purple-600"
-                onClick={() => onNavigate?.('submit-feedback')}
-              >
-                Submit Feedback
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

@@ -7,11 +7,12 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    }
+    "ignoreDeprecations": "6.0",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "moduleDetection": "force"
   },
   "include": ["src/**/*", "src/vite-env.d.ts"],
   "references": []

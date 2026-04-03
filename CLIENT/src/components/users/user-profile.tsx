@@ -69,6 +69,18 @@ interface CourseData {
   section: string;
 }
 
+// Interface for alumni employment data from database
+interface AlumniEmployment {
+  id: number;
+  company_name: string;
+  job_title: string;
+  industry: string;
+  location: string;
+  employment_start_date: string;
+  employment_end_date?: string;
+  is_current: boolean;
+}
+
 // Field mapping from API snake_case to component camelCase
 const mapApiToUserData = (apiUser: Record<string, any>): UserData => {
   return {
@@ -108,6 +120,7 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<Partial<UserData>>({});
   const [courses, setCourses] = useState<CourseData[]>([]);
+  const [alumniEmployment, setAlumniEmployment] = useState<AlumniEmployment | null>(null);
 
   // Fetch user profile data
   useEffect(() => {
@@ -140,11 +153,41 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
       } finally {
         setLoading(false);
       }
-    };
+};
 
     fetchUserProfile();
     fetchCourses();
   }, []);
+
+  // Fetch alumni employment data from alumni_employment table
+  const fetchAlumniEmployment = async () => {
+    if (userData?.role !== 'alumni') return;
+    
+    try {
+      const token = sessionStorage.getItem('authToken');
+      const response = await fetch('/api/alumni-employment', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.employment) {
+          setAlumniEmployment(data.employment);
+          setFormData(prev => ({
+            ...prev,
+            company: data.employment.company_name,
+            jobTitle: data.employment.job_title,
+            industry: data.employment.industry,
+            location: data.employment.location,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching alumni employment:', error);
+    }
+  };
 
   // Fetch courses from course_management table
   const fetchCourses = async () => {
@@ -160,10 +203,17 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
         const data = await response.json();
         setCourses(data.programs || []);
       }
-    } catch (error) {
+} catch (error) {
       console.error('Error fetching courses:', error);
     }
   };
+
+  // Fetch alumni employment when user data is loaded
+  useEffect(() => {
+    if (userData?.role === 'alumni') {
+      fetchAlumniEmployment();
+    }
+  }, [userData?.role]);
 
   const handleInputChange = (field: string, value: string | number) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -487,10 +537,10 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Graduation Year</Label>
+<div className="space-y-2">
+                <Label>Graduation Date</Label>
                 <Input
-                  value={userData.gradYear || 'Not provided'}
+                  value={userData.graduationDate || userData.gradYear || 'Not provided'}
                   disabled
                   className="bg-white"
                 />
