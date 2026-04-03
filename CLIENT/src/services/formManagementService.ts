@@ -269,7 +269,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       status: formData.status || 'draft',
     };
 
-    logDebug('Making POST request to: ${API_BASE}/api/forms');
+    logDebug(`Making POST request to: ${API_BASE}/api/forms`);
     logDebug('Request data:', requestData);
 
     // Map camelCase to snake_case for API
@@ -296,7 +296,7 @@ export const createForm = async (formData: CreateFormData): Promise<{ success: b
       })));
     }
 
-    const response = await fetch('${API_BASE}/api/forms', {
+    const response = await fetch(`${API_BASE}/api/forms`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -689,7 +689,7 @@ export const getFormCategories = async (): Promise<{ success: boolean; categorie
       return { success: false, categories: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/form-categories';
+    const apiUrl = `${API_BASE}/api/form-categories`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -749,7 +749,7 @@ export const addFormCategory = async (name: string, description?: string): Promi
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/form-categories';
+    const apiUrl = `${API_BASE}/api/form-categories`;
     logDebug(`Making POST request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1091,7 +1091,7 @@ export const getAlumniCompanies = async (): Promise<{ success: boolean; companie
       return { success: false, companies: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/alumni/companies';
+    const apiUrl = `${API_BASE}/api/alumni/companies`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1128,7 +1128,7 @@ export const getEmployerCompanies = async (): Promise<{ success: boolean; compan
       return { success: false, companies: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/employers/companies';
+    const apiUrl = `${API_BASE}/api/employers/companies`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1165,7 +1165,7 @@ export const getAlumniDegrees = async (): Promise<{ success: boolean; degrees: s
       return { success: false, degrees: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/alumni/degrees';
+    const apiUrl = `${API_BASE}/api/alumni/degrees`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1202,7 +1202,7 @@ export const getAlumniGraduationYears = async (): Promise<{ success: boolean; gr
       return { success: false, graduationYears: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/alumni/graduation-years';
+    const apiUrl = `${API_BASE}/api/alumni/graduation-years`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1239,7 +1239,7 @@ export const getAlumniEmploymentCompanies = async (): Promise<{ success: boolean
       return { success: false, companies: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/alumni-employment/companies';
+    const apiUrl = `${API_BASE}/api/alumni-employment/companies`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1286,7 +1286,7 @@ export const getSupervisorsByCompany = async (company?: string): Promise<{ succe
       return { success: false, supervisors: [], message: 'No authentication token found' };
     }
 
-    let apiUrl = '${API_BASE}/api/alumni-employment/supervisors';
+    let apiUrl = `${API_BASE}/api/alumni-employment/supervisors`;
     if (company) {
       apiUrl += `?company=${encodeURIComponent(company)}`;
     }
@@ -1327,7 +1327,7 @@ export const getAlumniByCompany = async (company?: string): Promise<{ success: b
       return { success: false, users: [], message: 'No authentication token found' };
     }
 
-    let apiUrl = '${API_BASE}/api/alumni-employment/alumni-by-company';
+    let apiUrl = `${API_BASE}/api/alumni-employment/alumni-by-company`;
     if (company) {
       apiUrl += `?company=${encodeURIComponent(company)}`;
     }
@@ -1377,7 +1377,7 @@ export const sendFeedbackInvitation = async (params: SendFeedbackInvitationParam
       return { success: false, message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/forms/send-feedback-invitation';
+    const apiUrl = `${API_BASE}/api/forms/send-feedback-invitation`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
@@ -1411,7 +1411,7 @@ export const getInstructorDepartments = async (): Promise<{ success: boolean; de
       return { success: false, departments: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/instructors/departments';
+    const apiUrl = `${API_BASE}/api/instructors/departments`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1448,7 +1448,7 @@ export const getStudentSections = async (): Promise<{ success: boolean; sections
       return { success: false, sections: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/students/sections';
+    const apiUrl = `${API_BASE}/api/students/sections`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1486,7 +1486,7 @@ export const getActiveCourseSections = async (department?: string): Promise<{ su
     }
 
     // Build URL with optional department parameter
-    let apiUrl = '${API_BASE}/api/programs/sections';
+    let apiUrl = `${API_BASE}/api/programs/sections`;
     if (department) {
       apiUrl += `?department=${encodeURIComponent(department)}`;
     }
@@ -1529,7 +1529,7 @@ export const getDepartmentsFromPrograms = async (): Promise<{ success: boolean; 
       return { success: false, departments: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/programs/departments';
+    const apiUrl = `${API_BASE}/api/programs/departments`;
     const response = await fetch(apiUrl, {
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -1700,7 +1700,7 @@ export const getEvaluationSubjects = async (): Promise<{ success: boolean; subje
       return { success: false, subjects: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/subject-evaluation/subjects';
+    const apiUrl = `${API_BASE}/api/subject-evaluation/subjects`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1745,7 +1745,7 @@ export const getEvaluationInstructors = async (): Promise<{ success: boolean; in
       return { success: false, instructors: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = '${API_BASE}/api/subject-evaluation/instructors';
+    const apiUrl = `${API_BASE}/api/subject-evaluation/instructors`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
@@ -1847,7 +1847,7 @@ export const submitEvaluation = async (
       return { success: false, message: 'Authentication required' };
     }
     
-    const response = await fetch('${API_BASE}/api/subject-evaluation/evaluation-submissions', {
+    const response = await fetch(`${API_BASE}/api/subject-evaluation/evaluation-submissions`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1884,7 +1884,7 @@ export const getMyEvaluations = async (): Promise<{ success: boolean; evaluation
       return { success: false, evaluations: [], message: 'Authentication required' };
     }
     
-    const response = await fetch('${API_BASE}/api/subject-evaluation/my-evaluations', {
+    const response = await fetch(`${API_BASE}/api/subject-evaluation/my-evaluations`, {
       headers: {
         'Authorization': `Bearer ${token}`,
       },
@@ -1916,7 +1916,7 @@ export const submitPublicFeedback = async (params: PublicFeedbackParams): Promis
   logDebug('submitPublicFeedback called');
 
   try {
-    const apiUrl = '${API_BASE}/api/forms/public/submit';
+    const apiUrl = `${API_BASE}/api/forms/public/submit`;
     const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
