@@ -30,6 +30,22 @@ async function setupDatabase() {
       });
     });
 
+    // Disable ONLY_FULL_GROUP_BY to allow non-aggregated columns in GROUP BY queries
+    await new Promise((resolve, reject) => {
+      db.query(
+        "SET GLOBAL sql_mode = (SELECT REPLACE(@@sql_mode, 'ONLY_FULL_GROUP_BY', ''))",
+        (err) => {
+          if (err) {
+            console.error("❌ Failed to configure SQL mode:", err.message);
+            reject(err);
+          } else {
+            console.log("✅ SQL mode configured");
+            resolve();
+          }
+        }
+      );
+    });
+
     // Create database if it doesn't exist
     console.log("📁 Creating database...");
     await new Promise((resolve, reject) => {
