@@ -11,24 +11,12 @@ const cron = require("node-cron");
 const path = require("path");
 const fs = require("fs");
 
-// Create upload directories if they don't exist
-const uploadDirs = [
-  path.join(__dirname, "public/uploads/forms"),
-  path.join(__dirname, "public/uploads/users"),
-  path.join(__dirname, "public/uploads/feedback"),
-  path.join(__dirname, "public/uploads/profiles"),
-  path.join(__dirname, "public/uploads/profiles/instructors"),
-  path.join(__dirname, "public/uploads/profiles/students"),
-  path.join(__dirname, "public/uploads/profiles/alumni"),
-  path.join(__dirname, "public/uploads/profiles/employers"),
-];
-
-uploadDirs.forEach(dir => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-    console.log(`Created upload directory: ${dir}`);
-  }
-});
+// Create temp directory for multer uploads
+const tempDir = path.join(__dirname, "temp");
+if (!fs.existsSync(tempDir)) {
+  fs.mkdirSync(tempDir, { recursive: true });
+  console.log(`Created temp directory: ${tempDir}`);
+}
 
 const authRoutes = require("./routes/auth");
 const formRoutes = require("./routes/forms");
@@ -161,8 +149,7 @@ app.use("/api/feedback-templates", feedbackTemplateRoutes);
 const employmentTrackerRoutes = require("./routes/employmentTracker");
 app.use("/api/employment-tracker", employmentTrackerRoutes);
 
-// Serve uploaded images statically
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+
 
 // Serve static files in production only if the build folder exists
 const clientBuildPath = path.join(__dirname, "../CLIENT/build");

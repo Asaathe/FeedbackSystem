@@ -1,13 +1,15 @@
 // Form Routes
 const express = require("express");
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const formController = require("../controllers/formController");
 const responseController = require("../controllers/responseController");
 const { verifyToken } = require("../middleware/auth");
-const { uploadSingleImage, handleUploadError, getFileUrl } = require("../middleware/uploadMiddleware");
+const { uploadSingleImage, handleUploadError, uploadToCloudinary } = require("../middleware/uploadMiddleware");
 
 // Image upload route
-router.post("/upload-image", verifyToken, uploadSingleImage('image'), handleUploadError, (req, res) => {
+router.post("/upload-image", verifyToken, uploadSingleImage('image'), handleUploadError, async (req, res) => {
   console.log("=== /api/forms/upload-image called ===");
   console.log("Request file:", req.file);
   console.log("Request body:", req.body);
@@ -20,17 +22,33 @@ router.post("/upload-image", verifyToken, uploadSingleImage('image'), handleUplo
     });
   }
 
-  const imageUrl = getFileUrl(req.file, 'forms');
-  console.log("Image URL:", imageUrl);
+  try {
+    const uploadType = req.body.uploadType || 'forms';
+    const cloudinaryResult = await uploadToCloudinary(req.file, uploadType, null);
 
-  res.status(200).json({
-    success: true,
-    message: "Image uploaded successfully",
-    imageUrl: imageUrl,
-    filename: req.file.filename,
-    originalName: req.file.originalname,
-    size: req.file.size
-  });
+    // Clean up temp file
+    const tempPath = path.join(__dirname, '../temp', req.file.filename);
+    if (fs.existsSync(tempPath)) {
+      fs.unlinkSync(tempPath);
+    }
+
+    console.log("Cloudinary URL:", cloudinaryResult.url);
+
+    res.status(200).json({
+      success: true,
+      message: "Image uploaded successfully",
+      imageUrl: cloudinaryResult.url,
+      publicId: cloudinaryResult.publicId,
+      originalName: req.file.originalname,
+      size: req.file.size
+    });
+  } catch (error) {
+    console.error('Cloudinary upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to upload image to Cloudinary"
+    });
+  }
 });
 
 // Send feedback invitation to employer/supervisor
