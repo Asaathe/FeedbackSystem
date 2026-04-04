@@ -288,30 +288,7 @@ const updateUser = async (req, res) => {
           // User wants to remove the profile picture
           studentUpdateFields.push("image = ?");
           studentUpdateValues.push(null);
-          
-          // Delete old image if exists
-          if (studentRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', studentRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
         } else if (profilePicture) {
-          // Delete old image if exists and new image is being uploaded
-          if (studentRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', studentRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
           studentUpdateFields.push("image = ?");
           studentUpdateValues.push(profilePicture);
           console.log('Adding image to student update:', profilePicture);
@@ -365,33 +342,9 @@ const updateUser = async (req, res) => {
           instructorUpdateValues.push(schoolRole);
         }
         if (profilePicture === '') {
-          // User wants to remove the profile picture
           instructorUpdateFields.push("image = ?");
           instructorUpdateValues.push(null);
-          
-          // Delete old image if exists
-          if (instructorRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', instructorRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
         } else if (profilePicture) {
-          // Delete old image if exists and new image is being uploaded
-          if (instructorRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', instructorRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
           instructorUpdateFields.push("image = ?");
           instructorUpdateValues.push(profilePicture);
         }
@@ -438,30 +391,7 @@ const updateUser = async (req, res) => {
           // User wants to remove the profile picture
           alumniUpdateFields.push("image = ?");
           alumniUpdateValues.push(null);
-          
-          // Delete old image if exists
-          if (alumniRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', alumniRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
         } else if (profilePicture) {
-          // Delete old image if exists and new image is being uploaded
-          if (alumniRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', alumniRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
           alumniUpdateFields.push("image = ?");
           alumniUpdateValues.push(profilePicture);
         }
@@ -505,33 +435,9 @@ const updateUser = async (req, res) => {
           employerUpdateValues.push(phoneNumber);
         }
         if (profilePicture === '') {
-          // User wants to remove the profile picture
           employerUpdateFields.push("image = ?");
           employerUpdateValues.push(null);
-          
-          // Delete old image if exists
-          if (employerRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', employerRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
         } else if (profilePicture) {
-          // Delete old image if exists and new image is being uploaded
-          if (employerRecords[0].image) {
-            const oldImagePath = path.join(__dirname, '../public', employerRecords[0].image);
-            if (fs.existsSync(oldImagePath)) {
-              try {
-                fs.unlinkSync(oldImagePath);
-              } catch (err) {
-                console.error('Failed to delete old image:', err);
-              }
-            }
-          }
           employerUpdateFields.push("image = ?");
           employerUpdateValues.push(profilePicture);
         }

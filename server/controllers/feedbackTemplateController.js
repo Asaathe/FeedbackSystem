@@ -625,14 +625,24 @@ const getStudentEnrolledSubjects = async (req, res) => {
       department = (yearLevel >= 11 && yearLevel <= 12) ? 'Senior High' : 'College';
     }
     
-    // Get current academic year and semester based on department
-    const settings = await getCurrentSettings();
-    const deptSettings = department === 'Senior High' ? settings.seniorHigh : settings.college;
-    
-    let semester = deptSettings?.semester || null;
-    let academicYear = deptSettings?.academic_year || null;
-    
-    console.log("📋 getStudentEnrolledSubjects - Student:", userId, "| YearLevel:", yearLevel, "| Dept:", department, "| Period:", semester, academicYear);
+    // Get current academic period based on department
+    const { getCurrentPeriod } = require('../services/semesterService');
+    const currentPeriodResult = await getCurrentPeriod(department);
+
+    let semester = null;
+    let academicYear = null;
+    let academicPeriodId = null;
+
+    if (currentPeriodResult.success) {
+      const currentPeriod = currentPeriodResult.period;
+      academicYear = currentPeriod.academic_year;
+      semester = currentPeriod.period_type === 'quarter' ?
+        `${currentPeriod.period_number}${currentPeriod.period_number === 1 ? 'st' : currentPeriod.period_number === 2 ? 'nd' : currentPeriod.period_number === 3 ? 'rd' : 'th'} Quarter` :
+        `${currentPeriod.period_number}${currentPeriod.period_number === 1 ? 'st' : currentPeriod.period_number === 2 ? 'nd' : 'th'}`;
+      academicPeriodId = currentPeriod.id;
+    }
+
+
     
     // Get active evaluation period
     const periodQuery = `
@@ -656,95 +666,97 @@ const getStudentEnrolledSubjects = async (req, res) => {
           }
           
           const studentProgramId = studentResults && studentResults.length > 0 ? studentResults[0].program_id : null;
-          console.log("Student program query results:", studentResults);
-          console.log("Student program ID:", studentProgramId);
-          console.log("Query params - academicYear:", academicYear, "semester:", semester);
-          
+
           // Query from subject_offerings (main table for subject offerings)
-          // Try without program filter if program_id is null
-          // Build query with semester/academic_year filter if available
-          let subjectOfferingsQuery = null;
-          const hasPeriodFilter = semester && academicYear;
+          // Require academic period - no fallback queries
+          if (!academicPeriodId) {
+             const results = [];
+             const subjects = results.map(row => ({
+               subject_id: row.subject_id,
+               section_id: row.section_id,
+               subject_code: row.subject_code,
+               subject_name: row.subject_name,
+               department: row.department,
+               units: row.units,
+               instructor_id: row.instructor_id || row.instructor_user_id,
+               instructor_name: row.instructor_name,
+               instructor_image: row.instructor_image,
+               year_level: row.year_level || 1,
+               section: row.section || '-',
+               has_subject_feedback: false,
+               has_instructor_feedback: false
+             }));
+
+             return res.status(200).json({
+               success: true,
+               subjects,
+               academic_year: academicYear,
+               semester: semester,
+               evaluation_active: activePeriod !== null,
+               evaluation_period: activePeriod
+             });
+           }
+
+           const subjectOfferingsQuery = studentProgramId ? `
+             SELECT
+               so.id as offering_id,
+               so.id as section_id,
+               so.subject_id,
+               es.subject_code,
+               es.subject_name,
+               es.department,
+               es.units,
+               so.program_id,
+               so.year_level,
+               so.section,
+               so.academic_year,
+               so.semester,
+               so.instructor_id,
+               u.full_name as instructor_name,
+               inst.image as instructor_image,
+               'subject_offering' as source
+             FROM subject_offerings so
+             LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+             LEFT JOIN users u ON so.instructor_id = u.id
+             LEFT JOIN instructors inst ON u.id = inst.user_id
+             WHERE so.program_id = ? AND so.academic_period_id = ? AND so.status = 'active'
+           ` : `
+             SELECT
+               so.id as offering_id,
+               so.id as section_id,
+               so.subject_id,
+               es.subject_code,
+               es.subject_name,
+               es.department,
+               es.units,
+               so.program_id,
+               so.year_level,
+               so.section,
+               so.academic_year,
+               so.semester,
+               so.instructor_id,
+               u.full_name as instructor_name,
+               inst.image as instructor_image,
+               'subject_offering' as source
+             FROM subject_offerings so
+             LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+             LEFT JOIN users u ON so.instructor_id = u.id
+             LEFT JOIN instructors inst ON u.id = inst.user_id
+             WHERE so.academic_period_id = ? AND so.status = 'active'
+           `;
           
-          if (studentProgramId) {
-            subjectOfferingsQuery = `
-              SELECT 
-                so.id as offering_id,
-                so.id as section_id,
-                so.subject_id,
-                es.subject_code,
-                es.subject_name,
-                es.department,
-                es.units,
-                so.program_id,
-                so.year_level,
-                so.section,
-                so.academic_year,
-                so.semester,
-                so.instructor_id,
-                u.full_name as instructor_name,
-                inst.image as instructor_image,
-                'subject_offering' as source
-              FROM subject_offerings so
-              LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-              LEFT JOIN users u ON so.instructor_id = u.id
-              LEFT JOIN instructors inst ON u.id = inst.user_id
-              WHERE so.program_id = ?
-              ${hasPeriodFilter ? 'AND so.academic_year = ? AND so.semester = ?' : ''}
-            `;
-          } else {
-            // If no program_id, get all active subject offerings
-            subjectOfferingsQuery = `
-              SELECT 
-                so.id as offering_id,
-                so.id as section_id,
-                so.subject_id,
-                es.subject_code,
-                es.subject_name,
-                es.department,
-                es.units,
-                so.program_id,
-                so.year_level,
-                so.section,
-                so.academic_year,
-                so.semester,
-                so.instructor_id,
-                u.full_name as instructor_name,
-                inst.image as instructor_image,
-                'subject_offering' as source
-              FROM subject_offerings so
-              LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-              LEFT JOIN users u ON so.instructor_id = u.id
-              LEFT JOIN instructors inst ON u.id = inst.user_id
-              ${hasPeriodFilter ? 'WHERE so.academic_year = ? AND so.semester = ?' : ''}
-            `;
-          }
-          
-          // Execute the query - only use subject_offerings now
-          const executeQueries = async () => {
-            let subjectOfferingResults = [];
-            console.log("Subject offerings query:", subjectOfferingsQuery);
-            
-            if (subjectOfferingsQuery) {
-              // Build params: programId + (semester + academicYear if filtering)
-              let queryParams = studentProgramId ? [studentProgramId] : [];
-              if (hasPeriodFilter && semester && academicYear) {
-                queryParams = [...queryParams, academicYear, semester];
-              }
-              console.log("Query params:", queryParams);
-              subjectOfferingResults = await new Promise((resolve, reject) => {
+            // Execute the query - only use subject_offerings with academic_period_id required
+            const executeQueries = async () => {
+              const queryParams = studentProgramId ? [studentProgramId, academicPeriodId] : [academicPeriodId];
+
+              const subjectOfferingResults = await new Promise((resolve, reject) => {
                 db.query(subjectOfferingsQuery, queryParams, (err, results) => {
                   if (err) reject(err);
-                  else {
-                    console.log("Subject offering raw results:", JSON.stringify(results));
-                    resolve(results);
-                  }
+                  else resolve(results);
                 });
               });
-            }
-            
+
             const results = subjectOfferingResults || [];
-            console.log("Student enrolled subjects:", results.length);
             
             const subjects = results.map(row => ({
               subject_id: row.subject_id,

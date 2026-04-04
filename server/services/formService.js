@@ -801,21 +801,7 @@ const deleteForm = async (formId, userId) => {
       return { success: false, message: "Access denied" };
     }
 
-    // Delete the form image if it exists
-    const imageUrl = forms[0].image_url;
-    if (imageUrl) {
-      const fs = require('fs');
-      const path = require('path');
-      const fullImagePath = path.join(__dirname, '../public', imageUrl);
-      if (fs.existsSync(fullImagePath)) {
-        try {
-          fs.unlinkSync(fullImagePath);
-          console.log('[DELETE] Form image deleted:', fullImagePath);
-        } catch (err) {
-          console.error('[DELETE] Failed to delete form image:', err);
-        }
-      }
-    }
+    // Note: Image is stored in Cloudinary, so no local file deletion needed
 
     // Delete form (cascade will handle related records)
     await queryDatabase(db, "DELETE FROM forms WHERE id = ?", [formId]);

@@ -436,6 +436,12 @@ export function SubjectOfferings() {
       return;
     }
 
+    // Validate academic year and semester are set
+    if (!formData.academic_year || !formData.semester) {
+      toast.error("Academic year and semester are required. Please ensure system settings are configured.");
+      return;
+    }
+
     setSaving(true);
     try {
       // Find the selected course section to get year_level and section
@@ -448,7 +454,7 @@ export function SubjectOfferings() {
       
       const result = await createSubjectOffering({
         subject_id: parseInt(formData.subject_id),
-        program_id: selectedCourse?.program_id || parseInt(formData.program_id),
+        program_id: selectedCourse?.program_id || (formData.program_id ? parseInt(formData.program_id) : undefined),
         year_level: selectedCourse?.year_level || 1,
         section: selectedCourse?.section || "A",
         academic_year: formData.academic_year,

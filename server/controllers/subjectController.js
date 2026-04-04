@@ -294,23 +294,19 @@ const assignInstructorToSubject = async (req, res) => {
       console.error("Error getting academic period:", periodErr);
     }
     
-    // Check if offering exists by academic_period_id first, then fallback to old columns
-    let checkQuery, checkParams;
-    
-    if (academicPeriodId) {
-      checkQuery = `
-        SELECT id FROM subject_offerings 
-        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_period_id = ?
-      `;
-      checkParams = [subject_id, program_id, year_level, section, academicPeriodId];
-    } else {
-      // Fallback to old columns
-      checkQuery = `
-        SELECT id FROM subject_offerings 
-        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ?
-      `;
-      checkParams = [subject_id, program_id, year_level, section, academic_year, semester];
+    // Require academic period - no fallback to old columns
+    if (!academicPeriodId) {
+      return res.status(400).json({
+        success: false,
+        message: "Academic period is required for instructor assignment"
+      });
     }
+
+    const checkQuery = `
+      SELECT id FROM subject_offerings
+      WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_period_id = ? AND status = 'active'
+    `;
+    const checkParams = [subject_id, program_id, year_level, section, academicPeriodId];
     
     db.query(checkQuery, checkParams, (checkErr, checkResults) => {
       if (checkErr) {
@@ -320,14 +316,8 @@ const assignInstructorToSubject = async (req, res) => {
       
       if (checkResults.length > 0) {
         // Update existing offering
-        let updateQuery, updateParams;
-        if (academicPeriodId) {
-          updateQuery = "UPDATE subject_offerings SET instructor_id = ?, academic_period_id = ? WHERE id = ?";
-          updateParams = [instructor_id, academicPeriodId, checkResults[0].id];
-        } else {
-          updateQuery = "UPDATE subject_offerings SET instructor_id = ? WHERE id = ?";
-          updateParams = [instructor_id, checkResults[0].id];
-        }
+        const updateQuery = "UPDATE subject_offerings SET instructor_id = ? WHERE id = ?";
+        const updateParams = [instructor_id, checkResults[0].id];
         
         db.query(updateQuery, updateParams, (updateErr) => {
           if (updateErr) {
@@ -725,21 +715,19 @@ const createSubjectOffering = async (req, res) => {
     
     // Check for duplicate - only check active offerings, not archived ones
     // This allows creating a new offering for a new semester even if the same subject was offered before
-    // Use academic_period_id if available, fallback to year/semester
-    let checkQuery, checkParams;
-    if (academicPeriodId) {
-      checkQuery = `
-        SELECT id FROM subject_offerings 
-        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_period_id = ? AND status != 'archived'
-      `;
-      checkParams = [subject_id, program_id, year_level, section, academicPeriodId];
-    } else {
-      checkQuery = `
-        SELECT id FROM subject_offerings 
-        WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_year = ? AND semester = ? AND status != 'archived'
-      `;
-      checkParams = [subject_id, program_id, year_level, section, academic_year, semester];
+    // Require academic period - no fallback to year/semester
+    if (!academicPeriodId) {
+      return res.status(400).json({
+        success: false,
+        message: "Academic period is required for subject offering creation"
+      });
     }
+
+    const checkQuery = `
+      SELECT id FROM subject_offerings
+      WHERE subject_id = ? AND program_id = ? AND year_level = ? AND section = ? AND academic_period_id = ? AND status != 'archived'
+    `;
+    const checkParams = [subject_id, program_id, year_level, section, academicPeriodId];
     
     db.query(checkQuery, checkParams, (checkErr, checkResults) => {
       if (checkErr) {

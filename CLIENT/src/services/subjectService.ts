@@ -558,6 +558,14 @@ export const createSubjectOffering = async (data: {
     });
 
     const result = await response.json();
+    
+    if (!response.ok) {
+      return { 
+        success: false, 
+        message: result.message || `Failed to create subject offering (${response.status})` 
+      };
+    }
+    
     return result;
   } catch (error) {
     console.error('Error creating subject offering:', error);

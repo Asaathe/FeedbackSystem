@@ -92,21 +92,38 @@ const getPeriodById = async (id) => {
  */
 const getCurrentPeriod = async (department) => {
   try {
-    // Find period where department matches and status is 'active'
-    const query = `
-      SELECT * FROM academic_periods 
-      WHERE department = ? 
-      AND status = 'active'
+    // First, try to find the manually set current period (is_current = TRUE)
+    const currentQuery = `
+      SELECT * FROM academic_periods
+      WHERE department = ?
+      AND is_current = TRUE
       ORDER BY start_date DESC
       LIMIT 1
     `;
-    const periods = await queryDatabase(db, query, [department]);
-    
+    let periods = await queryDatabase(db, currentQuery, [department]);
+
     if (periods.length === 0) {
+      // If no manually set current period, fall back to date-based active period
+      const dateQuery = `
+        SELECT * FROM academic_periods
+        WHERE department = ?
+        AND status = 'active'
+        AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
+        ORDER BY start_date DESC
+        LIMIT 1
+      `;
+      periods = await queryDatabase(db, dateQuery, [department]);
+    }
+
+    if (periods.length === 0) {
+      console.log(`⚠️ No current/active period found for ${department}`);
       return { success: false, message: 'No active period found.' };
     }
-    
-    return { success: true, period: periods[0] };
+
+    const period = periods[0];
+    const method = period.is_current ? 'manually set' : 'date-based';
+    console.log(`✅ Found current period for ${department} (${method}): ${period.period_type} ${period.period_number}, AY ${period.academic_year}`);
+    return { success: true, period };
   } catch (error) {
     console.error("Get current period error:", error);
     throw error;
@@ -147,26 +164,16 @@ const getNextPeriod = async (department) => {
 const autoUpdateStatuses = async () => {
   try {
     const today = new Date().toISOString().split('T')[0];
-    
-    // Set periods to 'active' if today is within their date range
-    const activateQuery = `
-      UPDATE academic_periods 
-      SET status = 'active', is_current = TRUE 
-      WHERE status != 'archived'
-      AND start_date <= ? 
-      AND end_date >= ?
-    `;
-    await queryDatabase(db, activateQuery, [today, today]);
-    
-    // Set periods to 'completed' if today is after their end date
+
+    // Only auto-complete expired periods, don't auto-activate
     const completeQuery = `
-      UPDATE academic_periods 
-      SET status = 'completed', is_current = FALSE 
+      UPDATE academic_periods
+      SET status = 'completed', is_current = FALSE
       WHERE status = 'active'
-      AND end_date < ?
+      AND end_date < CURDATE()
     `;
     await queryDatabase(db, completeQuery, [today]);
-    
+
   } catch (error) {
     console.error("Auto-update statuses error:", error);
   }
@@ -195,16 +202,7 @@ const createAcademicPeriod = async (periodData) => {
       return { success: false, message: 'All required fields must be provided' };
     }
 
-    // Check for duplicate period
-    const checkQuery = `
-      SELECT id FROM academic_periods 
-      WHERE department = ? AND period_type = ? AND academic_year = ? AND period_number = ?
-    `;
-    const existing = await queryDatabase(db, checkQuery, [department, period_type, academic_year, period_number]);
-    
-    if (existing.length > 0) {
-      return { success: false, message: 'This period already exists' };
-    }
+    // Skip duplicate check - overlap validation is sufficient
 
     // Validate date range doesn't overlap with existing periods
     const overlapQuery = `
@@ -227,10 +225,12 @@ const createAcademicPeriod = async (periodData) => {
     const activeCheckQuery = `SELECT id FROM academic_periods WHERE department = ? AND status = 'active'`;
     const activePeriods = await queryDatabase(db, activeCheckQuery, [department]);
     
-    // Default status is 'upcoming', but if set_as_active is true or no active period, set as active
+    // Default status is 'upcoming', only activate if explicitly set_as_active
     let status = 'upcoming';
     let isCurrent = false;
-    if (periodData.set_as_active || activePeriods.length === 0) {
+
+
+    if (periodData.set_as_active) {
       status = 'active';
       isCurrent = true;
       // Archive any existing active period

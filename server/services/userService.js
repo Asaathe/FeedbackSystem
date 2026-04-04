@@ -513,43 +513,7 @@ const deleteUser = async (userId) => {
     const userRole = users[0].role;
     let imagePath = null;
     
-    // Get the profile picture path based on role
-    if (userRole === 'student') {
-      const students = await queryDatabase(db, "SELECT image FROM students WHERE user_id = ?", [userId]);
-      if (students.length > 0 && students[0].image) {
-        imagePath = students[0].image;
-      }
-    } else if (userRole === 'instructor') {
-      const instructors = await queryDatabase(db, "SELECT image FROM instructors WHERE user_id = ?", [userId]);
-      if (instructors.length > 0 && instructors[0].image) {
-        imagePath = instructors[0].image;
-      }
-    } else if (userRole === 'alumni') {
-      const alumni = await queryDatabase(db, "SELECT image FROM alumni WHERE user_id = ?", [userId]);
-      if (alumni.length > 0 && alumni[0].image) {
-        imagePath = alumni[0].image;
-      }
-    } else if (userRole === 'employer') {
-      const employers = await queryDatabase(db, "SELECT image FROM employers WHERE user_id = ?", [userId]);
-      if (employers.length > 0 && employers[0].image) {
-        imagePath = employers[0].image;
-      }
-    }
-    
-    // Delete the profile image file if it exists
-    if (imagePath) {
-      const fs = require('fs');
-      const path = require('path');
-      const fullImagePath = path.join(__dirname, '../public', imagePath);
-      if (fs.existsSync(fullImagePath)) {
-        try {
-          fs.unlinkSync(fullImagePath);
-          console.log('[DELETE] Profile image deleted:', fullImagePath);
-        } catch (err) {
-          console.error('[DELETE] Failed to delete profile image:', err);
-        }
-      }
-    }
+    // Note: Image is stored in Cloudinary, so no local file deletion needed
     
     // Delete the user (cascade will handle related records)
     await queryDatabase(db, "DELETE FROM users WHERE id = ?", [userId]);

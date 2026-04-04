@@ -83,9 +83,7 @@ async function setupDatabase() {
 
     // Read and execute the schema files
     const schemaFiles = [
-      "schema/feedback_system.sql",
-      "schema/academic_periods.sql",
-      "schema/add_archived_to_feedback.sql"
+      "schema/feedback_system.sql"
     ];
     
     for (const schemaFile of schemaFiles) {

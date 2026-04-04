@@ -16,27 +16,20 @@ function autoUpdateStatuses() {
       return;
     }
     lastAutoUpdateTimestamp = now;
-    
-    const today = new Date().toISOString().split('T')[0];
-    
-    const activateQuery = `
-      UPDATE academic_periods 
-      SET status = 'active', is_current = TRUE
-      WHERE status != 'archived'
-      AND start_date <= ? AND end_date >= ?
+
+    // Use CURDATE() for consistency with database timezone
+
+    // Only auto-complete expired periods, don't auto-activate
+    const completeQuery = `
+      UPDATE academic_periods
+      SET status = 'completed', is_current = FALSE
+      WHERE status = 'active' AND DATE(end_date) < CURDATE()
     `;
-    db.query(activateQuery, [today, today], (err) => {
-      if (err) console.error("Auto-activate error:", err);
-      
-      const completeQuery = `
-        UPDATE academic_periods 
-        SET status = 'completed', is_current = FALSE
-        WHERE status = 'active' AND end_date < ?
-      `;
-      db.query(completeQuery, [today], (err) => {
-        if (err) console.error("Auto-complete error:", err);
-        resolve();
-      });
+    db.query(completeQuery, [], (err, result) => {
+      if (err) {
+        console.error("Auto-complete error:", err);
+      }
+      resolve();
     });
   });
 }
@@ -110,23 +103,22 @@ function getActiveAcademicPeriod(department = null) {
 
       if (department) {
         // Use department column directly (not period_type mapping)
-        // Use DATE() for proper date comparison
         query = `
-          SELECT * FROM academic_periods 
-          WHERE department = ? 
+          SELECT * FROM academic_periods
+          WHERE department = ?
           AND status = 'active'
-          AND DATE(CURDATE()) BETWEEN DATE(start_date) AND DATE(end_date)
-          ORDER BY start_date DESC 
+          AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
+          ORDER BY start_date DESC
           LIMIT 1
         `;
         params = [department];
       } else {
         // Get any active period - date-based + status check
         query = `
-          SELECT * FROM academic_periods 
+          SELECT * FROM academic_periods
           WHERE status = 'active'
-          AND DATE(CURDATE()) BETWEEN DATE(start_date) AND DATE(end_date)
-          ORDER BY start_date DESC 
+          AND CURDATE() BETWEEN DATE(start_date) AND DATE(end_date)
+          ORDER BY start_date DESC
           LIMIT 1
         `;
       }
@@ -156,26 +148,37 @@ function getActiveAcademicPeriod(department = null) {
  * @returns {Promise<Object>} - { semester, academic_year, period_id, source }
  */
 async function getCurrentSettings(department = null) {
-  // Get active periods for both departments - purely date-based detection
-  const collegePeriod = await getActiveAcademicPeriod('College');
-  const seniorHighPeriod = await getActiveAcademicPeriod('Senior High');
+  // Get current periods for both departments - prioritize manually set, fallback to date-based
+  const { getCurrentPeriod } = require('../services/semesterService');
+  const collegePeriodResult = await getCurrentPeriod('College');
+  const seniorHighPeriodResult = await getCurrentPeriod('Senior High');
+
+  const collegePeriod = collegePeriodResult.success ? collegePeriodResult.period : null;
+  const seniorHighPeriod = seniorHighPeriodResult.success ? seniorHighPeriodResult.period : null;
   
   // Convert period_number to semester name
   const getSemesterName = (period) => {
     if (!period) return null;
     const num = period.period_number;
-    const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : num === 3 ? 'rd' : 'th';
+
     if (period.period_type === 'quarter') {
+      const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : num === 3 ? 'rd' : 'th';
       return `${num}${suffix} Quarter`;
+    } else if (period.period_type === 'semester') {
+      // Special handling for semesters: 3 = Summer
+      if (num === 3) return 'Summer';
+      const suffix = num === 1 ? 'st' : num === 2 ? 'nd' : 'th';
+      return `${num}${suffix}`;
     }
-    return `${num}${suffix}`;
+
+    return `${num}`;
   };
   
   const collegeSemester = collegePeriod ? getSemesterName(collegePeriod) : null;
   const seniorHighSemester = seniorHighPeriod ? getSemesterName(seniorHighPeriod) : null;
   
   if (!department) {
-    // Return all departments - each independently detected by date
+    // Return all departments - prioritize manually set current periods
     // Only return non-null if period found for that department
     const college = collegePeriod ? 
       { semester: collegeSemester, academic_year: collegePeriod.academic_year, period_id: collegePeriod.id } : 
