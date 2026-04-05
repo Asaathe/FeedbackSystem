@@ -862,7 +862,8 @@ export function FormBuilder({
                 console.log("Sending to:", supervisor.supervisor_email, supervisor.supervisor_name);
                 
                 // Build feedback link with supervisor info as URL parameters
-                const feedbackLink = `${window.location.origin}/feedback/${currentFormId}?supervisorEmail=${encodeURIComponent(supervisor.supervisor_email)}&supervisorName=${encodeURIComponent(supervisor.supervisor_name)}&companyName=${encodeURIComponent(supervisor.company_name)}&alumnusName=${encodeURIComponent(supervisor.alumnus_name || supervisor.alumni_name || '')}`;
+                const publicDomain = import.meta.env.VITE_PUBLIC_DOMAIN || window.location.origin;
+                const feedbackLink = `${publicDomain}/feedback/${currentFormId}?supervisorEmail=${encodeURIComponent(supervisor.supervisor_email)}&supervisorName=${encodeURIComponent(supervisor.supervisor_name)}&companyName=${encodeURIComponent(supervisor.company_name)}&alumnusName=${encodeURIComponent(supervisor.alumnus_name || supervisor.alumni_name || '')}`;
                 console.log("Feedback link:", feedbackLink);
                 
                 const result = await sendFeedbackInvitation({
