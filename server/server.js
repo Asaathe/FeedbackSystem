@@ -31,11 +31,9 @@ const settingsRoutes = require("./routes/settings");
 const notificationRoutes = require("./routes/notifications");
 
 const app = express();
-const port = process.env.PORT || 5000;
 
-// ============================================
-// MIDDLEWARE CONFIGURATION
-// ============================================
+// Trust proxy for Railway deployment (handles X-Forwarded-For headers)
+app.set('trust proxy', 1);
 
 // CORS configuration - allow all origins for development
 app.use(cors({

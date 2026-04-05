@@ -115,7 +115,7 @@ const getAllSubjects = async (req, res) => {
     if (academic_period_id) {
       // Show all subjects for this academic period (no department filter)
       query = `
-        SELECT DISTINCT
+        SELECT
           so.id as section_id,
           so.id as offering_id,
           so.subject_id,
@@ -170,13 +170,13 @@ const getAllSubjects = async (req, res) => {
         LEFT JOIN instructors i ON u.id = i.user_id
         LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
         WHERE so.academic_period_id = ? AND so.status = 'active'
-        ORDER BY ap.academic_year DESC, ap.period_number DESC, es.subject_code, c.course_section
+        ORDER BY academic_year DESC, semester DESC, es.subject_code, c.course_section
       `;
       queryParams = [academic_period_id];
     } else {
       // No academic_period_id - return all active subjects (any department)
       query = `
-        SELECT DISTINCT
+        SELECT
           so.id as section_id,
           so.id as offering_id,
           so.subject_id,
@@ -231,7 +231,7 @@ const getAllSubjects = async (req, res) => {
         LEFT JOIN instructors i ON u.id = i.user_id
         LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
         WHERE so.status = 'active'
-        ORDER BY ap.academic_year DESC, ap.period_number DESC, es.subject_code, c.course_section
+        ORDER BY academic_year DESC, semester DESC, es.subject_code, c.course_section
       `;
       queryParams = [];
     }
