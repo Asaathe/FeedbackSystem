@@ -8,7 +8,7 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
 }
 
 // Create transporter with Gmail - enhanced configuration for production
-const transporter = nodemailer.createTransporter({
+const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587, // Use TLS port instead of SSL
   secure: false, // Use STARTTLS
