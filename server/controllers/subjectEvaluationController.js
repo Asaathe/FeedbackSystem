@@ -107,11 +107,11 @@ const getAllInstructors = async (req, res) => {
 const getAllSubjects = async (req, res) => {
   try {
     const { academic_period_id } = req.query;
-    
+
     // If academic_period_id is provided, use it for filtering
     // Otherwise, return all active subjects (no filter)
     let query, queryParams;
-    
+
     if (academic_period_id) {
       // Show all subjects for this academic period (no department filter)
       query = `
@@ -132,29 +132,35 @@ const getAllSubjects = async (req, res) => {
           so.instructor_id,
           COALESCE(u.full_name, 'Unknown Instructor') as instructor_name,
           i.image as instructor_image,
-          COALESCE(((
-            SELECT AVG(sf.overall_rating)
-            FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-            AND sf.overall_rating IS NOT NULL
-          ) + (
-            SELECT AVG(ifb.overall_rating)
-            FROM instructor_feedback ifb
-            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
-            AND ifb.overall_rating IS NOT NULL
-          )) / 2, 0) as avg_rating,
           COALESCE(
             (
-              SELECT AVG(COALESCE(sf.overall_rating, 
-                CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
-              ))
+              SELECT AVG(sf.overall_rating)
               FROM subject_feedback sf
               WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+              AND sf.overall_rating IS NOT NULL
+            ),
+            0
+          ) as avg_rating,
+          COALESCE(
+            (
+              SELECT AVG(sf.overall_rating)
+              FROM subject_feedback sf
+              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+              AND sf.overall_rating IS NOT NULL
             ),
             0
           ) as subject_avg,
-          (SELECT COUNT(DISTINCT st.user_id) FROM students st 
-           INNER JOIN users u2 ON st.user_id = u2.id 
+          COALESCE(
+            (
+              SELECT AVG(ifb.overall_rating)
+              FROM instructor_feedback ifb
+              WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+              AND ifb.overall_rating IS NOT NULL
+            ),
+            0
+          ) as instructor_avg,
+          (SELECT COUNT(DISTINCT st.user_id) FROM students st
+           INNER JOIN users u2 ON st.user_id = u2.id
            WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
           COALESCE((
             SELECT COUNT(*)
@@ -196,29 +202,35 @@ const getAllSubjects = async (req, res) => {
           so.instructor_id,
           COALESCE(u.full_name, 'Unknown Instructor') as instructor_name,
           i.image as instructor_image,
-          COALESCE(((
-            SELECT AVG(sf.overall_rating)
-            FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-            AND sf.overall_rating IS NOT NULL
-          ) + (
-            SELECT AVG(ifb.overall_rating)
-            FROM instructor_feedback ifb
-            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
-            AND ifb.overall_rating IS NOT NULL
-          )) / 2, 0) as avg_rating,
           COALESCE(
             (
-              SELECT AVG(COALESCE(sf.overall_rating, 
-                CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
-              ))
+              SELECT AVG(sf.overall_rating)
               FROM subject_feedback sf
               WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+              AND sf.overall_rating IS NOT NULL
+            ),
+            0
+          ) as avg_rating,
+          COALESCE(
+            (
+              SELECT AVG(sf.overall_rating)
+              FROM subject_feedback sf
+              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+              AND sf.overall_rating IS NOT NULL
             ),
             0
           ) as subject_avg,
-          (SELECT COUNT(DISTINCT st.user_id) FROM students st 
-           INNER JOIN users u2 ON st.user_id = u2.id 
+          COALESCE(
+            (
+              SELECT AVG(ifb.overall_rating)
+              FROM instructor_feedback ifb
+              WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+              AND ifb.overall_rating IS NOT NULL
+            ),
+            0
+          ) as instructor_avg,
+          (SELECT COUNT(DISTINCT st.user_id) FROM students st
+           INNER JOIN users u2 ON st.user_id = u2.id
            WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
           COALESCE((
             SELECT COUNT(*)
@@ -241,753 +253,18 @@ const getAllSubjects = async (req, res) => {
       `;
       queryParams = [];
     }
-    
+
     db.query(query, queryParams, (err, results) => {
       if (err) {
         console.error("Error fetching subjects:", err);
         return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
       }
-      
+
       // Return results from subject_offerings
       return res.status(200).json({ success: true, subjects: results });
     });
   } catch (error) {
     console.error("Get all subjects error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
- * Get subjects for the logged-in student
- */
-const getMySubjects = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { academic_year, semester } = req.query;
-    
-    // Get user role and details
-    const userQuery = "SELECT role FROM users WHERE id = ?";
-    const userResults = await new Promise((resolve, reject) => {
-      db.query(userQuery, [userId], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-    
-    if (!userResults.length) {
-      return res.status(404).json({ success: false, message: "User not found" });
-    }
-    
-    const userRole = userResults[0].role;
-    
-    // Get current settings from academic_periods table (date-based detection)
-    let acadYear = academic_year;
-    let sem = semester;
-    let periodFilterApplied = false;
-    let periodId = null;
-    
-    // Get settings - if no params provided, use current period from academic_periods
-    if (!acadYear || !sem) {
-      // Determine department based on user role
-      let department = 'College'; // default
-
-      if (userRole === 'student') {
-        // Get student's year level to determine department
-        const studentQuery = "SELECT year_level FROM students WHERE user_id = ?";
-        const studentResults = await new Promise((resolve, reject) => {
-          db.query(studentQuery, [userId], (err, results) => {
-            if (err) reject(err);
-            else resolve(results);
-          });
-        });
-
-        if (studentResults.length > 0) {
-          const yearLevel = studentResults[0].year_level;
-          // Year levels 11-12 are Senior High, 1-4 are College
-          department = (yearLevel >= 11 && yearLevel <= 12) ? 'Senior High' : 'College';
-        }
-      } else if (userRole === 'instructor') {
-        // Get instructor's department
-        const instructorQuery = "SELECT department FROM instructors WHERE user_id = ?";
-        const instructorResults = await new Promise((resolve, reject) => {
-          db.query(instructorQuery, [userId], (err, results) => {
-            if (err) reject(err);
-            else resolve(results);
-          });
-        });
-
-        if (instructorResults.length > 0 && instructorResults[0].department) {
-          department = instructorResults[0].department;
-        }
-      }
-
-      // Get the manually set current period for this department
-      const { getCurrentPeriod } = require('../services/semesterService');
-      const currentPeriodResult = await getCurrentPeriod(department);
-
-      if (currentPeriodResult.success) {
-        const currentPeriod = currentPeriodResult.period;
-        acadYear = currentPeriod.academic_year;
-        sem = currentPeriod.period_type === 'quarter' ?
-          `${currentPeriod.period_number}${currentPeriod.period_number === 1 ? 'st' : currentPeriod.period_number === 2 ? 'nd' : currentPeriod.period_number === 3 ? 'rd' : 'th'} Quarter` :
-          `${currentPeriod.period_number}${currentPeriod.period_number === 1 ? 'st' : currentPeriod.period_number === 2 ? 'nd' : 'th'}`;
-        periodId = currentPeriod.id;
-        periodFilterApplied = true;
-      }
-
-      console.log("📋 getMySubjects - User:", userId, "| Role:", userRole, "| Dept:", department, "| Sem:", sem, "| AcadYear:", acadYear, "| FilterApplied:", periodFilterApplied, "| PeriodId:", periodId);
-    }
-    
-    // If user is an instructor, get their subjects from subject_offerings
-    if (userRole === 'instructor') {
-
-      
-      // First, let's check if there are ANY subject offerings for this instructor
-      const checkQuery = `SELECT id, subject_id, academic_year, semester, instructor_id FROM subject_offerings WHERE instructor_id = ?`;
-
-      
-      // Require academic period - no fallback queries
-      if (!periodId) {
-        return res.status(200).json({
-          success: true,
-          subjects: [],
-          academic_year: acadYear || "",
-          semester: sem || "",
-          message: "No active academic period found for instructor subjects"
-        });
-      }
-
-      const baseQuery = `
-        SELECT
-          so.id as subject_instructor_id,
-          so.id as offering_id,
-          ef.id as form_id,
-          so.subject_id,
-          es.subject_code,
-          COALESCE(f.title, es.subject_name) as form_name,
-          es.description,
-          es.department as category,
-          so.status,
-          so.semester,
-          so.academic_year,
-          so.instructor_id,
-          u.full_name as instructor_name,
-          i.image as instructor_image,
-          f.start_date,
-          f.end_date,
-          COALESCE((
-            SELECT MAX(sr.shared_at)
-            FROM shared_responses sr
-            WHERE sr.form_id = ef.form_id AND sr.shared_with_instructor_id = so.instructor_id
-          ), NULL) as shared_at,
-          COALESCE((
-            SELECT AVG(sf.overall_rating)
-            FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-            AND sf.overall_rating IS NOT NULL
-          ), 0) as avg_rating,
-          COALESCE((
-            SELECT COUNT(*)
-            FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-          ), 0) as response_count,
-          COALESCE((
-            SELECT COUNT(*)
-            FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-          ), 0) as total_responses
-        FROM subject_offerings so
-        LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-        LEFT JOIN evaluation_forms ef ON ef.subject_id = so.subject_id AND ef.instructor_id = so.instructor_id AND ef.academic_year = so.academic_year AND ef.semester = so.semester
-        LEFT JOIN forms f ON ef.form_id = f.id
-        LEFT JOIN course_management c ON so.program_id = c.id
-        LEFT JOIN users u ON so.instructor_id = u.id
-        LEFT JOIN instructors i ON u.id = i.user_id
-        WHERE so.instructor_id = ? AND so.academic_period_id = ? AND so.status = 'active'
-        ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code
-      `;
-      const queryParams = [userId, periodId];
-
-      db.query(baseQuery, queryParams, (err, results) => {
-        if (err) {
-          console.error("Error fetching instructor subjects:", err);
-          return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
-        }
-        
-        // Get instructor details for the response
-        const instructorQuery = `
-          SELECT 
-            u.id as user_id,
-            u.full_name,
-            u.email,
-            i.department,
-            i.school_role as instructor_id,
-            i.image
-          FROM users u
-          LEFT JOIN instructors i ON u.id = i.user_id
-          WHERE u.id = ?
-        `;
-        
-        db.query(instructorQuery, [userId], (err2, instructorResults) => {
-          if (err2) {
-            console.error("Error fetching instructor details:", err2);
-            return res.status(500).json({ success: false, message: "Failed to fetch instructor details" });
-          }
-          
-          const instructor = instructorResults.length > 0 ? instructorResults[0] : null;
-          
-          // Log for debugging
-          console.log("Instructor subjects query results:", {
-            userId,
-            acadYear,
-            sem,
-            totalResults: results.length,
-            firstResult: results[0]
-          });
-
-          return res.status(200).json({ success: true, instructor, subjects: results });
-        });
-      });
-      return;
-    }
-    
-    // For students, get their enrolled subjects from subject_offerings via program_id
-    const studentQuery = "SELECT program_id FROM students WHERE user_id = ?";
-    const studentResults = await new Promise((resolve, reject) => {
-      db.query(studentQuery, [userId], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-    
-    if (!studentResults.length || !studentResults[0].program_id) {
-      return res.status(200).json({ success: true, subjects: [] });
-    }
-    
-    const programId = studentResults[0].program_id;
-    
-    // Build query based on whether we have a period_id or not
-    let query;
-    let queryParams;
-    
-    if (periodId) {
-      // Use academic_period_id for filtering
-      query = `
-        SELECT 
-          so.id as offering_id,
-          so.subject_id,
-          es.subject_code,
-          es.subject_name,
-          es.department,
-          so.program_id,
-          c.course_section,
-          so.year_level,
-          so.section,
-          so.academic_year,
-          so.semester,
-          so.instructor_id,
-          u.full_name as instructor_name,
-          i.image as instructor_image
-        FROM subject_offerings so
-        LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-        LEFT JOIN course_management c ON so.program_id = c.id
-        LEFT JOIN users u ON so.instructor_id = u.id
-        LEFT JOIN instructors i ON u.id = i.user_id
-        WHERE so.program_id = ? AND so.academic_period_id = ? AND so.status = 'active'
-        ORDER BY es.subject_code
-      `;
-      queryParams = [programId, periodId];
-    } else if (acadYear && sem) {
-      // Fallback to academic_year/semester filtering
-      query = `
-        SELECT 
-          so.id as offering_id,
-          so.subject_id,
-          es.subject_code,
-          es.subject_name,
-          es.department,
-          so.program_id,
-          c.course_section,
-          so.year_level,
-          so.section,
-          so.academic_year,
-          so.semester,
-          so.instructor_id,
-          u.full_name as instructor_name,
-          i.image as instructor_image
-        FROM subject_offerings so
-        LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-        LEFT JOIN course_management c ON so.program_id = c.id
-        LEFT JOIN users u ON so.instructor_id = u.id
-        LEFT JOIN instructors i ON u.id = i.user_id
-        WHERE so.program_id = ? AND so.academic_year = ? AND so.semester = ? AND so.status = 'active'
-        ORDER BY es.subject_code
-      `;
-      queryParams = [programId, acadYear, sem];
-    } else {
-      // No period filter - get all active offerings for the program
-      query = `
-        SELECT 
-          so.id as offering_id,
-          so.subject_id,
-          es.subject_code,
-          es.subject_name,
-          es.department,
-          so.program_id,
-          c.course_section,
-          so.year_level,
-          so.section,
-          so.academic_year,
-          so.semester,
-          so.instructor_id,
-          u.full_name as instructor_name,
-          i.image as instructor_image
-        FROM subject_offerings so
-        LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-        LEFT JOIN course_management c ON so.program_id = c.id
-        LEFT JOIN users u ON so.instructor_id = u.id
-        LEFT JOIN instructors i ON u.id = i.user_id
-        WHERE so.program_id = ? AND so.status = 'active'
-        ORDER BY so.academic_year DESC, so.semester DESC, es.subject_code
-      `;
-      queryParams = [programId];
-    }
-    
-    db.query(query, queryParams, (err, results) => {
-      if (err) {
-        console.error("Error fetching student subjects:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
-      }
-      return res.status(200).json({ success: true, subjects: results });
-    });
-  } catch (error) {
-    console.error("Get my subjects error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
- * Search subjects by code or name (for searchable dropdown)
- */
-const searchSubjects = async (req, res) => {
-  try {
-    const { search } = req.query;
-    
-    if (!search) {
-      return res.status(200).json({ success: true, subjects: [] });
-    }
-    
-    const query = `
-      SELECT 
-        es.id,
-        es.subject_code,
-        es.subject_name,
-        es.department,
-        es.units
-      FROM evaluation_subjects es
-      WHERE es.status = 'active' 
-        AND (es.subject_code LIKE ? OR es.subject_name LIKE ?)
-      ORDER BY es.subject_code
-      LIMIT 20
-    `;
-    
-    const searchPattern = `%${search}%`;
-    db.query(query, [searchPattern, searchPattern], (err, results) => {
-      if (err) {
-        console.error("Error searching subjects:", err);
-        return res.status(500).json({ success: false, message: "Failed to search subjects" });
-      }
-      return res.status(200).json({ success: true, subjects: results });
-    });
-  } catch (error) {
-    console.error("Search subjects error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
- * Get instructor details with their subjects
- */
-const getInstructorDetails = async (req, res) => {
-  try {
-    const { instructorId } = req.params;
-    const { academic_year, semester } = req.query;
-    
-    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
-    let acadYear = academic_year;
-    let sem = semester;
-    
-    if (!acadYear || !sem) {
-      const settings = await getCurrentSettings();
-      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
-      sem = settings.college?.semester || settings.semester || sem;
-    }
-    
-    // Get instructor info
-    const instructorQuery = `
-      SELECT u.id, u.full_name, i.department, i.school_role, i.image
-      FROM users u
-      LEFT JOIN instructors i ON u.id = i.user_id
-      WHERE u.id = ? AND u.role = 'instructor'
-    `;
-    
-    const instructorResults = await new Promise((resolve, reject) => {
-      db.query(instructorQuery, [instructorId], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-    
-    if (!instructorResults.length) {
-      return res.status(404).json({ success: false, message: "Instructor not found" });
-    }
-    
-    const instructor = instructorResults[0];
-    
-    // Get instructor's subjects from subject_offerings
-    const subjectsQuery = `
-      SELECT 
-        so.id as offering_id,
-        so.subject_id,
-        es.subject_code,
-        es.subject_name,
-        es.department,
-        so.program_id,
-        c.course_section,
-        so.year_level,
-        so.section,
-        (SELECT COUNT(DISTINCT st.user_id) FROM students st 
-         INNER JOIN users u2 ON st.user_id = u2.id 
-         WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count
-      FROM subject_offerings so
-      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-      LEFT JOIN course_management c ON so.program_id = c.id
-      WHERE so.instructor_id = ? AND so.academic_period_id = ? AND so.status = 'active'
-    `;
-    
-    db.query(subjectsQuery, [instructorId, acadYear, sem], (err, subjects) => {
-      if (err) {
-        console.error("Error fetching instructor subjects:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
-      }
-      
-      const totalStudents = subjects.reduce((sum, s) => sum + (s.student_count || 0), 0);
-      
-      return res.status(200).json({
-        success: true,
-        instructor: {
-          ...instructor,
-          total_subjects: subjects.length,
-          total_enrolled_students: totalStudents
-        },
-        subjects
-      });
-    });
-  } catch (error) {
-    console.error("Get instructor details error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
- * Get students for evaluation (for selecting target students)
- */
-const getEvaluationStudents = async (req, res) => {
-  try {
-    const { targetType, targetIds, academic_year, semester } = req.query;
-    
-    // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
-    let acadYear = academic_year;
-    let sem = semester;
-    
-    if (!acadYear || !sem) {
-      const settings = await getCurrentSettings();
-      acadYear = settings.college?.academic_year || settings.academic_year || acadYear;
-      sem = settings.college?.semester || settings.semester || sem;
-    }
-    
-    let students = [];
-    
-    if (targetType === 'subject') {
-      // Get students in specific subjects
-      const subjectIds = targetIds.split(',').map(id => parseInt(id));
-      const placeholders = subjectIds.map(() => '?').join(',');
-      
-      const query = `
-        SELECT DISTINCT
-          u.id as student_id,
-          u.full_name,
-          u.email,
-          st.studentID,
-          cm.course_section,
-          cm.department
-        FROM subject_offerings so
-        INNER JOIN students st ON so.program_id = st.program_id
-        INNER JOIN users u ON st.user_id = u.id
-        LEFT JOIN course_management cm ON st.program_id = cm.id
-        WHERE so.subject_id IN (${placeholders}) 
-          AND so.academic_year = ? 
-          AND so.semester = ? 
-          AND u.status = 'active'
-        ORDER BY u.full_name
-      `;
-      
-      students = await new Promise((resolve, reject) => {
-        db.query(query, [...subjectIds, acadYear, sem], (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-    } else if (targetType === 'instructor') {
-      // Get students in subjects taught by specific instructors
-      const instructorIds = targetIds.split(',').map(id => parseInt(id));
-      const placeholders = instructorIds.map(() => '?').join(',');
-      
-      const query = `
-        SELECT DISTINCT
-          u.id as student_id,
-          u.full_name,
-          u.email,
-          st.studentID,
-          cm.course_section,
-          cm.department
-        FROM subject_offerings so
-        INNER JOIN students st ON so.program_id = st.program_id
-        INNER JOIN users u ON st.user_id = u.id
-        LEFT JOIN course_management cm ON st.program_id = cm.id
-        WHERE so.instructor_id IN (${placeholders}) 
-          AND so.academic_year = ? 
-          AND so.semester = ? 
-          AND u.status = 'active'
-        ORDER BY u.full_name
-      `;
-      
-      students = await new Promise((resolve, reject) => {
-        db.query(query, [...instructorIds, acadYear, sem], (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-    } else {
-      // Get all active students
-      const query = `
-        SELECT 
-          u.id as student_id,
-          u.full_name,
-          u.email,
-          st.studentID,
-          cm.course_section,
-          cm.department
-        FROM students st
-        INNER JOIN users u ON st.user_id = u.id
-        LEFT JOIN course_management cm ON st.program_id = cm.id
-        WHERE u.status = 'active'
-        ORDER BY u.full_name
-      `;
-      
-      students = await new Promise((resolve, reject) => {
-        db.query(query, [], (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        });
-      });
-    }
-    
-    return res.status(200).json({ success: true, students });
-  } catch (error) {
-    console.error("Get evaluation students error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
- * Get dashboard stats for instructor
- */
-const getInstructorDashboardStats = async (req, res) => {
-  try {
-    const userId = req.user.id;
-    
-    // Get current settings (uses academic_periods table first, falls back to system_settings)
-    const settings = await getCurrentSettings();
-    
-    let semester = settings.college?.semester || settings.semester || '1st';
-    let academicYear = settings.college?.academic_year || settings.academic_year || '2025-2026';
-    
-    // Get instructor's subjects count
-    const periodId = settings.college?.period_id || settings.seniorHigh?.period_id || settings.period_id;
-    const subjectsQuery = `
-      SELECT COUNT(DISTINCT so.subject_id) as total_courses
-      FROM subject_offerings so
-      INNER JOIN evaluation_subjects es ON so.subject_id = es.id
-      WHERE so.instructor_id = ? AND so.status = 'active' ${periodId ? 'AND so.academic_period_id = ?' : ''}
-    `;
-
-    const subjectsParams = periodId ? [userId, periodId] : [userId];
-    const subjectsResult = await new Promise((resolve, reject) => {
-      db.query(subjectsQuery, subjectsParams, (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-    
-    // Get total students
-    const studentsQuery = `
-      SELECT COUNT(DISTINCT st.user_id) as total_students
-      FROM subject_offerings so
-      INNER JOIN students st ON so.program_id = st.program_id
-      INNER JOIN users u ON st.user_id = u.id
-      WHERE so.instructor_id = ? AND u.status = 'active'
-    `;
-    
-    const studentsResult = await new Promise((resolve, reject) => {
-      db.query(studentsQuery, [userId], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-    
-    return res.status(200).json({
-      success: true,
-      stats: {
-        total_students: studentsResult[0]?.total_students || 0,
-        total_courses: subjectsResult[0]?.total_courses || 0,
-        total_feedbacks: 0,
-        avg_rating: 0
-      }
-    });
-  } catch (error) {
-    console.error("Get instructor dashboard stats error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
-  }
-};
-
-/**
- * Assign form to subject (for evaluation form deployment)
- * DEPRECATED - Use Forms system instead
- */
-const assignFormToSubject = async (req, res) => {
-  return res.status(410).json({ 
-    success: false, 
-    message: "This endpoint is deprecated. Use the Forms system (/api/forms) for creating and managing evaluation forms."
-  });
-};
-
-/**
- * Get subjects for a specific instructor (for subject-evaluation.tsx)
- * Uses academic_period_id for filtering
- */
-const getInstructorSubjects = async (req, res) => {
-  try {
-    const { instructorId } = req.params;
-    const { academic_period_id, academic_year, semester } = req.query;
-    
-    // Get current settings from academic_periods table
-    const settings = await getCurrentSettings();
-    
-    // Get instructor's department
-    const instructorQuery = "SELECT department FROM instructors WHERE user_id = ?";
-    const instructorResults = await new Promise((resolve, reject) => {
-      db.query(instructorQuery, [instructorId], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-    
-    let department = 'College';
-    if (instructorResults.length > 0 && instructorResults[0].department) {
-      department = instructorResults[0].department;
-    }
-    
-    // Get period for this department - use academic_period_id if provided
-    let periodId = academic_period_id;
-    
-    // If academic_period_id not provided, try to get from settings
-    if (!periodId) {
-      const deptSettings = department === 'Senior High' ? settings.seniorHigh : settings.college;
-      if (deptSettings && deptSettings.period_id) {
-        periodId = deptSettings.period_id;
-      }
-    }
-    
-    console.log("📋 getInstructorSubjects - Instructor:", instructorId, "| Dept:", department, "| PeriodId:", periodId);
-    
-    // Build query with academic_period_id filtering
-    let query = `
-      SELECT 
-        so.id as offering_id,
-        so.subject_id,
-        so.academic_period_id,
-        es.subject_code,
-        es.subject_name,
-        es.department,
-        so.program_id,
-        c.course_section,
-        so.year_level,
-        so.section,
-        COALESCE(ap.academic_year, so.academic_year) as academic_year,
-        COALESCE(ap.period_number, so.semester) as semester,
-        (SELECT COUNT(DISTINCT st.user_id) FROM students st 
-         INNER JOIN users u2 ON st.user_id = u2.id 
-         WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM subject_feedback sf
-          WHERE sf.section_id = so.id
-        ), 0) as subject_feedback_count,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM instructor_feedback ifb
-          WHERE ifb.section_id = so.id
-        ), 0) as instructor_feedback_count,
-        COALESCE(
-          (
-            SELECT AVG(COALESCE(sf.overall_rating, 
-              CAST(JSON_UNQUOTE(JSON_EXTRACT(sf.category_averages, '$.overall.average')) AS DECIMAL(10,2))
-            ))
-            FROM subject_feedback sf
-            WHERE sf.section_id = so.id
-          ),
-          0
-        ) as subject_avg,
-        COALESCE(
-          (
-            SELECT AVG(COALESCE(ifb.overall_rating, 
-              CAST(JSON_UNQUOTE(JSON_EXTRACT(ifb.category_averages, '$.overall.average')) AS DECIMAL(10,2))
-            ))
-            FROM instructor_feedback ifb
-            WHERE ifb.section_id = so.id
-          ),
-          0
-        ) as instructor_avg
-      FROM subject_offerings so
-      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
-      LEFT JOIN course_management c ON so.program_id = c.id
-      LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
-      WHERE so.instructor_id = ? AND so.status = 'active'
-    `;
-    
-    let queryParams = [instructorId];
-    
-    // Apply academic_period_id filter if available
-    if (periodId) {
-      query += ' AND so.academic_period_id = ?';
-      queryParams.push(periodId);
-    }
-    
-    query += ' ORDER BY ap.academic_year DESC, ap.period_number DESC, es.subject_code';
-    
-
-    
-    db.query(query, queryParams, (err, subjects) => {
-      if (err) {
-        console.error("Error fetching instructor subjects:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
-      }
-      
-      return res.status(200).json({ success: true, subjects });
-    });
-  } catch (error) {
-    console.error("Get instructor subjects error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
@@ -1589,6 +866,393 @@ const getFeedbackCategoryBreakdown = async (req, res) => {
     console.error("Get feedback category breakdown error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
   }
+};
+
+/**
+ * Get subjects for the logged-in student
+ */
+const getMySubjects = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get student's program
+    const studentQuery = "SELECT program_id FROM students WHERE user_id = ?";
+    const studentResults = await new Promise((resolve, reject) => {
+      db.query(studentQuery, [userId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!studentResults.length || !studentResults[0].program_id) {
+      return res.status(200).json({ success: true, subjects: [] });
+    }
+
+    const programId = studentResults[0].program_id;
+
+    // Get active subjects for this program
+    const query = `
+      SELECT
+        so.id as offering_id,
+        so.subject_id,
+        es.subject_code,
+        es.subject_name,
+        es.department,
+        so.program_id,
+        c.program_name,
+        c.course_section,
+        so.year_level,
+        so.section,
+        so.academic_year,
+        so.semester,
+        so.instructor_id,
+        u.full_name as instructor_name,
+        i.image as instructor_image
+      FROM subject_offerings so
+      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+      LEFT JOIN course_management c ON so.program_id = c.id
+      LEFT JOIN users u ON so.instructor_id = u.id
+      LEFT JOIN instructors i ON u.id = i.user_id
+      WHERE so.program_id = ? AND so.status = 'active'
+      ORDER BY es.subject_code
+    `;
+
+    db.query(query, [programId], (err, results) => {
+      if (err) {
+        console.error("Error fetching my subjects:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
+      }
+      return res.status(200).json({ success: true, subjects: results });
+    });
+  } catch (error) {
+    console.error("Get my subjects error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Search subjects by code or name
+ */
+const searchSubjects = async (req, res) => {
+  try {
+    const { search } = req.query;
+
+    if (!search) {
+      return res.status(200).json({ success: true, subjects: [] });
+    }
+
+    const query = `
+      SELECT
+        es.id,
+        es.subject_code,
+        es.subject_name,
+        es.department,
+        es.units
+      FROM evaluation_subjects es
+      WHERE es.status = 'active'
+        AND (es.subject_code LIKE ? OR es.subject_name LIKE ?)
+      ORDER BY es.subject_code
+      LIMIT 20
+    `;
+
+    const searchPattern = `%${search}%`;
+    db.query(query, [searchPattern, searchPattern], (err, results) => {
+      if (err) {
+        console.error("Error searching subjects:", err);
+        return res.status(500).json({ success: false, message: "Failed to search subjects" });
+      }
+      return res.status(200).json({ success: true, subjects: results });
+    });
+  } catch (error) {
+    console.error("Search subjects error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Get instructor details with their subjects
+ */
+const getInstructorDetails = async (req, res) => {
+  try {
+    const { instructorId } = req.params;
+
+    // Get instructor info
+    const instructorQuery = `
+      SELECT u.id, u.full_name, i.department, i.school_role, i.image
+      FROM users u
+      LEFT JOIN instructors i ON u.id = i.user_id
+      WHERE u.id = ? AND u.role = 'instructor'
+    `;
+
+    const instructorResults = await new Promise((resolve, reject) => {
+      db.query(instructorQuery, [instructorId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    if (!instructorResults.length) {
+      return res.status(404).json({ success: false, message: "Instructor not found" });
+    }
+
+    const instructor = instructorResults[0];
+
+    // Get instructor's subjects
+    const subjectsQuery = `
+      SELECT
+        so.id as offering_id,
+        so.subject_id,
+        es.subject_code,
+        es.subject_name,
+        es.department,
+        so.program_id,
+        c.program_name,
+        so.year_level,
+        so.section,
+        (SELECT COUNT(DISTINCT st.user_id) FROM students st
+         INNER JOIN users u2 ON st.user_id = u2.id
+         WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count
+      FROM subject_offerings so
+      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+      LEFT JOIN course_management c ON so.program_id = c.id
+      WHERE so.instructor_id = ? AND so.status = 'active'
+      ORDER BY es.subject_code
+    `;
+
+    db.query(subjectsQuery, [instructorId], (err, subjects) => {
+      if (err) {
+        console.error("Error fetching instructor subjects:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
+      }
+
+      const totalStudents = subjects.reduce((sum, s) => sum + (s.student_count || 0), 0);
+
+      return res.status(200).json({
+        success: true,
+        instructor: {
+          ...instructor,
+          total_subjects: subjects.length,
+          total_enrolled_students: totalStudents
+        },
+        subjects
+      });
+    });
+  } catch (error) {
+    console.error("Get instructor details error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Get instructor subjects
+ */
+const getInstructorSubjects = async (req, res) => {
+  try {
+    const { instructorId } = req.params;
+
+    const query = `
+      SELECT
+        so.id as offering_id,
+        so.subject_id,
+        es.subject_code,
+        es.subject_name,
+        es.department,
+        so.program_id,
+        c.program_name,
+        so.year_level,
+        so.section,
+        so.academic_year,
+        so.semester,
+        (SELECT COUNT(DISTINCT st.user_id) FROM students st
+         INNER JOIN users u2 ON st.user_id = u2.id
+         WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
+        COALESCE((
+          SELECT COUNT(*)
+          FROM subject_feedback sf
+          WHERE sf.section_id = so.id
+        ), 0) as subject_feedback_count,
+        COALESCE((
+          SELECT COUNT(*)
+          FROM instructor_feedback ifb
+          WHERE ifb.section_id = so.id
+        ), 0) as instructor_feedback_count
+      FROM subject_offerings so
+      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+      LEFT JOIN course_management c ON so.program_id = c.id
+      WHERE so.instructor_id = ? AND so.status = 'active'
+      ORDER BY es.subject_code
+    `;
+
+    db.query(query, [instructorId], (err, subjects) => {
+      if (err) {
+        console.error("Error fetching instructor subjects:", err);
+        return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
+      }
+
+      return res.status(200).json({ success: true, subjects });
+    });
+  } catch (error) {
+    console.error("Get instructor subjects error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Get students for evaluation
+ */
+const getEvaluationStudents = async (req, res) => {
+  try {
+    const { targetType, targetIds } = req.query;
+
+    let students = [];
+
+    if (targetType === 'subject') {
+      const subjectIds = targetIds.split(',').map(id => parseInt(id));
+      const placeholders = subjectIds.map(() => '?').join(',');
+
+      const query = `
+        SELECT DISTINCT
+          u.id as student_id,
+          u.full_name,
+          u.email,
+          st.studentID,
+          cm.program_name,
+          cm.department
+        FROM subject_offerings so
+        INNER JOIN students st ON so.program_id = st.program_id
+        INNER JOIN users u ON st.user_id = u.id
+        LEFT JOIN course_management cm ON st.program_id = cm.id
+        WHERE so.subject_id IN (${placeholders})
+          AND u.status = 'active'
+        ORDER BY u.full_name
+      `;
+
+      students = await new Promise((resolve, reject) => {
+        db.query(query, subjectIds, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+    } else if (targetType === 'instructor') {
+      const instructorIds = targetIds.split(',').map(id => parseInt(id));
+      const placeholders = instructorIds.map(() => '?').join(',');
+
+      const query = `
+        SELECT DISTINCT
+          u.id as student_id,
+          u.full_name,
+          u.email,
+          st.studentID,
+          cm.program_name,
+          cm.department
+        FROM subject_offerings so
+        INNER JOIN students st ON so.program_id = st.program_id
+        INNER JOIN users u ON st.user_id = u.id
+        LEFT JOIN course_management cm ON st.program_id = cm.id
+        WHERE so.instructor_id IN (${placeholders})
+          AND u.status = 'active'
+        ORDER BY u.full_name
+      `;
+
+      students = await new Promise((resolve, reject) => {
+        db.query(query, instructorIds, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+    } else {
+      // Get all active students
+      const query = `
+        SELECT
+          u.id as student_id,
+          u.full_name,
+          u.email,
+          st.studentID,
+          cm.program_name,
+          cm.department
+        FROM students st
+        INNER JOIN users u ON st.user_id = u.id
+        LEFT JOIN course_management cm ON st.program_id = cm.id
+        WHERE u.status = 'active'
+        ORDER BY u.full_name
+      `;
+
+      students = await new Promise((resolve, reject) => {
+        db.query(query, [], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+    }
+
+    return res.status(200).json({ success: true, students });
+  } catch (error) {
+    console.error("Get evaluation students error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Get instructor dashboard stats
+ */
+const getInstructorDashboardStats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get instructor's subjects count
+    const subjectsQuery = `
+      SELECT COUNT(DISTINCT so.subject_id) as total_courses
+      FROM subject_offerings so
+      INNER JOIN evaluation_subjects es ON so.subject_id = es.id
+      WHERE so.instructor_id = ? AND so.status = 'active'
+    `;
+
+    const subjectsResult = await new Promise((resolve, reject) => {
+      db.query(subjectsQuery, [userId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    // Get total students
+    const studentsQuery = `
+      SELECT COUNT(DISTINCT st.user_id) as total_students
+      FROM subject_offerings so
+      INNER JOIN students st ON so.program_id = st.program_id
+      INNER JOIN users u ON st.user_id = u.id
+      WHERE so.instructor_id = ? AND u.status = 'active'
+    `;
+
+    const studentsResult = await new Promise((resolve, reject) => {
+      db.query(studentsQuery, [userId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      stats: {
+        total_students: studentsResult[0]?.total_students || 0,
+        total_courses: subjectsResult[0]?.total_courses || 0,
+        total_feedbacks: 0,
+        avg_rating: 0
+      }
+    });
+  } catch (error) {
+    console.error("Get instructor dashboard stats error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * Assign form to subject (deprecated)
+ */
+const assignFormToSubject = async (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: "This endpoint is deprecated. Use the Forms system for creating and managing evaluation forms."
+  });
 };
 
 // Export all functions
