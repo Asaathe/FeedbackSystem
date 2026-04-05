@@ -1,79 +1,35 @@
-const nodemailer = require("nodemailer");
+// Require Resend (primary email service)
+const { Resend } = require('resend');
 
-// Check SMTP configuration
-if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-  console.warn("⚠️  WARNING: SMTP credentials not configured!");
-  console.warn("⚠️  Set SMTP_USER and SMTP_PASS environment variables");
-  console.warn("⚠️  Using fallback Gmail credentials - may not work in production");
-}
+// Initialize Resend client
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Create transporter with Gmail - fallback to console logging for Railway
-// Gmail SMTP often fails in Railway due to network restrictions
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: process.env.SMTP_USER || "feedbacts@gmail.com",
-    pass: process.env.SMTP_PASS || "",
-  },
-  requireTLS: true,
-  connectionTimeout: 10000, // Reduced timeout
-  greetingTimeout: 5000,
-  socketTimeout: 10000,
-  // Minimal TLS settings
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+console.log("✅ Resend email service initialized");
 
-// Alternative: Use Railway's built-in SMTP if available
-// Uncomment below if you want to try Railway SMTP
-/*
-const transporter = nodemailer.createTransport({
-  host: process.env.RAILWAY_SMTP_HOST || 'smtp.mailgun.org',
-  port: process.env.RAILWAY_SMTP_PORT || 587,
-  secure: false,
-  auth: {
-    user: process.env.RAILWAY_SMTP_USER,
-    pass: process.env.RAILWAY_SMTP_PASS,
-  },
-  requireTLS: true,
-});
-*/
-
-// Verify connection with retry logic
-const verifyEmailConnection = async (retries = 3) => {
-  for (let i = 0; i < retries; i++) {
+// Email transporter configuration (Resend only)
+const transporter = {
+  sendMail: async (mailOptions) => {
     try {
-      const success = await new Promise((resolve, reject) => {
-        transporter.verify((error, success) => {
-          if (error) reject(error);
-          else resolve(success);
-        });
+      const result = await resend.emails.send({
+        from: mailOptions.from,
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html: mailOptions.html,
       });
-      console.log("✅ Email service is ready and connected");
-      return true;
+      return { messageId: result.id };
     } catch (error) {
-      console.error(`❌ Email service verification attempt ${i + 1}/${retries} failed:`, error.message);
-      if (i < retries - 1) {
-        console.log(`⏳ Retrying email verification in 5 seconds...`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-      }
+      console.error("Resend API error:", error.message);
+      throw error;
     }
+  },
+  verify: (callback) => {
+    // Resend doesn't need verification like SMTP
+    callback(null, true);
   }
-  console.error("❌ Email service verification failed after all retries");
-  return false;
 };
 
-// Start verification (don't crash server if it fails)
-if (process.env.DISABLE_EMAIL !== 'true') {
-  verifyEmailConnection().catch(err => {
-    console.warn("⚠️ Email verification failed, but server will continue:", err.message);
-  });
-} else {
-  console.log("📧 Email sending disabled (DISABLE_EMAIL=true)");
-}
+// Email verification (Resend doesn't need traditional verification)
+console.log("✅ Resend email service ready");
 
 /**
  * Send an email
@@ -87,40 +43,40 @@ const sendEmail = async (to, subject, html, retries = 3) => {
   console.log("Recipient:", to);
   console.log("Subject:", subject);
 
-  // Check if email is disabled (for Railway deployment)
+  // Check if email is disabled
   if (process.env.DISABLE_EMAIL === 'true') {
     console.log("📧 Email sending disabled. Logging email content instead:");
     console.log("📧 To:", to);
     console.log("📧 Subject:", subject);
     console.log("📧 Content preview:", html.substring(0, 200) + "...");
-    return true; // Return success to not break the app
+    return true;
   }
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
       const mailOptions = {
-        from: process.env.SMTP_USER ? `"FeedbACTS System" <${process.env.SMTP_USER}>` : '"FeedbACTS System" <feedbacts@gmail.com>',
+        from: process.env.RESEND_FROM_EMAIL || 'FeedbACTS <noreply@resend.dev>',
         to,
         subject,
         html,
       };
 
-      console.log(`📧 Attempting to send email (${attempt}/${retries}) via Gmail...`);
+      console.log(`📧 Sending email via Resend (attempt ${attempt}/${retries})...`);
       const info = await transporter.sendMail(mailOptions);
-      console.log("✅ Email sent successfully! Message ID:", info.messageId);
+      console.log("✅ Email sent successfully via Resend! Message ID:", info.messageId);
       return true;
     } catch (error) {
       console.error(`❌ Email send attempt ${attempt}/${retries} failed:`, error.message);
 
-      // Don't retry on certain errors
-      if (error.code === 'EAUTH' || error.code === 'EENVELOPE') {
-        console.error("❌ Fatal email error - not retrying:", error.code);
+      // Check for fatal errors
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        console.error("❌ Authentication error - check your RESEND_API_KEY");
         break;
       }
 
-      // Retry on connection/timeout errors
+      // Retry on other errors
       if (attempt < retries) {
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Exponential backoff, max 10s
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Exponential backoff, max 5s
         console.log(`⏳ Retrying in ${delay}ms...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
@@ -128,7 +84,7 @@ const sendEmail = async (to, subject, html, retries = 3) => {
   }
 
   console.error("❌ All email send attempts failed");
-  console.log("💡 Consider setting DISABLE_EMAIL=true to log emails instead of sending");
+  console.log("💡 Check your RESEND_API_KEY and internet connection");
   return false;
 };
 
@@ -288,17 +244,13 @@ const sendBatchEmails = async (emails) => {
  */
 const testEmailConnection = async () => {
   try {
-    console.log("🧪 Testing email connection...");
-    const success = await verifyEmailConnection(1); // Quick test with 1 retry
-    if (success) {
-      console.log("✅ Email connection test successful");
-      return true;
-    } else {
-      console.error("❌ Email connection test failed");
-      return false;
-    }
+    console.log("🧪 Testing Resend connection...");
+    // Try to send a minimal test
+    const testResult = await resend.domains.list();
+    console.log("✅ Resend connection test successful");
+    return true;
   } catch (error) {
-    console.error("❌ Email connection test error:", error.message);
+    console.error("❌ Resend connection test failed:", error.message);
     return false;
   }
 };
@@ -324,12 +276,12 @@ const sendTestEmail = async (testEmail) => {
 };
 
 module.exports = {
+  resend,
   transporter,
   sendEmail,
   sendFeedbackInvitation,
   sendBulkFeedbackInvitations,
   sendBatchEmails,
   testEmailConnection,
-  verifyEmailConnection,
   sendTestEmail,
 };
