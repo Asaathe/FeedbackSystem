@@ -1912,6 +1912,34 @@ interface PublicFeedbackParams {
   alumnusName?: string;
 }
 
+export const getPublicForm = async (formId: string): Promise<{ success: boolean; form?: any; message: string }> => {
+  logDebug('getPublicForm called with formId:', formId);
+
+  try {
+    const apiUrl = `${API_BASE}/api/forms/public/${formId}`;
+    logDebug(`Making GET request to: ${apiUrl}`);
+
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    const result = await response.json();
+    logDebug('getPublicForm response:', result);
+
+    if (response.ok && result.success) {
+      return { success: true, form: result.form, message: result.message || 'Form fetched successfully' };
+    } else {
+      return { success: false, message: result.message || 'Failed to fetch form' };
+    }
+  } catch (error) {
+    logError('getPublicForm error:', error);
+    return { success: false, message: 'Network error occurred' };
+  }
+};
+
 export const submitPublicFeedback = async (params: PublicFeedbackParams): Promise<{ success: boolean; message: string; responseId?: number }> => {
   logDebug('submitPublicFeedback called');
 

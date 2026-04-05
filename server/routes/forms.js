@@ -114,6 +114,104 @@ router.get("/:id/responses", verifyToken, responseController.getFormResponses);
 router.get("/:id/submission-status", verifyToken, responseController.getFormSubmissionStatus);
 router.post("/:id/submit", verifyToken, responseController.submitFormResponse);
 
+// Public route to get form details for external feedback (e.g., from email links) - NO authentication required
+router.get("/public/:id", async (req, res) => {
+  const { id } = req.params;
+
+  console.log("=== Public form fetch ===");
+  console.log("Form ID:", id);
+
+  try {
+    // Import the database
+    const db = require("../config/database");
+    const { queryDatabase } = require("../utils/helpers");
+
+    // Get the form
+    const forms = await queryDatabase(db, "SELECT * FROM forms WHERE id = ?", [id]);
+
+    if (!forms || forms.length === 0) {
+      return res.status(404).json({ success: false, message: "Form not found" });
+    }
+
+    const form = forms[0];
+
+    // Check form date constraints - only use form_deployments table
+    const now = new Date();
+    console.log("[DEBUG Public] Current time:", now.toISOString());
+
+    // Check form_deployments for schedule
+    const deployments = await queryDatabase(
+      db,
+      "SELECT * FROM form_deployments WHERE form_id = ? AND deployment_status = 'active' ORDER BY created_at DESC LIMIT 1",
+      [id]
+    );
+
+    console.log("[DEBUG Public] Deployments found:", deployments.length);
+
+    // If there's an active deployment, check its dates
+    if (deployments.length > 0) {
+      const deployment = deployments[0];
+      console.log("[DEBUG Public] Deployment:", deployment);
+
+      if (deployment.start_date) {
+        const startTime = deployment.start_time || '00:00:00';
+        // Create date with explicit timezone handling - append +08:00 to ensure correct parsing
+        const startDateStr = `${deployment.start_date}T${startTime}:00+08:00`;
+        const startDate = new Date(startDateStr);
+        console.log("[DEBUG Public] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
+        // Compare with current time
+        if (startDate > now) {
+          console.log("[DEBUG Public] Form not yet open - blocking access");
+          return res.status(400).json({ success: false, message: "Form is not yet open for submission" });
+        }
+      }
+
+      if (deployment.end_date) {
+        const endTime = deployment.end_time || '23:59:59';
+        // Create date with explicit timezone handling
+        const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
+        const endDate = new Date(endDateStr);
+        console.log("[DEBUG Public] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
+        // Compare with current time
+        if (endDate < now) {
+          console.log("[DEBUG Public] Form has ended - blocking access");
+          return res.status(400).json({ success: false, message: "Form submission period has ended" });
+        }
+      }
+    } else {
+      console.log("[DEBUG Public] No active deployment found - allowing access");
+    }
+
+    // Get form questions
+    const questions = await queryDatabase(
+      db,
+      "SELECT * FROM form_questions WHERE form_id = ? ORDER BY order_index ASC",
+      [id]
+    );
+
+    // Return form data
+    const formData = {
+      id: form.id,
+      title: form.title,
+      description: form.description,
+      category: form.category_id,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      image_url: form.image_url,
+      questions: questions || []
+    };
+
+    console.log("Public form fetched successfully!");
+    return res.status(200).json({
+      success: true,
+      form: formData
+    });
+  } catch (error) {
+    console.error("Public form fetch error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 // Public route for external feedback (e.g., from email links) - NO authentication required
 router.post("/public/submit", async (req, res) => {
   const { formId, responses, supervisorEmail, supervisorName, companyName, alumnusName } = req.body;

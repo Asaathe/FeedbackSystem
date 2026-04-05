@@ -37,7 +37,7 @@ import {
 } from "../../services/publishedFormsService";
 import { getForm } from "../../services/formManagementService";
 import { getAuthToken } from "../../utils/auth";
-import { submitPublicFeedback } from "../../services/formManagementService";
+import { submitPublicFeedback, getPublicForm } from "../../services/formManagementService";
 
 type FormQuestion = ServiceFormQuestion;
 
@@ -231,7 +231,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
           if (companyName) setExternalCompanyName(companyName);
           if (alumnusName) setExternalAlumnusName(alumnusName);
           
-          const result = await getForm(externalFormId);
+           const result = await getPublicForm(externalFormId);
           if (result.success && result.form) {
             const form = result.form;
             const formData: FeedbackForm = {
