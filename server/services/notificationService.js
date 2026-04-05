@@ -14,7 +14,7 @@ const createNotification = async (notificationData) => {
   
   try {
     const query = `
-      INSERT INTO Notifications (user_id, type, title, message, related_form_id, related_employment_id, metadata)
+      INSERT INTO notifications (user_id, type, title, message, related_form_id, related_employment_id, metadata)
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
     
@@ -29,7 +29,7 @@ const createNotification = async (notificationData) => {
     ]);
     
     // Get the created notification
-    const getQuery = 'SELECT * FROM Notifications WHERE id = ?';
+    const getQuery = 'SELECT * FROM notifications WHERE id = ?';
     const created = await queryDatabase(db, getQuery, [result.insertId]);
     
     return {
@@ -57,14 +57,14 @@ const getNotificationsForUser = async (userId, page = 1, limit = 20) => {
     const offset = (page - 1) * limit;
     
     // Get total count
-    const countQuery = 'SELECT COUNT(*) as total, SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as unread FROM Notifications WHERE user_id = ?';
+    const countQuery = 'SELECT COUNT(*) as total, SUM(CASE WHEN is_read = FALSE THEN 1 ELSE 0 END) as unread FROM notifications WHERE user_id = ?';
     const countResult = await queryDatabase(db, countQuery, [userId]);
     const total = countResult[0].total;
     const unreadCount = countResult[0].unread || 0;
     
     // Get notifications with pagination
     const query = `
-      SELECT * FROM Notifications 
+      SELECT * FROM notifications
       WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
@@ -100,7 +100,7 @@ const getNotificationsForUser = async (userId, page = 1, limit = 20) => {
  */
 const getUnreadCount = async (userId) => {
   try {
-    const query = 'SELECT COUNT(*) as count FROM Notifications WHERE user_id = ? AND is_read = FALSE';
+    const query = 'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = FALSE';
     const result = await queryDatabase(db, query, [userId]);
     return result[0].count;
   } catch (error) {
@@ -117,7 +117,7 @@ const getUnreadCount = async (userId) => {
  */
 const markAsRead = async (notificationId, userId) => {
   try {
-    const query = 'UPDATE Notifications SET is_read = TRUE WHERE id = ? AND user_id = ?';
+    const query = 'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?';
     const result = await queryDatabase(db, query, [notificationId, userId]);
     
     if (result.affectedRows === 0) {
@@ -153,7 +153,7 @@ const markMultipleAsRead = async (notificationIds, userId) => {
     }
     
     const placeholders = notificationIds.map(() => '?').join(',');
-    const query = `UPDATE Notifications SET is_read = TRUE WHERE id IN (${placeholders}) AND user_id = ?`;
+    const query = `UPDATE notifications SET is_read = TRUE WHERE id IN (${placeholders}) AND user_id = ?`;
     const result = await queryDatabase(db, query, [...notificationIds, userId]);
     
     return {
@@ -176,7 +176,7 @@ const markMultipleAsRead = async (notificationIds, userId) => {
  */
 const markAllAsRead = async (userId) => {
   try {
-    const query = 'UPDATE Notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE';
+    const query = 'UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE';
     const result = await queryDatabase(db, query, [userId]);
     
     return {
@@ -200,7 +200,7 @@ const markAllAsRead = async (userId) => {
  */
 const deleteNotification = async (notificationId, userId) => {
   try {
-    const query = 'DELETE FROM Notifications WHERE id = ? AND user_id = ?';
+    const query = 'DELETE FROM notifications WHERE id = ? AND user_id = ?';
     const result = await queryDatabase(db, query, [notificationId, userId]);
     
     if (result.affectedRows === 0) {
