@@ -453,14 +453,14 @@ export function FeedbackTemplate() {
               </CardDescription>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setPreviewOpen(true)}>
-                <Eye className="w-4 h-4 mr-2" />
-                Preview
-              </Button>
-              <Button onClick={() => handleAddCategory()} className="bg-green-500 hover:bg-green-600">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Category
-              </Button>
+               <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+                 <Eye className="w-4 h-4 sm:mr-2" />
+                 <span className="hidden sm:inline">Preview</span>
+               </Button>
+               <Button onClick={() => handleAddCategory()} className="bg-green-500 hover:bg-green-600">
+                 <Plus className="w-4 h-4 sm:mr-2" />
+                 <span className="hidden sm:inline">Add Category</span>
+               </Button>
             </div>
           </CardHeader>
           <CardContent>

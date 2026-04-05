@@ -599,7 +599,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
           <Card className="border-green-100">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm text-gray-600">Subjects</CardTitle>
@@ -744,21 +744,21 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             <p className="text-gray-600 mt-1">View evaluation results by subject and instructor</p>
           </div>
           <div className="flex gap-2">
-            <Button 
-              variant={currentView === 'instructors' ? 'default' : 'outline'} 
+            <Button
+              variant={currentView === 'instructors' ? 'default' : 'outline'}
               onClick={() => setCurrentView('instructors')}
               className={currentView === 'instructors' ? 'bg-green-600' : ''}
             >
-              <Users className="w-4 h-4 mr-2" />
-              By Instructor
+              <Users className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">By Instructor</span>
             </Button>
-            <Button 
-              variant={currentView === 'subjects' ? 'default' : 'outline'} 
+            <Button
+              variant={currentView === 'subjects' ? 'default' : 'outline'}
               onClick={() => setCurrentView('subjects')}
               className={currentView === 'subjects' ? 'bg-green-600' : ''}
             >
-              <BookOpen className="w-4 h-4 mr-2" />
-              By Subjects
+              <BookOpen className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">By Subjects</span>
             </Button>
           </div>
         </div>

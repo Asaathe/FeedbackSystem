@@ -174,7 +174,7 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
       </div>
 
       {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3  gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3  gap-6">
         <Card className="border-green-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm text-gray-600">Active Forms</CardTitle>
@@ -276,15 +276,15 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
         <CardContent>
           {activeForms.length > 0 ? (
             <div className="space-y-3">
-              {activeForms.map((form, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              {activeForms.slice(0, 3).map((form, index) => (
+                <div key={index} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div className="flex-1">
                     <h4 className="text-sm font-medium">{form.title}</h4>
                     <p className="text-xs text-gray-600 mt-1">
                       Target: {form.target} • Period: {form.period}
                     </p>
                   </div>
-                  <div className="text-right">
+                  <div className="sm:text-right">
                     <div className="text-lg font-semibold text-green-600">{form.responses}</div>
                     <div className="text-xs text-gray-600">responses</div>
                   </div>

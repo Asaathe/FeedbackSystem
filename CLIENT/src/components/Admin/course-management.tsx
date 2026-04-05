@@ -322,7 +322,7 @@ export function CourseManagement() {
       )}
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white rounded-lg shadow-md p-4">
           <div className="text-sm text-gray-600">Total Programs</div>
           <div className="text-2xl font-bold text-gray-900">

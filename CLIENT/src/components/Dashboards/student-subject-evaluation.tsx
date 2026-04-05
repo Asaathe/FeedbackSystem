@@ -536,13 +536,13 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
           >
             {submitting ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-                Submitting...
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
+                <span className="hidden sm:inline">Submitting...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4 mr-2" />
-                Submit Evaluation
+                <Send className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Submit Evaluation</span>
               </>
             )}
           </Button>
@@ -674,19 +674,19 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                         </div>
                         
                         {isSubmitted ? (
-                          <Button variant="outline" size="sm" disabled>
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                            Completed
-                          </Button>
+                           <Button variant="outline" size="sm" disabled>
+                             <CheckCircle className="w-4 h-4 sm:mr-2" />
+                             <span className="hidden sm:inline">Completed</span>
+                           </Button>
                         ) : (
-                          <Button 
-                            className="bg-green-500 hover:bg-green-600"
-                            size="sm"
-                            onClick={() => handleStartEvaluation(form.id)}
-                          >
-                            <Send className="w-4 h-4 mr-2" />
-                            Start Evaluation
-                          </Button>
+                           <Button
+                             className="bg-green-500 hover:bg-green-600"
+                             size="sm"
+                             onClick={() => handleStartEvaluation(form.id)}
+                           >
+                             <Send className="w-4 h-4 sm:mr-2" />
+                             <span className="hidden sm:inline">Start Evaluation</span>
+                           </Button>
                         )}
                       </div>
                     </div>
@@ -775,8 +775,8 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                   </div>
 
                   <Button variant="outline" className="w-full mt-2 border-green-200 hover:bg-green-50">
-                    View Evaluations
-                    <ChevronRight className="w-4 h-4 ml-2" />
+                    <span className="hidden sm:inline">View Evaluations</span>
+                    <ChevronRight className="w-4 h-4 sm:ml-2" />
                   </Button>
                 </div>
               </CardContent>
