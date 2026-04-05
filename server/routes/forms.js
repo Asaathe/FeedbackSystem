@@ -140,54 +140,73 @@ router.get("/public/:id", async (req, res) => {
     console.log("[DEBUG Public] Current time:", now.toISOString());
 
     // Check form_deployments for schedule (optional for employer feedback forms)
-    const deployments = await queryDatabase(
-      db,
-      "SELECT * FROM form_deployments WHERE form_id = ? AND deployment_status = 'active' ORDER BY created_at DESC LIMIT 1",
-      [id]
-    );
-
-    console.log("[DEBUG Public] Deployments found:", deployments.length);
+    let deployments = [];
+    try {
+      deployments = await queryDatabase(
+        db,
+        "SELECT * FROM form_deployments WHERE form_id = ? AND deployment_status = 'active' ORDER BY created_at DESC LIMIT 1",
+        [id]
+      );
+      console.log("[DEBUG Public] Deployments found:", deployments.length);
+    } catch (dbError) {
+      console.error("[DEBUG Public] Database error querying deployments:", dbError);
+      // Continue without deployment check
+    }
 
     // If there's an active deployment, check its dates
     if (deployments.length > 0) {
       const deployment = deployments[0];
       console.log("[DEBUG Public] Deployment:", deployment);
 
-      if (deployment.start_date) {
-        const startTime = deployment.start_time || '00:00:00';
-        // Create date with explicit timezone handling - append +08:00 to ensure correct parsing
-        const startDateStr = `${deployment.start_date}T${startTime}:00+08:00`;
-        const startDate = new Date(startDateStr);
-        console.log("[DEBUG Public] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
-        // Compare with current time
-        if (startDate > now) {
-          console.log("[DEBUG Public] Form not yet open - blocking access");
-          return res.status(400).json({ success: false, message: "Form is not yet open for submission" });
+      try {
+        if (deployment.start_date) {
+          const startTime = deployment.start_time || '00:00:00';
+          // Create date with explicit timezone handling - append +08:00 to ensure correct parsing
+          const startDateStr = `${deployment.start_date}T${startTime}:00+08:00`;
+          console.log("[DEBUG Public] Start date string:", startDateStr);
+          const startDate = new Date(startDateStr);
+          console.log("[DEBUG Public] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
+          // Compare with current time
+          if (startDate > now) {
+            console.log("[DEBUG Public] Form not yet open - blocking access");
+            return res.status(400).json({ success: false, message: "Form is not yet open for submission" });
+          }
         }
-      }
 
-      if (deployment.end_date) {
-        const endTime = deployment.end_time || '23:59:59';
-        // Create date with explicit timezone handling
-        const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
-        const endDate = new Date(endDateStr);
-        console.log("[DEBUG Public] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
-        // Compare with current time
-        if (endDate < now) {
-          console.log("[DEBUG Public] Form has ended - blocking access");
-          return res.status(400).json({ success: false, message: "Form submission period has ended" });
+        if (deployment.end_date) {
+          const endTime = deployment.end_time || '23:59:59';
+          // Create date with explicit timezone handling
+          const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
+          console.log("[DEBUG Public] End date string:", endDateStr);
+          const endDate = new Date(endDateStr);
+          console.log("[DEBUG Public] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
+          // Compare with current time
+          if (endDate < now) {
+            console.log("[DEBUG Public] Form has ended - blocking access");
+            return res.status(400).json({ success: false, message: "Form submission period has ended" });
+          }
         }
+      } catch (dateError) {
+        console.error("[DEBUG Public] Date parsing error:", dateError);
+        // Continue without date validation if parsing fails
       }
     }
     // Note: If no active deployment found, we still allow access for employer feedback forms
     // This allows forms to be accessible immediately after creation without explicit deployment
 
     // Get form questions
-    const questions = await queryDatabase(
-      db,
-      "SELECT * FROM form_questions WHERE form_id = ? ORDER BY order_index ASC",
-      [id]
-    );
+    let questions = [];
+    try {
+      questions = await queryDatabase(
+        db,
+        "SELECT * FROM form_questions WHERE form_id = ? ORDER BY order_index ASC",
+        [id]
+      );
+      console.log("[DEBUG Public] Questions found:", questions.length);
+    } catch (questionsError) {
+      console.error("[DEBUG Public] Error fetching questions:", questionsError);
+      // Continue with empty questions array
+    }
 
     // Return form data
     const formData = {
@@ -208,6 +227,8 @@ router.get("/public/:id", async (req, res) => {
     });
   } catch (error) {
     console.error("Public form fetch error:", error);
+    console.error("Error stack:", error.stack);
+    console.error("Error message:", error.message);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
