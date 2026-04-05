@@ -120,6 +120,7 @@ router.get("/public/:id", async (req, res) => {
 
   console.log("=== Public form fetch ===");
   console.log("Form ID:", id);
+  console.log("Current timestamp:", new Date().toISOString());
 
   try {
     // Import the database
@@ -194,15 +195,59 @@ router.get("/public/:id", async (req, res) => {
     // Note: If no active deployment found, we still allow access for employer feedback forms
     // This allows forms to be accessible immediately after creation without explicit deployment
 
-    // Get form questions
+    // Get form questions with options
     let questions = [];
     try {
-      questions = await queryDatabase(
+      // Get questions with their options
+      const questionsData = await queryDatabase(
         db,
-        "SELECT * FROM form_questions WHERE form_id = ? ORDER BY order_index ASC",
+        `SELECT q.id, q.form_id, q.section_id, q.question_text, q.question_type,
+                q.description, q.required, q.order_index, q.min_value, q.max_value,
+                qo.id as option_id, qo.option_text, qo.order_index as option_order
+         FROM questions q
+         LEFT JOIN question_options qo ON q.id = qo.question_id
+         WHERE q.form_id = ?
+         ORDER BY q.order_index ASC, qo.order_index ASC`,
         [id]
       );
-      console.log("[DEBUG Public] Questions found:", questions.length);
+
+      console.log("[DEBUG Public] Raw questions data:", questionsData.length, "records");
+      console.log("[DEBUG Public] First few records:", questionsData.slice(0, 3));
+
+      // Group questions and their options
+      const questionMap = new Map();
+
+      questionsData.forEach(row => {
+        const questionId = row.id;
+
+        if (!questionMap.has(questionId)) {
+          questionMap.set(questionId, {
+            id: row.id,
+            question: row.question_text,
+            type: row.question_type,
+            description: row.description || '',
+            required: row.required === 1 || row.required === true,
+            order_index: row.order_index,
+            min: row.min_value,
+            max: row.max_value,
+            sectionId: row.section_id,
+            options: []
+          });
+        }
+
+        // Add option if it exists
+        if (row.option_id && row.option_text) {
+          const question = questionMap.get(questionId);
+          question.options.push({
+            id: row.option_id,
+            option_text: row.option_text,
+            order_index: row.option_order
+          });
+        }
+      });
+
+      questions = Array.from(questionMap.values());
+      console.log("[DEBUG Public] Processed questions:", questions.length);
     } catch (questionsError) {
       console.error("[DEBUG Public] Error fetching questions:", questionsError);
       // Continue with empty questions array

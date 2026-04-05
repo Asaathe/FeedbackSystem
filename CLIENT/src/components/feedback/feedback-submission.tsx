@@ -304,6 +304,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
   const currentPages = selectedForm ? buildPages(selectedForm.questions, selectedForm.sections || []) : [];
   const currentPage = currentPages[currentPageIndex];
   const totalPages = currentPages.length;
+  console.log("Page calculation:", { selectedForm: !!selectedForm, questionsCount: selectedForm?.questions?.length, currentPagesLength: currentPages.length, totalPages });
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
@@ -364,6 +365,9 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
           if (result.success && result.form) {
             console.log("Form data received:", result.form);
             const form = result.form;
+            console.log("Questions received:", form.questions);
+            console.log("Questions length:", form.questions?.length);
+
             const formData: FeedbackForm = {
               id: form.id,
               title: form.title,
@@ -380,6 +384,8 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
               questions: form.questions || [],
               questionCount: form.questions?.length || 0,
             };
+            console.log("Final form data questions:", formData.questions);
+            console.log("Final form data questionCount:", formData.questionCount);
             console.log("Setting form data:", formData);
             setSelectedForm(formData);
             setAvailableForms([formData]);
@@ -939,8 +945,9 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
 
   // Show form answering interface
   // Calculate progress based on pages
-  const progress = ((currentPageIndex + 1) / totalPages) * 100;
+  const progress = totalPages > 0 ? ((currentPageIndex + 1) / totalPages) * 100 : 0;
   const isLastPage = currentPageIndex === totalPages - 1;
+  console.log("Progress calculation:", { currentPageIndex, totalPages, progress, isLastPage });
 
   // Render a single question card
   const renderQuestionCard = (question: FormQuestion) => (
