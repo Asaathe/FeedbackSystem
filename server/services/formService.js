@@ -157,11 +157,11 @@ const getFormById = async (formId) => {
       const options = await queryDatabase(
         db,
         `
-        SELECT 
+        SELECT
           id,
           option_text,
           order_index
-        FROM Question_Options
+        FROM question_options
         WHERE question_id = ?
         ORDER BY order_index ASC
       `,
@@ -430,7 +430,7 @@ const createForm = async (formData, userId) => {
             await queryDatabase(
               db,
               `
-              INSERT INTO Question_Options (question_id, option_text, order_index)
+              INSERT INTO question_options (question_id, option_text, order_index)
               VALUES (?, ?, ?)
             `,
               [questionId, option.option_text || option, option.order_index || 0]
