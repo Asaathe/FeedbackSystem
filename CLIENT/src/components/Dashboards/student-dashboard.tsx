@@ -99,7 +99,7 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
         <Card className="border-green-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm text-gray-600">Pending</CardTitle>

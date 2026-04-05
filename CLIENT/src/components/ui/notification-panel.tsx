@@ -197,7 +197,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const bellButtonRef = useRef<HTMLButtonElement>(null);
-  const [panelPosition, setPanelPosition] = useState<{ top: number; right: number; width?: number }>({ top: 0, right: 0 });
+  const [panelPosition, setPanelPosition] = useState<{ top: number; right: number; width?: number; height?: string }>({ top: 0, right: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
   // Fetch notifications when panel opens
   useEffect(() => {
@@ -250,26 +251,40 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
     if (bellButtonRef.current && isOpen) {
       const buttonRect = bellButtonRef.current.getBoundingClientRect();
       const viewportWidth = window.innerWidth;
-      
-      // Position panel using fixed positioning relative to viewport
-      // Position below the button with some spacing
-      const top = buttonRect.bottom + 8;
-      
-      // Calculate right position to maximize space in upper right
-      // Use button's right position plus some offset for better positioning
-      const right = viewportWidth - buttonRect.right;
-      
-      // Calculate max width based on available space
-      const maxWidth = Math.min(
-        viewportWidth - right - 32, // Subtract right offset and padding
-        600 // Max panel width
-      );
-      
-      setPanelPosition({
-        top,
-        right: Math.max(16, right),
-        width: Math.max(350, maxWidth)
-      });
+      const isMobile = viewportWidth < 640;
+
+      const mobile = viewportWidth < 640;
+      setIsMobile(mobile);
+      if (mobile) {
+        // Bottom sheet on mobile
+        setPanelPosition({
+          bottom: 0,
+          left: 0,
+          right: 0,
+          width: viewportWidth,
+          height: '80vh'
+        });
+      } else {
+        // Position panel using fixed positioning relative to viewport
+        // Position below the button with some spacing
+        const top = buttonRect.bottom + 8;
+
+        // Calculate right position to maximize space in upper right
+        // Use button's right position plus some offset for better positioning
+        const right = viewportWidth - buttonRect.right;
+
+        // Calculate max width based on available space
+        const maxWidth = Math.min(
+          viewportWidth - right - 32, // Subtract right offset and padding
+          600 // Max panel width
+        );
+
+        setPanelPosition({
+          top,
+          right: Math.max(16, right),
+          width: Math.max(350, maxWidth)
+        });
+      }
     }
   }, [isOpen]);
 
@@ -372,15 +387,31 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
       {/* Render children (additional buttons/controls) */}
       {children}
 
+      {/* Backdrop for mobile */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
       {/* Notification Panel Dropdown */}
       {isOpen && (
-        <div 
-          className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 overflow-hidden"
+        <div
+          className={`fixed z-50 bg-white border border-gray-200 overflow-hidden ${isMobile ? '' : 'rounded-lg shadow-2xl'}`}
           style={{
-            top: panelPosition.top,
-            right: panelPosition.right,
-            width: panelPosition.width || 400,
-            maxHeight: 'calc(100vh - 100px)',
+            ...(panelPosition.top !== undefined ? {
+              top: panelPosition.top,
+              right: panelPosition.right,
+              width: panelPosition.width || 400,
+              maxHeight: 'calc(100vh - 100px)'
+            } : {
+              bottom: panelPosition.bottom,
+              left: panelPosition.left,
+              right: panelPosition.right,
+              width: panelPosition.width,
+              height: panelPosition.height
+            }),
           }}
         >
           {/* Header */}
@@ -417,7 +448,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
           </div>
 
           {/* Notification List with custom scrollbar styling */}
-          <ScrollArea className="h-[calc(80vh-180px)]">
+          <ScrollArea className={isMobile ? "h-[calc(80vh - 120px)]" : "h-[calc(80vh-180px)]"}>
             <div className="custom-scrollbar">
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
