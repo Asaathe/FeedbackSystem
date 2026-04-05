@@ -292,17 +292,23 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   useEffect(() => {
     if (isOpen) {
       updatePanelPosition();
-      
+
+      // Prevent body scroll on mobile when panel is open
+      if (isMobile) {
+        document.body.style.overflow = 'hidden';
+      }
+
       // Add scroll listener to update position when page scrolls
       window.addEventListener('scroll', updatePanelPosition, true);
       window.addEventListener('resize', updatePanelPosition);
-      
+
       return () => {
+        document.body.style.overflow = 'unset';
         window.removeEventListener('scroll', updatePanelPosition, true);
         window.removeEventListener('resize', updatePanelPosition);
       };
     }
-  }, [isOpen, updatePanelPosition]);
+  }, [isOpen, updatePanelPosition, isMobile]);
 
   const fetchNotifications = async () => {
     setIsLoading(true);
