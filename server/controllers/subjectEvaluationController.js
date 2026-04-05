@@ -136,25 +136,16 @@ const getAllSubjects = async (req, res) => {
             (
               SELECT AVG(sf.overall_rating)
               FROM subject_feedback sf
-              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+              WHERE sf.section_id = so.id
               AND sf.overall_rating IS NOT NULL
             ),
             0
           ) as avg_rating,
           COALESCE(
             (
-              SELECT AVG(sf.overall_rating)
-              FROM subject_feedback sf
-              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-              AND sf.overall_rating IS NOT NULL
-            ),
-            0
-          ) as subject_avg,
-          COALESCE(
-            (
               SELECT AVG(ifb.overall_rating)
               FROM instructor_feedback ifb
-              WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+              WHERE ifb.section_id = so.id
               AND ifb.overall_rating IS NOT NULL
             ),
             0
@@ -165,12 +156,12 @@ const getAllSubjects = async (req, res) => {
           COALESCE((
             SELECT COUNT(*)
             FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+            WHERE sf.section_id = so.id
           ), 0) as subject_feedback_count,
           COALESCE((
             SELECT COUNT(*)
             FROM instructor_feedback ifb
-            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+            WHERE ifb.section_id = so.id
           ), 0) as instructor_feedback_count
         FROM subject_offerings so
         LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
@@ -206,25 +197,16 @@ const getAllSubjects = async (req, res) => {
             (
               SELECT AVG(sf.overall_rating)
               FROM subject_feedback sf
-              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+              WHERE sf.section_id = so.id
               AND sf.overall_rating IS NOT NULL
             ),
             0
           ) as avg_rating,
           COALESCE(
             (
-              SELECT AVG(sf.overall_rating)
-              FROM subject_feedback sf
-              WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
-              AND sf.overall_rating IS NOT NULL
-            ),
-            0
-          ) as subject_avg,
-          COALESCE(
-            (
               SELECT AVG(ifb.overall_rating)
               FROM instructor_feedback ifb
-              WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+              WHERE ifb.section_id = so.id
               AND ifb.overall_rating IS NOT NULL
             ),
             0
@@ -235,12 +217,12 @@ const getAllSubjects = async (req, res) => {
           COALESCE((
             SELECT COUNT(*)
             FROM subject_feedback sf
-            WHERE (sf.section_id = so.id OR (sf.section_id IS NULL AND sf.subject_id = so.subject_id AND sf.instructor_id = so.instructor_id))
+            WHERE sf.section_id = so.id
           ), 0) as subject_feedback_count,
           COALESCE((
             SELECT COUNT(*)
             FROM instructor_feedback ifb
-            WHERE (ifb.section_id = so.id OR (ifb.section_id IS NULL AND ifb.subject_id = so.subject_id AND ifb.instructor_id = so.instructor_id))
+            WHERE ifb.section_id = so.id
           ), 0) as instructor_feedback_count
         FROM subject_offerings so
         LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
@@ -1066,16 +1048,16 @@ const getInstructorSubjects = async (req, res) => {
         (SELECT COUNT(DISTINCT st.user_id) FROM students st
          INNER JOIN users u2 ON st.user_id = u2.id
          WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM subject_feedback sf
-          WHERE sf.section_id = so.id
-        ), 0) as subject_feedback_count,
-        COALESCE((
-          SELECT COUNT(*)
-          FROM instructor_feedback ifb
-          WHERE ifb.section_id = so.id
-        ), 0) as instructor_feedback_count
+          COALESCE((
+            SELECT COUNT(*)
+            FROM subject_feedback sf
+            WHERE sf.section_id = so.id
+          ), 0) as subject_feedback_count,
+          COALESCE((
+            SELECT COUNT(*)
+            FROM instructor_feedback ifb
+            WHERE ifb.section_id = so.id
+          ), 0) as instructor_feedback_count
       FROM subject_offerings so
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
