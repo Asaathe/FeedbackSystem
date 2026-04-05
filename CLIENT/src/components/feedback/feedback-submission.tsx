@@ -357,9 +357,12 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
           if (companyName) setExternalCompanyName(companyName);
           if (alumnusName) setExternalAlumnusName(alumnusName);
 
+          console.log("Making API call to getPublicForm for form ID:", externalFormId);
           const result = await getPublicForm(externalFormId);
+          console.log("API result:", result);
 
           if (result.success && result.form) {
+            console.log("Form data received:", result.form);
             const form = result.form;
             const formData: FeedbackForm = {
               id: form.id,
@@ -370,17 +373,20 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
               startDate: form.start_date || null,
               // Map server fields to client field names for status functions
               startDateOnly: form.start_date ? form.start_date.split(' ')[0] : null,
-              startTimeOnly: form.start_date ? form.start_date.split(' ')[1] : null,
+              startTimeOnly: form.start_time ? form.start_date.split(' ')[1] : null,
               endDateOnly: form.end_date ? form.end_date.split(' ')[0] : null,
               endTimeOnly: form.end_date ? form.end_date.split(' ')[1] : null,
               imageUrl: form.image_url,
               questions: form.questions || [],
               questionCount: form.questions?.length || 0,
             };
+            console.log("Setting form data:", formData);
             setSelectedForm(formData);
             setAvailableForms([formData]);
           } else {
-            console.error("Form not found or error:", result.message);
+            console.error("Form API call failed:", result);
+            console.error("Error message:", result.message);
+            alert("Form access failed: " + result.message);
           }
         } catch (error) {
           console.error("Error loading external form:", error);
