@@ -139,7 +139,7 @@ router.get("/public/:id", async (req, res) => {
     const now = new Date();
     console.log("[DEBUG Public] Current time:", now.toISOString());
 
-    // Check form_deployments for schedule
+    // Check form_deployments for schedule (optional for employer feedback forms)
     const deployments = await queryDatabase(
       db,
       "SELECT * FROM form_deployments WHERE form_id = ? AND deployment_status = 'active' ORDER BY created_at DESC LIMIT 1",
@@ -178,9 +178,9 @@ router.get("/public/:id", async (req, res) => {
           return res.status(400).json({ success: false, message: "Form submission period has ended" });
         }
       }
-    } else {
-      console.log("[DEBUG Public] No active deployment found - allowing access");
     }
+    // Note: If no active deployment found, we still allow access for employer feedback forms
+    // This allows forms to be accessible immediately after creation without explicit deployment
 
     // Get form questions
     const questions = await queryDatabase(
