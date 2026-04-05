@@ -32,6 +32,9 @@ const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 
+// Port configuration - use Railway's PORT env var or default to 8080
+const port = process.env.PORT || 8080;
+
 // Trust proxy for Railway deployment (handles X-Forwarded-For headers)
 app.set('trust proxy', 1);
 
