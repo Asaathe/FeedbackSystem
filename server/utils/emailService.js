@@ -7,39 +7,40 @@ if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
   console.warn("⚠️  Using fallback Gmail credentials - may not work in production");
 }
 
-// Create transporter with Gmail - enhanced configuration for production
+// Create transporter with Gmail - fallback to console logging for Railway
+// Gmail SMTP often fails in Railway due to network restrictions
 const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
-  port: 587, // Use TLS port instead of SSL
-  secure: false, // Use STARTTLS
+  port: 587,
+  secure: false,
   auth: {
     user: process.env.SMTP_USER || "feedbacts@gmail.com",
     pass: process.env.SMTP_PASS || "",
   },
-  // Enhanced security and connection settings for production/cloud
-  requireTLS: true, // Force TLS encryption
-  // Connection timeout and retry settings
-  connectionTimeout: 30000, // 30 seconds (reduced for cloud)
-  greetingTimeout: 15000,   // 15 seconds
-  socketTimeout: 30000,     // 30 seconds
-  // Disable DNS cache to avoid Railway network issues
-  disableFileAccess: true,
-  disableUrlAccess: true,
-  // Pool settings for better performance
-  pool: true,
-  maxConnections: 1,
-  maxMessages: 3, // Reduced for stability
-  rateDelta: 2000, // 2 seconds between messages
-  rateLimit: 3,    // 3 messages per 2 seconds
-  // Debug settings (only in development)
-  debug: process.env.NODE_ENV !== 'production',
-  logger: process.env.NODE_ENV !== 'production',
-  // Additional TLS options for Railway
+  requireTLS: true,
+  connectionTimeout: 10000, // Reduced timeout
+  greetingTimeout: 5000,
+  socketTimeout: 10000,
+  // Minimal TLS settings
   tls: {
-    ciphers: 'HIGH:!aNULL:!eNULL:!EXPORT:!DES:!RC4:!MD5:!PSK:!SRP:!CAMELLIA',
-    rejectUnauthorized: false // For Railway's network environment
+    rejectUnauthorized: false
   }
 });
+
+// Alternative: Use Railway's built-in SMTP if available
+// Uncomment below if you want to try Railway SMTP
+/*
+const transporter = nodemailer.createTransport({
+  host: process.env.RAILWAY_SMTP_HOST || 'smtp.mailgun.org',
+  port: process.env.RAILWAY_SMTP_PORT || 587,
+  secure: false,
+  auth: {
+    user: process.env.RAILWAY_SMTP_USER,
+    pass: process.env.RAILWAY_SMTP_PASS,
+  },
+  requireTLS: true,
+});
+*/
 
 // Verify connection with retry logic
 const verifyEmailConnection = async (retries = 3) => {
@@ -65,8 +66,14 @@ const verifyEmailConnection = async (retries = 3) => {
   return false;
 };
 
-// Start verification
-verifyEmailConnection();
+// Start verification (don't crash server if it fails)
+if (process.env.DISABLE_EMAIL !== 'true') {
+  verifyEmailConnection().catch(err => {
+    console.warn("⚠️ Email verification failed, but server will continue:", err.message);
+  });
+} else {
+  console.log("📧 Email sending disabled (DISABLE_EMAIL=true)");
+}
 
 /**
  * Send an email
@@ -79,6 +86,15 @@ const sendEmail = async (to, subject, html, retries = 3) => {
   console.log("=== sendEmail called ===");
   console.log("Recipient:", to);
   console.log("Subject:", subject);
+
+  // Check if email is disabled (for Railway deployment)
+  if (process.env.DISABLE_EMAIL === 'true') {
+    console.log("📧 Email sending disabled. Logging email content instead:");
+    console.log("📧 To:", to);
+    console.log("📧 Subject:", subject);
+    console.log("📧 Content preview:", html.substring(0, 200) + "...");
+    return true; // Return success to not break the app
+  }
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -112,6 +128,7 @@ const sendEmail = async (to, subject, html, retries = 3) => {
   }
 
   console.error("❌ All email send attempts failed");
+  console.log("💡 Consider setting DISABLE_EMAIL=true to log emails instead of sending");
   return false;
 };
 
