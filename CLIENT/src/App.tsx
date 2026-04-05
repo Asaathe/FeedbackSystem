@@ -232,7 +232,6 @@ export default function App() {
     // Check if URL is like /feedback/123
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
     if (feedbackMatch && feedbackMatch[1]) {
-      console.log("External feedback link detected, form ID:", feedbackMatch[1]);
       setExternalFeedbackFormId(feedbackMatch[1]);
     }
   }, []);

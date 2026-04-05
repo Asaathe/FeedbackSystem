@@ -48,6 +48,134 @@ interface FormSection {
   order: number;
 }
 
+interface ContentRendererProps {
+  loading: boolean;
+  isExternalMode: boolean;
+  selectedForm: FeedbackForm | null;
+  availableForms: FeedbackForm[];
+  onBackToLogin?: () => void;
+  onSelectForm: (form: FeedbackForm) => void;
+  isNotStarted: (form: FeedbackForm) => boolean;
+  isOverdue: (dueDate: string) => boolean;
+}
+
+function ContentRenderer({
+  loading,
+  isExternalMode,
+  selectedForm,
+  availableForms,
+  onBackToLogin = () => {},
+  onSelectForm,
+  isNotStarted,
+  isOverdue
+}: ContentRendererProps) {
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+        <p className="mt-2 text-gray-600">
+          {isExternalMode ? "Loading feedback form..." : "Loading your assigned forms..."}
+        </p>
+      </div>
+    );
+  }
+
+  if (isExternalMode && !selectedForm) {
+    return (
+      <div className="text-center py-8">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          Form Not Available
+        </h3>
+        <p className="text-gray-600">
+          The feedback form you're looking for is not available or has expired.
+        </p>
+        <Button
+          onClick={onBackToLogin}
+          className="mt-4"
+          variant="outline"
+        >
+          Go Back
+        </Button>
+      </div>
+    );
+  }
+
+  if (!isExternalMode && availableForms.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          All Caught Up!
+        </h3>
+        <p className="text-gray-600">
+          You have no pending feedback forms. Check "My Submissions" for your history.
+        </p>
+      </div>
+    );
+  }
+
+  // This should only be reached for authenticated users with forms
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {availableForms.map((form) => (
+        <Card
+          key={form.id}
+          className={`border-green-100 hover:shadow-md transition-shadow overflow-hidden ${isOverdue(form.dueDate) ? 'border-l-4 border-l-red-500' : ''}`}
+        >
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-start">
+              <div className="flex-1">
+                <CardTitle className="text-lg mb-1">{form.title}</CardTitle>
+                <p className="text-sm text-gray-600 mb-2">{form.description}</p>
+                <Badge variant="secondary" className="text-xs">
+                  {form.category}
+                </Badge>
+              </div>
+              {form.imageUrl && (
+                <img
+                  src={form.imageUrl}
+                  alt={form.title}
+                  className="w-16 h-16 object-cover rounded-lg ml-4 flex-shrink-0"
+                />
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex items-center text-sm text-gray-600">
+                <Clock className="w-4 h-4 mr-1" />
+                <span>Due {form.dueDate}</span>
+              </div>
+              <div className="flex items-center text-sm text-gray-600">
+                <ClipboardList className="w-4 h-4 mr-1" />
+                <span>{form.questionCount} questions</span>
+              </div>
+              {isNotStarted(form) && (
+                <div className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                  Not yet available
+                </div>
+              )}
+              {isOverdue(form.dueDate) && (
+                <div className="text-sm text-red-600 bg-red-50 px-2 py-1 rounded">
+                  Overdue
+                </div>
+              )}
+              <Button
+                onClick={() => onSelectForm(form)}
+                className="w-full"
+                disabled={isNotStarted(form)}
+              >
+                Start Feedback
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 interface FeedbackForm {
   id: string;
   title: string;
@@ -217,21 +345,20 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
       const loadExternalForm = async () => {
         setLoading(true);
         try {
-          console.log("Loading external form:", externalFormId);
-          
           // Parse URL parameters for supervisor info
           const params = new URLSearchParams(window.location.search);
           const supervisorEmail = params.get('supervisorEmail');
           const supervisorName = params.get('supervisorName');
           const companyName = params.get('companyName');
           const alumnusName = params.get('alumnusName');
-          
+
           if (supervisorEmail) setExternalSupervisorEmail(supervisorEmail);
           if (supervisorName) setExternalSupervisorName(supervisorName);
           if (companyName) setExternalCompanyName(companyName);
           if (alumnusName) setExternalAlumnusName(alumnusName);
-          
-           const result = await getPublicForm(externalFormId);
+
+          const result = await getPublicForm(externalFormId);
+
           if (result.success && result.form) {
             const form = result.form;
             const formData: FeedbackForm = {
@@ -241,6 +368,11 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
               category: form.category,
               dueDate: form.end_date || "No due date",
               startDate: form.start_date || null,
+              // Map server fields to client field names for status functions
+              startDateOnly: form.start_date ? form.start_date.split(' ')[0] : null,
+              startTimeOnly: form.start_date ? form.start_date.split(' ')[1] : null,
+              endDateOnly: form.end_date ? form.end_date.split(' ')[0] : null,
+              endTimeOnly: form.end_date ? form.end_date.split(' ')[1] : null,
               imageUrl: form.image_url,
               questions: form.questions || [],
               questionCount: form.questions?.length || 0,
@@ -260,8 +392,14 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     }
   }, [externalFormId, isExternalMode]);
 
-  // Load forms when component mounts or userRole changes
+  // Load forms when component mounts or userRole changes (only in non-external mode)
   useEffect(() => {
+    // Skip loading user forms if in external mode
+    if (isExternalMode) {
+      setLoading(false);
+      return;
+    }
+
     const loadForms = async () => {
       setLoading(true);
       try {
@@ -745,118 +883,52 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     }
   };
 
-  // Show form list if no form is selected
+  // Show form list if no form is selected (skip in external mode)
   if (!selectedForm) {
-    return (
-      <div className="space-y-4 sm:space-y-6">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
-          <h2 className="text-xl sm:text-2xl">Submit Feedback</h2>
-          <p className="text-gray-600 mt-1 text-sm sm:text-base">
-            Complete your assigned feedback forms
-          </p>
-        </div>
-
-        {/* Loading State */}
-        {loading ? (
-          <div className="text-center py-8">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-            <p className="mt-2 text-gray-600">Loading your assigned forms...</p>
+    if (isExternalMode) {
+      // Handle external mode without selected form
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-50">
+          <div className="max-w-4xl mx-auto px-4 py-8">
+            <ContentRenderer
+              loading={loading}
+              isExternalMode={isExternalMode}
+              selectedForm={selectedForm}
+              availableForms={availableForms}
+              onBackToLogin={onBackToLogin}
+              onSelectForm={handleSelectForm}
+              isNotStarted={isNotStarted}
+              isOverdue={isOverdue}
+            />
           </div>
-        ) : pendingForms.length === 0 ? (
-          <div className="text-center py-8">
-            <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              All Caught Up!
-            </h3>
-            <p className="text-gray-600">
-              You have no pending feedback forms. Check "My Submissions" for your history.
+        </div>
+      );
+    } else {
+      // Show form selection UI for authenticated users
+      return (
+        <div className="space-y-4 sm:space-y-6">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
+            <h2 className="text-xl sm:text-2xl">Submit Feedback</h2>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              Complete your assigned feedback forms
             </p>
           </div>
-        ) : (
-          /* Pending Forms - Sorted by due date, overdue first */
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {pendingForms.map((form) => (
-              <Card
-                key={form.id}
-                className={`border-green-100 hover:shadow-md transition-shadow overflow-hidden ${isOverdue(form.dueDate) ? 'border-l-4 border-l-red-500' : ''}`}
-              >
-                {/* Form Image */}
-                {form.imageUrl ? (
-                  <div className="relative h-32 sm:h-48 w-full overflow-hidden bg-gray-100">
-                    <img
-                      src={form.imageUrl}
-                      alt={form.title}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
-                  </div>
-                ) : (
-                  <div className={`h-32 sm:h-48 w-full overflow-hidden flex items-center justify-center ${isOverdue(form.dueDate) ? 'bg-gradient-to-br from-red-50 to-orange-50' : 'bg-gradient-to-br from-green-50 to-lime-50'}`}>
-                  </div>
-                )}
-                <CardHeader className="pb-3 sm:pb-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 mb-2">
-                        <CardTitle className="text-base sm:text-lg leading-tight break-words">{form.title}</CardTitle>
-                      </div>
-                      <p className="text-sm text-gray-600 line-clamp-2 break-words">
-                        {form.description}
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  {/* Category and Due Date Badge */}
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <Badge
-                      variant="outline"
-                      className="bg-green-50 border-green-200 text-green-700 text-xs"
-                    >
-                      {form.category}
-                    </Badge>
-                    {isNotStarted(form) ? (
-                      <div className="flex items-center gap-1 text-blue-600 bg-blue-50 px-2 py-1 rounded text-xs">
-                        <Clock className="w-3 h-3" />
-                        <span>Starts {form.startDateOnly && form.startTimeOnly ? new Date(form.startDateOnly + ' ' + form.startTimeOnly).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'soon'}</span>
-                      </div>
-                    ) : isOverdue(form.dueDate) ? (
-                      <div className="flex items-center gap-1 text-white bg-red-600 px-2 py-1 rounded text-xs">
-                        <AlertCircle className="w-3 h-3" />
-                        <span>Overdue</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-orange-600 bg-orange-50 px-2 py-1 rounded text-xs">
-                        <Clock className="w-3 h-3" />
-                        <span>Due {form.dueDate}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-                    <div className="flex items-center gap-2 text-sm text-gray-600">
-                      <ClipboardList className="w-4 h-4" />
-                      <span>{form.questionCount || form.questions.length} questions</span>
-                    </div>
-                    <Button
-                      className={`h-10 px-4 sm:px-6 text-sm whitespace-nowrap ${isNotStarted(form) || isFormEnded(form) ? 'bg-gray-400 cursor-not-allowed text-black' : isOverdue(form.dueDate) ? 'bg-red-500 hover:bg-red-600' : 'bg-green-500 hover:bg-green-600'}`}
-                      onClick={() => handleSelectForm(form)}
-                      disabled={isNotStarted(form) || isFormEnded(form)}
-                    >
-                      {isNotStarted(form) 
-                        ? `Available ${form.startDateOnly && form.startTimeOnly ? new Date(form.startDateOnly + ' ' + form.startTimeOnly).toLocaleString('en-PH', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'soon'}` 
-                        : isFormEnded(form) 
-                          ? 'Expired' 
-                          : isOverdue(form.dueDate) ? 'Complete Now' : 'Start Feedback'}
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+
+          {/* Content based on state */}
+          <ContentRenderer
+            loading={loading}
+            isExternalMode={isExternalMode}
+            selectedForm={selectedForm}
+            availableForms={availableForms}
+            onBackToLogin={onBackToLogin}
+            onSelectForm={handleSelectForm}
+            isNotStarted={isNotStarted}
+            isOverdue={isOverdue}
+          />
+        </div>
+      );
+    }
   }
 
   // Show form answering interface
