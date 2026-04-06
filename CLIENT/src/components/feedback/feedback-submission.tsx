@@ -368,22 +368,19 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             console.log("Making legacy API call to getPublicForm for form ID:", externalFormId);
             result = await getPublicForm(externalFormId);
             console.log("Legacy API result:", result);
+
+            // Parse URL parameters for supervisor info (only for legacy URLs)
+            const params = new URLSearchParams(window.location.search);
+            const supervisorEmail = params.get('supervisorEmail');
+            const supervisorName = params.get('supervisorName');
+            const companyName = params.get('companyName');
+            const alumnusName = params.get('alumnusName');
+
+            if (supervisorEmail) setExternalSupervisorEmail(supervisorEmail);
+            if (supervisorName) setExternalSupervisorName(supervisorName);
+            if (companyName) setExternalCompanyName(companyName);
+            if (alumnusName) setExternalAlumnusName(alumnusName);
           }
-          // Parse URL parameters for supervisor info
-          const params = new URLSearchParams(window.location.search);
-          const supervisorEmail = params.get('supervisorEmail');
-          const supervisorName = params.get('supervisorName');
-          const companyName = params.get('companyName');
-          const alumnusName = params.get('alumnusName');
-
-          if (supervisorEmail) setExternalSupervisorEmail(supervisorEmail);
-          if (supervisorName) setExternalSupervisorName(supervisorName);
-          if (companyName) setExternalCompanyName(companyName);
-          if (alumnusName) setExternalAlumnusName(alumnusName);
-
-          console.log("Making API call to getPublicForm for form ID:", externalFormId);
-          const result = await getPublicForm(externalFormId);
-          console.log("API result:", result);
 
           if (result.success && result.form) {
             console.log("Form data received successfully!");
