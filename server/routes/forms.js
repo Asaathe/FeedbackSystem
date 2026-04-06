@@ -127,67 +127,6 @@ router.get("/public/:id", async (req, res) => {
 
     // SKIP ALL DATE VALIDATION - Just check if form exists
 
-    // If there's an active deployment, check its dates
-    if (deployments.length > 0) {
-      const deployment = deployments[0];
-      console.log("[DEBUG Public] Deployment:", deployment);
-
-      try {
-        if (deployment.start_date) {
-          try {
-            const startTime = deployment.start_time || '00:00:00';
-            // Create date with explicit timezone handling - append +08:00 to ensure correct parsing
-            const startDateStr = `${deployment.start_date}T${startTime}:00+08:00`;
-            const startDate = new Date(startDateStr);
-
-            // Check if date is valid before calling toISOString
-            if (isNaN(startDate.getTime())) {
-              console.log("[DEBUG Public] Invalid start date, skipping validation");
-            } else {
-              console.log("[DEBUG Public] Parsed startDate:", startDate.toISOString(), "now:", now.toISOString());
-              // Compare with current time
-              if (startDate > now) {
-                console.log("[DEBUG Public] Form not yet open - blocking submission");
-                return res.status(400).json({ success: false, message: "Form is not yet open for submission" });
-              }
-            }
-          } catch (startDateError) {
-            console.log("[DEBUG Public] Start date parsing error:", startDateError.message);
-            // Continue without start date validation
-          }
-        }
-
-        if (deployment.end_date) {
-          try {
-            const endTime = deployment.end_time || '23:59:59';
-            // Create date with explicit timezone handling
-            const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
-            const endDate = new Date(endDateStr);
-
-            // Check if date is valid before calling toISOString
-            if (isNaN(endDate.getTime())) {
-              console.log("[DEBUG Public] Invalid end date, skipping validation");
-            } else {
-              console.log("[DEBUG Public] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
-              // Compare with current time
-              if (endDate < now) {
-                console.log("[DEBUG Public] Form has ended - blocking submission");
-                return res.status(400).json({ success: false, message: "Form submission period has ended" });
-              }
-            }
-          } catch (endDateError) {
-            console.log("[DEBUG Public] End date parsing error:", endDateError.message);
-            // Continue without end date validation
-          }
-        }
-      } catch (dateError) {
-        console.error("[DEBUG Public] General date parsing error:", dateError);
-        // Continue without date validation if parsing fails
-      }
-    }
-    // Note: If no active deployment found, we still allow access for employer feedback forms
-    // This allows forms to be accessible immediately after creation without explicit deployment
-
     // Get form questions with options
     let questions = [];
     try {
