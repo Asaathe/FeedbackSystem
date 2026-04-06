@@ -345,6 +345,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     if (externalFormId && isExternalMode) {
       const loadExternalForm = async () => {
         setLoading(true);
+        setSelectedForm(null); // Clear any previous state
         try {
           // Parse URL parameters for supervisor info
           const params = new URLSearchParams(window.location.search);
@@ -363,11 +364,11 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
           console.log("API result:", result);
 
           if (result.success && result.form) {
-            console.log("Form data received:", result.form);
-            const form = result.form;
-            console.log("Questions received:", form.questions);
-            console.log("Questions length:", form.questions?.length);
+            console.log("Form data received successfully!");
+            // Clear any previous errors immediately when form loads
+            setSelectedForm(null); // Reset to trigger clean loading
 
+            const form = result.form;
             const formData: FeedbackForm = {
               id: form.id,
               title: form.title,

@@ -240,7 +240,15 @@ router.post("/public/submit", async (req, res) => {
         supervisorName,
         companyName,
         alumnusName,
-        submittedAt: new Date().toISOString()
+        submittedAt: new Date().toLocaleString('en-US', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          timeZone: 'Asia/Manila'
+        })
       }
     });
 
