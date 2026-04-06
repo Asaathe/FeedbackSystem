@@ -167,6 +167,7 @@ const AlumniEmploymentTracker = lazy(() =>
 
 
 export default function App() {
+  console.log("🚀 APP COMPONENT RENDERING");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -236,6 +237,7 @@ export default function App() {
     console.log("Full URL:", fullUrl);
     console.log("Path:", path);
     console.log("Current external states - FormId:", externalFeedbackFormId, "Token:", externalFeedbackToken);
+    console.log("useEffect is running!");
 
     // Check if URL is like /feedback/123 (legacy format)
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
@@ -353,6 +355,7 @@ export default function App() {
   };
 
   // EXTERNAL FEEDBACK - Check BEFORE authentication (public access)
+  console.log("🔍 APP RENDER: externalFeedbackFormId =", externalFeedbackFormId, "externalFeedbackToken =", externalFeedbackToken);
   if (externalFeedbackFormId || externalFeedbackToken) {
     console.log("🎯 RENDERING EXTERNAL FEEDBACK FORM");
     console.log("externalFeedbackFormId:", externalFeedbackFormId);
