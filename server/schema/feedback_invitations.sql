@@ -10,7 +10,7 @@ CREATE TABLE `feedback_invitations` (
   `company_name` varchar(255) NOT NULL,
   `alumnus_name` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `expires_at` timestamp NOT NULL,
+  `expires_at` timestamp NULL DEFAULT NULL,
   `used` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Whether the invitation has been used',
   PRIMARY KEY (`id`),
   UNIQUE KEY `token` (`token`),
