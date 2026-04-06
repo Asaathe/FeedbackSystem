@@ -125,23 +125,7 @@ router.get("/public/:id", async (req, res) => {
 
     const form = forms[0];
 
-    // Check form date constraints - only use form_deployments table
-    const now = new Date();
-    console.log("[DEBUG Public] Current time:", now.toISOString());
-
-    // Check form_deployments for schedule (optional for employer feedback forms)
-    let deployments = [];
-    try {
-      deployments = await queryDatabase(
-        db,
-        "SELECT * FROM form_deployments WHERE form_id = ? AND deployment_status = 'active' ORDER BY created_at DESC LIMIT 1",
-        [id]
-      );
-      console.log("[DEBUG Public] Deployments found:", deployments.length);
-    } catch (dbError) {
-      console.error("[DEBUG Public] Database error querying deployments:", dbError);
-      // Continue without deployment check
-    }
+    // SKIP ALL DATE VALIDATION - Just check if form exists
 
     // If there's an active deployment, check its dates
     if (deployments.length > 0) {
@@ -292,18 +276,57 @@ router.post("/public/submit", async (req, res) => {
   const { formId, responses, supervisorEmail, supervisorName, companyName, alumnusName } = req.body;
 
   console.log("=== Public feedback submission ===");
-  console.log("🚀 FIXED VERSION - DEPLOYMENT TEST");
-  console.log("Headers:", req.headers);
-  console.log("Body:", req.body);
   console.log("Form ID:", formId);
   console.log("Supervisor:", supervisorName, supervisorEmail);
-  console.log("Current time:", new Date().toISOString());
-  
+
+  // MINIMAL VALIDATION - just check required fields
   if (!formId || !responses) {
+    console.log("❌ Missing required fields");
     return res.status(400).json({
       success: false,
       message: "Missing required fields"
     });
+  }
+
+  try {
+    // Import database
+    const db = require("../config/database");
+    const { queryDatabase } = require("../utils/helpers");
+
+    // Prepare response data
+    const responseData = JSON.stringify({
+      ...responses,
+      _externalFeedback: {
+        supervisorEmail,
+        supervisorName,
+        companyName,
+        alumnusName,
+        submittedAt: new Date().toISOString()
+      }
+    });
+
+    // INSERT RESPONSE - Use original schema that works
+    const result = await queryDatabase(db,
+      "INSERT INTO form_responses (form_id, user_id, responses, submitted_at) VALUES (?, NULL, ?, NOW())",
+      [formId, responseData]
+    );
+
+    console.log("✅ External feedback submitted successfully! Response ID:", result.insertId);
+    return res.status(200).json({
+      success: true,
+      message: "Feedback submitted successfully",
+      responseId: result.insertId
+    });
+
+  } catch (error) {
+    console.error("❌ Public submission error:", error.message);
+    return res.status(500).json({
+      success: false,
+      message: "Internal server error",
+      error: error.message
+    });
+  }
+});
   }
   
   // Import the database
