@@ -230,9 +230,15 @@ export default function App() {
   // Check for external feedback link in URL on page load
   useEffect(() => {
     const path = window.location.pathname;
+    const fullUrl = window.location.href;
+
+    console.log("Checking URL for external feedback:", fullUrl);
+    console.log("Path:", path);
+
     // Check if URL is like /feedback/123 (legacy format)
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
     if (feedbackMatch && feedbackMatch[1]) {
+      console.log("Detected legacy feedback URL with form ID:", feedbackMatch[1]);
       setExternalFeedbackFormId(feedbackMatch[1]);
       setExternalFeedbackToken(null); // Clear token for legacy format
     }
@@ -240,8 +246,11 @@ export default function App() {
     // Check if URL is like /feedback/t/abc123 (new secure format)
     const tokenMatch = path.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
     if (tokenMatch && tokenMatch[1]) {
+      console.log("Detected token-based feedback URL with token:", tokenMatch[1]);
       setExternalFeedbackToken(tokenMatch[1]);
       setExternalFeedbackFormId(null); // Clear formId for token format
+    } else if (path.includes('/feedback/t/')) {
+      console.log("URL contains /feedback/t/ but regex didn't match. Path:", path);
     }
   }, []);
 

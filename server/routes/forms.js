@@ -104,11 +104,18 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
       used: false
     };
 
+    console.log("Storing invitation data:", invitationData);
+
     // Insert invitation (ignore if token already exists)
-    await queryDatabase(db,
-      `INSERT IGNORE INTO feedback_invitations
+    const insertResult = await queryDatabase(db,
+      `INSERT INTO feedback_invitations
        (token, form_id, supervisor_email, supervisor_name, company_name, alumnus_name, created_at, expires_at, used)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON DUPLICATE KEY UPDATE
+       supervisor_email = VALUES(supervisor_email),
+       supervisor_name = VALUES(supervisor_name),
+       company_name = VALUES(company_name),
+       alumnus_name = VALUES(alumnus_name)`,
       [
         invitationData.token,
         invitationData.form_id,
@@ -121,6 +128,8 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
         invitationData.used
       ]
     );
+
+    console.log("Invitation stored successfully, result:", insertResult);
 
     // Create short link
     const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/t/${token}`;
@@ -271,7 +280,9 @@ router.get("/public/t/:token", async (req, res) => {
   const { token } = req.params;
 
   console.log("=== Token-based form access ===");
+  console.log("Full URL:", req.url);
   console.log("Token:", token);
+  console.log("Token length:", token.length);
 
   try {
     // Import database
