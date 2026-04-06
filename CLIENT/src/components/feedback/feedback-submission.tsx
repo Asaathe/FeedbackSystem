@@ -363,7 +363,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             });
             result = await response.json();
             console.log("Token-based API result:", result);
-          } else {
+          } else if (externalFormId) {
             // Use legacy formId-based API for backward compatibility
             console.log("Making legacy API call to getPublicForm for form ID:", externalFormId);
             result = await getPublicForm(externalFormId);
@@ -380,6 +380,10 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             if (supervisorName) setExternalSupervisorName(supervisorName);
             if (companyName) setExternalCompanyName(companyName);
             if (alumnusName) setExternalAlumnusName(alumnusName);
+          } else {
+            // This shouldn't happen - invalid routing state
+            console.error("Invalid external mode state: no token or formId provided");
+            throw new Error("Invalid invitation link");
           }
 
           if (result.success && result.form) {
