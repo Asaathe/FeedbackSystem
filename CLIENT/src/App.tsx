@@ -356,7 +356,12 @@ export default function App() {
 
   // EXTERNAL FEEDBACK - Check BEFORE authentication (public access)
   console.log("🔍 APP RENDER: externalFeedbackFormId =", externalFeedbackFormId, "externalFeedbackToken =", externalFeedbackToken);
+  console.log("Current location:", window.location.href);
+  console.log("Current pathname:", window.location.pathname);
+
   if (externalFeedbackFormId || externalFeedbackToken) {
+    console.log("🎯 EXTERNAL FEEDBACK DETECTED - BYPASSING LOGIN");
+    alert("External feedback detected! If you see this, the URL detection is working.");
     console.log("🎯 RENDERING EXTERNAL FEEDBACK FORM");
     console.log("externalFeedbackFormId:", externalFeedbackFormId);
     console.log("externalFeedbackToken:", externalFeedbackToken);
