@@ -53,9 +53,10 @@ router.post("/upload-image", verifyToken, uploadSingleImage('image'), handleUplo
 
 // Send feedback invitation to employer/supervisor
 router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
+  const crypto = require('crypto');
   const emailService = require("../utils/emailService");
   const { supervisorEmail, supervisorName, companyName, alumnusName, formTitle, feedbackLink } = req.body;
-  
+
   console.log("=== /api/forms/send-feedback-invitation called ===");
   console.log("Request body:", req.body);
 
@@ -71,6 +72,60 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
   }
 
   try {
+    // Import database
+    const db = require("../config/database");
+    const { queryDatabase } = require("../utils/helpers");
+
+    // Generate secure token
+    const token = crypto.randomBytes(32).toString('hex');
+    console.log("Generated secure token:", token.substring(0, 16) + "...");
+
+    // Extract formId from feedbackLink
+    const formIdMatch = feedbackLink.match(/\/feedback\/(\d+)/);
+    const formId = formIdMatch ? formIdMatch[1] : null;
+
+    if (!formId) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid feedback link format"
+      });
+    }
+
+    // Store invitation data with token
+    const invitationData = {
+      token,
+      form_id: formId,
+      supervisor_email: supervisorEmail,
+      supervisor_name: supervisorName,
+      company_name: companyName,
+      alumnus_name: finalAlumnusName,
+      created_at: new Date(),
+      expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      used: false
+    };
+
+    // Insert invitation (ignore if token already exists)
+    await queryDatabase(db,
+      `INSERT IGNORE INTO feedback_invitations
+       (token, form_id, supervisor_email, supervisor_name, company_name, alumnus_name, created_at, expires_at, used)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        invitationData.token,
+        invitationData.form_id,
+        invitationData.supervisor_email,
+        invitationData.supervisor_name,
+        invitationData.company_name,
+        invitationData.alumnus_name,
+        invitationData.created_at,
+        invitationData.expires_at,
+        invitationData.used
+      ]
+    );
+
+    // Create short link
+    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/t/${token}`;
+    console.log("Short feedback link:", shortLink);
+
     console.log("Calling emailService.sendFeedbackInvitation...");
     const result = await emailService.sendFeedbackInvitation(
       supervisorEmail,
@@ -78,14 +133,15 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
       companyName,
       finalAlumnusName,
       formTitle,
-      feedbackLink
+      shortLink // Use short link instead of long parameterized URL
     );
 
     console.log("Email service result:", result);
     if (result) {
       res.status(200).json({
         success: true,
-        message: "Feedback invitation sent successfully"
+        message: "Feedback invitation sent successfully",
+        shortLink: shortLink
       });
     } else {
       res.status(500).json({
@@ -210,17 +266,191 @@ router.get("/public/:id", async (req, res) => {
   }
 });
 
+// Token-based form loading for secure short links
+router.get("/public/t/:token", async (req, res) => {
+  const { token } = req.params;
+
+  console.log("=== Token-based form access ===");
+  console.log("Token:", token);
+
+  try {
+    // Import database
+    const db = require("../config/database");
+    const { queryDatabase } = require("../utils/helpers");
+
+    // Get invitation data by token
+    const invitations = await queryDatabase(db,
+      `SELECT * FROM feedback_invitations
+       WHERE token = ? AND used = false AND expires_at > NOW()`,
+      [token]
+    );
+
+    if (!invitations || invitations.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Invalid or expired invitation link"
+      });
+    }
+
+    const invitation = invitations[0];
+    console.log("Valid invitation found for form:", invitation.form_id);
+
+    // Get the form data (reuse existing logic)
+    const forms = await queryDatabase(db, "SELECT * FROM forms WHERE id = ?", [invitation.form_id]);
+
+    if (!forms || forms.length === 0) {
+      return res.status(404).json({ success: false, message: "Form not found" });
+    }
+
+    const form = forms[0];
+
+    // Get form questions with options
+    let questions = [];
+    try {
+      const questionsData = await queryDatabase(
+        db,
+        `SELECT q.id, q.form_id, q.section_id, q.question_text, q.question_type,
+                q.description, q.required, q.order_index, q.min_value, q.max_value,
+                qo.id as option_id, qo.option_text, qo.order_index as option_order
+         FROM questions q
+         LEFT JOIN question_options qo ON q.id = qo.question_id
+         WHERE q.form_id = ?
+         ORDER BY q.order_index ASC, qo.order_index ASC`,
+        [invitation.form_id]
+      );
+
+      // Group questions and their options
+      const questionMap = new Map();
+      questionsData.forEach(row => {
+        const questionId = row.id;
+        if (!questionMap.has(questionId)) {
+          questionMap.set(questionId, {
+            id: row.id,
+            question: row.question_text,
+            type: row.question_type,
+            description: row.description || '',
+            required: row.required === 1 || row.required === true,
+            order_index: row.order_index,
+            min: row.min_value,
+            max: row.max_value,
+            sectionId: row.section_id,
+            options: []
+          });
+        }
+
+        if (row.option_id && row.option_text) {
+          const question = questionMap.get(questionId);
+          question.options.push({
+            id: row.option_id,
+            option_text: row.option_text,
+            order_index: row.option_order
+          });
+        }
+      });
+
+      questions = Array.from(questionMap.values());
+    } catch (questionsError) {
+      console.error("[DEBUG Token] Error fetching questions:", questionsError);
+    }
+
+    // Return form data with invitation info
+    const formData = {
+      id: form.id,
+      title: form.title,
+      description: form.description,
+      category: form.category_id,
+      start_date: form.start_date,
+      end_date: form.end_date,
+      image_url: form.image_url,
+      questions: questions || [],
+      // Include invitation data for pre-filling
+      invitation: {
+        supervisorEmail: invitation.supervisor_email,
+        supervisorName: invitation.supervisor_name,
+        companyName: invitation.company_name,
+        alumnusName: invitation.alumnus_name,
+        token: token
+      }
+    };
+
+    console.log("Token-based form fetched successfully!");
+    return res.status(200).json({
+      success: true,
+      form: formData
+    });
+  } catch (error) {
+    console.error("Token-based form access error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
+
 // Public route for external feedback (e.g., from email links) - NO authentication required
 router.post("/public/submit", async (req, res) => {
-  const { formId, responses, supervisorEmail, supervisorName, companyName, alumnusName } = req.body;
+  const { formId, responses, supervisorEmail, supervisorName, companyName, alumnusName, token } = req.body;
 
   console.log("=== Public feedback submission ===");
   console.log("Form ID:", formId);
+  console.log("Token:", token ? "Present" : "Not provided");
   console.log("Supervisor:", supervisorName, supervisorEmail);
 
   // MINIMAL VALIDATION - just check required fields
-  if (!formId || !responses) {
+  if (!responses) {
     console.log("❌ Missing required fields");
+    return res.status(400).json({
+      success: false,
+      message: "Missing required fields"
+    });
+  }
+
+  let finalFormId = formId;
+  let finalSupervisorEmail = supervisorEmail;
+  let finalSupervisorName = supervisorName;
+  let finalCompanyName = companyName;
+  let finalAlumnusName = alumnusName;
+
+  // If token provided, get data from invitation
+  if (token) {
+    try {
+      const db = require("../config/database");
+      const { queryDatabase } = require("../utils/helpers");
+
+      const invitations = await queryDatabase(db,
+        `SELECT * FROM feedback_invitations
+         WHERE token = ? AND used = false AND expires_at > NOW()`,
+        [token]
+      );
+
+      if (invitations && invitations.length > 0) {
+        const invitation = invitations[0];
+        finalFormId = invitation.form_id;
+        finalSupervisorEmail = invitation.supervisor_email;
+        finalSupervisorName = invitation.supervisor_name;
+        finalCompanyName = invitation.company_name;
+        finalAlumnusName = invitation.alumnus_name;
+
+        // Mark invitation as used
+        await queryDatabase(db,
+          "UPDATE feedback_invitations SET used = true WHERE token = ?",
+          [token]
+        );
+
+        console.log("✅ Token validated and invitation marked as used");
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid or expired invitation token"
+        });
+      }
+    } catch (tokenError) {
+      console.error("Token validation error:", tokenError);
+      return res.status(500).json({
+        success: false,
+        message: "Token validation failed"
+      });
+    }
+  } else if (!formId || !supervisorEmail || !supervisorName) {
+    // For backward compatibility, require these if no token
+    console.log("❌ Missing required fields for legacy submission");
     return res.status(400).json({
       success: false,
       message: "Missing required fields"

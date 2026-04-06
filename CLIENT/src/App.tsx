@@ -174,6 +174,7 @@ export default function App() {
   
   // External feedback form ID (for public feedback links)
   const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(null);
+  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>(null);
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
     undefined
   );
@@ -229,10 +230,18 @@ export default function App() {
   // Check for external feedback link in URL on page load
   useEffect(() => {
     const path = window.location.pathname;
-    // Check if URL is like /feedback/123
+    // Check if URL is like /feedback/123 (legacy format)
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
     if (feedbackMatch && feedbackMatch[1]) {
       setExternalFeedbackFormId(feedbackMatch[1]);
+      setExternalFeedbackToken(null); // Clear token for legacy format
+    }
+
+    // Check if URL is like /feedback/t/abc123 (new secure format)
+    const tokenMatch = path.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
+    if (tokenMatch && tokenMatch[1]) {
+      setExternalFeedbackToken(tokenMatch[1]);
+      setExternalFeedbackFormId(null); // Clear formId for token format
     }
   }, []);
 
@@ -321,17 +330,16 @@ export default function App() {
     setCurrentPage("forms");
   };
 
-  // Render external feedback page (for public links like /feedback/123)
-  if (externalFeedbackFormId) {
+  // Render external feedback page (for public links like /feedback/123 or /feedback/t/token)
+  if (externalFeedbackFormId || externalFeedbackToken) {
     return (
       <div className="min-h-screen bg-gray-100">
-        <FeedbackSubmission 
-          externalFormId={externalFeedbackFormId} 
+        <FeedbackSubmission
+          externalFormId={externalFeedbackFormId}
+          externalToken={externalFeedbackToken}
           onBackToLogin={() => {
-            // Redirect to login - external users can also login if they have accounts
             setExternalFeedbackFormId(null);
-            // Optionally redirect to login page
-            setCurrentPage("login");
+            setExternalFeedbackToken(null);
           }}
         />
       </div>

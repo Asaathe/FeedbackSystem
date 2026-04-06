@@ -198,10 +198,11 @@ interface FeedbackForm {
 interface FeedbackSubmissionProps {
   userRole?: string;
   externalFormId?: string | null;
+  externalToken?: string | null;
   onBackToLogin?: () => void;
 }
 
-export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: FeedbackSubmissionProps = {}) {
+export function FeedbackSubmission({ userRole, externalFormId, externalToken, onBackToLogin }: FeedbackSubmissionProps = {}) {
   const [selectedForm, setSelectedForm] = useState<FeedbackForm | null>(null);
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -209,13 +210,14 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
   const [loading, setLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
-  const [isExternalMode, setIsExternalMode] = useState(!!externalFormId);
+  const [isExternalMode, setIsExternalMode] = useState(!!externalFormId || !!externalToken);
   
   // External supervisor info (for public feedback)
   const [externalSupervisorName, setExternalSupervisorName] = useState("");
   const [externalSupervisorEmail, setExternalSupervisorEmail] = useState("");
   const [externalCompanyName, setExternalCompanyName] = useState("");
   const [externalAlumnusName, setExternalAlumnusName] = useState("");
+  const [invitationToken, setInvitationToken] = useState("");
   
   // Track current "page" - either a standalone question or a section with all its questions
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -340,13 +342,33 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     touchStartY.current = 0;
   };
 
-  // Load external form when externalFormId is provided (for public feedback links)
+  // Load external form when externalFormId or externalToken is provided (for public feedback links)
   useEffect(() => {
-    if (externalFormId && isExternalMode) {
+    if ((externalFormId || externalToken) && isExternalMode) {
       const loadExternalForm = async () => {
         setLoading(true);
         setSelectedForm(null); // Clear any previous state
         try {
+          let result;
+          if (externalToken) {
+            // Use new token-based API for secure links
+            const apiUrl = `${API_BASE}/api/forms/public/t/${externalToken}`;
+            console.log("Making token-based API call to:", apiUrl);
+
+            const response = await fetch(apiUrl, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+            result = await response.json();
+            console.log("Token-based API result:", result);
+          } else {
+            // Use legacy formId-based API for backward compatibility
+            console.log("Making legacy API call to getPublicForm for form ID:", externalFormId);
+            result = await getPublicForm(externalFormId);
+            console.log("Legacy API result:", result);
+          }
           // Parse URL parameters for supervisor info
           const params = new URLSearchParams(window.location.search);
           const supervisorEmail = params.get('supervisorEmail');
@@ -366,6 +388,17 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
           if (result.success && result.form) {
             console.log("Form data received successfully!");
             const form = result.form;
+
+            // Handle invitation data from token-based access
+            if (form.invitation) {
+              console.log("Invitation data found:", form.invitation);
+              setExternalSupervisorEmail(form.invitation.supervisorEmail || '');
+              setExternalSupervisorName(form.invitation.supervisorName || '');
+              setExternalCompanyName(form.invitation.companyName || '');
+              setExternalAlumnusName(form.invitation.alumnusName || '');
+              setInvitationToken(form.invitation.token || '');
+            }
+
             const formData: FeedbackForm = {
               id: form.id,
               title: form.title,
@@ -404,7 +437,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
       };
       loadExternalForm();
     }
-  }, [externalFormId, isExternalMode]);
+  }, [externalFormId, externalToken, isExternalMode]);
 
   // Load forms when component mounts or userRole changes (only in non-external mode)
   useEffect(() => {
@@ -647,6 +680,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
           supervisorName: externalSupervisorName,
           companyName: externalCompanyName,
           alumnusName: externalAlumnusName,
+          token: invitationToken, // Include token for secure submissions
         });
 
         if (result.success) {
