@@ -374,7 +374,11 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
               title: form.title,
               description: form.description,
               category: form.category,
-              dueDate: form.end_date || "No due date",
+              dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+              }) : "No due date",
               startDate: form.start_date || null,
               // Map server fields to client field names for status functions
               startDateOnly: form.start_date ? form.start_date.split(' ')[0] : null,
@@ -1018,36 +1022,32 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
                     <Label className="text-blue-700 text-sm">Your Name</Label>
                     <Input
                       value={externalSupervisorName}
-                      onChange={(e) => setExternalSupervisorName(e.target.value)}
-                      placeholder="Enter your name"
-                      className="mt-1"
+                      readOnly
+                      className="mt-1 bg-gray-50 cursor-not-allowed"
                     />
                   </div>
                   <div>
                     <Label className="text-blue-700 text-sm">Your Email</Label>
                     <Input
                       value={externalSupervisorEmail}
-                      onChange={(e) => setExternalSupervisorEmail(e.target.value)}
-                      placeholder="Enter your email"
-                      className="mt-1"
+                      readOnly
+                      className="mt-1 bg-gray-50 cursor-not-allowed"
                     />
                   </div>
                   <div>
                     <Label className="text-blue-700 text-sm">Company</Label>
                     <Input
                       value={externalCompanyName}
-                      onChange={(e) => setExternalCompanyName(e.target.value)}
-                      placeholder="Your company"
-                      className="mt-1"
+                      readOnly
+                      className="mt-1 bg-gray-50 cursor-not-allowed"
                     />
                   </div>
                   <div>
                     <Label className="text-blue-700 text-sm">Alumnus Name</Label>
                     <Input
                       value={externalAlumnusName}
-                      onChange={(e) => setExternalAlumnusName(e.target.value)}
-                      placeholder="Alumnus you're providing feedback for"
-                      className="mt-1"
+                      readOnly
+                      className="mt-1 bg-gray-50 cursor-not-allowed"
                     />
                   </div>
                 </div>
