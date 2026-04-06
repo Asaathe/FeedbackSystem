@@ -243,14 +243,21 @@ export default function App() {
       setExternalFeedbackToken(null); // Clear token for legacy format
     }
 
-    // Check if URL is like /feedback/t/abc123 (new secure format)
-    const tokenMatch = path.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
+    // Check if URL is like /feedback/t/abc123 (new secure format - 32 char token)
+    const tokenMatch = path.match(/^\/feedback\/t\/([a-f0-9]{32})$/);
     if (tokenMatch && tokenMatch[1]) {
       console.log("Detected token-based feedback URL with token:", tokenMatch[1]);
       setExternalFeedbackToken(tokenMatch[1]);
       setExternalFeedbackFormId(null); // Clear formId for token format
     } else if (path.includes('/feedback/t/')) {
-      console.log("URL contains /feedback/t/ but regex didn't match. Path:", path);
+      console.log("URL contains /feedback/t/ but doesn't match 32-char hex token format. Path:", path);
+      // Try fallback regex for any alphanumeric token
+      const fallbackMatch = path.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
+      if (fallbackMatch && fallbackMatch[1]) {
+        console.log("Using fallback token detection:", fallbackMatch[1]);
+        setExternalFeedbackToken(fallbackMatch[1]);
+        setExternalFeedbackFormId(null);
+      }
     }
   }, []);
 

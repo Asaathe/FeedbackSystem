@@ -76,9 +76,9 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
     const db = require("../config/database");
     const { queryDatabase } = require("../utils/helpers");
 
-    // Generate secure token
-    const token = crypto.randomBytes(32).toString('hex');
-    console.log("Generated secure token:", token.substring(0, 16) + "...");
+    // Generate secure token (32 chars for shorter URLs)
+    const token = crypto.randomBytes(16).toString('hex');
+    console.log("Generated secure token:", token);
 
     // Extract formId from feedbackLink
     const formIdMatch = feedbackLink.match(/\/feedback\/(\d+)/);
@@ -282,7 +282,7 @@ router.get("/public/t/:token", async (req, res) => {
   console.log("=== Token-based form access ===");
   console.log("Full URL:", req.url);
   console.log("Token:", token);
-  console.log("Token length:", token.length);
+  console.log("Token length:", token.length, "(expected: 32)");
 
   try {
     // Import database
