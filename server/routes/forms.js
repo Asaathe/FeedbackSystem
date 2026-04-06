@@ -131,9 +131,9 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 
     console.log("Invitation stored successfully, result:", insertResult);
 
-    // Create short link
-    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/t/${token}`;
-    console.log("Short feedback link:", shortLink);
+    // Create feedback link (TEMPORARILY USING LEGACY FORMAT UNTIL TOKEN ROUTING IS FIXED)
+    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/${formId}?supervisorEmail=${encodeURIComponent(supervisorEmail)}&supervisorName=${encodeURIComponent(supervisorName)}&companyName=${encodeURIComponent(companyName)}&alumnusName=${encodeURIComponent(finalAlumnusName)}`;
+    console.log("Feedback link (legacy format):", shortLink);
 
     console.log("Calling emailService.sendFeedbackInvitation...");
     const result = await emailService.sendFeedbackInvitation(
