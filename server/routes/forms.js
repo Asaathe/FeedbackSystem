@@ -347,13 +347,7 @@ router.post("/public/submit", async (req, res) => {
     }
     // If no active deployment, allow submission (form is always open)
     
-    // Insert the response - we'll store supervisor info in a special way
-    const insertQuery = `
-      INSERT INTO form_responses 
-      (form_id, user_id, responses, submitted_at, submission_type, external_email, external_name)
-      VALUES (?, NULL, ?, NOW(), 'external', ?, ?)
-    `;
-    
+    // Insert the response with schema fallback compatibility
     const responseData = JSON.stringify({
       ...responses,
       _externalFeedback: {
@@ -364,8 +358,26 @@ router.post("/public/submit", async (req, res) => {
         submittedAt: new Date().toISOString()
       }
     });
-    
-    const result = await queryDatabase(db, insertQuery, [formId, responseData, supervisorEmail || null, supervisorName || null]);
+
+    let result;
+    try {
+      // Try with new extended schema first
+      const insertQuery = `
+        INSERT INTO form_responses 
+        (form_id, user_id, responses, submitted_at, submission_type, external_email, external_name)
+        VALUES (?, NULL, ?, NOW(), 'external', ?, ?)
+      `;
+      result = await queryDatabase(db, insertQuery, [formId, responseData, supervisorEmail || null, supervisorName || null]);
+    } catch (schemaError) {
+      // Fallback to original schema that is guaranteed to exist
+      console.log("Falling back to original form_responses schema:", schemaError.message);
+      const fallbackQuery = `
+        INSERT INTO form_responses 
+        (form_id, user_id, responses, submitted_at)
+        VALUES (?, NULL, ?, NOW())
+      `;
+      result = await queryDatabase(db, fallbackQuery, [formId, responseData]);
+    }
     
     console.log("External feedback submitted successfully!");
     return res.status(200).json({ 
@@ -375,7 +387,12 @@ router.post("/public/submit", async (req, res) => {
     });
   } catch (error) {
     console.error("Public submission error:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Internal server error",
+      error: error.message,
+      stack: error.stack
+    });
   }
 });
 
