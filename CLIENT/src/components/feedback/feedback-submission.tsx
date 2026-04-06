@@ -365,9 +365,6 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
 
           if (result.success && result.form) {
             console.log("Form data received successfully!");
-            // Clear any previous errors immediately when form loads
-            setSelectedForm(null); // Reset to trigger clean loading
-
             const form = result.form;
             const formData: FeedbackForm = {
               id: form.id,
