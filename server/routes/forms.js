@@ -131,9 +131,9 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 
     console.log("Invitation stored successfully, result:", insertResult);
 
-    // Create feedback link (TEMPORARILY USING LEGACY FORMAT UNTIL TOKEN ROUTING IS FIXED)
-    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/${formId}?supervisorEmail=${encodeURIComponent(supervisorEmail)}&supervisorName=${encodeURIComponent(supervisorName)}&companyName=${encodeURIComponent(companyName)}&alumnusName=${encodeURIComponent(finalAlumnusName)}`;
-    console.log("Feedback link (legacy format):", shortLink);
+    // Create secure short link using token
+    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/t/${token}`;
+    console.log("Secure short feedback link:", shortLink);
 
     console.log("Calling emailService.sendFeedbackInvitation...");
     const result = await emailService.sendFeedbackInvitation(
@@ -405,6 +405,18 @@ router.get("/public/t/:token", async (req, res) => {
     console.error("Token-based form access error:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
+});
+
+// Catch token-based feedback URLs and redirect to main app
+router.get("/feedback/t/:token", (req, res) => {
+  const token = req.params.token;
+  console.log("🎯 SERVER CATCHING TOKEN URL:", token);
+
+  // Redirect to main app with token parameter
+  const redirectUrl = `/?external_token=${token}`;
+  console.log("Redirecting to:", redirectUrl);
+
+  res.redirect(302, redirectUrl);
 });
 
 // Public route for external feedback (e.g., from email links) - NO authentication required

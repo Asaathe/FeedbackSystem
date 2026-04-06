@@ -241,6 +241,19 @@ export default function App() {
     console.log("Current external states - FormId:", externalFeedbackFormId, "Token:", externalFeedbackToken);
     console.log("useEffect is running!");
 
+    // Check for server-redirected token parameter (from /feedback/t/* routes)
+    const externalTokenParam = searchParams.get('external_token');
+    if (externalTokenParam) {
+      console.log("🎯 SERVER REDIRECT DETECTED - Token:", externalTokenParam);
+      setExternalFeedbackToken(externalTokenParam);
+      setExternalFeedbackFormId(null);
+      // Clean up the URL parameter
+      const newUrl = window.location.pathname + (window.location.hash || '');
+      window.history.replaceState({}, '', newUrl);
+      alert("Token redirect detected! Token: " + externalTokenParam);
+      return;
+    }
+
     // Check if this is a hash-based route that needs conversion
     if (hash && hash.startsWith('#/feedback/')) {
       console.log("⚠️ HASH-BASED ROUTE DETECTED:", hash);
@@ -292,18 +305,6 @@ export default function App() {
       }
     } else {
       console.log("ℹ️ URL does not contain feedback path");
-    }
-
-    // FORCE EXTERNAL FEEDBACK FOR TESTING - REMOVE THIS AFTER DEBUGGING
-    if (path.includes('/feedback/t/')) {
-      console.log("🚨 FORCE ACTIVATING EXTERNAL FEEDBACK FOR TESTING");
-      const forceTokenMatch = path.match(/\/feedback\/t\/([a-zA-Z0-9]+)/);
-      if (forceTokenMatch && forceTokenMatch[1]) {
-        console.log("🚨 FORCE SETTING TOKEN:", forceTokenMatch[1]);
-        setExternalFeedbackToken(forceTokenMatch[1]);
-        setExternalFeedbackFormId(null);
-        alert("FORCE ACTIVATED: External feedback detected with token: " + forceTokenMatch[1]);
-      }
     }
   }, []);
 
