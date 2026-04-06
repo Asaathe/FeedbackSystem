@@ -244,9 +244,9 @@ router.post("/public/submit", async (req, res) => {
       }
     });
 
-    // INSERT RESPONSE - Use original schema that works
+    // INSERT RESPONSE - Use correct column name 'response_data'
     const result = await queryDatabase(db,
-      "INSERT INTO form_responses (form_id, user_id, responses, submitted_at) VALUES (?, NULL, ?, NOW())",
+      "INSERT INTO form_responses (form_id, user_id, response_data, submitted_at) VALUES (?, NULL, ?, NOW())",
       [formId, responseData]
     );
 
