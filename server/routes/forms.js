@@ -272,6 +272,7 @@ router.post("/public/submit", async (req, res) => {
   const { formId, responses, supervisorEmail, supervisorName, companyName, alumnusName } = req.body;
 
   console.log("=== Public feedback submission ===");
+  console.log("🚀 FIXED VERSION - DEPLOYMENT TEST");
   console.log("Headers:", req.headers);
   console.log("Body:", req.body);
   console.log("Form ID:", formId);
