@@ -1660,15 +1660,29 @@ export const getFormResponses = async (formId: string): Promise<{ success: boole
     if (result.success && result.responses) {
       logDebug(`Successfully loaded ${result.responses.length} responses`);
       // Transform answers to response_data for compatibility with FormResponse interface
-      const transformedResponses = result.responses.map((r: any) => ({
-        id: r.id?.toString() || '',
-        user_id: r.user_id || 0,
-        submitted_at: r.submitted_at || new Date().toISOString(),
-        response_data: r.answers || {},
-        respondent_name: r.full_name || r.respondent_name || '',
-        respondent_email: r.email || r.respondent_email || '',
-        respondent_role: r.role || r.respondent_role || '',
-      }));
+      const transformedResponses = result.responses.map((r: any) => {
+        const responseData = r.answers || {};
+        const externalFeedback = responseData._externalFeedback;
+
+        // For external submissions (user_id = 1 with _externalFeedback), show supervisor info
+        const isExternalSubmission = externalFeedback && r.user_id === 1;
+
+        return {
+          id: r.id?.toString() || '',
+          user_id: r.user_id || 0,
+          submitted_at: r.submitted_at || new Date().toISOString(),
+          response_data: responseData,
+          respondent_name: isExternalSubmission
+            ? externalFeedback.supervisorName || 'External Supervisor'
+            : (r.full_name || r.respondent_name || ''),
+          respondent_email: isExternalSubmission
+            ? externalFeedback.supervisorEmail || ''
+            : (r.email || r.respondent_email || ''),
+          respondent_role: isExternalSubmission
+            ? `Supervisor (${externalFeedback.companyName || 'Company'})`
+            : (r.role || r.respondent_role || ''),
+        };
+      });
       return {
         success: true,
         responses: transformedResponses,
