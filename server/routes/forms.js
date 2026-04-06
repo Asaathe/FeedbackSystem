@@ -244,9 +244,9 @@ router.post("/public/submit", async (req, res) => {
       }
     });
 
-    // INSERT RESPONSE - Use correct column name 'response_data'
+    // INSERT RESPONSE - Use special external user ID (-1) for external submissions
     const result = await queryDatabase(db,
-      "INSERT INTO form_responses (form_id, user_id, response_data, submitted_at) VALUES (?, NULL, ?, NOW())",
+      "INSERT INTO form_responses (form_id, user_id, response_data, submitted_at) VALUES (?, -1, ?, NOW())",
       [formId, responseData]
     );
 
