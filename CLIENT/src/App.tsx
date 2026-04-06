@@ -232,8 +232,10 @@ export default function App() {
     const path = window.location.pathname;
     const fullUrl = window.location.href;
 
-    console.log("Checking URL for external feedback:", fullUrl);
+    console.log("🔍 CHECKING URL FOR EXTERNAL FEEDBACK");
+    console.log("Full URL:", fullUrl);
     console.log("Path:", path);
+    console.log("Current external states - FormId:", externalFeedbackFormId, "Token:", externalFeedbackToken);
 
     // Check if URL is like /feedback/123 (legacy format)
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
@@ -246,18 +248,22 @@ export default function App() {
     // Check if URL is like /feedback/t/abc123 (new secure format - 32 char token)
     const tokenMatch = path.match(/^\/feedback\/t\/([a-f0-9]{32})$/);
     if (tokenMatch && tokenMatch[1]) {
-      console.log("Detected token-based feedback URL with token:", tokenMatch[1]);
+      console.log("✅ DETECTED TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
       setExternalFeedbackToken(tokenMatch[1]);
       setExternalFeedbackFormId(null); // Clear formId for token format
     } else if (path.includes('/feedback/t/')) {
-      console.log("URL contains /feedback/t/ but doesn't match 32-char hex token format. Path:", path);
+      console.log("⚠️ URL contains /feedback/t/ but doesn't match 32-char hex token format. Path:", path);
       // Try fallback regex for any alphanumeric token
       const fallbackMatch = path.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
       if (fallbackMatch && fallbackMatch[1]) {
-        console.log("Using fallback token detection:", fallbackMatch[1]);
+        console.log("🔄 USING FALLBACK TOKEN DETECTION:", fallbackMatch[1]);
         setExternalFeedbackToken(fallbackMatch[1]);
         setExternalFeedbackFormId(null);
+      } else {
+        console.log("❌ NO TOKEN FOUND IN URL");
       }
+    } else {
+      console.log("ℹ️ URL does not contain feedback path");
     }
   }, []);
 
@@ -346,8 +352,11 @@ export default function App() {
     setCurrentPage("forms");
   };
 
-  // Render external feedback page (for public links like /feedback/123 or /feedback/t/token)
+  // EXTERNAL FEEDBACK - Check BEFORE authentication (public access)
   if (externalFeedbackFormId || externalFeedbackToken) {
+    console.log("🎯 RENDERING EXTERNAL FEEDBACK FORM");
+    console.log("externalFeedbackFormId:", externalFeedbackFormId);
+    console.log("externalFeedbackToken:", externalFeedbackToken);
     return (
       <div className="min-h-screen bg-gray-100">
         <FeedbackSubmission
@@ -362,6 +371,7 @@ export default function App() {
     );
   }
 
+  // If not logged in AND not accessing external feedback, show login/signup pages
   if (!isLoggedIn) {
     if (showSignup) {
       return (
