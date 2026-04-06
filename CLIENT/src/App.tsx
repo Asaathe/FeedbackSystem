@@ -232,12 +232,38 @@ export default function App() {
   useEffect(() => {
     const path = window.location.pathname;
     const fullUrl = window.location.href;
+    const hash = window.location.hash;
 
     console.log("🔍 CHECKING URL FOR EXTERNAL FEEDBACK");
     console.log("Full URL:", fullUrl);
     console.log("Path:", path);
+    console.log("Hash:", hash);
     console.log("Current external states - FormId:", externalFeedbackFormId, "Token:", externalFeedbackToken);
     console.log("useEffect is running!");
+
+    // Check if this is a hash-based route that needs conversion
+    if (hash && hash.startsWith('#/feedback/')) {
+      console.log("⚠️ HASH-BASED ROUTE DETECTED:", hash);
+      const hashPath = hash.substring(1); // Remove the '#'
+      console.log("Converted path:", hashPath);
+
+      // Try to match feedback patterns in hash
+      const feedbackMatch = hashPath.match(/^\/feedback\/(\d+)$/);
+      if (feedbackMatch) {
+        console.log("✅ DETECTED HASH LEGACY FEEDBACK URL with form ID:", feedbackMatch[1]);
+        setExternalFeedbackFormId(feedbackMatch[1]);
+        setExternalFeedbackToken(null);
+        return;
+      }
+
+      const tokenMatch = hashPath.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
+      if (tokenMatch) {
+        console.log("✅ DETECTED HASH TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
+        setExternalFeedbackToken(tokenMatch[1]);
+        setExternalFeedbackFormId(null);
+        return;
+      }
+    }
 
     // Check if URL is like /feedback/123 (legacy format)
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
@@ -266,6 +292,18 @@ export default function App() {
       }
     } else {
       console.log("ℹ️ URL does not contain feedback path");
+    }
+
+    // FORCE EXTERNAL FEEDBACK FOR TESTING - REMOVE THIS AFTER DEBUGGING
+    if (path.includes('/feedback/t/')) {
+      console.log("🚨 FORCE ACTIVATING EXTERNAL FEEDBACK FOR TESTING");
+      const forceTokenMatch = path.match(/\/feedback\/t\/([a-zA-Z0-9]+)/);
+      if (forceTokenMatch && forceTokenMatch[1]) {
+        console.log("🚨 FORCE SETTING TOKEN:", forceTokenMatch[1]);
+        setExternalFeedbackToken(forceTokenMatch[1]);
+        setExternalFeedbackFormId(null);
+        alert("FORCE ACTIVATED: External feedback detected with token: " + forceTokenMatch[1]);
+      }
     }
   }, []);
 
