@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 04, 2026 at 11:29 PM
+-- Generation Time: Apr 06, 2026 at 05:37 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -392,6 +392,31 @@ INSERT INTO `evaluation_subjects` (`id`, `subject_code`, `subject_name`, `depart
 -- --------------------------------------------------------
 
 --
+-- Table structure for table `feedback_invitations`
+--
+
+CREATE TABLE `feedback_invitations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `token` varchar(64) NOT NULL COMMENT 'Secure random token for short links',
+  `form_id` int(11) NOT NULL COMMENT 'Reference to forms.id',
+  `supervisor_email` varchar(255) NOT NULL,
+  `supervisor_name` varchar(255) NOT NULL,
+  `company_name` varchar(255) NOT NULL,
+  `alumnus_name` varchar(255) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` timestamp NULL DEFAULT NULL,
+  `used` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Whether the invitation has been used',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `token` (`token`),
+  KEY `form_id` (`form_id`),
+  KEY `expires_at` (`expires_at`),
+  KEY `used` (`used`),
+  CONSTRAINT `feedback_invitations_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- --------------------------------------------------------
+
+--
 -- Table structure for table `feedback_template_categories`
 --
 
@@ -516,7 +541,11 @@ CREATE TABLE `forms` (
 
 INSERT INTO `forms` (`id`, `title`, `description`, `ai_description`, `type`, `category`, `subject_id`, `target_audience`, `status`, `image_url`, `is_template`, `start_date`, `end_date`, `created_by`, `created_at`, `updated_at`, `submission_count`, `is_anonymous`, `deadline`) VALUES
 (602, 'demo', '', '', 'general', 'Event', NULL, 'Students - BSIT - 4B', 'active', 'https://res.cloudinary.com/dgkugadfe/image/upload/v1775326338/feedbacts/forms/9cb799f8-5490-4e8a-852f-6b5d91b6560a.jpg', 0, '2026-04-04', '2026-04-05', 1, '2026-04-04 18:13:11', '2026-04-04 20:18:18', 0, 0, NULL),
-(603, 'dada', '', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-05', '2026-04-12', 1, '2026-04-04 20:19:15', '2026-04-04 20:19:15', 0, 0, NULL);
+(604, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-05', '2026-04-17', 1, '2026-04-05 06:49:19', '2026-04-05 06:49:19', 0, 0, NULL),
+(605, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-06', '2026-04-14', 1, '2026-04-05 07:27:27', '2026-04-05 07:27:27', 0, 0, NULL),
+(606, 'demo', '', '', 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-04', '2026-04-05', 1, '2026-04-05 07:45:38', '2026-04-05 07:46:45', 0, 0, NULL),
+(607, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-05', '2026-04-07', 1, '2026-04-05 08:39:46', '2026-04-05 08:39:46', 0, 0, NULL),
+(610, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Employers - Xample', 'active', NULL, 0, '2026-04-07', '2026-04-07', 1, '2026-04-05 16:49:08', '2026-04-05 16:49:08', 0, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -538,14 +567,20 @@ CREATE TABLE `form_assignments` (
 
 INSERT INTO `form_assignments` (`id`, `form_id`, `user_id`, `assigned_at`, `status`) VALUES
 (3470, 602, 175, '2026-04-04 20:18:18', 'pending'),
-(3471, 603, 105, '2026-04-04 20:19:15', 'pending'),
-(3472, 603, 110, '2026-04-04 20:19:15', 'pending'),
-(3473, 603, 118, '2026-04-04 20:19:15', 'pending'),
-(3474, 603, 119, '2026-04-04 20:19:15', 'pending'),
-(3475, 603, 120, '2026-04-04 20:19:15', 'pending'),
-(3476, 603, 122, '2026-04-04 20:19:15', 'pending'),
-(3477, 603, 123, '2026-04-04 20:19:15', 'completed'),
-(3478, 603, 175, '2026-04-04 20:19:15', 'pending');
+(3479, 604, 175, '2026-04-05 06:49:19', 'pending'),
+(3480, 605, 105, '2026-04-05 07:27:27', 'pending'),
+(3481, 605, 110, '2026-04-05 07:27:27', 'pending'),
+(3482, 605, 120, '2026-04-05 07:27:27', 'pending'),
+(3483, 605, 175, '2026-04-05 07:27:27', 'pending'),
+(3487, 606, 120, '2026-04-05 07:46:45', 'pending'),
+(3488, 607, 105, '2026-04-05 08:39:46', 'pending'),
+(3489, 607, 110, '2026-04-05 08:39:46', 'pending'),
+(3490, 607, 118, '2026-04-05 08:39:46', 'pending'),
+(3491, 607, 119, '2026-04-05 08:39:46', 'pending'),
+(3492, 607, 120, '2026-04-05 08:39:46', 'pending'),
+(3493, 607, 122, '2026-04-05 08:39:46', 'pending'),
+(3494, 607, 123, '2026-04-05 08:39:46', 'pending'),
+(3495, 607, 175, '2026-04-05 08:39:46', 'pending');
 
 -- --------------------------------------------------------
 
@@ -596,7 +631,11 @@ CREATE TABLE `form_deployments` (
 
 INSERT INTO `form_deployments` (`id`, `form_id`, `deployed_by`, `start_date`, `start_time`, `end_date`, `end_time`, `target_filters`, `deployment_status`, `created_at`) VALUES
 (207, 602, 1, '2026-04-04', '03:13:00', '2026-04-05', '02:13:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-04 18:13:11'),
-(208, 603, 1, '2026-04-05', '04:19:00', '2026-04-12', '05:19:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-04 20:19:15');
+(209, 604, 1, '2026-04-05', '14:49:00', '2026-04-17', '14:49:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 06:49:19'),
+(210, 605, 1, '2026-04-06', '15:27:00', '2026-04-14', '15:27:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 07:27:27'),
+(211, 606, 1, '2026-04-04', '15:45:00', '2026-04-05', '16:45:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 07:45:38'),
+(212, 607, 1, '2026-04-05', '16:39:00', '2026-04-07', '18:39:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 08:39:46'),
+(214, 610, 1, '2026-04-07', '00:49:00', '2026-04-07', '01:49:00', '{\"target_audience\":\"Employers - Xample\",\"department\":null,\"course_year_section\":\"Xample\",\"company\":null}', 'active', '2026-04-05 16:49:08');
 
 -- --------------------------------------------------------
 
@@ -611,13 +650,6 @@ CREATE TABLE `form_responses` (
   `submitted_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `response_data` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_bin NOT NULL CHECK (json_valid(`response_data`))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
---
--- Dumping data for table `form_responses`
---
-
-INSERT INTO `form_responses` (`id`, `form_id`, `user_id`, `submitted_at`, `response_data`) VALUES
-(138, 603, 123, '2026-04-04 20:20:19', '{\"1997\":\"dadada\"}');
 
 -- --------------------------------------------------------
 
@@ -774,8 +806,8 @@ CREATE TABLE `instructor_feedback` (
 --
 
 INSERT INTO `instructor_feedback` (`id`, `student_id`, `instructor_id`, `subject_id`, `section_id`, `academic_year`, `semester`, `responses`, `overall_rating`, `submitted_at`, `category_averages`, `archived`, `archived_at`, `academic_period_id`) VALUES
-(48, 123, 150, 45, 63, '2025-2026', '1st', '{\"33\":5,\"34\":5,\"35\":5,\"36\":5,\"38\":4,\"39\":4,\"40\":4,\"41\":4,\"43\":3,\"44\":3,\"45\":3,\"46\":3,\"47\":3,\"53\":5,\"54\":5,\"55\":5,\"57\":3,\"58\":3,\"59\":3,\"61\":5,\"62\":5,\"63\":5}', 4.09, '2026-04-04 20:17:42', '{\"32\":{\"name\":\"OUTCOMES-BASED INSTRUCTIONAL DELIVERY\",\"average\":5,\"count\":4,\"questions\":{\"33\":5,\"34\":5,\"35\":5,\"36\":5}},\"37\":{\"name\":\" TEACHING AND PROFESSIONAL COMPETENCE\",\"average\":4,\"count\":4,\"questions\":{\"38\":4,\"39\":4,\"40\":4,\"41\":4}},\"42\":{\"name\":\"CLASSROOM MANAGEMENT AND DELIVERY\",\"average\":3,\"count\":5,\"questions\":{\"43\":3,\"44\":3,\"45\":3,\"46\":3,\"47\":3}},\"52\":{\"name\":\"STUDENT SUPPORT AND CONSULTATION\",\"average\":5,\"count\":3,\"questions\":{\"53\":5,\"54\":5,\"55\":5}},\"56\":{\"name\":\" ETHICAL, PROFESSIONAL, AND SCHOLARLY BEHAVIOR\",\"average\":3,\"count\":3,\"questions\":{\"57\":3,\"58\":3,\"59\":3}},\"60\":{\"name\":\"STUDENT ENGAGEMENT AND OUTCOMES ACHIEVEMENT\",\"average\":5,\"count\":3,\"questions\":{\"61\":5,\"62\":5,\"63\":5}},\"overall\":{\"average\":4.09,\"count\":22}}', 0, NULL, NULL),
-(49, 123, 152, 45, 69, '2025-2026', '3th', '{\"33\":4,\"34\":5,\"35\":5,\"36\":5,\"38\":5,\"39\":5,\"40\":5,\"41\":5,\"43\":5,\"44\":5,\"45\":5,\"46\":5,\"47\":5,\"53\":5,\"54\":5,\"55\":5,\"57\":5,\"58\":5,\"59\":5,\"61\":5,\"62\":5,\"63\":5}', 4.95, '2026-04-04 21:24:51', '{\"32\":{\"name\":\"OUTCOMES-BASED INSTRUCTIONAL DELIVERY\",\"average\":4.75,\"count\":4,\"questions\":{\"33\":4,\"34\":5,\"35\":5,\"36\":5}},\"37\":{\"name\":\" TEACHING AND PROFESSIONAL COMPETENCE\",\"average\":5,\"count\":4,\"questions\":{\"38\":5,\"39\":5,\"40\":5,\"41\":5}},\"42\":{\"name\":\"CLASSROOM MANAGEMENT AND DELIVERY\",\"average\":5,\"count\":5,\"questions\":{\"43\":5,\"44\":5,\"45\":5,\"46\":5,\"47\":5}},\"52\":{\"name\":\"STUDENT SUPPORT AND CONSULTATION\",\"average\":5,\"count\":3,\"questions\":{\"53\":5,\"54\":5,\"55\":5}},\"56\":{\"name\":\" ETHICAL, PROFESSIONAL, AND SCHOLARLY BEHAVIOR\",\"average\":5,\"count\":3,\"questions\":{\"57\":5,\"58\":5,\"59\":5}},\"60\":{\"name\":\"STUDENT ENGAGEMENT AND OUTCOMES ACHIEVEMENT\",\"average\":5,\"count\":3,\"questions\":{\"61\":5,\"62\":5,\"63\":5}},\"overall\":{\"average\":4.95,\"count\":22}}', 1, '2026-04-04 21:26:52', 81);
+(50, 123, 152, 45, 71, '2025-2026', '1st', '{\"33\":4,\"34\":4,\"35\":4,\"36\":4,\"38\":1,\"39\":1,\"40\":1,\"41\":1,\"43\":1,\"44\":1,\"45\":1,\"46\":1,\"47\":1,\"53\":1,\"54\":1,\"55\":1,\"57\":1,\"58\":1,\"59\":1,\"61\":1,\"62\":1,\"63\":1}', 1.55, '2026-04-05 06:10:17', '{\"32\":{\"name\":\"OUTCOMES-BASED INSTRUCTIONAL DELIVERY\",\"average\":4,\"count\":4,\"questions\":{\"33\":4,\"34\":4,\"35\":4,\"36\":4}},\"37\":{\"name\":\" TEACHING AND PROFESSIONAL COMPETENCE\",\"average\":1,\"count\":4,\"questions\":{\"38\":1,\"39\":1,\"40\":1,\"41\":1}},\"42\":{\"name\":\"CLASSROOM MANAGEMENT AND DELIVERY\",\"average\":1,\"count\":5,\"questions\":{\"43\":1,\"44\":1,\"45\":1,\"46\":1,\"47\":1}},\"52\":{\"name\":\"STUDENT SUPPORT AND CONSULTATION\",\"average\":1,\"count\":3,\"questions\":{\"53\":1,\"54\":1,\"55\":1}},\"56\":{\"name\":\" ETHICAL, PROFESSIONAL, AND SCHOLARLY BEHAVIOR\",\"average\":1,\"count\":3,\"questions\":{\"57\":1,\"58\":1,\"59\":1}},\"60\":{\"name\":\"STUDENT ENGAGEMENT AND OUTCOMES ACHIEVEMENT\",\"average\":1,\"count\":3,\"questions\":{\"61\":1,\"62\":1,\"63\":1}},\"overall\":{\"average\":1.55,\"count\":22}}', 0, NULL, 89),
+(51, 122, 152, 45, 71, '2025-2026', '1st', '{\"33\":1,\"34\":1,\"35\":1,\"36\":1,\"38\":1,\"39\":1,\"40\":1,\"41\":1,\"43\":1,\"44\":1,\"45\":1,\"46\":1,\"47\":1,\"53\":1,\"54\":1,\"55\":1,\"57\":1,\"58\":1,\"59\":1,\"61\":1,\"62\":1,\"63\":1}', 1.00, '2026-04-05 06:11:57', '{\"32\":{\"name\":\"OUTCOMES-BASED INSTRUCTIONAL DELIVERY\",\"average\":1,\"count\":4,\"questions\":{\"33\":1,\"34\":1,\"35\":1,\"36\":1}},\"37\":{\"name\":\" TEACHING AND PROFESSIONAL COMPETENCE\",\"average\":1,\"count\":4,\"questions\":{\"38\":1,\"39\":1,\"40\":1,\"41\":1}},\"42\":{\"name\":\"CLASSROOM MANAGEMENT AND DELIVERY\",\"average\":1,\"count\":5,\"questions\":{\"43\":1,\"44\":1,\"45\":1,\"46\":1,\"47\":1}},\"52\":{\"name\":\"STUDENT SUPPORT AND CONSULTATION\",\"average\":1,\"count\":3,\"questions\":{\"53\":1,\"54\":1,\"55\":1}},\"56\":{\"name\":\" ETHICAL, PROFESSIONAL, AND SCHOLARLY BEHAVIOR\",\"average\":1,\"count\":3,\"questions\":{\"57\":1,\"58\":1,\"59\":1}},\"60\":{\"name\":\"STUDENT ENGAGEMENT AND OUTCOMES ACHIEVEMENT\",\"average\":1,\"count\":3,\"questions\":{\"61\":1,\"62\":1,\"63\":1}},\"overall\":{\"average\":1,\"count\":22}}', 0, NULL, 89);
 
 -- --------------------------------------------------------
 
@@ -902,7 +934,27 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `is_re
 (212, 123, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"dada\". Please complete it by 2026-04-12.', 0, 603, NULL, '{\"form_title\":\"dada\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-12\",\"priority\":\"high\"}', '2026-04-04 20:19:36', '2026-04-04 20:19:36'),
 (213, 166, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"dada\". Please complete it by 2026-04-12.', 0, 603, NULL, '{\"form_title\":\"dada\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-12\",\"priority\":\"high\"}', '2026-04-04 20:19:39', '2026-04-04 20:19:39'),
 (214, 174, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"dada\". Please complete it by 2026-04-12.', 0, 603, NULL, '{\"form_title\":\"dada\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-12\",\"priority\":\"high\"}', '2026-04-04 20:19:42', '2026-04-04 20:19:42'),
-(215, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"dada\". Please complete it by 2026-04-12.', 0, 603, NULL, '{\"form_title\":\"dada\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-12\",\"priority\":\"high\"}', '2026-04-04 20:19:46', '2026-04-04 20:19:46');
+(215, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"dada\". Please complete it by 2026-04-12.', 0, 603, NULL, '{\"form_title\":\"dada\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-12\",\"priority\":\"high\"}', '2026-04-04 20:19:46', '2026-04-04 20:19:46'),
+(216, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-17.', 0, 604, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-17\",\"priority\":\"high\"}', '2026-04-05 06:49:19', '2026-04-05 06:49:19'),
+(217, 105, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-14.', 0, 605, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-14\",\"priority\":\"high\"}', '2026-04-05 07:27:27', '2026-04-05 07:27:27'),
+(218, 110, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-14.', 0, 605, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-14\",\"priority\":\"high\"}', '2026-04-05 07:27:29', '2026-04-05 07:27:29'),
+(219, 120, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-14.', 0, 605, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-14\",\"priority\":\"high\"}', '2026-04-05 07:27:32', '2026-04-05 07:27:32'),
+(220, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-14.', 0, 605, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-14\",\"priority\":\"high\"}', '2026-04-05 07:27:34', '2026-04-05 07:27:34'),
+(221, 110, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-06.', 0, 606, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-06\",\"priority\":\"high\"}', '2026-04-05 07:45:38', '2026-04-05 07:45:38'),
+(222, 119, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-06.', 0, 606, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-06\",\"priority\":\"high\"}', '2026-04-05 07:45:44', '2026-04-05 07:45:44'),
+(223, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-06.', 0, 606, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-06\",\"priority\":\"high\"}', '2026-04-05 07:45:46', '2026-04-05 07:45:46'),
+(224, 120, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-05.', 0, 606, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-05\",\"priority\":\"high\"}', '2026-04-05 07:46:45', '2026-04-05 07:46:45'),
+(225, 105, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:46', '2026-04-05 08:39:46'),
+(226, 110, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:48', '2026-04-05 08:39:48'),
+(227, 118, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:49', '2026-04-05 08:39:49'),
+(228, 119, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:50', '2026-04-05 08:39:50'),
+(229, 120, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:51', '2026-04-05 08:39:51'),
+(230, 122, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:51', '2026-04-05 08:39:51'),
+(231, 123, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:52', '2026-04-05 08:39:52'),
+(232, 166, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:52', '2026-04-05 08:39:52'),
+(233, 174, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:52', '2026-04-05 08:39:52'),
+(234, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:53', '2026-04-05 08:39:53'),
+(235, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-06.', 0, 608, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-06\",\"priority\":\"high\"}', '2026-04-05 08:42:34', '2026-04-05 08:42:34');
 
 -- --------------------------------------------------------
 
@@ -929,7 +981,11 @@ CREATE TABLE `questions` (
 
 INSERT INTO `questions` (`id`, `form_id`, `section_id`, `question_text`, `question_type`, `description`, `required`, `min_value`, `max_value`, `order_index`) VALUES
 (1996, 602, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
-(1997, 603, NULL, 'dada', 'text', NULL, 0, NULL, NULL, 0);
+(1998, 604, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
+(1999, 605, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
+(2000, 606, NULL, 'demo123!', 'text', NULL, 0, NULL, NULL, 0),
+(2001, 607, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
+(2004, 610, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -1206,7 +1262,9 @@ CREATE TABLE `subject_feedback` (
 --
 
 INSERT INTO `subject_feedback` (`id`, `student_id`, `subject_id`, `section_id`, `instructor_id`, `academic_year`, `semester`, `responses`, `overall_rating`, `submitted_at`, `category_averages`, `archived`, `archived_at`, `academic_period_id`) VALUES
-(24, 123, 45, 69, 152, '2025-2026', '3th', '{\"72\":5,\"73\":5,\"74\":5,\"75\":5,\"76\":5,\"77\":5,\"78\":5,\"79\":5,\"80\":5,\"81\":5,\"82\":5,\"83\":5,\"84\":5,\"85\":5,\"86\":5,\"87\":5,\"88\":5,\"89\":5,\"90\":5,\"91\":5,\"92\":5,\"93\":5,\"94\":5,\"95\":5,\"96\":5,\"97\":5,\"98\":5,\"99\":5,\"100\":5,\"101\":5,\"102\":5,\"103\":5,\"104\":5}', 5.00, '2026-04-04 21:24:37', '{\"64\":{\"name\":\"Course Content\",\"average\":5,\"count\":5,\"questions\":{\"72\":5,\"73\":5,\"74\":5,\"75\":5,\"76\":5}},\"65\":{\"name\":\"Learning Outcomes\",\"average\":5,\"count\":4,\"questions\":{\"77\":5,\"78\":5,\"79\":5,\"80\":5}},\"66\":{\"name\":\"Learning Materials\",\"average\":5,\"count\":4,\"questions\":{\"81\":5,\"82\":5,\"83\":5,\"84\":5}},\"67\":{\"name\":\"Assessments\",\"average\":5,\"count\":4,\"questions\":{\"85\":5,\"86\":5,\"87\":5,\"88\":5}},\"68\":{\"name\":\"Workload & Difficulty\",\"average\":5,\"count\":4,\"questions\":{\"89\":5,\"90\":5,\"91\":5,\"92\":5}},\"69\":{\"name\":\"Practical Application\",\"average\":5,\"count\":4,\"questions\":{\"93\":5,\"94\":5,\"95\":5,\"96\":5}},\"70\":{\"name\":\"Course Structure & Delivery\",\"average\":5,\"count\":4,\"questions\":{\"97\":5,\"98\":5,\"99\":5,\"100\":5}},\"71\":{\"name\":\"Overall Evaluation\",\"average\":5,\"count\":4,\"questions\":{\"101\":5,\"102\":5,\"103\":5,\"104\":5}},\"overall\":{\"average\":5,\"count\":33}}', 1, '2026-04-04 21:26:52', 81);
+(24, 123, 45, 69, 152, '2025-2026', '3th', '{\"72\":5,\"73\":5,\"74\":5,\"75\":5,\"76\":5,\"77\":5,\"78\":5,\"79\":5,\"80\":5,\"81\":5,\"82\":5,\"83\":5,\"84\":5,\"85\":5,\"86\":5,\"87\":5,\"88\":5,\"89\":5,\"90\":5,\"91\":5,\"92\":5,\"93\":5,\"94\":5,\"95\":5,\"96\":5,\"97\":5,\"98\":5,\"99\":5,\"100\":5,\"101\":5,\"102\":5,\"103\":5,\"104\":5}', 5.00, '2026-04-04 21:24:37', '{\"64\":{\"name\":\"Course Content\",\"average\":5,\"count\":5,\"questions\":{\"72\":5,\"73\":5,\"74\":5,\"75\":5,\"76\":5}},\"65\":{\"name\":\"Learning Outcomes\",\"average\":5,\"count\":4,\"questions\":{\"77\":5,\"78\":5,\"79\":5,\"80\":5}},\"66\":{\"name\":\"Learning Materials\",\"average\":5,\"count\":4,\"questions\":{\"81\":5,\"82\":5,\"83\":5,\"84\":5}},\"67\":{\"name\":\"Assessments\",\"average\":5,\"count\":4,\"questions\":{\"85\":5,\"86\":5,\"87\":5,\"88\":5}},\"68\":{\"name\":\"Workload & Difficulty\",\"average\":5,\"count\":4,\"questions\":{\"89\":5,\"90\":5,\"91\":5,\"92\":5}},\"69\":{\"name\":\"Practical Application\",\"average\":5,\"count\":4,\"questions\":{\"93\":5,\"94\":5,\"95\":5,\"96\":5}},\"70\":{\"name\":\"Course Structure & Delivery\",\"average\":5,\"count\":4,\"questions\":{\"97\":5,\"98\":5,\"99\":5,\"100\":5}},\"71\":{\"name\":\"Overall Evaluation\",\"average\":5,\"count\":4,\"questions\":{\"101\":5,\"102\":5,\"103\":5,\"104\":5}},\"overall\":{\"average\":5,\"count\":33}}', 1, '2026-04-04 21:26:52', 81),
+(25, 123, 45, 71, 152, '2025-2026', '1st', '{\"72\":5,\"73\":5,\"74\":5,\"75\":5,\"76\":5,\"77\":5,\"78\":5,\"79\":5,\"80\":5,\"81\":5,\"82\":5,\"83\":5,\"84\":5,\"85\":5,\"86\":5,\"87\":5,\"88\":5,\"89\":5,\"90\":5,\"91\":5,\"92\":5,\"93\":5,\"94\":5,\"95\":5,\"96\":5,\"97\":5,\"98\":5,\"99\":5,\"100\":5,\"101\":5,\"102\":5,\"103\":5,\"104\":5}', 5.00, '2026-04-05 06:09:44', '{\"64\":{\"name\":\"Course Content\",\"average\":5,\"count\":5,\"questions\":{\"72\":5,\"73\":5,\"74\":5,\"75\":5,\"76\":5}},\"65\":{\"name\":\"Learning Outcomes\",\"average\":5,\"count\":4,\"questions\":{\"77\":5,\"78\":5,\"79\":5,\"80\":5}},\"66\":{\"name\":\"Learning Materials\",\"average\":5,\"count\":4,\"questions\":{\"81\":5,\"82\":5,\"83\":5,\"84\":5}},\"67\":{\"name\":\"Assessments\",\"average\":5,\"count\":4,\"questions\":{\"85\":5,\"86\":5,\"87\":5,\"88\":5}},\"68\":{\"name\":\"Workload & Difficulty\",\"average\":5,\"count\":4,\"questions\":{\"89\":5,\"90\":5,\"91\":5,\"92\":5}},\"69\":{\"name\":\"Practical Application\",\"average\":5,\"count\":4,\"questions\":{\"93\":5,\"94\":5,\"95\":5,\"96\":5}},\"70\":{\"name\":\"Course Structure & Delivery\",\"average\":5,\"count\":4,\"questions\":{\"97\":5,\"98\":5,\"99\":5,\"100\":5}},\"71\":{\"name\":\"Overall Evaluation\",\"average\":5,\"count\":4,\"questions\":{\"101\":5,\"102\":5,\"103\":5,\"104\":5}},\"overall\":{\"average\":5,\"count\":33}}', 0, NULL, 89),
+(26, 122, 45, 71, 152, '2025-2026', '1st', '{\"72\":1,\"73\":1,\"74\":1,\"75\":1,\"76\":1,\"77\":1,\"78\":1,\"79\":1,\"80\":1,\"81\":1,\"82\":1,\"83\":1,\"84\":1,\"85\":1,\"86\":1,\"87\":1,\"88\":1,\"89\":1,\"90\":1,\"91\":1,\"92\":1,\"93\":1,\"94\":1,\"95\":1,\"96\":1,\"97\":1,\"98\":1,\"99\":1,\"100\":1,\"101\":1,\"102\":1,\"103\":1,\"104\":1}', 1.00, '2026-04-05 06:11:26', '{\"64\":{\"name\":\"Course Content\",\"average\":1,\"count\":5,\"questions\":{\"72\":1,\"73\":1,\"74\":1,\"75\":1,\"76\":1}},\"65\":{\"name\":\"Learning Outcomes\",\"average\":1,\"count\":4,\"questions\":{\"77\":1,\"78\":1,\"79\":1,\"80\":1}},\"66\":{\"name\":\"Learning Materials\",\"average\":1,\"count\":4,\"questions\":{\"81\":1,\"82\":1,\"83\":1,\"84\":1}},\"67\":{\"name\":\"Assessments\",\"average\":1,\"count\":4,\"questions\":{\"85\":1,\"86\":1,\"87\":1,\"88\":1}},\"68\":{\"name\":\"Workload & Difficulty\",\"average\":1,\"count\":4,\"questions\":{\"89\":1,\"90\":1,\"91\":1,\"92\":1}},\"69\":{\"name\":\"Practical Application\",\"average\":1,\"count\":4,\"questions\":{\"93\":1,\"94\":1,\"95\":1,\"96\":1}},\"70\":{\"name\":\"Course Structure & Delivery\",\"average\":1,\"count\":4,\"questions\":{\"97\":1,\"98\":1,\"99\":1,\"100\":1}},\"71\":{\"name\":\"Overall Evaluation\",\"average\":1,\"count\":4,\"questions\":{\"101\":1,\"102\":1,\"103\":1,\"104\":1}},\"overall\":{\"average\":1,\"count\":33}}', 0, NULL, 89);
 
 -- --------------------------------------------------------
 
@@ -1251,7 +1309,8 @@ CREATE TABLE `subject_offerings` (
 
 INSERT INTO `subject_offerings` (`id`, `subject_id`, `program_id`, `year_level`, `section`, `academic_year`, `semester`, `instructor_id`, `status`, `created_at`, `updated_at`, `total_feedbacks`, `academic_period_id`) VALUES
 (69, 45, 1, 4, 'B', '2025-2026', 'Summer', 152, 'archived', '2026-04-04 21:23:37', '2026-04-04 21:26:52', 0, 81),
-(70, 44, 6, 11, 'FAITH', '2025-2026', '1st', 152, 'archived', '2026-04-04 21:23:47', '2026-04-04 21:26:56', 0, 84);
+(70, 44, 6, 11, 'FAITH', '2025-2026', '1st', 152, 'archived', '2026-04-04 21:23:47', '2026-04-04 21:26:56', 0, 84),
+(71, 45, 1, 4, 'B', '2025-2026', '1st', 152, 'active', '2026-04-05 06:00:24', '2026-04-05 06:00:24', 0, 89);
 
 -- --------------------------------------------------------
 
@@ -1369,7 +1428,7 @@ INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role`, `regis
 (172, 'two2@gmail.com', '$2a$12$mtAX3cZr245F2U0xOxGTYOEoSD50m5acGo2mLd6PsJprxUZP9RPTm', 'Instructor Twow', 'instructor', '2026-03-22 09:42:30', 'active'),
 (173, 'three3@gmail.com', '$2a$12$IlXf4FuFWVbd3BTW5xkui.pw00f15OfhW4KyAOF8m1Vs7LzCtDHLW', 'Instructor Three', 'instructor', '2026-03-22 09:43:02', 'active'),
 (174, 'xample@gmail.com', '$2a$12$Mi/A212VsZy./osy5AtMwOqdXIYtnbvKMqU5suIR1tWpmqAMO2Wsy', 'Senior High', 'student', '2026-03-25 04:52:32', 'active'),
-(175, 'twodela@gmail.com', '$2a$12$F18UGXPTzariBe13RCCyku0BfOTTHw0uOYaZD6ENMaqawpT.llCRu', 'Two Dela', 'student', '2026-04-03 20:05:02', 'active');
+(175, 'mageaccfrsl1@gmail.com', '$2a$12$F18UGXPTzariBe13RCCyku0BfOTTHw0uOYaZD6ENMaqawpT.llCRu', 'Two Dela', 'student', '2026-04-03 20:05:02', 'active');
 
 -- --------------------------------------------------------
 
@@ -1481,6 +1540,16 @@ ALTER TABLE `evaluation_periods`
 ALTER TABLE `evaluation_subjects`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `unique_subject_code` (`subject_code`);
+
+--
+-- Indexes for table `feedback_invitations`
+--
+ALTER TABLE `feedback_invitations`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `token` (`token`),
+  ADD KEY `form_id` (`form_id`),
+  ADD KEY `expires_at` (`expires_at`),
+  ADD KEY `used` (`used`);
 
 --
 -- Indexes for table `feedback_template_categories`
@@ -1798,6 +1867,12 @@ ALTER TABLE `evaluation_subjects`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=46;
 
 --
+-- AUTO_INCREMENT for table `feedback_invitations`
+--
+ALTER TABLE `feedback_invitations`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT;
+
+--
 -- AUTO_INCREMENT for table `feedback_template_categories`
 --
 ALTER TABLE `feedback_template_categories`
@@ -1807,13 +1882,13 @@ ALTER TABLE `feedback_template_categories`
 -- AUTO_INCREMENT for table `forms`
 --
 ALTER TABLE `forms`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=604;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=611;
 
 --
 -- AUTO_INCREMENT for table `form_assignments`
 --
 ALTER TABLE `form_assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3479;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3497;
 
 --
 -- AUTO_INCREMENT for table `form_categories`
@@ -1825,7 +1900,7 @@ ALTER TABLE `form_categories`
 -- AUTO_INCREMENT for table `form_deployments`
 --
 ALTER TABLE `form_deployments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=209;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=215;
 
 --
 -- AUTO_INCREMENT for table `form_responses`
@@ -1855,7 +1930,7 @@ ALTER TABLE `instructor_courses`
 -- AUTO_INCREMENT for table `instructor_feedback`
 --
 ALTER TABLE `instructor_feedback`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=50;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=52;
 
 --
 -- AUTO_INCREMENT for table `notificationemails`
@@ -1867,13 +1942,13 @@ ALTER TABLE `notificationemails`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=216;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=236;
 
 --
 -- AUTO_INCREMENT for table `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=1998;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2005;
 
 --
 -- AUTO_INCREMENT for table `question_options`
@@ -1921,7 +1996,7 @@ ALTER TABLE `subject_evaluation_responses`
 -- AUTO_INCREMENT for table `subject_feedback`
 --
 ALTER TABLE `subject_feedback`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
 -- AUTO_INCREMENT for table `subject_instructors`
@@ -1933,7 +2008,7 @@ ALTER TABLE `subject_instructors`
 -- AUTO_INCREMENT for table `subject_offerings`
 --
 ALTER TABLE `subject_offerings`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=71;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=72;
 
 --
 -- AUTO_INCREMENT for table `subject_sections`
@@ -2000,6 +2075,12 @@ ALTER TABLE `evaluation_forms`
   ADD CONSTRAINT `evaluation_forms_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `evaluation_forms_ibfk_2` FOREIGN KEY (`subject_id`) REFERENCES `evaluation_subjects` (`id`) ON DELETE CASCADE,
   ADD CONSTRAINT `evaluation_forms_ibfk_3` FOREIGN KEY (`instructor_id`) REFERENCES `users` (`id`) ON DELETE SET NULL;
+
+--
+-- Constraints for table `feedback_invitations`
+--
+ALTER TABLE `feedback_invitations`
+  ADD CONSTRAINT `feedback_invitations_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `forms`
