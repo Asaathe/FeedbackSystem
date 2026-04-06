@@ -55,7 +55,7 @@ app.use(helmet({
       styleSrc: ["'self'", "'unsafe-inline'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", "data:", "https:", "http:", "blob:"],
-      connectSrc: ["'self'", "http://localhost:5000", "http://localhost:5173"],
+       connectSrc: ["'self'", "http://localhost:5000", "http://localhost:5173", "https://feedbacksystem-production-e7d4.up.railway.app", "https://feedbacts.online"],
     },
   },
   hsts: { maxAge: 31536000, includeSubDomains: true },

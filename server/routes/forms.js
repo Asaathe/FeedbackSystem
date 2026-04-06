@@ -102,18 +102,7 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
   }
 });
 
-// Share responses with instructors route
-router.post("/:id/share-responses", verifyToken, formController.shareResponsesWithInstructors);
-
-// Public routes
-router.get("/", verifyToken, formController.getAllforms);
-
-// Response routes - must be before /:id to avoid route conflicts
-router.get("/my-responses", verifyToken, responseController.getMyResponses);
-router.get("/:id/responses", verifyToken, responseController.getFormResponses);
-router.get("/:id/submission-status", verifyToken, responseController.getFormSubmissionStatus);
-router.post("/:id/submit", verifyToken, responseController.submitFormResponse);
-
+// ✅ PUBLIC ROUTES FIRST - THESE MUST COME BEFORE ANY DYNAMIC /:id ROUTES!
 // Public route to get form details for external feedback (e.g., from email links) - NO authentication required
 router.get("/public/:id", async (req, res) => {
   const { id } = req.params;
@@ -389,6 +378,19 @@ router.post("/public/submit", async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
+// Public route for external feedback (e.g., from email links) - NO authentication required
+// Share responses with instructors route
+router.post("/:id/share-responses", verifyToken, formController.shareResponsesWithInstructors);
+
+// ✅ PROTECTED ROUTES - these come AFTER public routes
+router.get("/", verifyToken, formController.getAllforms);
+
+// Response routes - must be before /:id to avoid route conflicts
+router.get("/my-responses", verifyToken, responseController.getMyResponses);
+router.get("/:id/responses", verifyToken, responseController.getFormResponses);
+router.get("/:id/submission-status", verifyToken, responseController.getFormSubmissionStatus);
+router.post("/:id/submit", verifyToken, responseController.submitFormResponse);
 
 // Deploy route
 router.post("/:id/deploy", verifyToken, formController.deployForm);

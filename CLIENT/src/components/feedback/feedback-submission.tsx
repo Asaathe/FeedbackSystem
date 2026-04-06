@@ -635,7 +635,7 @@ export function FeedbackSubmission({ userRole, externalFormId, onBackToLogin }: 
     }
 
     try {
-      // For external/public mode, use public submission endpoint
+      // For external/public mode, use public API submission
       if (isExternalMode) {
         console.log("Submitting external feedback...");
         const result = await submitPublicFeedback({
