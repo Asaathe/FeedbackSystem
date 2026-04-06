@@ -200,25 +200,6 @@ router.get("/public/:id", async (req, res) => {
         console.error("[DEBUG Public] General date parsing error:", dateError);
         // Continue without date validation if parsing fails
       }
-        }
-
-        if (deployment.end_date) {
-          const endTime = deployment.end_time || '23:59:59';
-          // Create date with explicit timezone handling
-          const endDateStr = `${deployment.end_date}T${endTime}:00+08:00`;
-          console.log("[DEBUG Public] End date string:", endDateStr);
-          const endDate = new Date(endDateStr);
-          console.log("[DEBUG Public] Parsed endDate:", endDate.toISOString(), "now:", now.toISOString());
-          // Compare with current time
-          if (endDate < now) {
-            console.log("[DEBUG Public] Form has ended - blocking access");
-            return res.status(400).json({ success: false, message: "Form submission period has ended" });
-          }
-        }
-      } catch (dateError) {
-        console.error("[DEBUG Public] Date parsing error:", dateError);
-        // Continue without date validation if parsing fails
-      }
     }
     // Note: If no active deployment found, we still allow access for employer feedback forms
     // This allows forms to be accessible immediately after creation without explicit deployment
