@@ -364,6 +364,12 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             });
             result = await response.json();
             console.log("Token-based API result:", result);
+
+            if (!response.ok) {
+              console.error("Token API failed with status:", response.status);
+              console.error("Error response:", result);
+              throw new Error(result.message || "Failed to load form with token");
+            }
           } else if (externalFormId) {
             // Use legacy formId-based API for backward compatibility
             console.log("Making legacy API call to getPublicForm for form ID:", externalFormId);
@@ -389,6 +395,8 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
           if (result.success && result.form) {
             console.log("Form data received successfully!");
+            console.log("Full result:", result);
+            console.log("Form invitation data:", result.form.invitation);
             const form = result.form;
 
             // Handle invitation data from token-based access

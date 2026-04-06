@@ -279,13 +279,25 @@ router.get("/public/t/:token", async (req, res) => {
     const { queryDatabase } = require("../utils/helpers");
 
     // Get invitation data by token
+    console.log("Looking up token in database...");
     const invitations = await queryDatabase(db,
       `SELECT * FROM feedback_invitations
        WHERE token = ? AND used = false AND expires_at > NOW()`,
       [token]
     );
 
+    console.log("Database query result:", invitations);
+
     if (!invitations || invitations.length === 0) {
+      console.log("No valid invitations found for token:", token);
+
+      // Check if token exists at all (for debugging)
+      const allTokens = await queryDatabase(db,
+        `SELECT token, used, expires_at, created_at FROM feedback_invitations WHERE token = ?`,
+        [token]
+      );
+      console.log("Token exists in database:", allTokens);
+
       return res.status(404).json({
         success: false,
         message: "Invalid or expired invitation link"
