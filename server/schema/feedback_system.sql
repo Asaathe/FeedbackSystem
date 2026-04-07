@@ -123,7 +123,7 @@ CREATE TABLE `alumni_employment` (
   `graduation_date` date DEFAULT NULL,
   `company_name` varchar(255) DEFAULT NULL,
   `job_title` varchar(255) DEFAULT NULL,
-  `employment_status` enum('full-time','part-time','contract') DEFAULT NULL,
+  `employment_status` enum('employed','unemployed','full-time','part-time','contract','self-employed') DEFAULT NULL,
   `industry_type` varchar(100) DEFAULT NULL,
   `company_address` varchar(500) DEFAULT NULL,
   `supervisor_name` varchar(255) DEFAULT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE `alumni_employment_tracker_view` (
 --
 
 CREATE TABLE `course_management` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `department` enum('College','Senior High') NOT NULL,
   `program_name` varchar(255) NOT NULL,
   `program_code` varchar(50) NOT NULL,
