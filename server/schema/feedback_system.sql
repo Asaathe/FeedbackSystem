@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Apr 06, 2026 at 05:37 PM
+-- Generation Time: Apr 07, 2026 at 08:57 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -123,7 +123,7 @@ CREATE TABLE `alumni_employment` (
   `graduation_date` date DEFAULT NULL,
   `company_name` varchar(255) DEFAULT NULL,
   `job_title` varchar(255) DEFAULT NULL,
-  `employment_status` enum('employed','unemployed','full-time','part-time','contract','self-employed') DEFAULT NULL,
+  `employment_status` enum('full-time','part-time','contract') DEFAULT NULL,
   `industry_type` varchar(100) DEFAULT NULL,
   `company_address` varchar(500) DEFAULT NULL,
   `supervisor_name` varchar(255) DEFAULT NULL,
@@ -230,7 +230,7 @@ CREATE TABLE `alumni_employment_tracker_view` (
 --
 
 CREATE TABLE `course_management` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL,
   `department` enum('College','Senior High') NOT NULL,
   `program_name` varchar(255) NOT NULL,
   `program_code` varchar(50) NOT NULL,
@@ -239,18 +239,18 @@ CREATE TABLE `course_management` (
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `course_section` varchar(100) DEFAULT NULL
+  `course_section` varchar(100) GENERATED ALWAYS AS (concat(`program_code`,' - ',`year_level`,`section`)) STORED
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `course_management`
 --
 
-INSERT INTO `course_management` (`id`, `department`, `program_name`, `program_code`, `year_level`, `section`, `status`, `created_at`, `updated_at`, `course_section`) VALUES
-(0, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 12, 'LOVE', 'active', '2026-03-18 01:19:10', '2026-03-18 01:19:10', 'ABM - 12LOVE'),
-(1, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'B', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46', 'BSIT - 4B'),
-(2, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'C', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46', 'BSIT - 4C'),
-(3, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'A', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46', 'BSIT - 4A'),
+INSERT INTO `course_management` (`id`, `department`, `program_name`, `program_code`, `year_level`, `section`, `status`, `created_at`, `updated_at`) VALUES
+(0, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 12, 'LOVE', 'active', '2026-03-18 01:19:10', '2026-03-18 01:19:10'),
+(1, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'B', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
+(2, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'C', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
+(3, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'A', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
 (4, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 11, 'LOVE', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
 (5, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 11, 'HOPE', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
 (6, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 11, 'FAITH', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
@@ -357,7 +357,7 @@ CREATE TABLE `evaluation_periods` (
 --
 
 INSERT INTO `evaluation_periods` (`id`, `name`, `start_date`, `end_date`, `is_active`, `academic_year`, `semester`, `created_at`, `updated_at`) VALUES
-(9, 'End of Semester Evaluation Period', '2026-04-05', '2026-04-12', 1, '2025-2026', '2nd Semester', '2026-03-30 22:29:58', '2026-04-04 19:54:18');
+(9, 'End of Semester Evaluation Period', '2026-04-05', '2026-04-12', 0, '2025-2026', '2nd Semester', '2026-03-30 22:29:58', '2026-04-07 09:12:35');
 
 -- --------------------------------------------------------
 
@@ -396,7 +396,7 @@ INSERT INTO `evaluation_subjects` (`id`, `subject_code`, `subject_name`, `depart
 --
 
 CREATE TABLE `feedback_invitations` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `id` int(11) NOT NULL,
   `token` varchar(64) NOT NULL COMMENT 'Secure random token for short links',
   `form_id` int(11) NOT NULL COMMENT 'Reference to forms.id',
   `supervisor_email` varchar(255) NOT NULL,
@@ -405,13 +405,7 @@ CREATE TABLE `feedback_invitations` (
   `alumnus_name` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `expires_at` timestamp NULL DEFAULT NULL,
-  `used` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Whether the invitation has been used',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `token` (`token`),
-  KEY `form_id` (`form_id`),
-  KEY `expires_at` (`expires_at`),
-  KEY `used` (`used`),
-  CONSTRAINT `feedback_invitations_ibfk_1` FOREIGN KEY (`form_id`) REFERENCES `forms` (`id`) ON DELETE CASCADE
+  `used` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Whether the invitation has been used'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 -- --------------------------------------------------------
@@ -545,7 +539,8 @@ INSERT INTO `forms` (`id`, `title`, `description`, `ai_description`, `type`, `ca
 (605, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-06', '2026-04-14', 1, '2026-04-05 07:27:27', '2026-04-05 07:27:27', 0, 0, NULL),
 (606, 'demo', '', '', 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-04', '2026-04-05', 1, '2026-04-05 07:45:38', '2026-04-05 07:46:45', 0, 0, NULL),
 (607, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-05', '2026-04-07', 1, '2026-04-05 08:39:46', '2026-04-05 08:39:46', 0, 0, NULL),
-(610, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Employers - Xample', 'active', NULL, 0, '2026-04-07', '2026-04-07', 1, '2026-04-05 16:49:08', '2026-04-05 16:49:08', 0, 0, NULL);
+(610, 'demo', '', NULL, 'general', 'Course Evaluation', NULL, 'Employers - Xample', 'active', NULL, 0, '2026-04-07', '2026-04-07', 1, '2026-04-05 16:49:08', '2026-04-05 16:49:08', 0, 0, NULL),
+(611, 'demo', 'demo', NULL, 'general', 'Course Evaluation', NULL, 'Students - BSIT - 4B', 'active', NULL, 0, '2026-04-07', '2026-04-08', 1, '2026-04-07 08:42:44', '2026-04-07 08:42:45', 0, 0, NULL);
 
 -- --------------------------------------------------------
 
@@ -580,7 +575,8 @@ INSERT INTO `form_assignments` (`id`, `form_id`, `user_id`, `assigned_at`, `stat
 (3492, 607, 120, '2026-04-05 08:39:46', 'pending'),
 (3493, 607, 122, '2026-04-05 08:39:46', 'pending'),
 (3494, 607, 123, '2026-04-05 08:39:46', 'pending'),
-(3495, 607, 175, '2026-04-05 08:39:46', 'pending');
+(3495, 607, 175, '2026-04-05 08:39:46', 'pending'),
+(3497, 611, 175, '2026-04-07 08:42:45', 'pending');
 
 -- --------------------------------------------------------
 
@@ -635,7 +631,8 @@ INSERT INTO `form_deployments` (`id`, `form_id`, `deployed_by`, `start_date`, `s
 (210, 605, 1, '2026-04-06', '15:27:00', '2026-04-14', '15:27:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 07:27:27'),
 (211, 606, 1, '2026-04-04', '15:45:00', '2026-04-05', '16:45:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 07:45:38'),
 (212, 607, 1, '2026-04-05', '16:39:00', '2026-04-07', '18:39:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-05 08:39:46'),
-(214, 610, 1, '2026-04-07', '00:49:00', '2026-04-07', '01:49:00', '{\"target_audience\":\"Employers - Xample\",\"department\":null,\"course_year_section\":\"Xample\",\"company\":null}', 'active', '2026-04-05 16:49:08');
+(214, 610, 1, '2026-04-07', '00:49:00', '2026-04-07', '01:49:00', '{\"target_audience\":\"Employers - Xample\",\"department\":null,\"course_year_section\":\"Xample\",\"company\":null}', 'active', '2026-04-05 16:49:08'),
+(215, 611, 1, '2026-04-07', '16:42:00', '2026-04-08', '17:42:00', '{\"target_audience\":\"Students - BSIT - 4B\",\"department\":\"College\",\"course_year_section\":\"BSIT - 4B\",\"company\":null}', 'active', '2026-04-07 08:42:45');
 
 -- --------------------------------------------------------
 
@@ -954,7 +951,8 @@ INSERT INTO `notifications` (`id`, `user_id`, `type`, `title`, `message`, `is_re
 (232, 166, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:52', '2026-04-05 08:39:52'),
 (233, 174, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:52', '2026-04-05 08:39:52'),
 (234, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-07.', 0, 607, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-07\",\"priority\":\"high\"}', '2026-04-05 08:39:53', '2026-04-05 08:39:53'),
-(235, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-06.', 0, 608, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-06\",\"priority\":\"high\"}', '2026-04-05 08:42:34', '2026-04-05 08:42:34');
+(235, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-06.', 0, 608, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-06\",\"priority\":\"high\"}', '2026-04-05 08:42:34', '2026-04-05 08:42:34'),
+(236, 175, 'form_assigned', 'New Course Evaluation Form Assigned', 'You have been assigned the form \"demo\". Please complete it by 2026-04-08.', 0, 611, NULL, '{\"form_title\":\"demo\",\"form_category\":\"Course Evaluation\",\"due_date\":\"2026-04-08\",\"priority\":\"high\"}', '2026-04-07 08:42:45', '2026-04-07 08:42:45');
 
 -- --------------------------------------------------------
 
@@ -985,7 +983,8 @@ INSERT INTO `questions` (`id`, `form_id`, `section_id`, `question_text`, `questi
 (1999, 605, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
 (2000, 606, NULL, 'demo123!', 'text', NULL, 0, NULL, NULL, 0),
 (2001, 607, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
-(2004, 610, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0);
+(2004, 610, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0),
+(2005, 611, NULL, 'demo', 'text', NULL, 0, NULL, NULL, 0);
 
 -- --------------------------------------------------------
 
@@ -1167,7 +1166,8 @@ INSERT INTO `students` (`id`, `user_id`, `studentID`, `contact_number`, `image`,
 (110, 165, NULL, '', NULL, 1, NULL, NULL, NULL),
 (111, 166, NULL, '', NULL, 4, NULL, NULL, NULL),
 (113, 174, NULL, '', NULL, 5, NULL, NULL, NULL),
-(114, 175, NULL, '', 'https://res.cloudinary.com/dgkugadfe/image/upload/v1775246727/feedbacts/profiles/student/7cb359b9-52a4-40bf-b871-e4477988269b.jpg', 1, NULL, NULL, NULL);
+(114, 175, NULL, '', 'https://res.cloudinary.com/dgkugadfe/image/upload/v1775246727/feedbacts/profiles/student/7cb359b9-52a4-40bf-b871-e4477988269b.jpg', 1, NULL, NULL, NULL),
+(115, 176, '71973', '', NULL, 6, NULL, NULL, NULL);
 
 -- --------------------------------------------------------
 
@@ -1428,7 +1428,8 @@ INSERT INTO `users` (`id`, `email`, `password_hash`, `full_name`, `role`, `regis
 (172, 'two2@gmail.com', '$2a$12$mtAX3cZr245F2U0xOxGTYOEoSD50m5acGo2mLd6PsJprxUZP9RPTm', 'Instructor Twow', 'instructor', '2026-03-22 09:42:30', 'active'),
 (173, 'three3@gmail.com', '$2a$12$IlXf4FuFWVbd3BTW5xkui.pw00f15OfhW4KyAOF8m1Vs7LzCtDHLW', 'Instructor Three', 'instructor', '2026-03-22 09:43:02', 'active'),
 (174, 'xample@gmail.com', '$2a$12$Mi/A212VsZy./osy5AtMwOqdXIYtnbvKMqU5suIR1tWpmqAMO2Wsy', 'Senior High', 'student', '2026-03-25 04:52:32', 'active'),
-(175, 'mageaccfrsl1@gmail.com', '$2a$12$F18UGXPTzariBe13RCCyku0BfOTTHw0uOYaZD6ENMaqawpT.llCRu', 'Two Dela', 'student', '2026-04-03 20:05:02', 'active');
+(175, 'mageaccfrsl1@gmail.com', '$2a$12$F18UGXPTzariBe13RCCyku0BfOTTHw0uOYaZD6ENMaqawpT.llCRu', 'Two Dela', 'student', '2026-04-03 20:05:02', 'active'),
+(176, 'koko@gmail.com', '$2a$12$ZApywTQjUp.7Gkapb.WluOJxsLf6/1SF0WFUw44Ok.PCFQ40/euqK', 'Dadad', 'student', '2026-04-07 08:37:21', 'pending');
 
 -- --------------------------------------------------------
 
@@ -1882,13 +1883,13 @@ ALTER TABLE `feedback_template_categories`
 -- AUTO_INCREMENT for table `forms`
 --
 ALTER TABLE `forms`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=611;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=612;
 
 --
 -- AUTO_INCREMENT for table `form_assignments`
 --
 ALTER TABLE `form_assignments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3497;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=3498;
 
 --
 -- AUTO_INCREMENT for table `form_categories`
@@ -1900,7 +1901,7 @@ ALTER TABLE `form_categories`
 -- AUTO_INCREMENT for table `form_deployments`
 --
 ALTER TABLE `form_deployments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=215;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=216;
 
 --
 -- AUTO_INCREMENT for table `form_responses`
@@ -1942,13 +1943,13 @@ ALTER TABLE `notificationemails`
 -- AUTO_INCREMENT for table `notifications`
 --
 ALTER TABLE `notifications`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=236;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=237;
 
 --
 -- AUTO_INCREMENT for table `questions`
 --
 ALTER TABLE `questions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2005;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2006;
 
 --
 -- AUTO_INCREMENT for table `question_options`
@@ -1978,7 +1979,7 @@ ALTER TABLE `shared_responses`
 -- AUTO_INCREMENT for table `students`
 --
 ALTER TABLE `students`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=115;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=116;
 
 --
 -- AUTO_INCREMENT for table `student_promotion_history`
@@ -2032,7 +2033,7 @@ ALTER TABLE `system_settings`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=176;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=177;
 
 --
 -- Constraints for dumped tables
