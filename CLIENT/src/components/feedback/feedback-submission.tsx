@@ -477,6 +477,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               imageUrl: form.image_url,
               questions: form.questions || [],
               questionCount: form.questions?.length || 0,
+              sections: form.sections || []
             };
             console.log("Final form data questions:", formData.questions);
             console.log("Final form data questionCount:", formData.questionCount);

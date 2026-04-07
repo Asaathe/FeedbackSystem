@@ -194,6 +194,23 @@ router.get("/public/:id", async (req, res) => {
 
     // SKIP ALL DATE VALIDATION - Just check if form exists
 
+    // Get form sections
+    let sections = [];
+    try {
+      const sectionsData = await queryDatabase(db,
+        `SELECT * FROM sections WHERE form_id = ? ORDER BY order_index ASC`,
+        [id]
+      );
+      sections = sectionsData.map(s => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        order: s.order_index
+      }));
+    } catch (sectionsError) {
+      console.error("[DEBUG Public] Error fetching sections:", sectionsError);
+    }
+
     // Get form questions with options
     let questions = [];
     try {
@@ -261,7 +278,8 @@ router.get("/public/:id", async (req, res) => {
       start_date: form.start_date,
       end_date: form.end_date,
       image_url: form.image_url,
-      questions: questions || []
+      questions: questions || [],
+      sections: sections || []
     };
 
     console.log("Public form fetched successfully!");
@@ -341,6 +359,23 @@ router.get("/public/t/:token", async (req, res) => {
 
     const form = forms[0];
 
+    // Get form sections
+    let sections = [];
+    try {
+      const sectionsData = await queryDatabase(db,
+        `SELECT * FROM sections WHERE form_id = ? ORDER BY order_index ASC`,
+        [invitation.form_id]
+      );
+      sections = sectionsData.map(s => ({
+        id: s.id,
+        title: s.title,
+        description: s.description,
+        order: s.order_index
+      }));
+    } catch (sectionsError) {
+      console.error("[DEBUG Token] Error fetching sections:", sectionsError);
+    }
+
     // Get form questions with options
     let questions = [];
     try {
@@ -400,6 +435,7 @@ router.get("/public/t/:token", async (req, res) => {
       end_date: form.end_date,
       image_url: form.image_url,
       questions: questions || [],
+      sections: sections || [],
       // Include invitation data for pre-filling
       invitation: {
         supervisorEmail: invitation.supervisor_email,
