@@ -133,8 +133,8 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 
     console.log("Invitation stored successfully, result:", insertResult);
 
-    // Create secure short link using token
-    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/t/${token}`;
+    // Create secure short link using token (API route that Railway will definitely handle)
+    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/api/forms/feedback/${token}`;
     console.log("Secure short feedback link:", shortLink);
 
     console.log("Calling emailService.sendFeedbackInvitation...");
@@ -409,29 +409,29 @@ router.get("/public/t/:token", async (req, res) => {
   }
 });
 
-// Catch token-based feedback URLs and serve embedded page
-router.get("/feedback/t/:token", (req, res) => {
+// API route for token-based feedback access (guaranteed to work with Railway)
+router.get("/feedback/:token", (req, res) => {
   const token = req.params.token;
-  console.log("🎯 SERVER HANDLING TOKEN URL:", token);
+  console.log("🎯 API TOKEN ROUTE HIT:", token);
 
-  // Create a simple HTML page that redirects with the token
+  // Create a simple HTML page that stores token and redirects
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
     <title>Redirecting to Feedback...</title>
     <script>
-        // Set token in sessionStorage and redirect
+        // Store token and redirect to main app
         sessionStorage.setItem('external_feedback_token', '${token}');
         window.location.href = '${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}';
     </script>
 </head>
 <body>
-    <p>Redirecting to feedback form...</p>
+    <p>Loading feedback form...</p>
 </body>
 </html>`;
 
-  console.log("Serving redirect page with token:", token);
+  console.log("Serving API redirect page with token:", token);
   res.send(html);
 });
 
