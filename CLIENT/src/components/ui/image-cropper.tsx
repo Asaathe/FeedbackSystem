@@ -182,20 +182,32 @@ export function ImageCropper({
     drawCanvas();
   }, [drawCanvas]);
 
-  // Get mouse position relative to canvas
-  const getMousePos = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+  // Get position relative to canvas (works for both mouse and touch)
+  const getPosition = useCallback((clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
-    
+
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
-    
+
     return {
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
+      x: (clientX - rect.left) * scaleX,
+      y: (clientY - rect.top) * scaleY,
     };
   }, []);
+
+  // Get mouse position relative to canvas
+  const getMousePos = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    return getPosition(e.clientX, e.clientY);
+  }, [getPosition]);
+
+  // Get touch position relative to canvas
+  const getTouchPos = useCallback((e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (e.touches.length === 0) return { x: 0, y: 0 };
+    const touch = e.touches[0];
+    return getPosition(touch.clientX, touch.clientY);
+  }, [getPosition]);
 
   // Check if mouse is on a resize handle
   const getResizeHandle = useCallback((pos: { x: number; y: number }): HandleType => {
@@ -223,11 +235,12 @@ export function ImageCropper({
            pos.y >= cropBox.y && pos.y <= cropBox.y + cropBox.height;
   }, [cropBox]);
 
-  // Handle mouse down
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
+  // Handle pointer down (mouse or touch)
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    const pos = getPosition(e.clientX, e.clientY);
     const handle = getResizeHandle(pos);
-    
+
     if (handle) {
       setIsResizing(true);
       setResizeHandle(handle);
@@ -239,37 +252,39 @@ export function ImageCropper({
     }
   };
 
-  // Handle mouse move
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
+  // Handle pointer move
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const pos = getPosition(e.clientX, e.clientY);
     const handle = getResizeHandle(pos);
-    
-    // Update cursor
-    if (handle) {
-      const cursorMap: Record<ResizeHandle, string> = {
-        'nw': 'nw-resize',
-        'ne': 'ne-resize',
-        'sw': 'sw-resize',
-        'se': 'se-resize',
-        'n': 'n-resize',
-        's': 's-resize',
-        'e': 'e-resize',
-        'w': 'w-resize',
-      };
-      canvasRef.current!.style.cursor = cursorMap[handle];
-    } else if (isInsideCropBox(pos)) {
-      canvasRef.current!.style.cursor = 'move';
-    } else {
-      canvasRef.current!.style.cursor = 'default';
+
+    // Update cursor (only for mouse, not touch)
+    if (e.pointerType === 'mouse') {
+      if (handle) {
+        const cursorMap: Record<ResizeHandle, string> = {
+          'nw': 'nw-resize',
+          'ne': 'ne-resize',
+          'sw': 'sw-resize',
+          'se': 'se-resize',
+          'n': 'n-resize',
+          's': 's-resize',
+          'e': 'e-resize',
+          'w': 'w-resize',
+        };
+        canvasRef.current!.style.cursor = cursorMap[handle];
+      } else if (isInsideCropBox(pos)) {
+        canvasRef.current!.style.cursor = 'move';
+      } else {
+        canvasRef.current!.style.cursor = 'default';
+      }
     }
-    
+
     if (isResizing && resizeHandle) {
       const dx = pos.x - dragStart.x;
       const dy = pos.y - dragStart.y;
       const minSize = 50;
-      
+
       let newCropBox = { ...cropStart };
-      
+
       switch (resizeHandle) {
         case 'nw':
           newCropBox.x = Math.min(cropStart.x + dx, cropStart.x + cropStart.width - minSize);
@@ -306,7 +321,7 @@ export function ImageCropper({
           newCropBox.width = cropStart.width - (newCropBox.x - cropStart.x);
           break;
       }
-      
+
       // Constrain to image bounds
       if (imageData) {
         newCropBox.x = Math.max(0, newCropBox.x);
@@ -314,25 +329,25 @@ export function ImageCropper({
         newCropBox.width = Math.min(imageData.width - newCropBox.x, newCropBox.width);
         newCropBox.height = Math.min(imageData.height - newCropBox.y, newCropBox.height);
       }
-      
+
       setCropBox(newCropBox);
     } else if (isDragging) {
       const dx = pos.x - dragStart.x;
       const dy = pos.y - dragStart.y;
-      
+
       let newCropBox = {
         x: cropStart.x + dx,
         y: cropStart.y + dy,
         width: cropStart.width,
         height: cropStart.height,
       };
-      
+
       // Constrain to image bounds
       if (imageData) {
         newCropBox.x = Math.max(0, Math.min(imageData.width - newCropBox.width, newCropBox.x));
         newCropBox.y = Math.max(0, Math.min(imageData.height - newCropBox.height, newCropBox.y));
       }
-      
+
       setCropBox(newCropBox);
     }
   };
@@ -453,15 +468,17 @@ export function ImageCropper({
       >
         <canvas
           ref={canvasRef}
-          onMouseDown={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseUp={handleMouseUp}
-          onMouseLeave={handleMouseLeave}
-          className="max-w-full h-auto cursor-crosshair"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handleMouseUp}
+          onPointerLeave={handleMouseLeave}
+          onTouchStart={(e) => e.preventDefault()} // Prevent scrolling on touch
+          className="max-w-full h-auto cursor-crosshair touch-none"
           style={{
             maxWidth: '100%',
             height: 'auto',
             display: 'block',
+            touchAction: 'none', // Prevent default touch behaviors
           }}
         />
       </div>

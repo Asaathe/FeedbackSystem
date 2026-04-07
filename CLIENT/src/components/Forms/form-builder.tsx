@@ -265,6 +265,7 @@ export function FormBuilder({
   const [settingsOpen, setSettingsOpen] = useState(true);
   const [cropperDialogOpen, setCropperDialogOpen] = useState(false);
   const [fileToCrop, setFileToCrop] = useState<File | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   // AI Question Generation States
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
@@ -1007,6 +1008,7 @@ export function FormBuilder({
 
   // Handle crop complete - upload cropped image
   const handleCropComplete = async (croppedImageDataUrl: string) => {
+    setUploadingImage(true);
     try {
       // Convert data URL to File
       const response = await fetch(croppedImageDataUrl);
@@ -1045,6 +1047,7 @@ export function FormBuilder({
         description: "Network error occurred",
       });
     } finally {
+      setUploadingImage(false);
       setCropperDialogOpen(false);
       setFileToCrop(null);
     }
@@ -1091,19 +1094,16 @@ export function FormBuilder({
                     open={saveDialogOpen}
                     onOpenChange={setSaveDialogOpen}
                   >
-                    <DialogTrigger asChild>
-                      <Button
-                        variant="outline"
-                        disabled={loading}
-                        size="sm"
-                        className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
-                      >
-                        <Save className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">
-                          {loading ? "Saving..." : "Save"}
-                        </span>
-                      </Button>
-                    </DialogTrigger>
+                  <DialogTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
+                    >
+                      <Eye className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">View</span>
+                    </Button>
+                  </DialogTrigger>
                     <DialogContent className="max-w-md">
                       <DialogHeader>
                         <DialogTitle>Save as Draft</DialogTitle>
@@ -1147,13 +1147,13 @@ export function FormBuilder({
                       <span className="hidden sm:inline">View</span>
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
-                    <DialogHeader>
-                      <DialogTitle>Form View</DialogTitle>
-                      <DialogDescription>
-                        This is how respondents will see your feedback form
-                      </DialogDescription>
-                    </DialogHeader>
+                <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto scrollbar-ghost">
+                  <DialogHeader>
+                    <DialogTitle>Form View</DialogTitle>
+                    <DialogDescription>
+                      This is how respondents will see your feedback form
+                    </DialogDescription>
+                  </DialogHeader>
                     <div className="py-4">
                       {/* Preview Form */}
                       <div className="bg-white rounded-lg border shadow-sm">
@@ -2121,6 +2121,7 @@ export function FormBuilder({
                       onChange={(e) => setFormTitle(e.target.value.slice(0, 50))}
                       placeholder="Name your feedback form"
                       maxLength={50}
+                      className="border border-gray-200"
                     />
                   </div>
 
@@ -2132,7 +2133,7 @@ export function FormBuilder({
                       onChange={(e) => setFormDescription(e.target.value.slice(0, 100))}
                       placeholder="Describe your form (optional)"
                       rows={3}
-                      className="resize-none"
+                      className="resize-none border border-gray-200"
                       maxLength={100}
                     />
                   </div>
@@ -2151,7 +2152,7 @@ export function FormBuilder({
                       onChange={(e) => setAiDescription(e.target.value)}
                       placeholder="Describe the purpose of your form"
                       rows={3}
-                      className="resize-none"
+                      className="resize-none border border-gray-200"
                     />
                     <Button
                       onClick={handleGenerateQuestions}
@@ -2186,29 +2187,43 @@ export function FormBuilder({
                       <div className="border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 transition-colors">
                         <label
                           htmlFor="form-image-upload"
-                          className="cursor-pointer"
+                          className={`cursor-pointer ${uploadingImage ? 'cursor-not-allowed' : ''}`}
                         >
-                          <div className="flex flex-col items-center justify-center py-8 px-4">
-                            <Upload className="w-10 h-10 text-gray-400 mb-2" />
+                      <div className="flex flex-col items-center justify-center py-8 px-4">
+                            {uploadingImage ? (
+                              <Loader2 className="w-10 h-10 text-blue-500 mb-2 animate-spin" />
+                            ) : (
+                              <Upload className="w-10 h-10 text-gray-400 mb-2" />
+                            )}
                             <p className="text-sm">
-                              <span className="text-green-600">
-                                Click to upload
-                              </span>{" "}
-                              or drag and drop
+                              {uploadingImage ? (
+                                <span className="text-blue-600">Uploading image...</span>
+                              ) : (
+                                <>
+                                  <span className="text-green-600">
+                                    Click to upload
+                                  </span>{" "}
+                                  or drag and drop
+                                </>
+                              )}
                             </p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              JPEG, PNG, GIF, WebP • Max 500KB
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1">
-                              Recommended: 800×200px for best display
-                            </p>
-                            
+                            {!uploadingImage && (
+                              <>
+                                <p className="text-xs text-gray-500 mt-1">
+                                  JPEG, PNG, GIF, WebP • Max 500KB
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  Recommended: 800×200px for best display
+                                </p>
+                              </>
+                            )}
                           </div>
                           <input
                             id="form-image-upload"
                             type="file"
                             accept="image/*"
                             className="hidden"
+                            disabled={uploadingImage}
                             onChange={handleImageFileSelect}
                           />
                         </label>
@@ -2272,7 +2287,7 @@ export function FormBuilder({
                       onValueChange={setFormCategory}
                       disabled={loadingCategories}
                     >
-                      <SelectTrigger className="h-10">
+                      <SelectTrigger className="h-10 border border-gray-200">
                         <SelectValue placeholder="Select category" />
                       </SelectTrigger>
                       <SelectContent>
@@ -2455,7 +2470,7 @@ export function FormBuilder({
 
       {/* Image Cropper Dialog */}
       <Dialog open={cropperDialogOpen} onOpenChange={setCropperDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
+        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] overflow-y-auto scrollbar-ghost">
           <DialogHeader>
             <DialogTitle>Crop Image</DialogTitle>
             <DialogDescription>
@@ -2463,12 +2478,22 @@ export function FormBuilder({
             </DialogDescription>
           </DialogHeader>
           {fileToCrop && (
-            <ImageCropper
-              imageFile={fileToCrop}
-              onCropComplete={handleCropComplete}
-              onCancel={handleCropCancel}
-              aspectRatio={4}
-            />
+            <div className="space-y-4">
+              <ImageCropper
+                imageFile={fileToCrop}
+                onCropComplete={handleCropComplete}
+                onCancel={handleCropCancel}
+                aspectRatio={4}
+              />
+              {uploadingImage && (
+                <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                    <span className="text-sm text-blue-700">Uploading image...</span>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </DialogContent>
       </Dialog>
