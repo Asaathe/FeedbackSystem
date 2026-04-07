@@ -304,7 +304,19 @@ export default function App() {
       }
     }
 
-    // Check if URL is like /feedback/123 (legacy format)
+    // FIRST: Check for QUERY PARAMETER TOKEN FORMAT (most reliable for SPA hosting)
+    const params = new URLSearchParams(window.location.search);
+    const tokenParam = params.get('token');
+    if (tokenParam) {
+      console.log("✅ DETECTED QUERY PARAM TOKEN FEEDBACK URL with token:", tokenParam);
+      setExternalFeedbackToken(tokenParam);
+      setExternalFeedbackFormId(null);
+      sessionStorage.setItem('external_feedback_token', tokenParam);
+      sessionStorage.removeItem('external_feedback_form_id');
+      return;
+    }
+
+    // Check if URL is like /feedback/123 (legacy format) - fallback support
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
     if (feedbackMatch && feedbackMatch[1]) {
       console.log("✅ DETECTED LEGACY FEEDBACK URL with form ID:", feedbackMatch[1]);
@@ -315,10 +327,10 @@ export default function App() {
       sessionStorage.removeItem('external_feedback_token');
     }
 
-    // Check if URL is like /feedback/t/abc123 (new secure format - 32 char token)
+    // Check if URL is like /feedback/t/abc123 (path-based token format) - fallback support
     const tokenMatch = path.match(/^\/feedback\/t\/([a-f0-9]{32})$/);
     if (tokenMatch && tokenMatch[1]) {
-      console.log("✅ DETECTED TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
+      console.log("✅ DETECTED PATH TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
       setExternalFeedbackToken(tokenMatch[1]);
       setExternalFeedbackFormId(null); // Clear formId for token format
       // Persist in sessionStorage

@@ -133,8 +133,8 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 
     console.log("Invitation stored successfully, result:", insertResult);
 
-    // TEMPORARILY USE LEGACY URL FORMAT (that we know works)
-    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/${formId}?supervisorEmail=${encodeURIComponent(supervisorEmail)}&supervisorName=${encodeURIComponent(supervisorName)}&companyName=${encodeURIComponent(companyName)}&alumnusName=${encodeURIComponent(finalAlumnusName)}`;
+    // Use RELIABLE QUERY PARAMETER TOKEN FORMAT that works with all SPA hosting
+    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback?token=${token}`;
     console.log("Legacy feedback link:", shortLink);
 
     console.log("Calling emailService.sendFeedbackInvitation...");
@@ -277,9 +277,21 @@ router.get("/public/:id", async (req, res) => {
   }
 });
 
-// Token-based form loading for secure short links
+// Query parameter token route (for new format: /api/forms/public?token=xxx)
+router.get("/public", async (req, res) => {
+  const token = req.query.token;
+  if (!token) {
+    return res.status(400).json({ success: false, message: "Token required" });
+  }
+  
+  // Forward to existing token handler
+  req.params.token = token;
+  router.handle(req, res, () => {});
+});
+
+// Token-based form loading for secure links - handle both path-based and query-based tokens
 router.get("/public/t/:token", async (req, res) => {
-  const { token } = req.params;
+  const token = req.params.token || req.query.token;
 
   console.log("=== Token-based form access ===");
   console.log("Full URL:", req.url);
