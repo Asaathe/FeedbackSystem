@@ -409,34 +409,30 @@ router.get("/public/t/:token", async (req, res) => {
   }
 });
 
-// Catch token-based feedback URLs and serve the React app directly
+// Catch token-based feedback URLs and serve embedded page
 router.get("/feedback/t/:token", (req, res) => {
   const token = req.params.token;
-  console.log("🎯 SERVER SERVING TOKEN URL:", token);
-  console.log("Request URL:", req.url);
+  console.log("🎯 SERVER HANDLING TOKEN URL:", token);
 
-  try {
-    // Path to the built React app's index.html
-    const indexPath = path.join(__dirname, '../../CLIENT/dist/index.html');
+  // Create a simple HTML page that redirects with the token
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Redirecting to Feedback...</title>
+    <script>
+        // Set token in sessionStorage and redirect
+        sessionStorage.setItem('external_feedback_token', '${token}');
+        window.location.href = '${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}';
+    </script>
+</head>
+<body>
+    <p>Redirecting to feedback form...</p>
+</body>
+</html>`;
 
-    if (fs.existsSync(indexPath)) {
-      let html = fs.readFileSync(indexPath, 'utf8');
-
-      // Inject the token as a global variable that React can read
-      const tokenScript = `<script>window.EXTERNAL_FEEDBACK_TOKEN="${token}";</script>`;
-      html = html.replace('<head>', `<head>${tokenScript}`);
-
-      console.log("✅ Serving React app with embedded token:", token);
-      res.send(html);
-    } else {
-      console.log("❌ CLIENT/dist/index.html not found at:", indexPath);
-      // Fallback: redirect to main app
-      res.redirect(302, `/?external_token=${token}`);
-    }
-  } catch (error) {
-    console.error("Error serving token URL:", error);
-    res.redirect(302, `/?external_token=${token}`);
-  }
+  console.log("Serving redirect page with token:", token);
+  res.send(html);
 });
 
 // Public route for external feedback (e.g., from email links) - NO authentication required

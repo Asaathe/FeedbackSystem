@@ -171,8 +171,14 @@ export default function App() {
 
   // Check for embedded token from server-side serving (for token URLs)
   const embeddedToken = (window as any).EXTERNAL_FEEDBACK_TOKEN;
+  const sessionToken = sessionStorage.getItem('external_feedback_token');
+
   if (embeddedToken) {
     console.log("🎯 EMBEDDED TOKEN DETECTED:", embeddedToken);
+  }
+  if (sessionToken) {
+    console.log("🎯 SESSION TOKEN DETECTED:", sessionToken);
+    // Will be cleared after state is set
   }
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -182,7 +188,11 @@ export default function App() {
   
   // External feedback form ID (for public feedback links)
   const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(null);
-  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>((window as any).EXTERNAL_FEEDBACK_TOKEN || null);
+  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>(
+    (window as any).EXTERNAL_FEEDBACK_TOKEN ||
+    sessionStorage.getItem('external_feedback_token') ||
+    null
+  );
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
     undefined
   );
@@ -257,7 +267,7 @@ export default function App() {
       // Clean up the URL parameter
       const newUrl = window.location.pathname + (window.location.hash || '');
       window.history.replaceState({}, '', newUrl);
-      alert("Token redirect detected! Token: " + externalTokenParam);
+      console.log("✅ External feedback token set from redirect");
       return;
     }
 
@@ -312,6 +322,14 @@ export default function App() {
       }
     } else {
       console.log("ℹ️ URL does not contain feedback path");
+    }
+  }, []);
+
+  // Clean up session token after component mounts
+  useEffect(() => {
+    if (sessionStorage.getItem('external_feedback_token')) {
+      console.log("🧹 Cleaning up session token");
+      sessionStorage.removeItem('external_feedback_token');
     }
   }, []);
 
