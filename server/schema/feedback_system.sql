@@ -239,18 +239,18 @@ CREATE TABLE `course_management` (
   `status` enum('active','inactive') DEFAULT 'active',
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
-  `course_section` varchar(100) GENERATED ALWAYS AS (concat(`program_code`,' - ',`year_level`,`section`)) STORED
+  `course_section` varchar(100) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 --
 -- Dumping data for table `course_management`
 --
 
-INSERT INTO `course_management` (`id`, `department`, `program_name`, `program_code`, `year_level`, `section`, `status`, `created_at`, `updated_at`) VALUES
-(0, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 12, 'LOVE', 'active', '2026-03-18 01:19:10', '2026-03-18 01:19:10'),
-(1, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'B', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
-(2, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'C', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
-(3, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'A', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
+INSERT INTO `course_management` (`id`, `department`, `program_name`, `program_code`, `year_level`, `section`, `status`, `created_at`, `updated_at`, `course_section`) VALUES
+(0, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 12, 'LOVE', 'active', '2026-03-18 01:19:10', '2026-03-18 01:19:10', 'ABM - 12LOVE'),
+(1, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'B', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46', 'BSIT - 4B'),
+(2, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'C', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46', 'BSIT - 4C'),
+(3, 'College', 'Bachelor of Science and Technology in Information Technology', 'BSIT', 4, 'A', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46', 'BSIT - 4A'),
 (4, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 11, 'LOVE', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
 (5, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 11, 'HOPE', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),
 (6, 'Senior High', 'Accountancy, Business, and Management', 'ABM', 11, 'FAITH', 'active', '2026-03-13 21:32:46', '2026-03-13 21:32:46'),

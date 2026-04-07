@@ -53,8 +53,9 @@ const createProgram = async (req, res) => {
       });
     }
 
-    const query = "INSERT INTO course_management (department, program_name, program_code, year_level, section, status) VALUES (?, ?, ?, ?, ?, ?)";
-    db.query(query, [department, program_name, program_code, yearLevelInt, section, status || 'active'], (err, result) => {
+    const courseSection = `${program_code} - ${yearLevelInt}${section}`;
+    const query = "INSERT INTO course_management (department, program_name, program_code, year_level, section, status, course_section) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    db.query(query, [department, program_name, program_code, yearLevelInt, section, status || 'active', courseSection], (err, result) => {
       if (err) {
         console.error("Error creating program:", err);
         if (err.code === "ER_DUP_ENTRY") {
@@ -109,8 +110,9 @@ const updateProgram = async (req, res) => {
       });
     }
 
-    const query = "UPDATE course_management SET department = ?, program_name = ?, program_code = ?, year_level = ?, section = ?, status = ? WHERE id = ?";
-    db.query(query, [department, program_name, program_code, yearLevelInt, section, status, id], (err, result) => {
+    const courseSection = `${program_code} - ${yearLevelInt}${section}`;
+    const query = "UPDATE course_management SET department = ?, program_name = ?, program_code = ?, year_level = ?, section = ?, status = ?, course_section = ? WHERE id = ?";
+    db.query(query, [department, program_name, program_code, yearLevelInt, section, status, courseSection, id], (err, result) => {
       if (err) {
         console.error("Error updating program:", err);
         if (err.code === "ER_DUP_ENTRY") {
