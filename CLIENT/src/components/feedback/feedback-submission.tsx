@@ -35,7 +35,7 @@ import {
   PublishedForm,
   checkFormSubmissionStatus,
 } from "../../services/publishedFormsService";
-import API_BASE from '../config/api';
+import API_BASE from '../../config/api';
 import { getForm } from "../../services/formManagementService";
 import { getAuthToken } from "../../utils/auth";
 import { submitPublicFeedback, getPublicForm } from "../../services/formManagementService";
@@ -81,7 +81,21 @@ function ContentRenderer({
     );
   }
 
-  if (isExternalMode && !selectedForm) {
+  if (isExternalMode && loading) {
+    return (
+      <div className="text-center py-8">
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500 mb-4"></div>
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          Loading Feedback Form...
+        </h3>
+        <p className="text-gray-600">
+          Please wait while we load your feedback form.
+        </p>
+      </div>
+    );
+  }
+
+  if (isExternalMode && !selectedForm && !loading) {
     return (
       <div className="text-center py-8">
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
