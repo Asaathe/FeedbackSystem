@@ -516,7 +516,7 @@ export function FeedbackTemplate() {
                           onClick={() => toggleExpanded(mainCategory.id)}
                           className="mr-2"
                         >
-                          <span className="text-xs text-green-600 mr-1">{subcategories.length} subcategories</span>
+                          <span className="hidden sm:inline text-xs text-green-600 mr-1">{subcategories.length} subcategories</span>
                           <ChevronRight className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                         </Button>
                       )}
@@ -763,7 +763,7 @@ export function FeedbackTemplate() {
 
       {/* Preview Dialog - Full Form Preview */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto scrollbar-ghost">
           <DialogHeader>
             <DialogTitle>Form View</DialogTitle>
             <DialogDescription>
@@ -814,10 +814,10 @@ export function FeedbackTemplate() {
                         {/* Subcategories with ratings - Google Forms Checkbox Grid Style */}
                         {getSubcategories(category.id).length > 0 && (
                           <div className="mt-4 overflow-x-auto border rounded-lg shadow-sm">
-                            <table className="w-full border-collapse bg-white">
+                            <table className="w-full border-collapse bg-white min-w-[600px]">
                               <thead>
                                 <tr className="bg-gray-100">
-                                  <th className="text-left py-3 px-4 font-semibold text-gray-700 text-sm min-w-[180px] border-b border-r">
+                                  <th className="text-left py-2 sm:py-3 px-2 sm:px-4 font-semibold text-gray-700 text-xs sm:text-sm min-w-[120px] sm:min-w-[180px] border-b border-r">
                                     Criteria
                                   </th>
                                   {[
@@ -827,24 +827,25 @@ export function FeedbackTemplate() {
                                     { value: 2, label: 'Disagree' },
                                     { value: 1, label: 'Strongly Disagree' }
                                   ].map((option) => (
-                                    <th 
-                                      key={option.value} 
-                                      className="text-center py-3 px-4 font-semibold text-gray-700 text-sm min-w-[90px] border-b border-r last:border-r-0"
+                                    <th
+                                      key={option.value}
+                                      className="text-center py-2 sm:py-3 px-1 sm:px-4 font-semibold text-gray-700 text-xs sm:text-sm min-w-[60px] sm:min-w-[90px] border-b border-r last:border-r-0"
                                     >
-                                      {option.label}
+                                      <span className="hidden sm:block">{option.label}</span>
+                                      <span className="sm:hidden">{option.value}</span>
                                     </th>
                                   ))}
                                 </tr>
                               </thead>
                               <tbody>
                                 {getSubcategories(category.id).map((sub, subIndex) => (
-                                  <tr 
-                                    key={sub.id} 
+                                  <tr
+                                    key={sub.id}
                                     className={`border-b last:border-b-0 ${subIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-green-50/50 transition-colors`}
                                   >
-                                    <td className="py-3 px-4 border-r">
+                                    <td className="py-2 sm:py-3 px-2 sm:px-4 border-r">
                                       <div className="flex flex-col">
-                                        <span className="text-sm font-medium text-gray-800">
+                                        <span className="text-xs sm:text-sm font-medium text-gray-800">
                                           {sub.category_name}
                                         </span>
                                         {sub.description && (
@@ -859,9 +860,9 @@ export function FeedbackTemplate() {
                                       { value: 2, label: 'Disagree' },
                                       { value: 1, label: 'Strongly Disagree' }
                                     ].map((option) => (
-                                      <td key={option.value} className="text-center py-3 px-4 border-r last:border-r-0">
+                                      <td key={option.value} className="text-center py-2 sm:py-3 px-1 sm:px-4 border-r last:border-r-0">
                                         <div className="flex justify-center">
-                                          <div className="w-5 h-5 rounded-md border-2 border-gray-300 bg-white hover:border-green-500 hover:bg-green-50 cursor-pointer transition-all flex items-center justify-center shadow-sm">
+                                          <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-md border-2 border-gray-300 bg-white hover:border-green-500 hover:bg-green-50 cursor-pointer transition-all flex items-center justify-center shadow-sm">
                                             {/* Checkbox placeholder - unchecked state */}
                                           </div>
                                         </div>
@@ -925,6 +926,7 @@ export function FeedbackTemplate() {
                 value={categoryName}
                 onChange={(e) => setCategoryName(e.target.value)}
                 placeholder={parentCategoryId ? "e.g., Communication Skills" : "e.g., Teaching Quality"}
+                className="border border-gray-200"
               />
             </div>
             <div className="space-y-2">
@@ -934,6 +936,7 @@ export function FeedbackTemplate() {
                 value={categoryDescription}
                 onChange={(e) => setCategoryDescription(e.target.value)}
                 placeholder="Brief description of this category"
+                className="border border-gray-200"
               />
             </div>
             
@@ -945,7 +948,7 @@ export function FeedbackTemplate() {
                   id="parentCategory"
                   value={parentCategoryId || ''}
                   onChange={(e) => setParentCategoryId(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full p-2 border rounded-md"
+                  className="w-full p-2 border border-gray-200 rounded-md"
                 >
                   <option value="">Select a main category (optional)</option>
                   {mainCategories
@@ -1026,6 +1029,7 @@ export function FeedbackTemplate() {
                 value={periodName}
                 onChange={(e) => setPeriodName(e.target.value)}
                 placeholder="e.g., Midterm Evaluation"
+                className="border border-gray-200"
               />
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -1036,6 +1040,7 @@ export function FeedbackTemplate() {
                   type="date"
                   value={periodStartDate}
                   onChange={(e) => setPeriodStartDate(e.target.value)}
+                  className="border border-gray-200"
                 />
               </div>
               <div className="space-y-2">
@@ -1045,6 +1050,7 @@ export function FeedbackTemplate() {
                   type="date"
                   value={periodEndDate}
                   onChange={(e) => setPeriodEndDate(e.target.value)}
+                  className="border border-gray-200"
                 />
               </div>
             </div>
@@ -1056,6 +1062,7 @@ export function FeedbackTemplate() {
                   value={periodAcademicYear}
                   onChange={(e) => setPeriodAcademicYear(e.target.value)}
                   placeholder="e.g., 2025-2026"
+                  className="border border-gray-200"
                 />
               </div>
               <div className="space-y-2">
@@ -1065,6 +1072,7 @@ export function FeedbackTemplate() {
                   value={periodSemester}
                   onChange={(e) => setPeriodSemester(e.target.value)}
                   placeholder="e.g., 1st Semester"
+                  className="border border-gray-200"
                 />
               </div>
             </div>

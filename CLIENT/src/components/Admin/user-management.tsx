@@ -1304,36 +1304,50 @@ export function UserManagement() {
       {/* Pending Approvals Alert */}
       {pendingCount > 0 && (
         <Card className="border-yellow-200 bg-gradient-to-r from-yellow-50 to-amber-50">
-          <CardHeader>
+          <CardHeader className="p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="bg-yellow-100 p-3 rounded-lg">
-                  <UserPlus className="w-6 h-6 text-yellow-600" />
+                <div className="bg-yellow-100 p-2 sm:p-3 rounded-lg flex-shrink-0">
+                  <UserPlus className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                 </div>
-                <div>
-                  <CardTitle>Pending Approvals</CardTitle>
-                  <p className="text-sm text-yellow-700 mt-1">
+                <div className="min-w-0">
+                  <CardTitle className="text-base sm:text-lg">Pending Approvals</CardTitle>
+                  <p className="text-xs sm:text-sm text-yellow-700 mt-1">
                     {pendingCount} user{pendingCount !== 1 ? 's' : ''} waiting for approval
                   </p>
                 </div>
               </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="border-yellow-300 hover:bg-yellow-100"
-                onClick={() => setShowPendingSection(!showPendingSection)}
-              >
-                {showPendingSection ? 'Hide' : 'Show'}
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowPendingSection(!showPendingSection)}>
+                    {showPendingSection ? (
+                      <>
+                        <X className="mr-2 h-4 w-4" />
+                        Hide Details
+                      </>
+                    ) : (
+                      <>
+                        <Info className="mr-2 h-4 w-4" />
+                        Show Details
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardHeader>
           {showPendingSection && (
-            <CardContent>
-              <div className="grid gap-3">
+            <CardContent className="p-4 sm:p-6">
+              <div className="space-y-3">
                 {paginatedPendingUsers.map((user) => (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-3 sm:p-4 bg-white rounded-lg border border-yellow-200 hover:border-yellow-300 transition-all"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 p-3 sm:p-4 bg-white rounded-lg border border-yellow-200 hover:border-yellow-300 transition-all"
                   >
                     <div className="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <Avatar className="w-10 h-10 sm:w-12 sm:h-12 flex-shrink-0">
@@ -1350,7 +1364,7 @@ export function UserManagement() {
                         )}
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-start sm:items-center gap-2 mb-1 flex-wrap">
                           <p className="font-medium text-gray-900 truncate text-sm sm:text-base">{user.fullName || user.name}</p>
                           <Badge variant="secondary" className={`${getRoleBadgeColor(user.role)} text-xs`}>
                             {user.role}
@@ -1360,11 +1374,11 @@ export function UserManagement() {
                         <p className="text-xs sm:text-sm text-gray-500 truncate">{getPendingInfo(user)}</p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 sm:gap-2 ml-2">
+                    <div className="flex items-center gap-1 sm:gap-2 w-full sm:w-auto justify-end">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-blue-200 text-blue-600 hover:bg-blue-50 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px]"
+                        className="border-blue-200 text-blue-600 hover:bg-blue-50 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px] flex-1 sm:flex-none"
                         onClick={() => handleViewDetails(user)}
                       >
                         <Edit className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1372,7 +1386,7 @@ export function UserManagement() {
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-green-500 hover:bg-green-600 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px]"
+                        className="bg-green-500 hover:bg-green-600 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px] flex-1 sm:flex-none"
                         onClick={() => handleApproveClick(user)}
                       >
                         <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -1381,7 +1395,7 @@ export function UserManagement() {
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-red-200 text-red-600 hover:bg-red-50 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px]"
+                        className="border-red-200 text-red-600 hover:bg-red-50 h-8 sm:h-9 px-2 sm:px-3 min-h-[32px] sm:min-h-[36px] flex-1 sm:flex-none"
                         onClick={() => handleRejectClick(user)}
                       >
                         <XCircle className="w-3 h-3 sm:w-4 sm:h-4" />

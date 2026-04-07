@@ -493,19 +493,19 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
 
       {/* Annual Update Notification */}
       {showAnnualNotification && (
-        <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 animate-pulse">
-          <AlertCircle className="w-5 h-5" />
-          <div className="flex-1">
-            <p className="font-medium">Annual Employment Update Required</p>
-            <p className="text-sm">It's been over 11 months since your last employment update. Please review and update your employment information.</p>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 animate-pulse">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="font-medium text-sm sm:text-base">Annual Employment Update Required</p>
+            <p className="text-xs sm:text-sm">It's been over 11 months since your last employment update. Please review and update your employment information.</p>
           </div>
-          <Button 
+          <Button
             onClick={() => {
               setShowUpdateForm(true);
               setShowAnnualNotification(false);
             }}
             size="sm"
-            className="bg-red-600 hover:bg-red-700"
+            className="bg-red-600 hover:bg-red-700 w-full sm:w-auto mt-2 sm:mt-0"
           >
             Update Now
           </Button>
@@ -515,50 +515,52 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       {/* Update Request Status Card - Only visible when annual update is required */}
       {isAnnualUpdateRequired && (
       <Card className="border-red-300 border-2 shadow-lg animate-pulse">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg text-red-700">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            ⚠️ Annual Update Required
+        <CardHeader className="p-4 sm:p-6">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-red-700">
+            <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
+            <span className="text-sm sm:text-base">⚠️ Annual Update Required</span>
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-red-50 rounded-lg p-4">
+        <CardContent className="p-4 sm:p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+            <div className="bg-red-50 rounded-lg p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
-                <Send className="w-4 h-4 text-red-500" />
-                <p className="text-sm font-medium text-red-700">Last Update Request Sent</p>
+                <Send className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-xs sm:text-sm font-medium text-red-700">Last Update Request Sent</p>
               </div>
-              <p className="text-lg font-semibold">{formatDate(employmentInfo.lastUpdateSent)}</p>
+              <p className="text-sm sm:text-lg font-semibold">{formatDate(employmentInfo.lastUpdateSent)}</p>
             </div>
-            <div className="bg-red-50 rounded-lg p-4">
+            <div className="bg-red-50 rounded-lg p-3 sm:p-4">
               <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-4 h-4 text-red-500" />
-                <p className="text-sm font-medium text-red-700">Last Update Received</p>
+                <CheckCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <p className="text-xs sm:text-sm font-medium text-red-700">Last Update Received</p>
               </div>
-              <p className="text-lg font-semibold">{formatDate(employmentInfo.lastUpdateReceived)}</p>
+              <p className="text-sm sm:text-lg font-semibold">{formatDate(employmentInfo.lastUpdateReceived)}</p>
             </div>
           </div>
-          
-          <div className="mt-6 pt-4 border-t border-red-200">
-            <p className="text-sm text-red-600 mb-4">
+
+          <div className="mt-4 sm:mt-6 pt-4 border-t border-red-200">
+            <p className="text-xs sm:text-sm text-red-600 mb-3 sm:mb-4">
               It's been over 11 months since your last update. Please review and update your employment information:
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button 
+              <Button
                 onClick={() => {
                   setShowUpdateForm(true);
                   setShowAnnualNotification(false);
                 }}
-                className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+                className="bg-red-600 hover:bg-red-700 flex items-center gap-2 w-full sm:w-auto"
+                size="sm"
               >
                 <TrendingUp className="w-4 h-4" />
                 Update Employment Details
               </Button>
-              <Button 
+              <Button
                 onClick={handleConfirmEmployment}
                 variant="outline"
-                className="border-red-500 text-red-600 hover:bg-red-50 flex items-center gap-2"
+                className="border-red-500 text-red-600 hover:bg-red-50 flex items-center gap-2 w-full sm:w-auto"
                 disabled={workflowState === 'confirming'}
+                size="sm"
               >
                 {workflowState === 'confirming' ? (
                   <div className="w-4 h-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
