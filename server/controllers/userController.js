@@ -682,6 +682,14 @@ const updateEmploymentInfo = async (req, res) => {
     }
 
     const currentDate = new Date().toISOString().split('T')[0];
+    // Format start_date: if yearStarted is a year, use Jan 1 of that year
+    const formatStartDate = (year) => {
+      if (!year) return null;
+      const yearNum = parseInt(year, 10);
+      if (isNaN(yearNum) || yearNum < 1900 || yearNum > 2100) return null;
+      return `${yearNum}-01-01`;
+    };
+
     await queryDatabase(
       db,
       `UPDATE alumni_employment_history SET is_current = 0, end_date = ? WHERE alumni_user_id = ? AND is_current = 1`,
@@ -700,7 +708,7 @@ const updateEmploymentInfo = async (req, res) => {
         companyAddress || null,
         monthlySalary || null,
         isRelevantToDegree || null,
-        yearStarted || null
+        formatStartDate(yearStarted)
       ]
     );
     
