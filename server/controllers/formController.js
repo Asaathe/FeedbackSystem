@@ -364,8 +364,16 @@ const deleteFormCategory = async (req, res) => {
       });
     }
 
-    const deploymentStartDate = startDate || form.start_date;
-    const deploymentEndDate = endDate || form.end_date;
+    // Format dates to ensure YYYY-MM-DD format
+    const formatDate = (dateStr) => {
+      if (!dateStr) return null;
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) return null;
+      return date.toISOString().slice(0, 10);
+    };
+
+    const deploymentStartDate = formatDate(startDate) || form.start_date;
+    const deploymentEndDate = formatDate(endDate) || form.end_date;
     // Format time values to HH:MM:SS format for MySQL TIME type
     const deploymentStartTime = startTime ? (startTime.includes(':') ? (startTime.split(':').length === 2 ? `${startTime}:00` : startTime) : null) : null;
     const deploymentEndTime = endTime ? (endTime.includes(':') ? (endTime.split(':').length === 2 ? `${endTime}:00` : endTime) : null) : null;
