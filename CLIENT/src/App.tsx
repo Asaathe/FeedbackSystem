@@ -168,6 +168,13 @@ const AlumniEmploymentTracker = lazy(() =>
 
 export default function App() {
   console.log("🚀 APP COMPONENT RENDERING");
+
+  // Check for embedded token from server-side serving (for token URLs)
+  const embeddedToken = (window as any).EXTERNAL_FEEDBACK_TOKEN;
+  if (embeddedToken) {
+    console.log("🎯 EMBEDDED TOKEN DETECTED:", embeddedToken);
+  }
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string>("");
   const [currentPage, setCurrentPage] = useState("dashboard");
@@ -175,7 +182,7 @@ export default function App() {
   
   // External feedback form ID (for public feedback links)
   const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(null);
-  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>(null);
+  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>((window as any).EXTERNAL_FEEDBACK_TOKEN || null);
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
     undefined
   );

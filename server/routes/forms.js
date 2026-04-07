@@ -54,6 +54,8 @@ router.post("/upload-image", verifyToken, uploadSingleImage('image'), handleUplo
 // Send feedback invitation to employer/supervisor
 router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
   const crypto = require('crypto');
+  const path = require('path');
+  const fs = require('fs');
   const emailService = require("../utils/emailService");
   const { supervisorEmail, supervisorName, companyName, alumnusName, formTitle, feedbackLink } = req.body;
 
@@ -407,16 +409,34 @@ router.get("/public/t/:token", async (req, res) => {
   }
 });
 
-// Catch token-based feedback URLs and redirect to main app
+// Catch token-based feedback URLs and serve the React app directly
 router.get("/feedback/t/:token", (req, res) => {
   const token = req.params.token;
-  console.log("🎯 SERVER CATCHING TOKEN URL:", token);
+  console.log("🎯 SERVER SERVING TOKEN URL:", token);
+  console.log("Request URL:", req.url);
 
-  // Redirect to main app with token parameter
-  const redirectUrl = `/?external_token=${token}`;
-  console.log("Redirecting to:", redirectUrl);
+  try {
+    // Path to the built React app's index.html
+    const indexPath = path.join(__dirname, '../../CLIENT/dist/index.html');
 
-  res.redirect(302, redirectUrl);
+    if (fs.existsSync(indexPath)) {
+      let html = fs.readFileSync(indexPath, 'utf8');
+
+      // Inject the token as a global variable that React can read
+      const tokenScript = `<script>window.EXTERNAL_FEEDBACK_TOKEN="${token}";</script>`;
+      html = html.replace('<head>', `<head>${tokenScript}`);
+
+      console.log("✅ Serving React app with embedded token:", token);
+      res.send(html);
+    } else {
+      console.log("❌ CLIENT/dist/index.html not found at:", indexPath);
+      // Fallback: redirect to main app
+      res.redirect(302, `/?external_token=${token}`);
+    }
+  } catch (error) {
+    console.error("Error serving token URL:", error);
+    res.redirect(302, `/?external_token=${token}`);
+  }
 });
 
 // Public route for external feedback (e.g., from email links) - NO authentication required
