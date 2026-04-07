@@ -358,6 +358,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   };
 
   // Load external form when externalFormId or externalToken is provided (for public feedback links)
+  // ✅ THIS MUST RUN FIRST BEFORE THE OTHER USEEFFECT!
   useEffect(() => {
     if ((externalFormId || externalToken) && isExternalMode) {
       const loadExternalForm = async () => {
@@ -517,7 +518,10 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   useEffect(() => {
     // Skip loading user forms if in external mode
     if (isExternalMode) {
-      setLoading(false);
+      // ONLY set loading to false if external form loading is NOT in progress
+      if (!(externalFormId || externalToken)) {
+        setLoading(false);
+      }
       return;
     }
 
