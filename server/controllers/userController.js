@@ -605,9 +605,11 @@ const updateEmploymentInfo = async (req, res) => {
     if (existingRecords.length > 0) {
       // Update existing employment record
       // Calculate next email date: 11 months from last_update_received
-      const nextEmailDate = lastUpdateReceived ? 
-        new Date(new Date(lastUpdateReceived).setMonth(new Date(lastUpdateReceived).getMonth() + 11)) : 
-        new Date();
+      const lastUpdateDate = lastUpdateReceived ? new Date(lastUpdateReceived) : new Date();
+      const nextEmailDate = new Date(lastUpdateDate.setMonth(lastUpdateDate.getMonth() + 11));
+      const formattedLastUpdateReceived = lastUpdateReceived ?
+        new Date(lastUpdateReceived).toISOString().slice(0, 19).replace('T', ' ') : null;
+      const formattedNextEmailDate = nextEmailDate.toISOString().slice(0, 10);
       
       await queryDatabase(
         db,
@@ -623,36 +625,38 @@ const updateEmploymentInfo = async (req, res) => {
           employment_type = ?,
           monthly_salary = ?,
           is_relevant_to_degree = ?,
-          last_update_received = ?,
-          graduation_date = ?,
-          update_status = 'updated',
-          next_email_date = ?
-        WHERE alumni_user_id = ?`,
-        [
-          companyName || null,
-          jobTitle || null,
-          employmentStatus || null,
-          industryType || null,
-          companyAddress || null,
-          supervisorName || null,
-          supervisorEmail || null,
-          yearStarted || null,
-          employmentType || null,
-          monthlySalary || null,
-          isRelevantToDegree || null,
-          lastUpdateReceived || null,
-          graduationDate || null,
-          nextEmailDate,
-          userId
-        ]
+           last_update_received = ?,
+           graduation_date = ?,
+           update_status = 'updated',
+           next_email_date = ?
+         WHERE alumni_user_id = ?`,
+         [
+           companyName || null,
+           jobTitle || null,
+           employmentStatus || null,
+           industryType || null,
+           companyAddress || null,
+           supervisorName || null,
+           supervisorEmail || null,
+           yearStarted || null,
+           employmentType || null,
+           monthlySalary || null,
+           isRelevantToDegree || null,
+           formattedLastUpdateReceived,
+           graduationDate || null,
+           formattedNextEmailDate,
+           userId
+         ]
       );
     } else {
       // Create new employment record
       // Calculate next email date: 11 months from last_update_received
-      const nextEmailDate = lastUpdateReceived ? 
-        new Date(new Date(lastUpdateReceived).setMonth(new Date(lastUpdateReceived).getMonth() + 11)) : 
-        new Date();
-      
+      const lastUpdateDate = lastUpdateReceived ? new Date(lastUpdateReceived) : new Date();
+      const nextEmailDate = new Date(lastUpdateDate.setMonth(lastUpdateDate.getMonth() + 11));
+      const formattedLastUpdateReceived = lastUpdateReceived ?
+        new Date(lastUpdateReceived).toISOString().slice(0, 19).replace('T', ' ') : null;
+      const formattedNextEmailDate = nextEmailDate.toISOString().slice(0, 10);
+
       await queryDatabase(
         db,
         `INSERT INTO alumni_employment (alumni_user_id, company_name, job_title, employment_status, industry_type, company_address, supervisor_name, supervisor_email, year_started, employment_type, monthly_salary, is_relevant_to_degree, last_update_received, graduation_date, update_status, next_email_date)
@@ -670,9 +674,9 @@ const updateEmploymentInfo = async (req, res) => {
           employmentType || null,
           monthlySalary || null,
           isRelevantToDegree || null,
-          lastUpdateReceived || null,
+          formattedLastUpdateReceived,
           graduationDate || null,
-          nextEmailDate
+          formattedNextEmailDate
         ]
       );
     }
