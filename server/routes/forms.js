@@ -133,7 +133,7 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 
     console.log("Invitation stored successfully, result:", insertResult);
 
-    // Create secure short link using token (API route that Railway will definitely handle)
+    // Create secure short link using token (API route that works with any Railway config)
     const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/api/forms/feedback/${token}`;
     console.log("Secure short feedback link:", shortLink);
 
@@ -414,25 +414,10 @@ router.get("/feedback/:token", (req, res) => {
   const token = req.params.token;
   console.log("🎯 API TOKEN ROUTE HIT:", token);
 
-  // Create a simple HTML page that stores token and redirects
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Redirecting to Feedback...</title>
-    <script>
-        // Store token and redirect to main app
-        sessionStorage.setItem('external_feedback_token', '${token}');
-        window.location.href = '${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}';
-    </script>
-</head>
-<body>
-    <p>Loading feedback form...</p>
-</body>
-</html>`;
-
-  console.log("Serving API redirect page with token:", token);
-  res.send(html);
+  // Simple redirect with token as URL parameter
+  const redirectUrl = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/?external_token=${token}`;
+  console.log("Redirecting to:", redirectUrl);
+  res.redirect(302, redirectUrl);
 });
 
 // Public route for external feedback (e.g., from email links) - NO authentication required

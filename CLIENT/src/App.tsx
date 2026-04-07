@@ -258,16 +258,16 @@ export default function App() {
     console.log("Current external states - FormId:", externalFeedbackFormId, "Token:", externalFeedbackToken);
     console.log("useEffect is running!");
 
-    // Check for server-redirected token parameter (from /feedback/t/* routes)
+    // Check for server-redirected token parameter (from API routes)
     const externalTokenParam = searchParams.get('external_token');
     if (externalTokenParam) {
-      console.log("🎯 SERVER REDIRECT DETECTED - Token:", externalTokenParam);
+      console.log("🎯 EXTERNAL TOKEN PARAMETER DETECTED:", externalTokenParam);
       setExternalFeedbackToken(externalTokenParam);
       setExternalFeedbackFormId(null);
       // Clean up the URL parameter
       const newUrl = window.location.pathname + (window.location.hash || '');
       window.history.replaceState({}, '', newUrl);
-      console.log("✅ External feedback token set from redirect");
+      console.log("✅ External feedback mode activated with token");
       return;
     }
 
