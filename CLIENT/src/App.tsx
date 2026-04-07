@@ -187,12 +187,17 @@ export default function App() {
   const [showSignup, setShowSignup] = useState(false);
   
   // External feedback form ID (for public feedback links)
-  const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(null);
-  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>(
-    (window as any).EXTERNAL_FEEDBACK_TOKEN ||
-    sessionStorage.getItem('external_feedback_token') ||
-    null
-  );
+  const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(() => {
+    // Initialize from sessionStorage if available
+    const stored = sessionStorage.getItem('external_feedback_form_id');
+    return stored || null;
+  });
+  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>(() => {
+    // Initialize from multiple sources
+    return (window as any).EXTERNAL_FEEDBACK_TOKEN ||
+           sessionStorage.getItem('external_feedback_token') ||
+           null;
+  });
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
     undefined
   );
@@ -259,16 +264,18 @@ export default function App() {
     console.log("useEffect is running!");
 
     // Check for server-redirected token parameter (from /feedback/t/* routes)
-    const searchParams = new URLSearchParams(window.location.search);
     const externalTokenParam = searchParams.get('external_token');
     if (externalTokenParam) {
-      console.log("🎯 EXTERNAL TOKEN PARAMETER DETECTED:", externalTokenParam);
+      console.log("🎯 SERVER REDIRECT DETECTED - Token:", externalTokenParam);
       setExternalFeedbackToken(externalTokenParam);
       setExternalFeedbackFormId(null);
+      // Persist in sessionStorage
+      sessionStorage.setItem('external_feedback_token', externalTokenParam);
+      sessionStorage.removeItem('external_feedback_form_id');
       // Clean up the URL parameter
       const newUrl = window.location.pathname + (window.location.hash || '');
       window.history.replaceState({}, '', newUrl);
-      console.log("✅ External feedback mode activated with token");
+      console.log("✅ External feedback token set from redirect");
       return;
     }
 
@@ -299,9 +306,12 @@ export default function App() {
     // Check if URL is like /feedback/123 (legacy format)
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
     if (feedbackMatch && feedbackMatch[1]) {
-      console.log("Detected legacy feedback URL with form ID:", feedbackMatch[1]);
+      console.log("✅ DETECTED LEGACY FEEDBACK URL with form ID:", feedbackMatch[1]);
       setExternalFeedbackFormId(feedbackMatch[1]);
       setExternalFeedbackToken(null); // Clear token for legacy format
+      // Persist in sessionStorage
+      sessionStorage.setItem('external_feedback_form_id', feedbackMatch[1]);
+      sessionStorage.removeItem('external_feedback_token');
     }
 
     // Check if URL is like /feedback/t/abc123 (new secure format - 32 char token)
@@ -310,6 +320,9 @@ export default function App() {
       console.log("✅ DETECTED TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
       setExternalFeedbackToken(tokenMatch[1]);
       setExternalFeedbackFormId(null); // Clear formId for token format
+      // Persist in sessionStorage
+      sessionStorage.setItem('external_feedback_token', tokenMatch[1]);
+      sessionStorage.removeItem('external_feedback_form_id');
     } else if (path.includes('/feedback/t/')) {
       console.log("⚠️ URL contains /feedback/t/ but doesn't match 32-char hex token format. Path:", path);
       // Try fallback regex for any alphanumeric token
@@ -318,6 +331,9 @@ export default function App() {
         console.log("🔄 USING FALLBACK TOKEN DETECTION:", fallbackMatch[1]);
         setExternalFeedbackToken(fallbackMatch[1]);
         setExternalFeedbackFormId(null);
+        // Persist in sessionStorage
+        sessionStorage.setItem('external_feedback_token', fallbackMatch[1]);
+        sessionStorage.removeItem('external_feedback_form_id');
       } else {
         console.log("❌ NO TOKEN FOUND IN URL");
       }
@@ -326,13 +342,19 @@ export default function App() {
     }
   }, []);
 
-  // Clean up session token after component mounts
+  // Clean up session storage after successful external feedback load
   useEffect(() => {
-    if (sessionStorage.getItem('external_feedback_token')) {
-      console.log("🧹 Cleaning up session token");
-      sessionStorage.removeItem('external_feedback_token');
+    if ((externalFeedbackFormId || externalFeedbackToken) && !window.location.search.includes('external_token')) {
+      // External feedback is active and URL is clean, safe to clean up sessionStorage
+      const timer = setTimeout(() => {
+        console.log("🧹 Cleaning up external feedback session storage");
+        sessionStorage.removeItem('external_feedback_form_id');
+        sessionStorage.removeItem('external_feedback_token');
+      }, 5000); // Clean up after 5 seconds to allow for page refreshes
+
+      return () => clearTimeout(timer);
     }
-  }, []);
+  }, [externalFeedbackFormId, externalFeedbackToken]);
 
   // Auto-refresh token periodically
   useEffect(() => {
@@ -426,7 +448,6 @@ export default function App() {
 
   if (externalFeedbackFormId || externalFeedbackToken) {
     console.log("🎯 EXTERNAL FEEDBACK DETECTED - BYPASSING LOGIN");
-    alert("External feedback detected! If you see this, the URL detection is working.");
     console.log("🎯 RENDERING EXTERNAL FEEDBACK FORM");
     console.log("externalFeedbackFormId:", externalFeedbackFormId);
     console.log("externalFeedbackToken:", externalFeedbackToken);
@@ -438,6 +459,9 @@ export default function App() {
           onBackToLogin={() => {
             setExternalFeedbackFormId(null);
             setExternalFeedbackToken(null);
+            // Clear sessionStorage
+            sessionStorage.removeItem('external_feedback_form_id');
+            sessionStorage.removeItem('external_feedback_token');
           }}
         />
       </div>
