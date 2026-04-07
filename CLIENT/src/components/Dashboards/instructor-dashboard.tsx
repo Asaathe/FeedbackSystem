@@ -132,16 +132,19 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
   }, []);
 
   // Fetch instructor subjects with evaluation data
-  const fetchEvaluationSubjects = async () => {
+  const fetchEvaluationSubjects = async (instructorData?: Instructor) => {
     setLoadingEvaluation(true);
     try {
       const token = sessionStorage.getItem('authToken');
-      if (!token || !instructor) {
+      const targetInstructor = instructorData || instructor;
+      
+      if (!token || !targetInstructor) {
         toast.error('No auth token or instructor data found');
         return;
       }
 
-      const response = await fetch(`/api/subject-evaluation/instructors/${instructor.user_id}/subjects`, {
+      // Use instructor_id (string) instead of user_id (number) as per API requirements
+      const response = await fetch(`/api/subject-evaluation/instructors/${targetInstructor.instructor_id}/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -150,6 +153,8 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
       const data = await response.json();
       if (data.success) {
         setEvaluationSubjects(data.subjects || []);
+      } else {
+        console.error('API returned error for evaluation subjects:', data);
       }
     } catch (error) {
       console.error('Error fetching evaluation subjects:', error);
@@ -162,22 +167,10 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
   const handleViewEvaluation = async (subject: InstructorSubject) => {
     setSelectedEvalSubject(subject);
     setEvalView('details');
-    await fetchCategoryBreakdown(subject.offering_id);
-    // Also fetch individual feedback responses
-    const token = sessionStorage.getItem('authToken');
-    try {
-      const response = await fetch(`/api/subject-evaluation/subjects/${subject.offering_id}/feedback`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setFeedbackResponses(data.feedback || []);
-      }
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-    }
+    await Promise.all([
+      fetchCategoryBreakdown(subject.offering_id),
+      fetchFeedbackResponses(subject.offering_id)
+    ]);
   };
 
   const fetchInstructorData = async () => {
@@ -186,7 +179,7 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
       if (!token) {
         toast.error('No auth token found');
         setLoading(false);
-        return;
+        return null;
       }
 
       // Fetch instructor's subjects
@@ -213,9 +206,12 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
       if (statsData.success) {
         setStats(statsData.stats);
       }
+      
+      return subjectsData.instructor;
     } catch (error) {
       console.error('Error fetching instructor data:', error);
       toast.error('Failed to load dashboard data');
+      return null;
     } finally {
       setLoading(false);
     }
@@ -295,22 +291,10 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
     setSelectedEvalSubject(subject);
     setEvalView('details');
     setViewMode('summary');
-    await fetchCategoryBreakdown(subject.offering_id);
-    // Also fetch individual feedback responses
-    const token = sessionStorage.getItem('authToken');
-    try {
-      const response = await fetch(`/api/subject-evaluation/subjects/${subject.offering_id}/feedback`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setFeedbackResponses(data.feedback || []);
-      }
-    } catch (error) {
-      console.error('Error fetching feedback:', error);
-    }
+    await Promise.all([
+      fetchCategoryBreakdown(subject.offering_id),
+      fetchFeedbackResponses(subject.offering_id)
+    ]);
   };
 
   // Update stats when category breakdown changes
@@ -325,24 +309,22 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
     if (showEvaluationView || showSubjectsOnly) {
       // If instructor data is not loaded yet, fetch it first
       const loadData = async () => {
-        if (!instructor) {
-          await fetchInstructorData();
-        }
-        // Wait for instructor state to be set, then fetch evaluation subjects
-        if (instructor) {
-          fetchEvaluationSubjects();
+        const fetchedInstructor = await fetchInstructorData();
+        // Use returned instructor data immediately (not relying on state update)
+        if (fetchedInstructor) {
+          fetchEvaluationSubjects(fetchedInstructor);
         }
       };
       loadData();
     }
   }, [showEvaluationView, showSubjectsOnly]);
 
-  // Also trigger fetch when instructor data becomes available
+  // Also trigger fetch when instructor data becomes available (for edge cases)
   useEffect(() => {
     if ((showEvaluationView || showSubjectsOnly) && instructor && evaluationSubjects.length === 0 && !loadingEvaluation) {
       fetchEvaluationSubjects();
     }
-  }, [instructor, showEvaluationView, showSubjectsOnly]);
+  }, [instructor, showEvaluationView, showSubjectsOnly, evaluationSubjects.length, loadingEvaluation]);
 
   const renderStars = (rating: number) => {
     const stars = [];
