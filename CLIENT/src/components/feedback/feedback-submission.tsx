@@ -448,15 +448,17 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             console.log("Setting form data:", formData);
             setSelectedForm(formData);
             setAvailableForms([formData]);
+            // Only set loading to false after form is successfully loaded
+            setLoading(false);
           } else {
             console.error("Form API call failed:", result);
             console.error("Error message:", result.message);
             alert("Form access failed: " + result.message);
+            setLoading(false); // Set loading to false on error
           }
         } catch (error) {
           console.error("Error loading external form:", error);
-        } finally {
-          setLoading(false);
+          setLoading(false); // Set loading to false on exception
         }
       };
       loadExternalForm();
