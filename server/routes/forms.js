@@ -133,9 +133,9 @@ router.post("/send-feedback-invitation", verifyToken, async (req, res) => {
 
     console.log("Invitation stored successfully, result:", insertResult);
 
-    // Create secure short link using token (API route that works with any Railway config)
-    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/api/forms/feedback/${token}`;
-    console.log("Secure short feedback link:", shortLink);
+    // TEMPORARILY USE LEGACY URL FORMAT (that we know works)
+    const shortLink = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/feedback/${formId}?supervisorEmail=${encodeURIComponent(supervisorEmail)}&supervisorName=${encodeURIComponent(supervisorName)}&companyName=${encodeURIComponent(companyName)}&alumnusName=${encodeURIComponent(finalAlumnusName)}`;
+    console.log("Legacy feedback link:", shortLink);
 
     console.log("Calling emailService.sendFeedbackInvitation...");
     const result = await emailService.sendFeedbackInvitation(
@@ -409,16 +409,7 @@ router.get("/public/t/:token", async (req, res) => {
   }
 });
 
-// API route for token-based feedback access (guaranteed to work with Railway)
-router.get("/feedback/:token", (req, res) => {
-  const token = req.params.token;
-  console.log("🎯 API TOKEN ROUTE HIT:", token);
-
-  // Simple redirect with token as URL parameter
-  const redirectUrl = `${process.env.PUBLIC_DOMAIN || 'https://feedbacts.online'}/?external_token=${token}`;
-  console.log("Redirecting to:", redirectUrl);
-  res.redirect(302, redirectUrl);
-});
+// Legacy route kept for backward compatibility (not used in new emails)
 
 // Public route for external feedback (e.g., from email links) - NO authentication required
 router.post("/public/submit", async (req, res) => {
