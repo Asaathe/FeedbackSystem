@@ -664,10 +664,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                   <Label htmlFor="companyName">Company Name *</Label>
                   <Input
                     id="companyName"
-                    placeholder="Enter company name"
                     value={employmentInfo.companyName}
                     onChange={(e) => handleEmploymentChange('companyName', e.target.value)}
-                    className={formErrors.companyName ? 'border-red-500' : ''}
+                    className={`border border-gray-200 ${formErrors.companyName ? 'border-red-500' : ''}`}
                   />
                   {formErrors.companyName && (
                     <p className="text-xs text-red-500">{formErrors.companyName}</p>
@@ -679,10 +678,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                   <Label htmlFor="jobTitle">Job Title / Position *</Label>
                   <Input
                     id="jobTitle"
-                    placeholder="Enter job title"
                     value={employmentInfo.jobTitle}
                     onChange={(e) => handleEmploymentChange('jobTitle', e.target.value)}
-                    className={formErrors.jobTitle ? 'border-red-500' : ''}
+                    className={`border border-gray-200 ${formErrors.jobTitle ? 'border-red-500' : ''}`}
                   />
                   {formErrors.jobTitle && (
                     <p className="text-xs text-red-500">{formErrors.jobTitle}</p>
@@ -696,7 +694,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     value={employmentInfo.employmentStatus} 
                     onValueChange={(value) => handleEmploymentChange('employmentStatus', value)}
                   >
-                    <SelectTrigger id="employmentStatus" className={formErrors.employmentStatus ? 'border-red-500' : ''}>
+                    <SelectTrigger id="employmentStatus" className={`border border-gray-200 ${formErrors.employmentStatus ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Select status" />
                     </SelectTrigger>
                     <SelectContent>
@@ -719,7 +717,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     value={employmentInfo.employmentType} 
                     onValueChange={(value) => handleEmploymentChange('employmentType', value)}
                   >
-                    <SelectTrigger id="employmentType" className={formErrors.employmentType ? 'border-red-500' : ''}>
+                    <SelectTrigger id="employmentType" className={`border border-gray-200 ${formErrors.employmentType ? 'border-red-500' : ''}`}>
                       <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
@@ -743,7 +741,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     placeholder="e.g., Technology, Healthcare, Education"
                     value={employmentInfo.industryType}
                     onChange={(e) => handleEmploymentChange('industryType', e.target.value)}
-                    className={formErrors.industryType ? 'border-red-500' : ''}
+                    className={`border border-gray-200 ${formErrors.industryType ? 'border-red-500' : ''}`}
                   />
                   {formErrors.industryType && (
                     <p className="text-xs text-red-500">{formErrors.industryType}</p>
@@ -761,7 +759,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     max={new Date().getFullYear() + 1}
                     value={employmentInfo.yearStarted}
                     onChange={(e) => handleEmploymentChange('yearStarted', e.target.value)}
-                    className={formErrors.yearStarted ? 'border-red-500' : ''}
+                    className={`border border-gray-200 ${formErrors.yearStarted ? 'border-red-500' : ''}`}
                   />
                   {formErrors.yearStarted && (
                     <p className="text-xs text-red-500">{formErrors.yearStarted}</p>
@@ -777,6 +775,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     placeholder="e.g., ₱50,000 or Negotiable"
                     value={employmentInfo.monthlySalary}
                     onChange={(e) => handleEmploymentChange('monthlySalary', e.target.value)}
+                    className="border border-gray-200"
                   />
                 </div>
 
@@ -787,7 +786,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     value={employmentInfo.isRelevantToDegree} 
                     onValueChange={(value) => handleEmploymentChange('isRelevantToDegree', value)}
                   >
-                    <SelectTrigger id="isRelevantToDegree">
+                    <SelectTrigger id="isRelevantToDegree" className="border border-gray-200">
                       <SelectValue placeholder="Select" />
                     </SelectTrigger>
                     <SelectContent>
@@ -803,10 +802,10 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                   <Label htmlFor="companyAddress">Company Address</Label>
                   <Textarea
                     id="companyAddress"
-                    placeholder="Enter company address"
                     value={employmentInfo.companyAddress}
                     onChange={(e) => handleEmploymentChange('companyAddress', e.target.value)}
                     rows={2}
+                    className="border border-gray-200"
                   />
                 </div>
 
@@ -815,10 +814,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                   <Label htmlFor="supervisorName">Supervisor / Employer Name *</Label>
                   <Input
                     id="supervisorName"
-                    placeholder="Enter supervisor name"
                     value={employmentInfo.supervisorName}
                     onChange={(e) => handleEmploymentChange('supervisorName', e.target.value)}
-                    className={formErrors.supervisorName ? 'border-red-500' : ''}
+                    className={`border border-gray-200 ${formErrors.supervisorName ? 'border-red-500' : ''}`}
                   />
                   {formErrors.supervisorName && (
                     <p className="text-xs text-red-500">{formErrors.supervisorName}</p>
@@ -834,7 +832,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                       id="supervisorEmail"
                       type="email"
                       placeholder="supervisor@company.com"
-                      className={`pl-10 ${formErrors.supervisorEmail ? 'border-red-500' : ''}`}
+                      className={`pl-10 border border-gray-200 ${formErrors.supervisorEmail ? 'border-red-500' : ''}`}
                       value={employmentInfo.supervisorEmail}
                       onChange={(e) => handleEmploymentChange('supervisorEmail', e.target.value)}
                     />
