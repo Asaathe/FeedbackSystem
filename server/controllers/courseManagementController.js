@@ -53,9 +53,8 @@ const createProgram = async (req, res) => {
       });
     }
 
-    const courseSection = `${program_code} - ${yearLevelInt}${section}`;
-    const query = "INSERT INTO course_management (department, program_name, program_code, year_level, section, status, course_section) VALUES (?, ?, ?, ?, ?, ?, ?)";
-    db.query(query, [department, program_name, program_code, yearLevelInt, section, status || 'active', courseSection], (err, result) => {
+    const query = "INSERT INTO course_management (department, program_name, program_code, year_level, section, status) VALUES (?, ?, ?, ?, ?, ?)";
+    db.query(query, [department, program_name, program_code, yearLevelInt, section, status || 'active'], (err, result) => {
       if (err) {
         console.error("Error creating program:", err);
         if (err.code === "ER_DUP_ENTRY") {
