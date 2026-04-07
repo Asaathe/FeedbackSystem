@@ -118,15 +118,17 @@ function ContentRenderer({
 
   if (!isExternalMode && availableForms.length === 0) {
     return (
-      <div className="text-center py-8">
-        <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          All Caught Up!
-        </h3>
-        <p className="text-gray-600">
-          You have no pending feedback forms. Check "My Submissions" for your history.
-        </p>
-      </div>
+      <Card className="border-green-100">
+        <CardContent className="py-12">
+          <div className="text-center">
+            <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No Forms Assigned</h3>
+            <p className="text-gray-600">
+              You don't have any feedback forms assigned at this time.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

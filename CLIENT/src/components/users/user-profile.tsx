@@ -314,13 +314,13 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
             >
               {isEditing ? (
                 <>
-                  <Save className="w-4 h-4 mr-2" />
-                  Save Changes
+                  <Save className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Save Changes</span>
                 </>
               ) : (
                 <>
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit Profile
+                  <Edit className="w-4 h-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Edit Profile</span>
                 </>
               )}
             </Button>

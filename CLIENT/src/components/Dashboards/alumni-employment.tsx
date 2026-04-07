@@ -461,9 +461,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-6 lg:px-8">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
             <Building2 className="w-6 h-6 text-white" />
@@ -581,9 +581,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
             {isEmploymentFormSubmitted && !showUpdateForm ? 'Your Employment Information' : 'Update Employment Information'}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6">
           {isEmploymentFormSubmitted && !showUpdateForm ? (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               <div className="text-center py-8">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <TrendingUp className="w-8 h-8 text-green-600" />
@@ -592,9 +592,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                 <p className="text-gray-600 mt-2">Thank you for keeping us updated with your employment status.</p>
               </div>
               
-              <div className="bg-green-50 rounded-lg p-6 max-w-2xl mx-auto">
-                <h4 className="font-semibold text-gray-900 mb-4">Current Employment Details</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-green-50 rounded-lg p-4 sm:p-6 max-w-2xl mx-auto">
+                <h4 className="font-semibold text-gray-900 mb-4 text-sm sm:text-base">Current Employment Details</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <p className="text-sm text-gray-500">Company Name</p>
                     <p className="font-medium">{employmentInfo.companyName}</p>
@@ -642,13 +642,13 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                 </div>
                 
                 {/* Manual Update Button - Always available */}
-                <div className="mt-6 pt-4 border-t border-green-200 flex justify-center">
-                  <Button 
+                <div className="mt-4 sm:mt-6 pt-4 border-t border-green-200 flex justify-center">
+                  <Button
                     onClick={() => {
                       setShowUpdateForm(true);
                       setFeedbackMessage(null);
                     }}
-                    className="bg-green-500 hover:bg-green-600 flex items-center gap-2"
+                    className="bg-green-500 hover:bg-green-600 flex items-center gap-2 w-full sm:w-auto"
                   >
                     <TrendingUp className="w-4 h-4" />
                     Update My Employment Information
@@ -658,7 +658,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
             </div>
           ) : (
             <form onSubmit={(e) => { e.preventDefault(); handleUpdateEmployment(); }} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 px-2 sm:px-0">
                 {/* Company Name */}
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Company Name *</Label>
@@ -845,22 +845,23 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                 </div>
               </div>
 
-              <div className="flex justify-end pt-4 gap-3">
+              <div className="flex flex-col sm:flex-row justify-center sm:justify-end pt-4 gap-3">
                 {showUpdateForm && (
-                  <Button 
+                  <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
                       setShowUpdateForm(false);
                       setFeedbackMessage(null);
                     }}
+                    className="w-full sm:w-auto"
                   >
                     Cancel
                   </Button>
                 )}
-                <Button 
-                  type="submit" 
-                  className="bg-green-500 hover:bg-green-600"
+                <Button
+                  type="submit"
+                  className="bg-green-500 hover:bg-green-600 w-full sm:w-auto"
                   disabled={workflowState === 'updating'}
                 >
                   {workflowState === 'updating' ? (

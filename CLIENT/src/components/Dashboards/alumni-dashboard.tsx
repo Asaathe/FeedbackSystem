@@ -119,37 +119,37 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   }, []);
   
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-4 sm:px-6 lg:px-8">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-        <div className="flex items-start justify-between">
-          <div>
-            <h2 className="text-2xl">Welcome back, Alumnus!</h2>
-            <p className="text-gray-600 mt-1">
-              {alumniStats.program 
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
+        <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl sm:text-2xl">Welcome back, Alumnus!</h2>
+            <p className="text-gray-600 mt-1 text-sm sm:text-base">
+              {alumniStats.program
                 ? `${alumniStats.program} • Class of ${alumniStats.graduationYear}`
                 : 'Alumni User'}
             </p>
             {alumniStats.currentEmployment && (
               <div className="flex items-center gap-2 mt-2">
                 <Briefcase className="w-4 h-4 text-gray-600" />
-                <p className="text-sm text-gray-600">{alumniStats.currentEmployment}</p>
+                <p className="text-xs sm:text-sm text-gray-600">{alumniStats.currentEmployment}</p>
               </div>
             )}
           </div>
-          <Badge className="bg-purple-500">Alumni</Badge>
+          <Badge className="bg-purple-500 self-start">Alumni</Badge>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         <Card className="border-green-100">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm text-gray-600">Feedback Submitted</CardTitle>
             <MessageSquare className="w-5 h-5 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">{alumniStats.feedbackSubmitted || formStats.completed}</div>
+            <div className="text-2xl sm:text-3xl">{alumniStats.feedbackSubmitted || formStats.completed}</div>
             <p className="text-xs text-gray-600 mt-1">Post-graduation</p>
           </CardContent>
         </Card>
@@ -160,16 +160,18 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
             <GraduationCap className="w-5 h-5 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl">{alumniPendingForms.length || formStats.pending}</div>
+            <div className="text-2xl sm:text-3xl">{alumniPendingForms.length || formStats.pending}</div>
             <p className="text-xs text-orange-600 mt-1">Awaiting response</p>
           </CardContent>
         </Card>
 
-        </div>
+        {/* Placeholder for third stat if needed */}
+        <div className="hidden lg:block"></div>
+      </div>
 
       {/* Analytics Row */}
       {skillsData.length > 0 && engagementData.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Skills Relevance Comparison */}
           <Card className="border-green-100">
             <CardHeader>
@@ -257,31 +259,31 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
           <div className="space-y-4">
             {alumniPendingForms.length > 0 ? (
               alumniPendingForms.map((form) => (
-                <div 
-                  key={form.id} 
-                  className="p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors"
+                <div
+                  key={form.id}
+                  className="p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-green-200 hover:bg-green-50/50 transition-colors"
                 >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h3>{form.title}</h3>
-                        <Badge 
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                        <h3 className="text-sm sm:text-base font-medium">{form.title}</h3>
+                        <Badge
                           variant="secondary"
                           className={
-                            form.priority === 'high' 
-                              ? 'bg-red-100 text-red-700' 
+                            form.priority === 'high'
+                              ? 'bg-red-100 text-red-700'
                               : 'bg-orange-100 text-orange-700'
                           }
                         >
                           {form.priority}
                         </Badge>
                       </div>
-                      <p className="text-sm text-gray-600">{form.description}</p>
+                      <p className="text-xs sm:text-sm text-gray-600">{form.description}</p>
                       <p className="text-xs text-gray-500 mt-1">Due: {form.dueDate}</p>
                     </div>
                   </div>
-                  <Button 
-                    className="bg-green-500 hover:bg-green-600 mt-3"
+                  <Button
+                    className="bg-green-500 hover:bg-green-600 mt-3 w-full sm:w-auto"
                     onClick={() => onNavigate?.('submit-feedback')}
                   >
                     Complete Feedback
