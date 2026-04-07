@@ -264,6 +264,7 @@ export default function App() {
     console.log("useEffect is running!");
 
     // Check for server-redirected token parameter (from /feedback/t/* routes)
+    const searchParams = new URLSearchParams(window.location.search);
     const externalTokenParam = searchParams.get('external_token');
     if (externalTokenParam) {
       console.log("🎯 SERVER REDIRECT DETECTED - Token:", externalTokenParam);
