@@ -363,6 +363,28 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       const loadExternalForm = async () => {
         setLoading(true);
         setSelectedForm(null); // Clear any previous state
+
+        // Check sessionStorage for cached form data to prevent flashes
+        const cacheKey = externalToken ? `external_form_token_${externalToken}` : `external_form_${externalFormId}`;
+        const cachedFormData = sessionStorage.getItem(cacheKey);
+        if (cachedFormData) {
+          try {
+            const parsed = JSON.parse(cachedFormData);
+            setSelectedForm(parsed.formData);
+            setAvailableForms([parsed.formData]);
+            setExternalSupervisorEmail(parsed.supervisorEmail || '');
+            setExternalSupervisorName(parsed.supervisorName || '');
+            setExternalCompanyName(parsed.companyName || '');
+            setExternalAlumnusName(parsed.alumnusName || '');
+            setInvitationToken(parsed.invitationToken || '');
+            setLoading(false);
+            return; // Use cached data
+          } catch (e) {
+            // Invalid cache, continue with API call
+            sessionStorage.removeItem(cacheKey);
+          }
+        }
+
         try {
           let result;
           if (externalToken) {
@@ -423,20 +445,32 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               setInvitationToken(form.invitation.token || '');
             }
 
+            // Safe date parsing helper
+            const safeDateString = (dateStr: string | null) => {
+              if (!dateStr) return "No due date";
+              try {
+                const date = new Date(dateStr);
+                if (isNaN(date.getTime())) return "No due date";
+                return date.toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                });
+              } catch {
+                return "No due date";
+              }
+            };
+
             const formData: FeedbackForm = {
               id: form.id,
               title: form.title,
               description: form.description,
               category: form.category,
-              dueDate: form.end_date ? new Date(form.end_date).toLocaleDateString('en-US', {
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric'
-              }) : "No due date",
+              dueDate: safeDateString(form.end_date),
               startDate: form.start_date || null,
               // Map server fields to client field names for status functions
               startDateOnly: form.start_date ? form.start_date.split(' ')[0] : null,
-              startTimeOnly: form.start_time ? form.start_date.split(' ')[1] : null,
+              startTimeOnly: form.start_date ? form.start_date.split(' ')[1] : null,
               endDateOnly: form.end_date ? form.end_date.split(' ')[0] : null,
               endTimeOnly: form.end_date ? form.end_date.split(' ')[1] : null,
               imageUrl: form.image_url,
@@ -448,6 +482,18 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             console.log("Setting form data:", formData);
             setSelectedForm(formData);
             setAvailableForms([formData]);
+
+            // Cache the form data in sessionStorage to prevent loading flashes
+            const cacheData = {
+              formData,
+              supervisorEmail: externalSupervisorEmail,
+              supervisorName: externalSupervisorName,
+              companyName: externalCompanyName,
+              alumnusName: externalAlumnusName,
+              invitationToken: invitationToken
+            };
+            sessionStorage.setItem(cacheKey, JSON.stringify(cacheData));
+
             // Only set loading to false after form is successfully loaded
             setLoading(false);
           } else {
@@ -458,6 +504,8 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
           }
         } catch (error) {
           console.error("Error loading external form:", error);
+          // Clear any cached data on error
+          sessionStorage.removeItem(cacheKey);
           setLoading(false); // Set loading to false on exception
         }
       };
