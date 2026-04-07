@@ -143,8 +143,10 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
         return;
       }
 
-      // Use instructor_id (string) instead of user_id (number) as per API requirements
-      const response = await fetch(`/api/subject-evaluation/instructors/${targetInstructor.instructor_id}/subjects`, {
+      // Use user_id (number) instead of instructor_id (string) for proper foreign key matching
+      // Fall back to instructor_id if user_id not available for backward compatibility
+      const instructorId = targetInstructor.user_id || targetInstructor.instructor_id;
+      const response = await fetch(`/api/subject-evaluation/instructors/${instructorId}/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },

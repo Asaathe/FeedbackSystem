@@ -851,13 +851,112 @@ const getFeedbackCategoryBreakdown = async (req, res) => {
 };
 
 /**
- * Get subjects for the logged-in student
+ * Get subjects for the logged-in user (student OR instructor)
  */
 const getMySubjects = async (req, res) => {
   try {
     const userId = req.user.id;
+    const userRole = req.user.role;
 
-    // Get student's program
+    // If user is an instructor, return their assigned subjects
+    if (userRole === 'instructor' || userRole === 'admin') {
+      // First check if this is an instructor
+      const instructorCheckQuery = "SELECT 1 FROM instructors WHERE user_id = ?";
+      const instructorCheck = await new Promise((resolve, reject) => {
+        db.query(instructorCheckQuery, [userId], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      if (instructorCheck.length > 0 || userRole === 'admin') {
+        // Return instructor's assigned subjects
+        const query = `
+          SELECT
+            so.id as offering_id,
+            so.subject_id,
+            es.subject_code,
+            es.subject_name,
+            es.department,
+            so.program_id,
+            c.program_name,
+            c.course_section,
+            so.year_level,
+            so.section,
+            so.academic_year,
+            so.semester,
+            so.instructor_id,
+            u.full_name as instructor_name,
+            i.image as instructor_image,
+            (SELECT COUNT(DISTINCT st.user_id) FROM students st
+             INNER JOIN users u2 ON st.user_id = u2.id
+             WHERE st.program_id = so.program_id AND u2.status = 'active') as student_count,
+            COALESCE((
+              SELECT COUNT(*)
+              FROM subject_feedback sf
+              WHERE sf.section_id = so.id
+            ), 0) as subject_feedback_count,
+            COALESCE((
+              SELECT COUNT(*)
+              FROM instructor_feedback ifb
+              WHERE ifb.section_id = so.id
+            ), 0) as instructor_feedback_count,
+            COALESCE((
+              SELECT AVG(sf.overall_rating)
+              FROM subject_feedback sf
+              WHERE sf.section_id = so.id AND sf.overall_rating IS NOT NULL
+            ), 0) as subject_avg,
+            COALESCE((
+              SELECT AVG(ifb.overall_rating)
+              FROM instructor_feedback ifb
+              WHERE ifb.section_id = so.id AND ifb.overall_rating IS NOT NULL
+            ), 0) as instructor_avg
+          FROM subject_offerings so
+          LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+          LEFT JOIN course_management c ON so.program_id = c.id
+          LEFT JOIN users u ON so.instructor_id = u.id
+          LEFT JOIN instructors i ON u.id = i.user_id
+          WHERE so.instructor_id = ? AND so.status = 'active'
+          ORDER BY es.subject_code
+        `;
+
+        const results = await new Promise((resolve, reject) => {
+          db.query(query, [userId], (err, results) => {
+            if (err) reject(err);
+            else resolve(results);
+          });
+        });
+
+        // Also include instructor data for the dashboard
+        const instructorQuery = `
+          SELECT 
+            u.id as user_id,
+            u.full_name,
+            u.email,
+            i.department,
+            i.instructor_id,
+            i.image
+          FROM users u
+          LEFT JOIN instructors i ON u.id = i.user_id
+          WHERE u.id = ?
+        `;
+        
+        const instructorData = await new Promise((resolve, reject) => {
+          db.query(instructorQuery, [userId], (err, results) => {
+            if (err) reject(err);
+            else resolve(results[0] || null);
+          });
+        });
+
+        return res.status(200).json({ 
+          success: true, 
+          subjects: results,
+          instructor: instructorData
+        });
+      }
+    }
+
+    // For students, get their program subjects
     const studentQuery = "SELECT program_id FROM students WHERE user_id = ?";
     const studentResults = await new Promise((resolve, reject) => {
       db.query(studentQuery, [userId], (err, results) => {
@@ -1031,6 +1130,31 @@ const getInstructorDetails = async (req, res) => {
 const getInstructorSubjects = async (req, res) => {
   try {
     const { instructorId } = req.params;
+    
+    // Handle both numeric user_id and string instructor_id formats
+    let instructorUserId;
+    
+    // Check if the ID is a string employee code (like '90872')
+    if (isNaN(parseInt(instructorId)) || instructorId.length > 5) {
+      // Look up user_id by instructor_id string
+      const lookupQuery = "SELECT user_id FROM instructors WHERE instructor_id = ?";
+      const lookupResult = await new Promise((resolve, reject) => {
+        db.query(lookupQuery, [instructorId], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+      
+      if (lookupResult.length > 0) {
+        instructorUserId = lookupResult[0].user_id;
+      } else {
+        // Fallback: try as numeric user_id directly
+        instructorUserId = parseInt(instructorId);
+      }
+    } else {
+      // Already numeric user_id
+      instructorUserId = parseInt(instructorId);
+    }
 
     const query = `
       SELECT
@@ -1057,7 +1181,17 @@ const getInstructorSubjects = async (req, res) => {
             SELECT COUNT(*)
             FROM instructor_feedback ifb
             WHERE ifb.section_id = so.id
-          ), 0) as instructor_feedback_count
+          ), 0) as instructor_feedback_count,
+          COALESCE((
+            SELECT AVG(sf.overall_rating)
+            FROM subject_feedback sf
+            WHERE sf.section_id = so.id AND sf.overall_rating IS NOT NULL
+          ), 0) as subject_avg,
+          COALESCE((
+            SELECT AVG(ifb.overall_rating)
+            FROM instructor_feedback ifb
+            WHERE ifb.section_id = so.id AND ifb.overall_rating IS NOT NULL
+          ), 0) as instructor_avg
       FROM subject_offerings so
       LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
@@ -1065,7 +1199,7 @@ const getInstructorSubjects = async (req, res) => {
       ORDER BY es.subject_code
     `;
 
-    db.query(query, [instructorId], (err, subjects) => {
+    db.query(query, [instructorUserId], (err, subjects) => {
       if (err) {
         console.error("Error fetching instructor subjects:", err);
         return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
@@ -1212,13 +1346,31 @@ const getInstructorDashboardStats = async (req, res) => {
       });
     });
 
+    // Get total feedbacks
+    const feedbacksQuery = `
+      SELECT 
+        COALESCE(COUNT(DISTINCT ifb.id), 0) + COALESCE(COUNT(DISTINCT sf.id), 0) as total_feedbacks,
+        COALESCE(AVG(ifb.overall_rating), 0) as avg_rating
+      FROM subject_offerings so
+      LEFT JOIN instructor_feedback ifb ON so.id = ifb.section_id
+      LEFT JOIN subject_feedback sf ON so.id = sf.section_id
+      WHERE so.instructor_id = ? AND so.status = 'active'
+    `;
+
+    const feedbacksResult = await new Promise((resolve, reject) => {
+      db.query(feedbacksQuery, [userId], (err, results) => {
+        if (err) reject(err);
+        else resolve(results);
+      });
+    });
+
     return res.status(200).json({
       success: true,
       stats: {
         total_students: studentsResult[0]?.total_students || 0,
         total_courses: subjectsResult[0]?.total_courses || 0,
-        total_feedbacks: 0,
-        avg_rating: 0
+        total_feedbacks: feedbacksResult[0]?.total_feedbacks || 0,
+        avg_rating: feedbacksResult[0]?.avg_rating || 0
       }
     });
   } catch (error) {
