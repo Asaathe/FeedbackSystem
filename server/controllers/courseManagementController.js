@@ -109,9 +109,8 @@ const updateProgram = async (req, res) => {
       });
     }
 
-    const courseSection = `${program_code} - ${yearLevelInt}${section}`;
-    const query = "UPDATE course_management SET department = ?, program_name = ?, program_code = ?, year_level = ?, section = ?, status = ?, course_section = ? WHERE id = ?";
-    db.query(query, [department, program_name, program_code, yearLevelInt, section, status, courseSection, id], (err, result) => {
+    const query = "UPDATE course_management SET department = ?, program_name = ?, program_code = ?, year_level = ?, section = ?, status = ? WHERE id = ?";
+    db.query(query, [department, program_name, program_code, yearLevelInt, section, status, id], (err, result) => {
       if (err) {
         console.error("Error updating program:", err);
         if (err.code === "ER_DUP_ENTRY") {

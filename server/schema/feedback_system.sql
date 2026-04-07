@@ -230,7 +230,7 @@ CREATE TABLE `alumni_employment_tracker_view` (
 --
 
 CREATE TABLE `course_management` (
-  `id` int(11) NOT NULL,
+  `id` int(11) NOT NULL AUTO_INCREMENT,
   `department` enum('College','Senior High') NOT NULL,
   `program_name` varchar(255) NOT NULL,
   `program_code` varchar(50) NOT NULL,
