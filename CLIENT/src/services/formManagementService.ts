@@ -1918,12 +1918,13 @@ export const getMyEvaluations = async (): Promise<{ success: boolean; evaluation
 
 // Submit feedback publicly (without authentication) - for external supervisors
 interface PublicFeedbackParams {
-  formId: string;
+  formId?: string;
   responses: Record<string, any>;
   supervisorEmail?: string;
   supervisorName?: string;
   companyName?: string;
   alumnusName?: string;
+  token?: string;
 }
 
 export const getPublicForm = async (formId: string): Promise<{ success: boolean; form?: any; message: string }> => {

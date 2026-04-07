@@ -1,3 +1,4 @@
+// API configuration for the application
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
 export const apiFetch = async (url: string, options?: RequestInit): Promise<Response> => {
