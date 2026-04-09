@@ -358,152 +358,107 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
     const progress = formQuestions.length > 0 ? (answeredCount / formQuestions.length) * 100 : 0;
 
     return (
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={handleCloseEvaluation}>
-            <ArrowLeft className="w-5 h-5" />
+      <div className="space-y-3 sm:space-y-4 -mx-3 px-3 sm:mx-0 sm:px-0">
+        {/* Compact Header */}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleCloseEvaluation}>
+            <ArrowLeft className="w-4 h-4" />
           </Button>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold">{selectedForm.title}</h2>
-            <p className="text-gray-600">
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base sm:text-xl font-bold truncate">{selectedForm.title}</h2>
+            <p className="text-gray-500 text-xs sm:text-sm truncate">
               {selectedSubject?.subject_name} • {selectedSubject?.subject_code}
             </p>
           </div>
         </div>
 
-        {/* Subject & Instructor Info */}
-        <Card className="border-green-100 bg-gradient-to-r from-green-50 to-emerald-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-4">
-              <Avatar className="w-16 h-16">
-                {getImageUrl(selectedSubject?.instructor_image) ? (
-                  <img 
-                    src={getImageUrl(selectedSubject?.instructor_image) || ''} 
-                    alt={selectedSubject?.instructor_name || 'Instructor'} 
-                    className="w-full h-full object-cover" 
-                  />
-                ) : (
-                  <AvatarFallback className="bg-green-500 text-white text-xl">
-                    {getInitials(selectedSubject?.instructor_name ?? null)}
-                  </AvatarFallback>
-                )}
-              </Avatar>
-              <div>
-                <p className="text-sm text-green-600 font-medium">Evaluating</p>
-                <h3 className="text-xl font-bold text-gray-800">
-                  {selectedSubject?.subject_name}
-                </h3>
-                <p className="text-gray-600">
-                  {selectedSubject?.subject_code} • {selectedSubject?.semester} • {selectedSubject?.academic_year}
-                </p>
-                <div className="flex items-center gap-2 mt-1">
-                  <User className="w-4 h-4 text-gray-500" />
-                  <p className="text-sm text-gray-500">
-                    {selectedSubject?.instructor_name || 'No Instructor Assigned'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Progress */}
-        <Card className="border-green-100">
-          <CardContent className="pt-6">
-            <div className="flex justify-between text-sm mb-2">
-              <span>Progress</span>
-              <span>{answeredCount} of {formQuestions.length} answered</span>
-            </div>
-            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-green-500 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Compact Progress */}
+        <div className="flex items-center gap-2 text-xs text-gray-500">
+          <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-green-500 rounded-full transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+          <span className="whitespace-nowrap">{answeredCount}/{formQuestions.length}</span>
+        </div>
 
         {/* Questions */}
         {loadingForm ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
-            <p className="ml-4 text-gray-600">Loading evaluation form...</p>
+          <div className="flex items-center justify-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 sm:h-8 sm:w-8 border-b-2 border-green-500"></div>
+            <p className="ml-2 text-xs sm:text-sm text-gray-500">Loading...</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="space-y-2 sm:space-y-3 -mx-3 px-3 sm:mx-0 sm:px-0">
             {formQuestions.map((question, index) => (
               <Card key={question.id || index} className="border-gray-200">
-                <CardContent className="pt-6">
-                  <div className="flex items-start gap-3 mb-4">
-                    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-semibold text-sm">
+                <CardContent className="p-3 sm:p-4">
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="flex-shrink-0 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-semibold text-xs">
                       {index + 1}
                     </span>
-                    <h3 className="text-lg font-medium text-gray-800 pt-1">
+                    <h3 className="text-xs sm:text-sm font-medium text-gray-800 leading-tight pt-0.5">
                       {question.question || question.text}
                     </h3>
                   </div>
                   
                   {/* Rating Question */}
                   {(question.type === 'rating' || question.question_type === 'rating') && (
-                    <div className="ml-11">
-                      <div className="flex gap-2">
+                    <div className="ml-7 sm:ml-11">
+                      <div className="flex gap-1 overflow-x-auto pb-1">
                         {[1, 2, 3, 4, 5].map((rating) => (
                           <button
                             key={rating}
                             type="button"
                             onClick={() => handleResponseChange(question.id!, rating)}
-                            className={`p-2 transition-all duration-200 transform hover:scale-110 ${
+                            className={`p-0.5 transition-all duration-200 flex-shrink-0 ${
                               formResponses[question.id!] >= rating
                                 ? 'text-yellow-400'
-                                : 'text-gray-300 hover:text-yellow-200'
+                                : 'text-gray-300'
                             }`}
                           >
-                            <Star className="w-8 h-8 fill-current" />
+                            <Star className="w-4 h-4 sm:w-5 sm:h-5 fill-current" />
                           </button>
                         ))}
-                      </div>
-                      <div className="flex justify-between mt-2 text-xs text-gray-400">
-                        <span>Poor</span>
-                        <span>Excellent</span>
                       </div>
                     </div>
                   )}
                   
                   {/* Text Question */}
                   {(question.type === 'text' || question.question_type === 'text') && (
-                    <div className="ml-11">
+                    <div className="ml-7 sm:ml-11">
                       <textarea
                         value={formResponses[question.id!] || ''}
                         onChange={(e) => handleResponseChange(question.id!, e.target.value)}
-                        placeholder="Type your answer here..."
-                        className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:ring-0 transition-colors bg-gray-50"
-                        rows={4}
+                        placeholder="Type here..."
+                        className="w-full p-2 sm:p-3 border border-gray-200 rounded-lg focus:border-green-500 focus:ring-0 text-xs sm:text-sm"
+                        rows={2}
                       />
                     </div>
                   )}
                   
                   {/* Multiple Choice Question */}
                   {((question.type === 'multiple_choice' || question.question_type === 'multiple_choice') && question.options) && (
-                    <div className="ml-11 space-y-3">
+                    <div className="ml-7 sm:ml-11 space-y-1 sm:space-y-2">
                       {question.options.map((option: any, optIndex: number) => {
                         const optionValue = option.option_text || option;
                         return (
                           <label
                             key={optIndex}
-                            className={`flex items-center p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${
+                            className={`flex items-center p-1.5 sm:p-2 border rounded cursor-pointer transition-all duration-200 ${
                               formResponses[question.id!] === optionValue
-                                ? 'border-green-500 bg-green-50 shadow-sm'
-                                : 'border-gray-200 hover:border-green-300 hover:bg-gray-50'
+                                ? 'border-green-500 bg-green-50'
+                                : 'border-gray-200 hover:border-green-300'
                             }`}
                           >
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center mr-4 ${
+                            <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-full border flex items-center justify-center mr-2 flex-shrink-0 ${
                               formResponses[question.id!] === optionValue
                                 ? 'border-green-500 bg-green-500'
                                 : 'border-gray-300'
                             }`}>
                               {formResponses[question.id!] === optionValue && (
-                                <div className="w-2 h-2 rounded-full bg-white" />
+                                <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white" />
                               )}
                             </div>
                             <input
@@ -514,7 +469,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                               onChange={() => handleResponseChange(question.id!, optionValue)}
                               className="sr-only"
                             />
-                            <span className="text-gray-700 font-medium">{optionValue}</span>
+                            <span className="text-xs sm:text-sm text-gray-700">{optionValue}</span>
                           </label>
                         );
                       })}
@@ -527,22 +482,22 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
         )}
 
         {/* Submit Button */}
-        <div className="flex justify-between items-center pt-4 border-t">
-          <p className="text-sm text-gray-500">Your responses are anonymous</p>
+        <div className="flex flex-col sm:flex-row justify-between items-center gap-2 pt-2 sm:pt-3 sm:border-t border-gray-200">
+          <p className="text-xs text-gray-400 order-2 sm:order-1">Anonymous</p>
           <Button
             onClick={handleSubmitEvaluation}
             disabled={submitting || answeredCount === 0}
-            className="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed px-8"
+            className="bg-green-500 hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-1.5 sm:px-6 w-full sm:w-auto order-1 sm:order-2 text-sm"
           >
             {submitting ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent sm:mr-2" />
-                <span className="hidden sm:inline">Submitting...</span>
+                <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent sm:mr-2" />
+                <span className="hidden sm:inline text-xs">Submitting...</span>
               </>
             ) : (
               <>
-                <Send className="w-4 h-4 sm:mr-2" />
-                <span className="hidden sm:inline">Submit Evaluation</span>
+                <Send className="w-3 h-3 sm:mr-1.5" />
+                <span className="text-xs">Submit</span>
               </>
             )}
           </Button>
