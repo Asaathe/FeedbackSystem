@@ -562,18 +562,20 @@ export function FeedbackFormsManagement({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h2 className="text-2xl">Feedback Forms</h2>
-          <p className="text-gray-600">Create and manage feedback forms</p>
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-2xl">Feedback Forms</h2>
+            <p className="text-gray-600 mt-1">Create and manage feedback forms</p>
+          </div>
+          <Button
+            className="bg-green-500 hover:bg-green-600"
+            onClick={handleCreateNewForm}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Create New Form
+          </Button>
         </div>
-        <Button
-          className="bg-green-500 hover:bg-green-600"
-          onClick={handleCreateNewForm}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create New Form
-        </Button>
       </div>
 
 

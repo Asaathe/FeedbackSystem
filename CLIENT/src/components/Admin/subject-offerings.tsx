@@ -615,10 +615,10 @@ export function SubjectOfferings() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div>
-            <h2 className="text-2xl font-bold">Subject Offerings</h2>
+            <h2 className="text-2xl">Subject Offerings</h2>
             <p className="text-gray-600 mt-1">Manage class sections - link subjects to programs and assign instructors</p>
           </div>
           <Dialog open={createDialogOpen} onOpenChange={handleOpenCreateDialog}>

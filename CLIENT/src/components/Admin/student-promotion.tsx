@@ -568,17 +568,10 @@ export default function StudentPromotion() {
 
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex items-center justify-between mb-6 bg-gradient-to-r from-white to-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-100 rounded-lg">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800">Student Promotion</h1>
-            <p className="text-sm text-slate-500">Manage student promotions, graduation and track history</p>
-          </div>
-        </div>
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+        <h2 className="text-2xl">Student Promotion</h2>
+        <p className="text-gray-600 mt-1">Manage student promotions, graduation and track history</p>
       </div>
 
       {/* Current Semester Settings Banner */}
@@ -659,7 +652,7 @@ export default function StudentPromotion() {
         {/* Promote Tab */}
         <TabsContent value="promote" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-white border-b border-slate-100 pb-4">
+            <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Select Students for Promotion
@@ -852,7 +845,7 @@ export default function StudentPromotion() {
         {/* Graduate Tab */}
         <TabsContent value="graduate" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-amber-50 to-white border-b border-slate-100 pb-4">
+            <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
                 <Award className="h-5 w-5" />
                 Graduate Students to Alumni
@@ -910,7 +903,7 @@ export default function StudentPromotion() {
         {/* History Tab */}
         <TabsContent value="history" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
           <Card className="border-slate-200 shadow-sm hover:shadow-md transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-emerald-50 to-white border-b border-slate-100 pb-4">
+            <CardHeader className="pb-4">
               <CardTitle className="flex items-center gap-2">
                 <History className="h-5 w-5" />
                 Promotion History

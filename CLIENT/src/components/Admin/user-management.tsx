@@ -984,19 +984,19 @@ export function UserManagement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-        <div>
-          <h2 className="text-2xl">User Management</h2>
-          <p className="text-gray-600">Manage system users and permissions</p>
-        </div>
-        
-        <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-green-500 hover:bg-green-600">
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add User
-            </Button>
-          </DialogTrigger>
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div>
+            <h2 className="text-2xl">User Management</h2>
+            <p className="text-gray-600 mt-1">Manage system users and permissions</p>
+          </div>
+          <Dialog open={isAddUserOpen} onOpenChange={setIsAddUserOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-green-500 hover:bg-green-600">
+                <UserPlus className="w-4 h-4 mr-2" />
+                Add User
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto scrollbar-ghost">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1096,7 +1096,7 @@ export function UserManagement() {
                   </div>
                   <h4 className="text-sm font-semibold text-gray-800">Personal Information</h4>
                 </div>
-                
+
                 <div className="grid gap-4 sm:grid-cols-2 pl-10">
                   <div className="grid gap-1.5">
                     <Label htmlFor="fullName" className="text-xs font-medium text-gray-600">Full Name <span className="text-red-500">*</span></Label>
@@ -1238,6 +1238,7 @@ export function UserManagement() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Stats */}
@@ -1261,8 +1262,8 @@ export function UserManagement() {
 
       {/* Filters */}
       <Card className="border-green-100">
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row gap-4">
+        <CardContent className="py-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
               <Input

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -20,16 +21,18 @@ import {
   TableRow 
 } from "../ui/table";
 import { toast } from "sonner";
-import { 
-  Search, 
-  Edit, 
-  Trash2, 
+import {
+  Search,
+  Edit,
+  Trash2,
   BookOpen,
   Loader2,
   Plus,
   BookText,
   CheckCircle,
   XCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   getSubjects,
@@ -58,7 +61,11 @@ export function SubjectManagement({ onNavigate }: SubjectManagementProps = {}) {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-   
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   // Form states
   const [formData, setFormData] = useState({
     subject_code: "",
@@ -116,6 +123,7 @@ const departments = ["College", "Senior High"];
 
   const handleSearch = () => {
     loadSubjects();
+    setCurrentPage(1); // Reset to first page on search
   };
 
   const handleCreateSubject = async () => {
@@ -202,47 +210,61 @@ const departments = ["College", "Senior High"];
     (subject.department && subject.department.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
+  const paginatedSubjects = filteredSubjects.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Subject Management</h1>
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+        <h2 className="text-2xl">Subject Management</h2>
         <p className="text-gray-600 mt-1">Manage master data for subjects</p>
       </div>
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-3 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <BookText className="w-4 h-4" />
-            Total Subjects
-          </div>
-          <div className="text-2xl font-bold text-gray-900 mt-1">
-            {stats.total}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-            Active Subjects
-          </div>
-          <div className="text-2xl font-bold text-green-600 mt-1">
-            {stats.active}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <XCircle className="w-4 h-4 text-red-600" />
-            Inactive Subjects
-          </div>
-          <div className="text-2xl font-bold text-red-600 mt-1">
-            {stats.inactive}
-          </div>
-        </div>
+      <div className="grid grid-cols-3 gap-4">
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <BookText className="w-4 h-4" />
+              Total Subjects
+            </div>
+            <div className="text-2xl font-bold text-gray-900 mt-1">
+              {stats.total}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+              Active Subjects
+            </div>
+            <div className="text-2xl font-bold text-green-600 mt-1">
+              {stats.active}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <XCircle className="w-4 h-4 text-red-600" />
+              Inactive Subjects
+            </div>
+            <div className="text-2xl font-bold text-red-600 mt-1">
+              {stats.inactive}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Add/Edit Form - Always Visible */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <Card className="border-green-100 mb-6">
+        <CardContent className="p-6">
         <h2 className="text-lg font-semibold mb-4">
           {editSubject ? "Edit Subject" : "Add New Subject"}
         </h2>
@@ -329,7 +351,8 @@ const departments = ["College", "Senior High"];
             )}
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Search */}
       <div className="flex items-center gap-4 mb-6">
@@ -350,8 +373,9 @@ const departments = ["College", "Senior High"];
       </div>
 
       {/* Subjects Table */}
-      <div className="bg-white rounded-lg shadow-md">
-        <Table>
+      <Card className="border-green-100">
+        <CardContent className="p-0">
+          <Table>
           <TableHeader>
             <TableRow className="bg-gray-50">
               <TableHead className="font-semibold">Code</TableHead>
@@ -376,7 +400,7 @@ const departments = ["College", "Senior High"];
                 </TableCell>
               </TableRow>
             ) : (
-              filteredSubjects.map((subject) => (
+              paginatedSubjects.map((subject) => (
                 <TableRow key={subject.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
@@ -427,7 +451,33 @@ const departments = ["College", "Senior High"];
             )}
           </TableBody>
         </Table>
-      </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-center gap-2 mt-4 px-6 py-4 border-t border-gray-200">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
 
       {/* Delete Modal */}
       {subjectToDelete && (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Card, CardContent } from "../ui/card";
 import { Button } from "../ui/button";
 import { InputField } from "../ui/input-field";
 import { SelectField } from "../ui/select-field";
@@ -291,9 +292,9 @@ export function CourseManagement() {
   const paginatedPrograms = filteredPrograms.slice(startIndex, endIndex);
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Section Management</h1>
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+        <h2 className="text-2xl">Section Management</h2>
         <p className="text-gray-600 mt-1">
           Manage sections, year levels, and programs for student registration
         </p>
@@ -322,36 +323,45 @@ export function CourseManagement() {
       )}
 
       {/* Stats */}
-      <div className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Total Programs</div>
-          <div className="text-2xl font-bold text-gray-900">
-            {/* Count distinct program names */}
-            {new Set(programs.map((p) => p.program_name)).size}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Total Sections</div>
-          <div className="text-2xl font-bold text-blue-600">
-            {programs.length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Active Sections</div>
-          <div className="text-2xl font-bold text-green-600">
-            {programs.filter((p) => p.status === "active").length}
-          </div>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-4">
-          <div className="text-sm text-gray-600">Inactive Sections</div>
-          <div className="text-2xl font-bold text-red-600">
-            {programs.filter((p) => p.status === "inactive").length}
-          </div>
-        </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="text-sm text-gray-600">Total Programs</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {/* Count distinct program names */}
+              {new Set(programs.map((p) => p.program_name)).size}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="text-sm text-gray-600">Total Sections</div>
+            <div className="text-2xl font-bold text-blue-600">
+              {programs.length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="text-sm text-gray-600">Active Sections</div>
+            <div className="text-2xl font-bold text-green-600">
+              {programs.filter((p) => p.status === "active").length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-green-100">
+          <CardContent className="p-4">
+            <div className="text-sm text-gray-600">Inactive Sections</div>
+            <div className="text-2xl font-bold text-red-600">
+              {programs.filter((p) => p.status === "inactive").length}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Add/Edit Form */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+      <Card className="border-green-100">
+        <CardContent className="p-6">
         <h2 className="text-lg font-semibold mb-4">
           {editingProgram ? "Edit Program" : "Add New Program"}
         </h2>
@@ -436,10 +446,12 @@ export function CourseManagement() {
             )}
           </div>
         </form>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Filters */}
-      <div className="bg-white rounded-lg shadow-md p-4 mb-6">
+      <Card className="border-green-100 mb-6">
+        <CardContent className="p-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -485,10 +497,11 @@ export function CourseManagement() {
             </select>
           </div>
         </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Programs Table */}
-      <div className="bg-white rounded-lg shadow-md overflow-hidden">
+      <Card className="border-green-100 overflow-hidden">
         {isLoading ? (
           <div className="p-8 text-center text-gray-500">Loading programs...</div>
         ) : filteredPrograms.length === 0 ? (
@@ -595,7 +608,7 @@ export function CourseManagement() {
             )}
           </>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

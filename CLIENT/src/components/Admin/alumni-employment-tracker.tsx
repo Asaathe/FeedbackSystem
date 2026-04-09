@@ -90,9 +90,9 @@ const statusConfig: Record<TrackingStatus, {
   scheduled: {
     label: "Next Email Scheduled",
     icon: <Calendar className="w-4 h-4" />,
-    color: "text-purple-600",
-    bgColor: "bg-purple-100",
-   
+    color: "text-green-600",
+    bgColor: "bg-green-100",
+
   }
 };
 
@@ -393,9 +393,9 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-6 border border-purple-100">
+      <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
             <Users className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -408,10 +408,10 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
       </div>
 
       {/* Shopee-like Stepper Legend */}
-      <Card className="border-purple-100">
+      <Card className="border-green-100">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
-            <RefreshCw className="w-5 h-5 text-purple-500" />
+            <RefreshCw className="w-5 h-5 text-green-500" />
             Progress Tracking - Email Update Workflow
           </CardTitle>
         </CardHeader>
@@ -471,7 +471,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
               <Button
                 variant="outline"
                 onClick={handleRunScheduler}
-                className="flex items-center gap-2 text-purple-600 border-purple-200 hover:bg-purple-50"
+                className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
                 title="Run the employment update scheduler now (for testing)"
               >
                 <Clock className="w-4 h-4" />
@@ -530,8 +530,8 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
               ) : (
                 records.map((record) => (
                   <React.Fragment key={record.id}>
-                    <TableRow 
-                      className={`${selectedRecords.includes(record.id) ? 'bg-purple-50' : ''} ${selectedAlumniForStepper?.id === record.id ? 'ring-2 ring-purple-500' : ''} cursor-pointer hover:bg-gray-50`}
+                    <TableRow
+                      className={`${selectedRecords.includes(record.id) ? 'bg-green-50' : ''} ${selectedAlumniForStepper?.id === record.id ? 'ring-2 ring-green-500' : ''} cursor-pointer hover:bg-gray-50`}
                       onClick={() => setSelectedAlumniForStepper(record)}
                     >
                       <TableCell className="pl-4 w-10">
@@ -542,7 +542,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                           className="p-0 h-8"
                         >
                           {selectedRecords.includes(record.id) ? (
-                            <CheckSquare className="w-4 h-4 text-purple-500" />
+                            <CheckSquare className="w-4 h-4 text-green-500" />
                           ) : (
                             <Square className="w-4 h-4" />
                           )}
@@ -585,7 +585,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                             <Button
                               size="sm"
                               onClick={() => handleSendUpdateRequest(record.alumni_user_id)}
-                              className="bg-purple-500 hover:bg-purple-600"
+                              className="bg-green-500 hover:bg-green-600"
                             >
                               <Send className="w-4 h-4 mr-1" />
                               Send
