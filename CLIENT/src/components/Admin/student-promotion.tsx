@@ -143,7 +143,6 @@ export default function StudentPromotion() {
     graduationYear: new Date().getFullYear(),
     graduationDate: new Date().toISOString().split('T')[0],
     degree: "",
-    honors: "",
     notes: "",
   });
 
@@ -340,7 +339,6 @@ export default function StudentPromotion() {
           graduationYear: graduationData.graduationYear,
           graduationDate: graduationData.graduationDate,
           degree: graduationData.degree,
-          honors: graduationData.honors,
           notes: graduationData.notes || '',
         }),
       });
@@ -1128,15 +1126,6 @@ export default function StudentPromotion() {
                 value={graduationData.degree}
                 onChange={(e) => setGraduationData({ ...graduationData, degree: e.target.value })}
                 placeholder="Degree will be auto-filled from student program"
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Honors (Optional)</label>
-              <Input
-                value={graduationData.honors}
-                onChange={(e) => setGraduationData({ ...graduationData, honors: e.target.value })}
-                placeholder="e.g., Magna Cum Laude"
                 className="mt-1"
               />
             </div>
