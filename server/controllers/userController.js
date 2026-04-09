@@ -211,6 +211,12 @@ const updateUser = async (req, res) => {
       schoolRole,
     } = req.body;
 
+    console.log('=== UPDATE USER DEBUG ===');
+    console.log('User ID:', id);
+    console.log('Received role:', role);
+    console.log('Received profilePicture:', profilePicture);
+    console.log('=========================');
+
     // First check if user exists
     const existingUsers = await queryDatabase(
       db,
@@ -226,6 +232,9 @@ const updateUser = async (req, res) => {
     }
 
     const currentUser = existingUsers[0];
+
+    // Use current user's role if role is not provided
+    const userRole = role || currentUser.role;
 
     // Update users table
     if (fullName || email || status) {
@@ -256,7 +265,7 @@ const updateUser = async (req, res) => {
     }
 
     // Update role-specific data
-    if (role === 'student') {
+    if (userRole === 'student') {
       // Check if student record exists
       const studentRecords = await queryDatabase(
         db,
@@ -316,7 +325,7 @@ const updateUser = async (req, res) => {
         );
         console.log('Student record created');
       }
-    } else if (role === 'instructor') {
+    } else if (userRole === 'instructor') {
       // Check if instructor record exists
       const instructorRecords = await queryDatabase(
         db,
@@ -366,7 +375,7 @@ const updateUser = async (req, res) => {
           [id, instructorId || employeeId || null, department || null, schoolRole || null, profilePicture || null]
         );
       }
-    } else if (role === 'alumni') {
+    } else if (userRole === 'alumni') {
       // Check if alumni record exists
       const alumniRecords = await queryDatabase(
         db,
@@ -413,7 +422,7 @@ const updateUser = async (req, res) => {
           [id, graduationYear || null, phoneNumber || null, profilePicture || null]
         );
       }
-    } else if (role === 'employer') {
+    } else if (userRole === 'employer') {
       // Check if employer record exists
       const employerRecords = await queryDatabase(
         db,

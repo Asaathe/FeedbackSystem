@@ -439,7 +439,13 @@ const getAllUsers = async (filters = {}) => {
         SELECT 
           u.id, u.email, u.full_name, u.role, u.status, u.registration_date,
           s.studentID, s.program_id, s.contact_number,
-          COALESCE(i.image, s.image, a.image, e.image) as profilePicture,
+          CASE 
+            WHEN u.role = 'instructor' THEN i.image
+            WHEN u.role = 'student' THEN s.image
+            WHEN u.role = 'alumni' THEN a.image
+            WHEN u.role = 'employer' THEN e.image
+            ELSE COALESCE(i.image, s.image, a.image, e.image)
+          END as profilePicture,
           cm.course_section, cm.department as course_department,
           i.instructor_id, i.department as instructor_department, i.school_role,
           a.grad_year as graduationYear, a.degree,

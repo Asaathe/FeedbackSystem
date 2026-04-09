@@ -105,6 +105,9 @@ export function UserManagement() {
   const [programs, setPrograms] = useState<Array<{ value: string; label: string }>>([]);
   const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
 
+  // Image upload loading state
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+
   // Fetch programs from API
   useEffect(() => {
     const fetchPrograms = async () => {
@@ -605,39 +608,44 @@ export function UserManagement() {
   };
 
   const handleSaveEdit = async () => {
-    // Validation
-    if (!editUser.fullName || !editUser.email || !editUser.role || !editUser.department) {
-      toast.error('Please fill in all required fields');
+    // Validation - only require email as minimum
+    if (!editUser.email) {
+      toast.error('Email is required');
       return;
     }
 
+    // Build update data with only non-empty fields
+    const updateData: any = {
+      email: editUser.email,
+    };
+
+    // Always include role so backend knows which table to update
+    if (editUser.role) updateData.role = editUser.role.toLowerCase();
+    if (editUser.fullName) updateData.fullName = editUser.fullName;
+    if (editUser.department) updateData.department = editUser.department;
+    if (editUser.status) updateData.status = editUser.status;
+    if (editUser.phoneNumber) updateData.phoneNumber = editUser.phoneNumber;
+    if (editUser.address) updateData.address = editUser.address;
+    if (editUser.profilePicture) updateData.profilePicture = editUser.profilePicture;
+
+    if (editUser.role) {
+      if (editUser.role.toLowerCase() === 'student') {
+        if (editUser.studentId) updateData.studentId = editUser.studentId;
+        if (editUser.program_id) updateData.program_id = parseInt(editUser.program_id);
+      } else if (editUser.role.toLowerCase() === 'instructor') {
+        if (editUser.employeeId) updateData.instructorId = editUser.employeeId;
+        if (editUser.schoolRole) updateData.schoolRole = editUser.schoolRole;
+      } else if (editUser.role.toLowerCase() === 'alumni') {
+        if (editUser.graduationYear) updateData.graduationYear = editUser.graduationYear;
+      }
+    }
+
+    console.log('=== UPDATE USER CLIENT ===');
+    console.log('updateData:', updateData);
+    console.log('==========================');
+
     try {
       const token = sessionStorage.getItem('authToken');
-      const updateData = {
-        fullName: editUser.fullName,
-        email: editUser.email,
-        role: editUser.role.toLowerCase(),
-        department: editUser.department,
-        status: editUser.status,
-        phoneNumber: editUser.phoneNumber || undefined,
-        address: editUser.address || undefined,
-        profilePicture: editUser.profilePicture || undefined,
-        // Role-specific fields
-        ...(editUser.role.toLowerCase() === 'student' && {
-          studentId: editUser.studentId,
-          program_id: editUser.program_id ? parseInt(editUser.program_id) : null
-        }),
-        ...(editUser.role.toLowerCase() === 'instructor' && {
-          instructorId: editUser.employeeId,
-          schoolRole: editUser.schoolRole || undefined
-        }),
-        ...(editUser.role.toLowerCase() === 'staff' && {
-          employeeId: editUser.employeeId
-        }),
-        ...(editUser.role.toLowerCase() === 'alumni' && {
-          graduationYear: editUser.graduationYear
-        })
-      };
 
       const response = await fetch(`/api/users/${editingUserId}`, {
         method: 'PATCH',
@@ -653,7 +661,23 @@ export function UserManagement() {
         throw new Error(errorData.message || 'Failed to update user');
       }
 
-      // Re-fetch users to update the list
+      const data = await response.json();
+      
+      // Update selectedUser with the new data to reflect changes in the UI
+      if (selectedUser) {
+        setSelectedUser({
+          ...selectedUser,
+          fullName: editUser.fullName || selectedUser.fullName,
+          email: editUser.email,
+          role: editUser.role || selectedUser.role,
+          department: editUser.department || selectedUser.department,
+          status: editUser.status || selectedUser.status,
+          phoneNumber: editUser.phoneNumber || selectedUser.phoneNumber,
+          address: editUser.address || selectedUser.address,
+          profilePicture: editUser.profilePicture || selectedUser.profilePicture,
+        });
+      }
+
       await fetchUsers(searchQuery, roleFilter, statusFilter);
       toast.success('User updated successfully');
       setIsEditMode(false);
@@ -1624,7 +1648,12 @@ export function UserManagement() {
                         )
                       )}
                     </Avatar>
-                    {isEditMode && (
+                    {isUploadingImage && (
+                      <div className="absolute inset-0 bg-black/30 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                    {isEditMode && !isUploadingImage && (
                       <>
                         <Label htmlFor="editProfilePicture" className="absolute -bottom-1 -right-1 cursor-pointer bg-green-500 hover:bg-green-600 text-white rounded-full p-2 shadow-lg transition-colors">
                           <Upload className="w-4 h-4" />
@@ -1661,6 +1690,7 @@ export function UserManagement() {
                           
                           // Upload file to server
                           try {
+                            setIsUploadingImage(true);
                             const token = sessionStorage.getItem('authToken');
                             const formData = new FormData();
                             formData.append('image', file);
@@ -1679,6 +1709,10 @@ export function UserManagement() {
                             const result = await response.json();
                             
                             if (result.success) {
+                              console.log('=== IMAGE UPLOAD SUCCESS ===');
+                              console.log('result.imageUrl:', result.imageUrl);
+                              console.log('editUser.role:', editUser.role);
+                              console.log('===========================');
                               setEditUser({ ...editUser, profilePicture: result.imageUrl });
                               toast.success('Profile photo uploaded successfully');
                             } else {
@@ -1687,6 +1721,8 @@ export function UserManagement() {
                           } catch (error) {
                             console.error('Error uploading image:', error);
                             toast.error('Failed to upload image');
+                          } finally {
+                            setIsUploadingImage(false);
                           }
                         }
                       }}
@@ -1895,8 +1931,6 @@ export function UserManagement() {
                             <SelectItem value="Student">Student</SelectItem>
                             <SelectItem value="Instructor">Instructor</SelectItem>
                             <SelectItem value="Alumni">Alumni</SelectItem>
-                            <SelectItem value="Employer">Employer</SelectItem>
-                            <SelectItem value="Admin">Admin</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
