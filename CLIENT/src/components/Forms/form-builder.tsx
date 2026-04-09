@@ -1100,8 +1100,8 @@ export function FormBuilder({
                       size="sm"
                       className="h-8 w-8 sm:w-auto sm:h-9 p-0 sm:px-4"
                     >
-                      <Eye className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">View</span>
+                      <Save className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Save</span>
                     </Button>
                   </DialogTrigger>
                     <DialogContent className="max-w-md">
