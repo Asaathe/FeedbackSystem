@@ -842,15 +842,15 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             )}
           </div>
           ) : (
-            /* Subjects Cards Grid - WITH EXPANDED INLINE DETAILS */
-            <div className="space-y-4">
+/* Subjects Cards Grid - WITH EXPANDED INLINE DETAILS */
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {loadingAllSubjects ? (
-                <div className="text-center py-12">
+                <div className="col-span-full text-center py-12">
                   <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
                   <p className="mt-2 text-gray-600">Loading subjects...</p>
                 </div>
               ) : filteredSubjects.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="col-span-full text-center py-12">
                   <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                   <p className="text-gray-500">No subjects found</p>
                 </div>
@@ -889,7 +889,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                         </div>
                         
                         {/* Expanded Inline Details (Subject Feedback Only) */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+                        <div className="grid grid-cols-2 gap-3 mt-4">
                           {/* Total Enrolled Students */}
                           <div className="bg-blue-50 rounded-lg p-2 text-center">
                             <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
@@ -922,7 +922,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
                           </div>
                         </div>
                         
-                     
+                      
                       </CardContent>
                     </Card>
                   );
