@@ -97,8 +97,6 @@ export function FeedbackTemplate() {
   const [periodName, setPeriodName] = useState("");
   const [periodStartDate, setPeriodStartDate] = useState("");
   const [periodEndDate, setPeriodEndDate] = useState("");
-  const [periodAcademicYear, setPeriodAcademicYear] = useState("");
-  const [periodSemester, setPeriodSemester] = useState("");
   const [periodActive, setPeriodActive] = useState(false);
   const [savingPeriod, setSavingPeriod] = useState(false);
 
@@ -276,8 +274,6 @@ export function FeedbackTemplate() {
     setPeriodName("");
     setPeriodStartDate("");
     setPeriodEndDate("");
-    setPeriodAcademicYear("");
-    setPeriodSemester("");
     setPeriodActive(false);
     setPeriodDialogOpen(true);
   };
@@ -287,8 +283,6 @@ export function FeedbackTemplate() {
     setPeriodName(period.name);
     setPeriodStartDate(period.start_date);
     setPeriodEndDate(period.end_date);
-    setPeriodAcademicYear(period.academic_year || "");
-    setPeriodSemester(period.semester || "");
     setPeriodActive(period.is_active);
     setPeriodDialogOpen(true);
   };
@@ -314,14 +308,12 @@ export function FeedbackTemplate() {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          name: periodName,
-          start_date: periodStartDate,
-          end_date: periodEndDate,
-          academic_year: periodAcademicYear,
-          semester: periodSemester,
-          is_active: periodActive
-        }),
+          body: JSON.stringify({
+            name: periodName,
+            start_date: periodStartDate,
+            end_date: periodEndDate,
+            is_active: periodActive
+          }),
       });
       
       const data = await response.json();
@@ -628,8 +620,6 @@ export function FeedbackTemplate() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Period Name</TableHead>
-                    <TableHead>Academic Year</TableHead>
-                    <TableHead>Semester</TableHead>
                     <TableHead>Start Date</TableHead>
                     <TableHead>End Date</TableHead>
                     <TableHead>Status</TableHead>
@@ -643,8 +633,6 @@ export function FeedbackTemplate() {
                     return (
                       <TableRow key={period.id}>
                         <TableCell className="font-medium">{period.name}</TableCell>
-                        <TableCell>{period.academic_year || '-'}</TableCell>
-                        <TableCell>{period.semester || '-'}</TableCell>
                         <TableCell>{formatDate(period.start_date)}</TableCell>
                         <TableCell>{formatDate(period.end_date)}</TableCell>
                         <TableCell>
@@ -697,7 +685,7 @@ export function FeedbackTemplate() {
                   })}
                   {periods.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                      <TableCell colSpan={5} className="text-center py-8 text-gray-500">
                         No evaluation periods found. Create one to enable feedback collection.
                       </TableCell>
                     </TableRow>
@@ -1050,28 +1038,6 @@ export function FeedbackTemplate() {
                   type="date"
                   value={periodEndDate}
                   onChange={(e) => setPeriodEndDate(e.target.value)}
-                  className="border border-gray-200"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="periodAcademicYear">Academic Year</Label>
-                <Input
-                  id="periodAcademicYear"
-                  value={periodAcademicYear}
-                  onChange={(e) => setPeriodAcademicYear(e.target.value)}
-                  placeholder="e.g., 2025-2026"
-                  className="border border-gray-200"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="periodSemester">Semester</Label>
-                <Input
-                  id="periodSemester"
-                  value={periodSemester}
-                  onChange={(e) => setPeriodSemester(e.target.value)}
-                  placeholder="e.g., 1st Semester"
                   className="border border-gray-200"
                 />
               </div>
