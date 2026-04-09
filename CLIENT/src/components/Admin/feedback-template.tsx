@@ -763,7 +763,7 @@ export function FeedbackTemplate() {
 
       {/* Preview Dialog - Full Form Preview */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto scrollbar-ghost">
+        <DialogContent className="max-w-[1000px]! w-[95vw] max-h-[90vh] overflow-y-auto scrollbar-ghost" style={{ maxWidth: '1000px', width: '95vw' }}>
           <DialogHeader>
             <DialogTitle>Form View</DialogTitle>
             <DialogDescription>
