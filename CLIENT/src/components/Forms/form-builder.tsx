@@ -2479,20 +2479,12 @@ export function FormBuilder({
           </DialogHeader>
           {fileToCrop && (
             <div className="space-y-4">
-              <ImageCropper
-                imageFile={fileToCrop}
-                onCropComplete={handleCropComplete}
-                onCancel={handleCropCancel}
-                aspectRatio={4}
-              />
-              {uploadingImage && (
-                <div className="flex items-center justify-center p-4 bg-blue-50 rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
-                    <span className="text-sm text-blue-700">Uploading image...</span>
-                  </div>
-                </div>
-              )}
+          <ImageCropper
+            imageFile={fileToCrop}
+            onCropComplete={handleCropComplete}
+            onCancel={handleCropCancel}
+            uploading={uploadingImage}
+          />
             </div>
           )}
         </DialogContent>

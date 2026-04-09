@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "../ui/button";
-import { X, Check, ZoomIn, ZoomOut, RotateCw } from "lucide-react";
+import { X, Check, ZoomIn, ZoomOut, RotateCw, Loader2 } from "lucide-react";
 
 interface ImageCropperProps {
   imageFile: File;
   onCropComplete: (croppedImage: string) => void;
   onCancel: () => void;
   aspectRatio?: number;
+  uploading?: boolean;
 }
 
 interface CropBox {
@@ -24,6 +25,7 @@ export function ImageCropper({
   onCropComplete,
   onCancel,
   aspectRatio = 4, // Default 4:1 aspect ratio for form headers
+  uploading = false,
 }: ImageCropperProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
@@ -44,9 +46,11 @@ export function ImageCropper({
 
   // Load image
   useEffect(() => {
+    if (!imageFile || !(imageFile instanceof File)) return;
+
     const img = new Image();
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       const src = e.target?.result as string;
       img.src = src;
@@ -57,11 +61,11 @@ export function ImageCropper({
           src,
         });
         setImageLoaded(true);
-        
+
         // Initialize crop box to center 80% of image
         const initialWidth = img.width * 0.8;
         const initialHeight = initialWidth / aspectRatio;
-        
+
         setCropBox({
           x: (img.width - initialWidth) / 2,
           y: (img.height - initialHeight) / 2,
@@ -70,7 +74,7 @@ export function ImageCropper({
         });
       };
     };
-    
+
     reader.readAsDataURL(imageFile);
   }, [imageFile, aspectRatio]);
 
@@ -497,9 +501,9 @@ export function ImageCropper({
           <X className="w-4 h-4 mr-2" />
           Cancel
         </Button>
-        <Button onClick={handleApplyCrop}>
-          <Check className="w-4 h-4 mr-2" />
-          Apply Crop
+        <Button onClick={handleApplyCrop} disabled={uploading}>
+          {uploading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+          {uploading ? "Uploading..." : "Apply Crop"}
         </Button>
       </div>
     </div>
