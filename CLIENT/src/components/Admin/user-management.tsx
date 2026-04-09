@@ -192,7 +192,7 @@ export function UserManagement() {
   const pendingItemsPerPage = 3; // Show fewer in pending section
 
   // Active tab state for role-based filtering
-  type UserRoleTab = 'all' | 'student' | 'instructor' | 'alumni' | 'employer';
+  type UserRoleTab = 'all' | 'student' | 'instructor' | 'alumni';
   const [activeTab, setActiveTab] = useState<UserRoleTab>('all');
 
   // Memoized tab counts for performance
@@ -201,7 +201,6 @@ export function UserManagement() {
     student: users.filter(u => u.role?.toLowerCase() === 'student').length,
     instructor: users.filter(u => u.role?.toLowerCase() === 'instructor').length,
     alumni: users.filter(u => u.role?.toLowerCase() === 'alumni').length,
-    employer: users.filter(u => u.role?.toLowerCase() === 'employer').length,
   }), [users]);
 
   // Fetch users from API
@@ -326,9 +325,7 @@ export function UserManagement() {
       case 'admin': return 'bg-purple-100 text-purple-700';
       case 'instructor': return 'bg-blue-100 text-blue-700';
       case 'student': return 'bg-green-100 text-green-700';
-     
       case 'alumni': return 'bg-lime-100 text-lime-700';
-      case 'employer': return 'bg-cyan-100 text-cyan-700';
       default: return 'bg-gray-100 text-gray-700';
     }
   };
@@ -363,8 +360,6 @@ export function UserManagement() {
       return user.department || 'Not Assigned';
     } else if (role === 'alumni') {
       return user.degree || 'N/A';
-    } else if (role === 'employer') {
-      return `${user.companyName || 'N/A'} ${user.employeeId || 'N/A'}`;
     } else {
       return user.department || 'N/A';
     }
@@ -378,8 +373,6 @@ export function UserManagement() {
       return 'Department';
     } else if (role === 'alumni') {
       return 'Degree';
-    } else if (role === 'employer') {
-      return 'Company and Employee';
     } else {
       return 'Department';
     }
@@ -411,11 +404,6 @@ export function UserManagement() {
         toast.error('Please select a department');
         return;
       }
-    } else if (newUser.role.toLowerCase() === 'employer') {
-      if (!newUser.companyName) {
-        toast.error('Please fill in the company name');
-        return;
-      }
     } else if (newUser.role.toLowerCase() === 'alumni') {
       if (!newUser.graduationYear) {
         toast.error('Please fill in the graduation year');
@@ -445,9 +433,6 @@ export function UserManagement() {
         }),
         ...(newUser.role.toLowerCase() === 'staff' && {
           employeeId: newUser.employeeId
-        }),
-        ...(newUser.role.toLowerCase() === 'employer' && {
-          companyName: newUser.companyName
         }),
         ...(newUser.role.toLowerCase() === 'alumni' && {
           graduationYear: newUser.graduationYear
@@ -649,9 +634,6 @@ export function UserManagement() {
         ...(editUser.role.toLowerCase() === 'staff' && {
           employeeId: editUser.employeeId
         }),
-        ...(editUser.role.toLowerCase() === 'employer' && {
-          companyName: editUser.companyName
-        }),
         ...(editUser.role.toLowerCase() === 'alumni' && {
           graduationYear: editUser.graduationYear
         })
@@ -754,7 +736,7 @@ export function UserManagement() {
               <Label htmlFor="studentId" className="text-xs font-medium text-gray-600">Student ID <span className="text-red-500">*</span></Label>
               <Input
                 id="studentId"
-                placeholder="e.g., 2024-0001"
+                placeholder="Student ID"
                 value={newUser.studentId}
                 onChange={(e) => setNewUser({ ...newUser, studentId: e.target.value })}
                 className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -799,7 +781,7 @@ export function UserManagement() {
               <Label htmlFor="employeeId" className="text-xs font-medium text-gray-600">Employee ID <span className="text-red-500">*</span></Label>
               <Input
                 id="employeeId"
-                placeholder="e.g., INS-001"
+                placeholder="Employee ID"
                 value={newUser.employeeId}
                 onChange={(e) => setNewUser({ ...newUser, employeeId: e.target.value })}
                 className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -822,26 +804,13 @@ export function UserManagement() {
               <Label htmlFor="schoolRole" className="text-xs font-medium text-gray-600">School Role</Label>
               <Input
                 id="schoolRole"
-                placeholder="e.g., IT Instructor, DEAN, Program Head"
+                placeholder="e.g., IT Instructor"
                 value={newUser.schoolRole}
                 onChange={(e) => setNewUser({ ...newUser, schoolRole: e.target.value })}
                 className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
               />
             </div>
           </>
-        );
-      case 'Employer':
-        return (
-          <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="companyName" className="text-xs font-medium text-gray-600">Company Name <span className="text-red-500">*</span></Label>
-            <Input
-              id="companyName"
-              placeholder="e.g., Tech Corp Inc."
-              value={newUser.companyName}
-              onChange={(e) => setNewUser({ ...newUser, companyName: e.target.value })}
-              className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
-            />
-          </div>
         );
       case 'Alumni':
         return (
@@ -850,7 +819,7 @@ export function UserManagement() {
             <Input
               id="graduationYear"
               type="number"
-              placeholder="e.g., 2020"
+              placeholder="Year"
               value={newUser.graduationYear}
               onChange={(e) => setNewUser({ ...newUser, graduationYear: e.target.value })}
               className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -873,7 +842,7 @@ export function UserManagement() {
               <Label htmlFor="studentId" className="text-xs font-medium text-gray-600">Student ID <span className="text-red-500">*</span></Label>
               <Input
                 id="studentId"
-                placeholder="e.g., 2024-0001"
+                placeholder="Student ID"
                 value={editUser.studentId}
                 onChange={(e) => setEditUser({ ...editUser, studentId: e.target.value })}
                 className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -949,26 +918,13 @@ export function UserManagement() {
             </div>
           </>
         );
-      case 'employer':
-        return (
-          <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="companyName" className="text-xs font-medium text-gray-600">Company Name <span className="text-red-500">*</span></Label>
-            <Input
-              id="companyName"
-              placeholder="e.g., Tech Corp Inc."
-              value={editUser.companyName}
-              onChange={(e) => setEditUser({ ...editUser, companyName: e.target.value })}
-              className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
-            />
-          </div>
-        );
       case 'alumni':
         return (
           <div className="grid gap-1.5 sm:col-span-2">
             <Label htmlFor="graduationYear" className="text-xs font-medium text-gray-600">Graduation Year <span className="text-red-500">*</span></Label>
             <Input
               id="graduationYear"
-              placeholder="e.g., 2020"
+              placeholder="Year"
               type="number"
               value={editUser.graduationYear}
               onChange={(e) => setEditUser({ ...editUser, graduationYear: e.target.value })}
@@ -1102,7 +1058,7 @@ export function UserManagement() {
                     <Label htmlFor="fullName" className="text-xs font-medium text-gray-600">Full Name <span className="text-red-500">*</span></Label>
                     <Input
                       id="fullName"
-                      placeholder="Juan dela Cruz"
+                      placeholder="Full name"
                       value={newUser.fullName}
                       onChange={(e) => setNewUser({ ...newUser, fullName: e.target.value })}
                       className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -1113,7 +1069,7 @@ export function UserManagement() {
                     <Input
                       id="email"
                       type="email"
-                      placeholder="juan@example.com"
+                      placeholder="email@address.com"
                       value={newUser.email}
                       onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                       className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -1127,7 +1083,7 @@ export function UserManagement() {
                     <Input
                       id="password"
                       type="password"
-                      placeholder="••••••••"
+                      placeholder="Password"
                       value={newUser.password}
                       onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                       className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -1137,7 +1093,7 @@ export function UserManagement() {
                     <Label htmlFor="phoneNumber" className="text-xs font-medium text-gray-600">Phone Number</Label>
                     <Input
                       id="phoneNumber"
-                      placeholder="+63 912 345 6789"
+                      placeholder="+63"
                       value={newUser.phoneNumber}
                       onChange={(e) => setNewUser({ ...newUser, phoneNumber: e.target.value })}
                       className="h-10 border-gray-200 focus:border-green-500 focus:ring-green-500"
@@ -1149,7 +1105,7 @@ export function UserManagement() {
                   <Label htmlFor="address" className="text-xs font-medium text-gray-600">Address</Label>
                   <Textarea
                     id="address"
-                    placeholder="Enter address (optional)"
+                    placeholder="Address"
                     value={newUser.address}
                     onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
                     rows={2}
@@ -1167,13 +1123,11 @@ export function UserManagement() {
                   <h4 className="text-sm font-semibold text-gray-800">User Role <span className="text-red-500">*</span></h4>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 pl-10">
+                <div className="grid gap-3 sm:grid-cols-3 pl-10">
                   {[
-                    { value: 'Instructor', label: 'Instructor', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', desc: 'Faculty and staff members' },
-                    { value: 'Admin', label: 'Admin', icon: 'M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z', desc: 'System administrators' },
                     { value: 'Student', label: 'Student', icon: 'M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z', desc: 'Current students' },
-                    { value: 'Alumni', label: 'Alumni', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', desc: 'Graduated students' },
-                    { value: 'Employer', label: 'Employer', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', desc: 'Company representatives' }
+                    { value: 'Instructor', label: 'Instructor', icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', desc: 'Faculty and staff members' },
+                    { value: 'Alumni', label: 'Alumni', icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4', desc: 'Graduated students' }
                   ].map((role) => (
                     <label
                       key={role.value}
@@ -1242,14 +1196,13 @@ export function UserManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
           { label: 'Total Users', count: users.length, color: 'text-green-600' },
           { label: 'Pending', count: pendingCount, color: 'text-yellow-600' },
           { label: 'Students', count: users.filter(u => u.role?.toLowerCase() === 'student').length, color: 'text-green-600' },
           { label: 'Instructors', count: users.filter(u => u.role?.toLowerCase() === 'instructor').length, color: 'text-blue-600' },
           { label: 'Alumni', count: users.filter(u => u.role?.toLowerCase() === 'alumni').length, color: 'text-lime-600' },
-          { label: 'Employers', count: users.filter(u => u.role?.toLowerCase() === 'employer').length, color: 'text-cyan-600' },
         ].map((stat, index) => (
           <Card key={index} className="border-green-100">
             <CardContent className="pt-6">
@@ -1283,7 +1236,6 @@ export function UserManagement() {
                 <SelectItem value="student">Students</SelectItem>
                 <SelectItem value="instructor">Instructors</SelectItem>
                 <SelectItem value="alumni">Alumni</SelectItem>
-                <SelectItem value="employer">Employers</SelectItem>
               </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -1853,30 +1805,6 @@ export function UserManagement() {
                         <div>
                           <p className="text-sm text-gray-600">Current Company</p>
                           <p className="font-medium">{selectedUser.companyName}</p>
-                        </div>
-                      )}
-                      {selectedUser.industry && (
-                        <div>
-                          <p className="text-sm text-gray-600">Industry</p>
-                          <p className="font-medium">{selectedUser.industry}</p>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {/* Role-specific fields for Employers */}
-                  {selectedUser.role?.toLowerCase() === 'employer' && (
-                    <>
-                      {selectedUser.companyName && (
-                        <div>
-                          <p className="text-sm text-gray-600">Company Name</p>
-                          <p className="font-medium">{selectedUser.companyName}</p>
-                        </div>
-                      )}
-                      {selectedUser.employeeId && (
-                        <div>
-                          <p className="text-sm text-gray-600">Employee ID</p>
-                          <p className="font-medium">{selectedUser.employeeId}</p>
                         </div>
                       )}
                       {selectedUser.industry && (
