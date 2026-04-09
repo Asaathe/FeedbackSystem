@@ -119,9 +119,9 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   }, []);
   
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-4">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
         <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
           <div className="flex-1">
             <h2 className="text-xl sm:text-2xl">Welcome back, Alumnus!</h2>
@@ -256,7 +256,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
           <CardTitle>Pending Alumni Feedback Forms</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {alumniPendingForms.length > 0 ? (
               alumniPendingForms.map((form) => (
                 <div

@@ -461,9 +461,9 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 px-4 sm:px-6 lg:px-8">
+    <div className="space-y-4">
       {/* Page Header */}
-      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-4 sm:p-6 border border-green-100">
+      <div className="bg-white rounded-lg p-6 border">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-green-500 rounded-xl flex items-center justify-center">
             <Building2 className="w-6 h-6 text-white" />
@@ -493,7 +493,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
 
       {/* Annual Update Notification */}
       {showAnnualNotification && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200 animate-pulse">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="font-medium text-sm sm:text-base">Annual Employment Update Required</p>
@@ -514,7 +514,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
 
       {/* Update Request Status Card - Only visible when annual update is required */}
       {isAnnualUpdateRequired && (
-      <Card className="border-red-300 border-2 shadow-lg animate-pulse">
+      <Card className="border-red-200">
         <CardHeader className="p-4 sm:p-6">
           <CardTitle className="flex items-center gap-2 text-base sm:text-lg text-red-700">
             <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 flex-shrink-0" />
@@ -576,7 +576,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       )}
 
       {/* Employment Information Display/Form */}
-      <Card className={isAnnualUpdateRequired ? "border-red-300 border-2 shadow-lg" : "border-green-100"}>
+      <Card className="border">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building2 className="w-5 h-5 text-green-500" />
@@ -594,7 +594,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                 <p className="text-gray-600 mt-2">Thank you for keeping us updated with your employment status.</p>
               </div>
               
-              <div className="bg-green-50 rounded-lg p-4 sm:p-6 max-w-2xl mx-auto">
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl mx-auto">
                 <h4 className="font-semibold text-gray-900 mb-4 text-sm sm:text-base">Current Employment Details</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
                   <div>
