@@ -810,17 +810,17 @@ export function SubjectOfferings() {
               <BookOpen className="w-5 h-5" />
               Subject Offerings
             </CardTitle>
-            <TabsList className="bg-gray-100">
+            <TabsList className="grid w-full grid-cols-2 max-w-md">
               <TabsTrigger 
                 value="college" 
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="flex items-center gap-2"
               >
                 <GraduationCap className="w-4 h-4" />
                 College
               </TabsTrigger>
               <TabsTrigger 
                 value="seniorHigh" 
-                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                className="flex items-center gap-2"
               >
                 <School className="w-4 h-4" />
                 Senior High
