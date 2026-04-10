@@ -454,7 +454,7 @@ export function SubjectOfferings() {
       
       const result = await createSubjectOffering({
         subject_id: parseInt(formData.subject_id),
-        program_id: selectedCourse?.program_id || (formData.program_id ? parseInt(formData.program_id) : undefined),
+        program_id: selectedCourse?.program_id,
         year_level: selectedCourse?.year_level || 1,
         section: selectedCourse?.section || "A",
         academic_year: formData.academic_year,
@@ -597,12 +597,17 @@ export function SubjectOfferings() {
   );
 
   // Filter offerings by selected department (College or Senior High)
-  const collegeOfferings = filteredOfferings.filter(offering => 
-    offering.program_department === "College" || (!offering.program_department && offering.year_level && offering.year_level >= 1 && offering.year_level <= 4)
-  );
-  const seniorHighOfferings = filteredOfferings.filter(offering => 
-    offering.program_department === "Senior High" || offering.program_department === "SHS"
-  );
+  // Handle various department value variations: "College", "Senior High", "SHS", "SH", null (fallback to year_level)
+  const collegeOfferings = filteredOfferings.filter(offering => {
+    const dept = offering.program_department?.toLowerCase();
+    const yearLevel = offering.year_level;
+    return dept === "college" || dept === "college department" || (!dept && yearLevel && yearLevel >= 1 && yearLevel <= 4);
+  });
+  
+  const seniorHighOfferings = filteredOfferings.filter(offering => {
+    const dept = offering.program_department?.toLowerCase();
+    return dept === "senior high" || dept === "shs" || dept === "sh" || dept === "senior high school";
+  });
 
   // Group unique programs for the dropdown
   const uniquePrograms = programs.reduce((acc: Program[], program) => {
@@ -791,6 +796,7 @@ export function SubjectOfferings() {
       </div>
 
       {/* Offerings Table with Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between w-full">
@@ -798,24 +804,21 @@ export function SubjectOfferings() {
               <BookOpen className="w-5 h-5" />
               Subject Offerings
             </CardTitle>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-auto">
-              <TabsList>
-                <TabsTrigger value="college" className="flex items-center gap-2">
-                  <GraduationCap className="w-4 h-4" />
-                  College
-                </TabsTrigger>
-                <TabsTrigger value="seniorHigh" className="flex items-center gap-2">
-                  <School className="w-4 h-4" />
-                  Senior High
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
+            <TabsList className="bg-gray-100">
+              <TabsTrigger value="college" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <GraduationCap className="w-4 h-4" />
+                College
+              </TabsTrigger>
+              <TabsTrigger value="seniorHigh" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+                <School className="w-4 h-4" />
+                Senior High
+              </TabsTrigger>
+            </TabsList>
           </div>
         </CardHeader>
         <CardContent>
           <div className="w-full">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsContent value="college">
+            <TabsContent value="college">
                 {loading ? (
                   <div className="flex justify-center items-center h-64">
                     <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
@@ -1028,10 +1031,10 @@ export function SubjectOfferings() {
                 </Table>
               )}
             </TabsContent>
-          </Tabs>
           </div>
         </CardContent>
       </Card>
+      </Tabs>
 
       {/* Edit Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={(open) => {

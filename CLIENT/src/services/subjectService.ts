@@ -542,7 +542,7 @@ export const getSubjectOfferings = async (params?: {
 
 export const createSubjectOffering = async (data: {
   subject_id: number;
-  program_id: number;
+  program_id?: number;
   year_level: number;
   section: string;
   academic_year?: string;
