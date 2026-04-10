@@ -188,23 +188,11 @@ export function SubjectOfferings() {
   const [saving, setSaving] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
-  // Sync tab with department selection
-  useEffect(() => {
-    if (selectedDepartment === "Senior High" && activeTab !== "seniorHigh") {
-      setActiveTab("seniorHigh");
-    } else if (selectedDepartment === "College" && activeTab !== "college") {
-      setActiveTab("college");
-    }
-  }, [selectedDepartment]);
-
-  // Sync department with tab selection
-  useEffect(() => {
-    if (activeTab === "seniorHigh" && selectedDepartment !== "Senior High") {
-      setSelectedDepartment("Senior High");
-    } else if (activeTab === "college" && selectedDepartment !== "College") {
-      setSelectedDepartment("College");
-    }
-  }, [activeTab]);
+  // Handle tab change - directly update department to trigger data reload
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    setSelectedDepartment(tab === "seniorHigh" ? "Senior High" : "College");
+  };
 
   useEffect(() => {
     if (viewStudentsDialogOpen && selectedOffering) {
@@ -814,7 +802,7 @@ export function SubjectOfferings() {
       </div>
 
       {/* Offerings Table with Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between w-full">
@@ -826,7 +814,6 @@ export function SubjectOfferings() {
               <TabsTrigger 
                 value="college" 
                 className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-                onClick={() => setSelectedDepartment("College")}
               >
                 <GraduationCap className="w-4 h-4" />
                 College
@@ -834,7 +821,6 @@ export function SubjectOfferings() {
               <TabsTrigger 
                 value="seniorHigh" 
                 className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
-                onClick={() => setSelectedDepartment("Senior High")}
               >
                 <School className="w-4 h-4" />
                 Senior High
