@@ -336,13 +336,21 @@ export function SubjectOfferings() {
     try {
       const token = sessionStorage.getItem("authToken");
       
-      // First get the current period (includes academic_period_id)
-      const periodResponse = await fetch(`${API_BASE_URL}/settings/semester-status?department=College`, {
+      // First get the current period for College (includes academic_period_id)
+      const collegePeriodResponse = await fetch(`${API_BASE_URL}/settings/semester-status?department=College`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
-      const periodResult = await periodResponse.json();
+      const collegePeriodResult = await collegePeriodResponse.json();
+      
+      // Also get the current period for Senior High
+      const seniorHighPeriodResponse = await fetch(`${API_BASE_URL}/settings/semester-status?department=Senior High`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const seniorHighPeriodResult = await seniorHighPeriodResponse.json();
       
       // Also get the basic semester settings
       const response = await fetch(`${API_BASE_URL}/settings/current-semester`, {
@@ -356,13 +364,13 @@ export function SubjectOfferings() {
         college: {
           current_semester: result.data?.college?.semester || "1st",
           current_academic_year: result.data?.college?.academic_year || "2025-2026",
-          current_period_id: periodResult.success ? periodResult.current_period?.id : null,
+          current_period_id: collegePeriodResult.success ? collegePeriodResult.current_period?.id : null,
           department: "College",
         },
         seniorHigh: {
-          current_semester: result.data?.seniorHigh?.semester || "1st",
+          current_semester: (result.data?.seniorHigh?.semester || "1st").replace(" Quarter", ""),
           current_academic_year: result.data?.seniorHigh?.academic_year || "2025-2026",
-          current_period_id: null, // Will be fetched when SHS is selected
+          current_period_id: seniorHighPeriodResult.success ? seniorHighPeriodResult.current_period?.id : null,
           department: "Senior High",
         },
       };
@@ -420,7 +428,9 @@ export function SubjectOfferings() {
         course_section: "",
         academic_year: periodResult.current_period?.academic_year || deptSettings.current_academic_year,
         semester: periodResult.current_period?.period_number 
-          ? (periodResult.current_period.period_number === 1 ? "1st" : periodResult.current_period.period_number === 2 ? "2nd" : "Summer")
+          ? (selectedDepartment === "College"
+              ? (periodResult.current_period.period_number === 1 ? "1st" : periodResult.current_period.period_number === 2 ? "2nd" : "Summer")
+              : (periodResult.current_period.period_number === 1 ? "1st" : periodResult.current_period.period_number === 2 ? "2nd" : periodResult.current_period.period_number === 3 ? "3rd" : periodResult.current_period.period_number + "th") + " Quarter")
           : deptSettings.current_semester,
         instructor_id: "",
       });
@@ -741,7 +751,9 @@ export function SubjectOfferings() {
                   <div className="space-y-2">
                     <Label>{selectedDepartment === "College" ? "Semester" : "Quarter"}</Label>
                     <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                      {selectedDepartment === "College" ? systemSettings.college.current_semester : systemSettings.seniorHigh.current_semester} {selectedDepartment === "College" ? "Semester" : "Quarter"}
+                      {selectedDepartment === "College" 
+                        ? systemSettings.college.current_semester 
+                        : (systemSettings.seniorHigh.current_semester || "").replace(" Quarter", "")}
                     </div>
                   </div>
                 </div>
