@@ -188,6 +188,24 @@ export function SubjectOfferings() {
   const [saving, setSaving] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
 
+  // Sync tab with department selection
+  useEffect(() => {
+    if (selectedDepartment === "Senior High" && activeTab !== "seniorHigh") {
+      setActiveTab("seniorHigh");
+    } else if (selectedDepartment === "College" && activeTab !== "college") {
+      setActiveTab("college");
+    }
+  }, [selectedDepartment]);
+
+  // Sync department with tab selection
+  useEffect(() => {
+    if (activeTab === "seniorHigh" && selectedDepartment !== "Senior High") {
+      setSelectedDepartment("Senior High");
+    } else if (activeTab === "college" && selectedDepartment !== "College") {
+      setSelectedDepartment("College");
+    }
+  }, [activeTab]);
+
   useEffect(() => {
     if (viewStudentsDialogOpen && selectedOffering) {
       const fetchStudents = async () => {
@@ -805,11 +823,19 @@ export function SubjectOfferings() {
               Subject Offerings
             </CardTitle>
             <TabsList className="bg-gray-100">
-              <TabsTrigger value="college" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <TabsTrigger 
+                value="college" 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                onClick={() => setSelectedDepartment("College")}
+              >
                 <GraduationCap className="w-4 h-4" />
                 College
               </TabsTrigger>
-              <TabsTrigger value="seniorHigh" className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <TabsTrigger 
+                value="seniorHigh" 
+                className="flex items-center gap-2 data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                onClick={() => setSelectedDepartment("Senior High")}
+              >
                 <School className="w-4 h-4" />
                 Senior High
               </TabsTrigger>
