@@ -165,11 +165,13 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
       return;
     }
 
-    // Check if submission is already locked (student already tried and got "already submitted")
-    if (isSubmissionLocked(subject.subject_id, 'subject')) {
-      toast.error("You have already submitted feedback for this subject");
+    // Check if feedback is already submitted
+    if (isFeedbackSubmitted(subject.subject_id, 'subject')) {
+      setSelectedSubject(subject);
+      setFeedbackType('subject');
       return;
     }
+
     setSelectedSubject(subject);
     setFeedbackType('subject');
     setRatings({});
