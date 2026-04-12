@@ -628,7 +628,8 @@ export function SubjectOfferings() {
   // Filter programs by selected department first, then group unique by program_code
   const filteredPrograms = programs.filter(p => p.id && (selectedDepartment === "College" ? p.department === "College" : p.department === "Senior High"));
   const uniquePrograms = filteredPrograms.reduce((acc: Program[], program) => {
-    if (!acc.find(p => p.program_code === program.program_code)) {
+    const code = program.program_code?.toLowerCase().trim();
+    if (!acc.find(p => p.program_code?.toLowerCase().trim() === code)) {
       acc.push(program);
     }
     return acc;
