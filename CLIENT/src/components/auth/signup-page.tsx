@@ -55,11 +55,13 @@ export function SignupPage({
         const data = await response.json();
         
         if (data.success && data.programs) {
-          // Transform to select options format
-          const options = data.programs.map((program: any) => ({
-            value: String(program.id),
-            label: program.course_section,
-          }));
+          // Transform to select options format, filtering out inactive programs
+          const options = data.programs
+            .filter((program: any) => program.status === "active")
+            .map((program: any) => ({
+              value: String(program.id),
+              label: program.course_section,
+            }));
           setPrograms(options);
         }
       } catch (error) {
