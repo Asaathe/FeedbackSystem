@@ -322,15 +322,96 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     };
   };
 
-  // Generate Question Analytics PDF (includes all question types + text responses)
+  // Generate Professional University-Style PDF Report
   const generateQuestionAnalyticsPDF = async () => {
     if (!form) return;
 
     const doc = new jsPDF();
-    let yPosition = 20;
+    let yPosition = 30; // Start lower for professional look
     const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const maxWidth = pageWidth - 2 * margin - 5; // Slightly smaller for better wrapping
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 25; // Wider margins for professional appearance
+    const maxWidth = pageWidth - 2 * margin;
+    const contentWidth = pageWidth - 2 * margin;
+
+    // Helper function to add page break if needed
+    const checkPageBreak = (requiredSpace = 40, forceBreak = false) => {
+      // More conservative page breaking since we have fewer sections now
+      if (forceBreak || yPosition > pageHeight - requiredSpace - 25) {
+        doc.addPage();
+        yPosition = 25; // Consistent starting position
+        return true;
+      }
+      return false;
+    };
+
+    // Helper function to ensure section starts on new page if needed
+    const startNewSection = (sectionType = 'major') => {
+      const minSpaceForSection = sectionType === 'major' ? 100 : 60;
+      if (yPosition > pageHeight - minSpaceForSection - 20) {
+        // Only break page if we don't have enough space for the section
+        doc.addPage();
+        yPosition = 25;
+      }
+      // Removed aggressive page breaking for major sections since we have fewer sections now
+    };
+
+    // Professional academic section header
+    const addSectionHeader = (title: string, level = 1) => {
+      checkPageBreak(45);
+      if (level === 1) {
+        // Main section header - academic style
+        doc.setFontSize(14);
+        doc.setTextColor(31, 41, 55);
+        doc.setFont('helvetica', 'bold');
+
+        // Add section numbering for academic style
+        let displayTitle = title;
+        if (title === " Response Overview") {
+          displayTitle = "1. Response Overview";
+        } else if (title === "Quantitative Analysis") {
+          displayTitle = "2. Quantitative Analysis";
+        } else if (title === "Qualitative Analysis") {
+          displayTitle = "3. Qualitative Analysis";
+        } else if (title === "Conclusions and Recommendations") {
+          displayTitle = "4. Conclusions and Recommendations";
+        }
+
+        doc.text(displayTitle, margin, yPosition);
+        yPosition += 6;
+
+        // Professional underline with academic styling
+        doc.setDrawColor(59, 130, 246);
+        doc.setLineWidth(1);
+        doc.line(margin, yPosition, pageWidth - margin, yPosition);
+        yPosition += 6;
+      } else {
+        // Subsection header
+        doc.setFontSize(11);
+        doc.setTextColor(55, 65, 81);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, margin + 10, yPosition); // Indent subsections
+        yPosition += 4;
+      }
+    };
+
+    // Helper function to add regular text with normal paragraph spacing
+    const addText = (text: string, fontSize = 11, color: [number, number, number] = [75, 85, 99], font: 'normal' | 'bold' | 'italic' = 'normal') => {
+      doc.setFontSize(fontSize);
+      doc.setTextColor(color[0], color[1], color[2]);
+      doc.setFont('helvetica', font);
+
+      const lines = doc.splitTextToSize(text, maxWidth);
+      if (Array.isArray(lines)) {
+        lines.forEach((line: string) => {
+          doc.text(line, margin, yPosition);
+          yPosition += fontSize; // Exactly font size spacing
+        });
+      } else {
+        doc.text(lines, margin, yPosition);
+        yPosition += fontSize;
+      }
+    };
 
     // Add header image
     try {
@@ -346,169 +427,430 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
       const imgWidth = pageWidth;
       const imgHeight = (headerImg.height / headerImg.width) * imgWidth;
       doc.addImage(headerData, 'PNG', 0, 0, imgWidth, imgHeight);
-      yPosition = imgHeight + 10;
+      yPosition = imgHeight + 15;
     } catch (e) {
       console.warn('Could not add header image:', e);
-      yPosition = 30;
+      yPosition = 40;
     }
 
-    // Title
-    doc.setFontSize(20);
-    doc.setTextColor(79, 70, 229);
-    doc.text(`${form.title} - Report`, margin, yPosition);
-    yPosition += 15;
+    // University Report Header - Clean and Professional
 
-    // Form details
-    doc.setFontSize(11);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Total Responses: ${responses.length}`, margin, yPosition);
-    yPosition += 7;
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
-    yPosition += 15;
+    // Survey Title with Report Label - Main heading
+    doc.setFontSize(18);
+    doc.setTextColor(31, 41, 55);
+    doc.setFont('helvetica', 'bold');
+    const reportTitle = `${form.title} - Report`;
+    const formTitleLines = doc.splitTextToSize(reportTitle, maxWidth);
+    if (Array.isArray(formTitleLines)) {
+      formTitleLines.forEach((line: string) => {
+        const lineWidth = doc.getTextWidth(line);
+        doc.text(line, (pageWidth - lineWidth) / 2, yPosition); // Center survey title
+        yPosition += 8;
+      });
+    } else {
+      const lineWidth = doc.getTextWidth(formTitleLines);
+      doc.text(formTitleLines, (pageWidth - lineWidth) / 2, yPosition);
+      yPosition += 8;
+    }
 
-    // Divider line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 15;
+    // Decorative line under title
+    doc.setDrawColor(59, 130, 246);
+    doc.setLineWidth(0.8);
+    doc.line(margin + 30, yPosition, pageWidth - margin - 30, yPosition);
+    yPosition += 12; // Space before metadata
 
+    // Report Metadata - Professional right-aligned format
+    const reportDate = new Date().toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+    const reportTime = new Date().toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    doc.setFontSize(8);
+    doc.setTextColor(75, 85, 99);
+    doc.setFont('helvetica', 'normal');
+
+    const metadata = [
+      `Report Generated: ${reportDate} at ${reportTime}`,
+      `Total Responses: ${responses.length}`,
+      `Questions Analyzed: ${form.questions?.length || 0}`
+    ];
+
+    metadata.forEach((line) => {
+      doc.text(line, pageWidth - margin, yPosition, { align: 'right' });
+      yPosition += 4.5;
+    });
+    yPosition += 12; // Professional spacing before main content
+
+    // Introduction Section
+    checkPageBreak(40);
+    doc.setFontSize(14);
+    doc.setTextColor(31, 41, 55);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Introduction", margin, yPosition);
+    yPosition += 10;
+    
+    doc.setFontSize(10);
+    doc.setTextColor(55, 65, 81);
+    doc.setFont('helvetica', 'normal');
+    const introText = `This report presents a comprehensive analysis of the survey "${form.title || 'Survey'} - Report". It provides insights into respondent demographics, quantitative metrics, and qualitative feedback to help understand the outcomes and patterns in the collected data.`;
+    const introLines = doc.splitTextToSize(introText, contentWidth);
+    doc.text(introLines, margin, yPosition);
+    yPosition += introLines.length * 5 + 15;
+
+    // Response Overview - ensure it starts on a fresh section
+    startNewSection('major');
+    addSectionHeader(" Response Overview");
+
+    // Create a table for response statistics
+    checkPageBreak(80, false); // Optimized break spacing
+
+    // Define question types for the statistics table
     const allQuestions = getAllQuestionsForAnalytics();
+    const quantitativeQuestions = allQuestions.filter(q => {
+      const qType = q.question_type || q.type;
+      return ['rating', 'linear-scale', 'linear_scale', 'multiple-choice', 'multiple_choice', 'dropdown', 'checkbox'].includes(qType);
+    });
     const textQuestions = allQuestions.filter(q => {
       const qType = q.question_type || q.type;
       return qType === 'text' || qType === 'textarea';
     });
-    const ratingChoiceQuestions = allQuestions.filter(q => {
-      const qType = q.question_type || q.type;
-      return ['rating', 'linear-scale', 'linear_scale', 'multiple-choice', 'multiple_choice', 'dropdown', 'checkbox'].includes(qType);
-    });
 
-    // Rating and Choice Questions Analytics
-    if (ratingChoiceQuestions.length > 0) {
-      doc.setFontSize(16);
-      doc.setTextColor(79, 70, 229);
-      doc.text("Rating & Choice Questions", margin, yPosition);
-      yPosition += 12;
+    // Professional Statistics Table
+    const tableStartY = yPosition;
+    const tableWidth = contentWidth;
+    const rowHeight = 12; // Professional row height
+    const colWidths = [tableWidth * 0.35, tableWidth * 0.25, tableWidth * 0.4];
 
-      ratingChoiceQuestions.forEach((question, index) => {
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
-        }
+    // Table header with professional styling
+    doc.setFillColor(31, 41, 55); // Dark blue header
+    doc.rect(margin, yPosition, tableWidth, rowHeight, 'F');
 
-        const analytics = getQuestionAnalytics(question);
-        if (!analytics) return;
+    // Header text in white
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Metric", margin + 5, yPosition + 8);
+    doc.text("Value", margin + colWidths[0] + 5, yPosition + 8);
+    doc.text("Description", margin + colWidths[0] + colWidths[1] + 5, yPosition + 8);
+    yPosition += rowHeight;
 
-        doc.setFontSize(12);
-        doc.setTextColor(30, 30, 30);
-        const qText = `Q${index + 1}: ${question.question}`;
-        // Use splitTextToSize with proper maxWidth and get line height
-        const qLines = doc.splitTextToSize(qText, maxWidth);
-        const lineHeight = 6;
-        doc.text(qLines, margin, yPosition);
-        yPosition += qLines.length * lineHeight + 4;
+    // Add subtle border around header
+    doc.setDrawColor(31, 41, 55);
+    doc.setLineWidth(0.3);
+    doc.rect(margin, tableStartY, tableWidth, rowHeight);
 
-        if (analytics.type === "average") {
-          doc.setFontSize(11);
-          doc.setTextColor(60, 60, 60);
-          if (analytics.average !== undefined && analytics.maxRating !== undefined) {
-            doc.text(`Average Rating: ${analytics.average.toFixed(1)} / ${analytics.maxRating}`, margin + 5, yPosition);
-          } else {
-            doc.text("Average Rating: N/A", margin + 5, yPosition);
-          }
-          yPosition += 7;
-          doc.text(`Based on ${analytics.count} responses`, margin + 5, yPosition);
-          yPosition += 12;
-        } else if (analytics.type === "distribution") {
-          doc.setFontSize(10);
-          doc.setTextColor(60, 60, 60);
-          if (analytics.chartData) {
-            analytics.chartData.forEach((item) => {
-              if (yPosition > 270) {
-                doc.addPage();
-                yPosition = 20;
-              }
-              const itemText = `${item.answer}: ${item.count} responses (${item.percentage}%)`;
-              const itemLines = doc.splitTextToSize(itemText, maxWidth - 10);
-              doc.text(itemLines, margin + 5, yPosition);
-              yPosition += itemLines.length * 5;
-            });
-          }
-          yPosition += 8;
-        }
-      });
-    }
+    // Table rows
+    const stats = [
+      ["Total Responses", responses.length.toString(), "Complete survey submissions"],
+      ["Unique Respondents", new Set(responses.map(r => r.user_id)).size.toString(), "Distinct individuals"],
+      ["Response Period", responses.length > 0 ?
+        `${new Date(Math.min(...responses.map(r => new Date(r.submitted_at).getTime()))).toLocaleDateString()} - ${new Date(Math.max(...responses.map(r => new Date(r.submitted_at).getTime()))).toLocaleDateString()}` :
+        "No responses", "Date range of submissions"],
+      ["Quantitative Questions", quantitativeQuestions.length.toString(), "Rating and choice questions"],
+      ["Qualitative Questions", textQuestions.length.toString(), "Open-ended text questions"]
+    ];
 
-    // Text Questions Analytics
-    if (textQuestions.length > 0) {
-      if (yPosition > 200) {
-        doc.addPage();
-        yPosition = 20;
+    // Professional table rows with alternating colors and borders
+    stats.forEach((stat, index) => {
+      // Alternating row colors for better readability
+      if (index % 2 === 0) {
+        doc.setFillColor(248, 250, 252); // Very light gray
+      } else {
+        doc.setFillColor(241, 245, 249); // Slightly darker gray
+      }
+      doc.rect(margin, yPosition, tableWidth, rowHeight, 'F');
+
+      // Row border
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.2);
+      doc.rect(margin, yPosition, tableWidth, rowHeight);
+
+      // Row content
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8.5);
+      doc.setTextColor(31, 41, 55); // Darker text for better readability
+
+      // Left-align metric name
+      doc.text(stat[0], margin + 5, yPosition + 8);
+
+      // Center-align value
+      const valueX = margin + colWidths[0] + (colWidths[1] / 2);
+      const valueWidth = doc.getTextWidth(stat[1]);
+      doc.text(stat[1], valueX - (valueWidth / 2), yPosition + 8);
+
+      // Left-align description/notes
+      const notesLines = doc.splitTextToSize(stat[2], colWidths[2] - 10);
+      if (Array.isArray(notesLines)) {
+        notesLines.forEach((line: string, lineIndex: number) => {
+          doc.text(line, margin + colWidths[0] + colWidths[1] + 5, yPosition + 5 + (lineIndex * 4));
+        });
+      } else {
+        doc.text(notesLines, margin + colWidths[0] + colWidths[1] + 5, yPosition + 8);
       }
 
-      yPosition += 5;
-      doc.setDrawColor(200, 200, 200);
-      doc.line(margin, yPosition, pageWidth - margin, yPosition);
-      yPosition += 15;
+      yPosition += rowHeight;
+    });
 
-      doc.setFontSize(16);
-      doc.setTextColor(79, 70, 229);
-      doc.text("Text Response Questions", margin, yPosition);
-      yPosition += 12;
+    // Bottom border for table
+    doc.setDrawColor(31, 41, 55);
+    doc.setLineWidth(0.3);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 8; // Proper space before Analysis section
 
-      textQuestions.forEach((question, index) => {
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
+    // Quantitative Analysis
+    if (quantitativeQuestions.length > 0) {
+      startNewSection('major');
+      addSectionHeader("Quantitative Analysis");
+
+      doc.setFontSize(10);
+      doc.setTextColor(55, 65, 81);
+      doc.setFont('helvetica', 'normal');
+      const qaIntro = `This section presents detailed analysis of ${quantitativeQuestions.length} quantitative questions, including ratings, multiple choice selections, and checkbox responses.`;
+      const qaIntroLines = doc.splitTextToSize(qaIntro, contentWidth);
+      doc.text(qaIntroLines, margin, yPosition);
+      yPosition += qaIntroLines.length * 5 + 15;
+
+      quantitativeQuestions.forEach((question, index) => {
+        // Only check page break for subsequent questions (not first one)
+        if (index > 0) {
+          checkPageBreak(80); // Reduced threshold to allow fitting on same page when possible
         }
 
-        const analytics = getTextQuestionAnalytics(question);
-        if (!analytics) return;
+        // Question header
+        doc.setFontSize(11);
+        doc.setTextColor(31, 41, 55);
+        doc.setFont('helvetica', 'bold');
+        const qNumber = `Question ${index + 1}`;
+        doc.text(qNumber, margin, yPosition);
+        yPosition += 5; // Ultra-compact question header spacing
 
-        doc.setFontSize(12);
-        doc.setTextColor(30, 30, 30);
-        const qText = `Q${index + 1}: ${question.question}`;
+        // Question text
+        const qText = question.question;
         const qLines = doc.splitTextToSize(qText, maxWidth);
-        const lineHeight = 6;
-        doc.text(qLines, margin, yPosition);
-        yPosition += qLines.length * lineHeight + 4;
-
         doc.setFontSize(10);
-        doc.setTextColor(100, 100, 100);
-        doc.text(`Total Responses: ${analytics.totalResponses}`, margin + 5, yPosition);
-        yPosition += 7;
-
-        if (analytics.sampleResponses.length > 0) {
-          doc.setFontSize(10);
-          doc.setTextColor(60, 60, 60);
-          doc.text("Sample Responses:", margin + 5, yPosition);
-          yPosition += 6;
-          
-          analytics.sampleResponses.forEach((response, rIndex) => {
-            if (yPosition > 270) {
-              doc.addPage();
-              yPosition = 20;
-            }
-            const responseText = `${rIndex + 1}. ${response}`;
-            const responseLines = doc.splitTextToSize(responseText, maxWidth - 10);
-            doc.text(responseLines, margin + 10, yPosition);
-            yPosition += responseLines.length * 5 + 2;
+        doc.setTextColor(55, 65, 81);
+        doc.setFont('helvetica', 'normal');
+        if (Array.isArray(qLines)) {
+          qLines.forEach((line: string) => {
+            doc.text(line, margin, yPosition);
+            yPosition += 10; // Exact font size spacing for 10pt font
           });
+        } else {
+          doc.text(qLines, margin, yPosition);
+          yPosition += 10;
         }
-        yPosition += 8;
+        yPosition += 4; // Compact space after question
+
+        const analytics = getQuestionAnalytics(question);
+        if (!analytics) {
+          addText("No data available for this question.", 10, [156, 163, 175], 'normal');
+          yPosition += 8;
+          return;
+        }
+
+        if (analytics.type === "average") {
+          // Rating/Scale question
+          doc.setFontSize(12);
+          doc.setTextColor(31, 41, 55);
+          doc.setFont('helvetica', 'bold');
+          doc.text("Rating Analysis", margin, yPosition);
+          yPosition += 8;
+
+          // Ensure properties exist before using them
+          const averageRating = analytics.average ?? 0;
+          const responseCount = analytics.count ?? 0;
+          const maxRating = analytics.maxRating ?? 5;
+
+          addText(`Average Rating: ${averageRating.toFixed(2)} out of ${maxRating}`, 11, [75, 85, 99], 'normal');
+          addText(`Total Responses: ${responseCount}`, 11, [75, 85, 99], 'normal');
+          addText(`Response Rate: ${((responseCount / responses.length) * 100).toFixed(1)}%`, 11, [75, 85, 99], 'normal');
+
+        } else if (analytics.type === "distribution") {
+          // Multiple choice, dropdown, checkbox
+          doc.setFontSize(12);
+          doc.setTextColor(31, 41, 55);
+          doc.setFont('helvetica', 'bold');
+          doc.text("Response Distribution", margin, yPosition);
+          yPosition += 8;
+
+          if (analytics.chartData) {
+            // Check if we have enough space for all distribution items
+            const estimatedItemsHeight = analytics.chartData.length * 8;
+            if (yPosition + estimatedItemsHeight > pageHeight - 40) {
+              checkPageBreak(estimatedItemsHeight + 20, true);
+            }
+
+            analytics.chartData.forEach((item, itemIndex) => {
+              const itemText = `${item.answer}: ${item.count} responses (${item.percentage.toFixed(1)}%)`;
+              addText(itemText, 10, [75, 85, 99], 'normal');
+            });
+          }
+
+          addText(`Total Valid Responses: ${analytics.totalAnswers}`, 11, [75, 85, 99], 'normal');
+        }
+
+        yPosition += 6; // Minimal space between questions
       });
     }
 
-    // Footer
+// Qualitative Analysis
+    if (textQuestions.length > 0) {
+      startNewSection('major');
+      addSectionHeader("Qualitative Analysis");
+
+      doc.setFontSize(10);
+      doc.setTextColor(55, 65, 81);
+      doc.setFont('helvetica', 'normal');
+      const qualIntro = `This section presents analysis of ${textQuestions.length} open-ended questions, providing insights into respondent perspectives and feedback.`;
+      const qualIntroLines = doc.splitTextToSize(qualIntro, contentWidth);
+      doc.text(qualIntroLines, margin, yPosition);
+      yPosition += qualIntroLines.length * 5 + 15;
+
+      textQuestions.forEach((question, index) => {
+        checkPageBreak(80); // Ensure enough space for question and responses
+
+        // Question header
+        doc.setFontSize(11);
+        doc.setTextColor(31, 41, 55);
+        doc.setFont('helvetica', 'bold');
+        const qNumber = `Question ${quantitativeQuestions.length + index + 1}`;
+        doc.text(qNumber, margin, yPosition);
+        yPosition += 5; // Ultra-compact question header spacing
+
+        // Question text
+        const qText = question.question;
+        const qLines = doc.splitTextToSize(qText, maxWidth);
+        doc.setFontSize(10);
+        doc.setTextColor(55, 65, 81);
+        doc.setFont('helvetica', 'normal');
+        if (Array.isArray(qLines)) {
+          qLines.forEach((line: string) => {
+            doc.text(line, margin, yPosition);
+            yPosition += 10; // Exact font size spacing for 10pt font
+          });
+        } else {
+          doc.text(qLines, margin, yPosition);
+          yPosition += 10;
+        }
+        yPosition += 4; // Compact space after question
+
+        const analytics = getTextQuestionAnalytics(question);
+        if (!analytics) {
+          addText("No text responses available for this question.", 10, [156, 163, 175], 'normal');
+          yPosition += 8;
+          return;
+        }
+
+        addText(`Total Text Responses: ${analytics.totalResponses}`, 11, [75, 85, 99], 'normal');
+
+        if (analytics.sampleResponses.length > 0) {
+          yPosition += 6;
+          doc.setFontSize(11);
+          doc.setTextColor(31, 41, 55);
+          doc.setFont('helvetica', 'bold');
+          doc.text("Sample Responses:", margin, yPosition);
+          yPosition += 8;
+
+          analytics.sampleResponses.forEach((response, rIndex) => {
+            // Check if we need a page break for this response
+            const estimatedLines = Math.ceil(response.length / 60); // Rough estimate
+            const estimatedHeight = estimatedLines * 10 + 6;
+            checkPageBreak(estimatedHeight + 10);
+
+            const responseText = `"${response}"`;
+            const responseLines = doc.splitTextToSize(responseText, maxWidth - 20);
+
+            doc.setFontSize(10);
+            doc.setTextColor(75, 85, 99);
+            doc.setFont('helvetica', 'italic');
+            if (Array.isArray(responseLines)) {
+              responseLines.forEach((line: string) => {
+                doc.text(line, margin + 10, yPosition);
+                yPosition += 10; // Exact font size spacing for 10pt font
+              });
+            } else {
+              doc.text(responseLines, margin + 10, yPosition);
+              yPosition += 10;
+            }
+            yPosition += 6; // Normal space between responses
+          });
+        }
+
+        yPosition += 6; // Minimal space between questions
+      });
+    }
+
+// Conclusions and Recommendations - ensure it starts on a fresh section
+    startNewSection('major');
+    addSectionHeader("Conclusions and Recommendations");
+
+    doc.setFontSize(10);
+    doc.setTextColor(55, 65, 81);
+    doc.setFont('helvetica', 'normal');
+    const conclusionsText1 = "This survey analysis provides valuable insights into respondent feedback and experiences. The quantitative data reveals trends and patterns in responses, while qualitative feedback offers deeper understanding of participant perspectives.";
+    const conclusionsLines1 = doc.splitTextToSize(conclusionsText1, contentWidth);
+    doc.text(conclusionsLines1, margin, yPosition);
+    yPosition += conclusionsLines1.length * 5 + 15;
+
+    const conclusionsText2 = "Key findings from this analysis should inform decision-making processes and future improvements. We recommend reviewing the detailed results and considering follow-up actions based on respondent feedback.";
+    const conclusionsLines2 = doc.splitTextToSize(conclusionsText2, contentWidth);
+    doc.text(conclusionsLines2, margin, yPosition);
+    yPosition += conclusionsLines2.length * 5 + 15;
+
+    // Confidentiality Notice
+    checkPageBreak(40);
+    yPosition += 6; // Minimal spacing before confidentiality notice
+
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.setFont('helvetica', 'italic');
+    const confidentialityText = "Confidentiality Notice: This report contains aggregated and anonymized data. Individual responses have been protected to ensure respondent privacy and comply with data protection regulations.";
+    const confLines = doc.splitTextToSize(confidentialityText, maxWidth);
+    if (Array.isArray(confLines)) {
+      confLines.forEach((line: string) => {
+        doc.text(line, margin, yPosition);
+        yPosition += 8; // Compact spacing for 8pt font
+      });
+    } else {
+      doc.text(confLines, margin, yPosition);
+      yPosition += 8;
+    }
+
+    // Professional academic footer with page numbers
     const totalPages = doc.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
+
+      // Footer separator line
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.5);
+      doc.line(margin, pageHeight - 30, pageWidth - margin, pageHeight - 30);
+
+      // Page number in center
       doc.setFontSize(9);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 290, { align: "center" });
+      doc.setTextColor(107, 114, 128);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, pageHeight - 18, { align: "center" });
+
+      // Institution footer
+      doc.setFontSize(7);
+      doc.setTextColor(156, 163, 175);
+      doc.text("Feedb-ACTS University Survey Analytics System", pageWidth / 2, pageHeight - 10, { align: "center" });
+
+      // Subtle copyright/academic notice
+      doc.setFontSize(6);
+      doc.text("Confidential - For Academic Use Only", pageWidth / 2, pageHeight - 5, { align: "center" });
     }
 
     // Download PDF
-    doc.save(`${form.title}Feedb-ACTS_Question_Analytics.pdf`);
-    toast.success("Question Analytics PDF downloaded!");
+    const filename = `${form.title.replace(/[^a-z0-9]/gi, '_').toLowerCase()}_analytics_report.pdf`;
+    doc.save(filename);
+    toast.success(" FeedbACTS Report downloaded!");
   };
 
   const renderResponseValue = (question: any, value: any) => {
@@ -592,7 +934,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
               className="border-blue-300 text-blue-700 hover:bg-blue-50"
             >
               <BarChart3 className="w-4 h-4 mr-2" />
-              Question Analytics
+              Generate Report
             </Button>
           </div>
         </div>
