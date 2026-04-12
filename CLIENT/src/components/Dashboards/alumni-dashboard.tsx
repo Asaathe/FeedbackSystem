@@ -54,6 +54,7 @@ interface AlumniDashboardProps {
 
 export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   const [alumniPendingForms, setAlumniPendingForms] = useState<PendingForm[]>([]);
+  const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
   const [formStats, setFormStats] = useState({ pending: 0, completed: 0, total: 0, completionRate: 0 });
   
   // State for dynamic data (replacing mock data)
@@ -101,13 +102,38 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   useEffect(() => {
     const loadData = async () => {
       const publishedForms = await getFormsForUserRole('alumni');
-      const pendingForms = publishedForms.map(form => ({
-        id: form.id,
-        title: form.title,
-        description: form.description,
-        dueDate: form.dueDate || 'No due date',
-        priority: form.category === 'Alumni' ? 'high' : 'medium',
-      }));
+      
+      // Fetch submitted form IDs from API
+      let submittedIds = new Set<string>();
+      try {
+        const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+        if (token) {
+          const response = await fetch('/api/forms/my-responses', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (response.ok) {
+            const result = await response.json();
+            submittedIds = new Set<string>(result.responses?.map((r: any) => String(r.form_id)) || []);
+            setSubmittedFormIds(submittedIds);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching submitted forms:', error);
+      }
+
+      // Filter out already submitted forms
+      const pendingForms = publishedForms
+        .filter(form => !submittedIds.has(form.id))
+        .map(form => ({
+          id: form.id,
+          title: form.title,
+          description: form.description,
+          dueDate: form.dueDate || 'No due date',
+          priority: form.category === 'Alumni' ? 'high' : 'medium',
+        }));
       setAlumniPendingForms(pendingForms);
       const stats = await getFormStatsForUser('alumni');
       setFormStats(stats);
