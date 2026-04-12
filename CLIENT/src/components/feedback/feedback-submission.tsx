@@ -135,7 +135,7 @@ function ContentRenderer({
   // This should only be reached for authenticated users with forms
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {pendingForms.map((form) => (
+      {availableForms.map((form) => (
         <Card
           key={form.id}
           className={`border-green-100 hover:shadow-md transition-shadow overflow-hidden ${isOverdue(form.dueDate) ? 'border-l-4 border-l-red-500' : ''}`}
