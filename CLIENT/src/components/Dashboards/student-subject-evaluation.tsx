@@ -686,17 +686,19 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
       {subjects.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {subjects.map((subject) => (
-            <Card 
+            <Card
               key={subject.subject_id}
-              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer"
+              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer flex flex-col min-h-[280px]"
               onClick={() => handleSubjectClick(subject)}
             >
-              <CardHeader>
-                <CardTitle className="text-lg">{subject.subject_name}</CardTitle>
+              <CardHeader className="flex-shrink-0">
+                <CardTitle className="text-lg leading-tight line-clamp-2 min-h-[3.5rem]" title={subject.subject_name}>
+                  {subject.subject_name}
+                </CardTitle>
                 <p className="text-sm text-gray-500">{subject.subject_code}</p>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="flex-1 flex flex-col">
+                <div className="space-y-3 flex-1">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1 text-gray-600">
                       <BookOpen className="w-4 h-4" />
@@ -706,16 +708,16 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                       <span>{subject.academic_year}</span>
                     </div>
                   </div>
-                  
-                  <div className="pt-2 border-t border-gray-100">
+
+                  <div className="pt-2 border-t border-gray-100 flex-1">
                     <p className="text-xs text-gray-500 mb-2">Instructor</p>
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10">
+                      <Avatar className="w-10 h-10 flex-shrink-0">
                         {getImageUrl(subject.instructor_image) ? (
-                          <img 
-                            src={getImageUrl(subject.instructor_image)} 
-                            alt={subject.instructor_name || 'Instructor'} 
-                            className="w-full h-full object-cover" 
+                          <img
+                            src={getImageUrl(subject.instructor_image)}
+                            alt={subject.instructor_name || 'Instructor'}
+                            className="w-full h-full object-cover"
                           />
                         ) : (
                           <AvatarFallback className="bg-green-500 text-white text-sm">
@@ -728,12 +730,12 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                       </p>
                     </div>
                   </div>
-
-                  <Button variant="outline" className="w-full mt-2 border-green-200 hover:bg-green-50">
-                    <span className="hidden sm:inline">View Evaluations</span>
-                    <ChevronRight className="w-4 h-4 sm:ml-2" />
-                  </Button>
                 </div>
+
+                <Button variant="outline" className="w-full mt-4 border-green-200 hover:bg-green-50">
+                  <span className="hidden sm:inline">View Evaluations</span>
+                  <ChevronRight className="w-4 h-4 sm:ml-2" />
+                </Button>
               </CardContent>
             </Card>
           ))}
