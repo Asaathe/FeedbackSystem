@@ -276,7 +276,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
         },
         body: JSON.stringify({
           ...employmentInfo,
-          lastUpdateReceived: new Date().toISOString()
+          lastUpdateReceived: formatDateForMySQL(new Date())
         }),
       });
       
@@ -343,7 +343,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          lastUpdateReceived: new Date().toISOString()
+          lastUpdateReceived: formatDateForMySQL(new Date())
         }),
       });
       
@@ -447,6 +447,11 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       month: 'short',
       day: 'numeric'
     });
+  };
+
+  // Format date for MySQL datetime
+  const formatDateForMySQL = (date: Date) => {
+    return date.toISOString().slice(0, 19).replace('T', ' ');
   };
 
   if (isLoading) {
