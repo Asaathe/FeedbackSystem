@@ -468,7 +468,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
                 <Send className="w-4 h-4" />
                 Send Update Request{selectedRecords.length > 0 && ` (${selectedRecords.length})`}
               </Button>
-              <Button
+             {/* <Button
                 variant="outline"
                 onClick={handleRunScheduler}
                 className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
@@ -476,7 +476,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
               >
                 <Clock className="w-4 h-4" />
                 Run Scheduler
-              </Button>
+              </Button> */}
             </div> 
           </div>
 
