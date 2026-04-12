@@ -271,6 +271,16 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
     loadSubmittedForms();
   }, []);
 
+  // Filter out submitted forms and sort by due date
+  const pendingForms = availableForms
+    .filter(form => {
+      if (submittedFormIds.has(form.id)) return false;
+      if (isFormEnded(form)) return false;
+      if (isOverdue(form.dueDate)) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+
   // Mobile swipe gesture handling
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
@@ -714,35 +724,6 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
     // Return true if current time is after the end datetime
     return isNaN(end.getTime()) ? false : end < now;
   };
-
-  // Filter out submitted forms and sort by due date
-  // Forms that haven't started or have ended are included but shown as disabled
-  const pendingForms = availableForms
-    .filter(form => {
-      // Filter out already submitted forms
-      if (submittedFormIds.has(form.id)) {
-        return false;
-      }
-      
-      // Exclude forms that have ended - they should appear in My Submissions instead
-      if (isFormEnded(form)) {
-        return false;
-      }
-      
-      // Exclude overdue forms - they should appear in My Submissions instead
-      if (isOverdue(form.dueDate)) {
-        return false;
-      }
-      
-      // Only show forms that are not yet due (pending)
-      return true;
-    })
-    .sort((a, b) => {
-      const dateA = new Date(a.dueDate);
-      const dateB = new Date(b.dueDate);
-      // Sort by due date (earliest first)
-      return dateA.getTime() - dateB.getTime();
-    });
 
   const handleSubmit = async () => {
     if (!selectedForm) {
