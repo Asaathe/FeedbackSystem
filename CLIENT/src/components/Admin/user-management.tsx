@@ -102,37 +102,39 @@ export function UserManagement() {
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
   
   // Programs list for dropdown
-  const [programs, setPrograms] = useState<Array<{ value: string; label: string }>>([]);
+  const [programs, setPrograms] = useState<Array<{ value: string; label: string; department: string }>>([]);
+  const [filteredPrograms, setFilteredPrograms] = useState<Array<{ value: string; label: string; department: string }>>([]);
   const [isLoadingPrograms, setIsLoadingPrograms] = useState(false);
 
   // Image upload loading state
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Fetch programs from API
-  useEffect(() => {
-    const fetchPrograms = async () => {
-      setIsLoadingPrograms(true);
-      try {
-        const response = await fetch('/api/programs');
-        const data = await response.json();
-        
-        if (data.success && data.programs) {
-          const options = data.programs.map((program: any) => ({
-            value: String(program.id),
-            label: program.course_section,
-          }));
-          setPrograms(options);
-        }
-      } catch (error) {
-        console.error('Error fetching programs:', error);
-      } finally {
-        setIsLoadingPrograms(false);
-      }
-    };
+  const fetchPrograms = async () => {
+    setIsLoadingPrograms(true);
+    try {
+      const response = await fetch('/api/programs');
+      const data = await response.json();
 
+      if (data.success && data.programs) {
+        const options = data.programs.map((program: any) => ({
+          value: String(program.id),
+          label: program.course_section,
+          department: program.department,
+        }));
+        setPrograms(options);
+      }
+    } catch (error) {
+      console.error('Error fetching programs:', error);
+    } finally {
+      setIsLoadingPrograms(false);
+    }
+  };
+
+  useEffect(() => {
     fetchPrograms();
   }, []);
-  
+
   // Form state for adding new user
   const [newUser, setNewUser] = useState({
     fullName: '',
@@ -170,7 +172,25 @@ export function UserManagement() {
     graduationYear: '',
     schoolRole: ''
   });
-  
+
+  // Filter programs when department changes for Student role in add dialog
+  useEffect(() => {
+    if (newUser.role === 'Student' && newUser.department) {
+      setFilteredPrograms(programs.filter(p => p.department === newUser.department));
+    } else {
+      setFilteredPrograms([]);
+    }
+  }, [newUser.role, newUser.department, programs]);
+
+  // Filter programs when department changes for Student role in edit dialog
+  useEffect(() => {
+    if (editUser.role?.toLowerCase() === 'student' && editUser.department) {
+      setFilteredPrograms(programs.filter(p => p.department === editUser.department));
+    } else {
+      setFilteredPrograms([]);
+    }
+  }, [editUser.role, editUser.department, programs]);
+
   // Add a state for showing pending users section
   const [showPendingSection, setShowPendingSection] = useState(true);
 
@@ -414,6 +434,24 @@ export function UserManagement() {
       }
     }
 
+    // Validate ID formats
+    if (newUser.role.toLowerCase() === 'student' && newUser.studentId) {
+      if (!/^\d{5}$/.test(newUser.studentId)) {
+        toast.error('Student ID must be exactly 5 numerical digits');
+        return;
+      }
+    } else if (newUser.role.toLowerCase() === 'instructor' && newUser.employeeId) {
+      if (!/^\d{5}$/.test(newUser.employeeId)) {
+        toast.error('Employee ID must be exactly 5 numerical digits');
+        return;
+      }
+    } else if (newUser.role.toLowerCase() === 'staff' && newUser.employeeId) {
+      if (!/^\d{5}$/.test(newUser.employeeId)) {
+        toast.error('Employee ID must be exactly 5 numerical digits');
+        return;
+      }
+    }
+
     try {
       const token = sessionStorage.getItem('authToken');
       const userData = {
@@ -427,18 +465,18 @@ export function UserManagement() {
         profilePicture: newUser.profilePicture || undefined,
         // Role-specific fields
         ...(newUser.role.toLowerCase() === 'student' && {
-          studentId: newUser.studentId,
+          student_id: newUser.studentId,
           program_id: newUser.program_id ? parseInt(newUser.program_id) : null
         }),
         ...(newUser.role.toLowerCase() === 'instructor' && {
-          employeeId: newUser.employeeId,
-          schoolRole: newUser.schoolRole || undefined
+          instructor_id: newUser.employeeId,
+          school_role: newUser.schoolRole || undefined
         }),
         ...(newUser.role.toLowerCase() === 'staff' && {
-          employeeId: newUser.employeeId
+          employee_id: newUser.employeeId
         }),
         ...(newUser.role.toLowerCase() === 'alumni' && {
-          graduationYear: newUser.graduationYear
+          graduation_year: newUser.graduationYear
         })
       };
 
@@ -630,14 +668,24 @@ export function UserManagement() {
 
     if (editUser.role) {
       if (editUser.role.toLowerCase() === 'student') {
-        if (editUser.studentId) updateData.studentId = editUser.studentId;
+        if (editUser.studentId) updateData.student_id = editUser.studentId;
         if (editUser.program_id) updateData.program_id = parseInt(editUser.program_id);
       } else if (editUser.role.toLowerCase() === 'instructor') {
-        if (editUser.employeeId) updateData.instructorId = editUser.employeeId;
-        if (editUser.schoolRole) updateData.schoolRole = editUser.schoolRole;
+        if (editUser.employeeId) updateData.instructor_id = editUser.employeeId;
+        if (editUser.schoolRole) updateData.school_role = editUser.schoolRole;
       } else if (editUser.role.toLowerCase() === 'alumni') {
-        if (editUser.graduationYear) updateData.graduationYear = editUser.graduationYear;
+        if (editUser.graduationYear) updateData.graduation_year = editUser.graduationYear;
       }
+    }
+
+    // Validate ID formats for updates
+    if (updateData.student_id && !/^\d{5}$/.test(updateData.student_id)) {
+      toast.error('Student ID must be exactly 5 numerical digits');
+      return;
+    }
+    if (updateData.instructor_id && !/^\d{5}$/.test(updateData.instructor_id)) {
+      toast.error('Employee ID must be exactly 5 numerical digits');
+      return;
     }
 
     console.log('=== UPDATE USER CLIENT ===');
@@ -767,32 +815,33 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="course_year_section" className="text-xs font-medium text-gray-600">Program <span className="text-red-500">*</span></Label>
-              <Select 
-                value={newUser.program_id} 
-                onValueChange={(value) => setNewUser({ ...newUser, program_id: value })}
-              >
-                <SelectTrigger id="course_year_section" className="h-10 border-gray-200 focus:border-green-500">
-                  <SelectValue placeholder={isLoadingPrograms ? "Loading..." : "Select program"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {programs.map((program) => (
-                    <SelectItem key={program.value} value={program.value}>
-                      {program.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5 sm:col-span-2">
               <Label htmlFor="department" className="text-xs font-medium text-gray-600">Department <span className="text-red-500">*</span></Label>
-              <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value })}>
+              <Select value={newUser.department} onValueChange={(value) => setNewUser({ ...newUser, department: value, program_id: '' })}>
                 <SelectTrigger id="department" className="h-10 border-gray-200 focus:border-green-500">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="College">College</SelectItem>
                   <SelectItem value="Senior High">Senior High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="course_year_section" className="text-xs font-medium text-gray-600">Course and Sections <span className="text-red-500">*</span></Label>
+              <Select
+                value={newUser.program_id}
+                onValueChange={(value) => setNewUser({ ...newUser, program_id: value })}
+                disabled={!newUser.department}
+              >
+                <SelectTrigger id="course_year_section" className="h-10 border-gray-200 focus:border-green-500">
+                  <SelectValue placeholder={isLoadingPrograms ? "Loading..." : (newUser.department ? "Select course and section" : "Select department first")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredPrograms.map((program) => (
+                    <SelectItem key={program.value} value={program.value}>
+                      {program.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -873,32 +922,33 @@ export function UserManagement() {
               />
             </div>
             <div className="grid gap-1.5">
-              <Label htmlFor="course_year_section" className="text-xs font-medium text-gray-600">Program <span className="text-red-500">*</span></Label>
-              <Select 
-                value={editUser.program_id} 
-                onValueChange={(value) => setEditUser({ ...editUser, program_id: value })}
-              >
-                <SelectTrigger id="course_year_section" className="h-10 border-gray-200 focus:border-green-500">
-                  <SelectValue placeholder={isLoadingPrograms ? "Loading..." : "Select program"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {programs.map((program) => (
-                    <SelectItem key={program.value} value={program.value}>
-                      {program.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-1.5 sm:col-span-2">
               <Label htmlFor="department" className="text-xs font-medium text-gray-600">Department <span className="text-red-500">*</span></Label>
-              <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value })}>
+              <Select value={editUser.department} onValueChange={(value) => setEditUser({ ...editUser, department: value, program_id: '' })}>
                 <SelectTrigger id="department" className="h-10 border-gray-200 focus:border-green-500">
                   <SelectValue placeholder="Select department" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="College">College</SelectItem>
                   <SelectItem value="Senior High">Senior High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-1.5 sm:col-span-2">
+              <Label htmlFor="course_year_section" className="text-xs font-medium text-gray-600">Course and Sections <span className="text-red-500">*</span></Label>
+              <Select
+                value={editUser.program_id}
+                onValueChange={(value) => setEditUser({ ...editUser, program_id: value })}
+                disabled={!editUser.department}
+              >
+                <SelectTrigger id="course_year_section" className="h-10 border-gray-200 focus:border-green-500">
+                  <SelectValue placeholder={isLoadingPrograms ? "Loading..." : (editUser.department ? "Select course and section" : "Select department first")} />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredPrograms.map((program) => (
+                    <SelectItem key={program.value} value={program.value}>
+                      {program.label}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
