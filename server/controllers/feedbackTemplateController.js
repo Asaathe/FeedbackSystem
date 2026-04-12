@@ -663,41 +663,26 @@ const getStudentEnrolledSubjects = async (req, res) => {
       db.query(studentProgramQuery, [userId], (studentErr, studentResults) => {
         if (studentErr) {
           console.error("Error fetching student info:", studentErr);
-          }
-          
-          const studentProgramId = studentResults && studentResults.length > 0 ? studentResults[0].program_id : null;
+          return res.status(500).json({ success: false, message: "Failed to fetch student info" });
+        }
 
-          // Query from subject_offerings (main table for subject offerings)
-          // Require academic period - no fallback queries
-          if (!academicPeriodId) {
-             const results = [];
-             const subjects = results.map(row => ({
-               subject_id: row.subject_id,
-               section_id: row.section_id,
-               subject_code: row.subject_code,
-               subject_name: row.subject_name,
-               department: row.department,
-               units: row.units,
-               instructor_id: row.instructor_id || row.instructor_user_id,
-               instructor_name: row.instructor_name,
-               instructor_image: row.instructor_image,
-               year_level: row.year_level || 1,
-               section: row.section || '-',
-               has_subject_feedback: false,
-               has_instructor_feedback: false
-             }));
+        const studentProgramId = studentResults && studentResults.length > 0 ? studentResults[0].program_id : null;
 
-             return res.status(200).json({
-               success: true,
-               subjects,
-               academic_year: academicYear,
-               semester: semester,
-               evaluation_active: activePeriod !== null,
-               evaluation_period: activePeriod
-             });
-           }
+        // Query from subject_offerings (main table for subject offerings)
+        // Require academic period - no fallback queries
+        if (!academicPeriodId) {
+          // No active academic period - return empty results
+          return res.status(200).json({
+            success: true,
+            subjects: [],
+            academic_year: academicYear,
+            semester: semester,
+            evaluation_active: activePeriod !== null,
+            evaluation_period: activePeriod
+          });
+        } else {
 
-           const subjectOfferingsQuery = studentProgramId ? `
+          const subjectOfferingsQuery = studentProgramId ? `
              SELECT
                so.id as offering_id,
                so.id as section_id,
@@ -743,21 +728,53 @@ const getStudentEnrolledSubjects = async (req, res) => {
              LEFT JOIN users u ON so.instructor_id = u.id
              LEFT JOIN instructors inst ON u.id = inst.user_id
              WHERE so.academic_period_id = ? AND so.status = 'active'
-           `;
-          
-            // Execute the query - only use subject_offerings with academic_period_id required
-            const executeQueries = async () => {
-              const queryParams = studentProgramId ? [studentProgramId, academicPeriodId] : [academicPeriodId];
+          `;
 
-              const subjectOfferingResults = await new Promise((resolve, reject) => {
-                db.query(subjectOfferingsQuery, queryParams, (err, results) => {
-                  if (err) reject(err);
-                  else resolve(results);
-                });
+          // Execute the query - only use subject_offerings with academic_period_id required
+          const executeQueries = async () => {
+            const queryParams = studentProgramId ? [studentProgramId, academicPeriodId] : [academicPeriodId];
+
+            const subjectOfferingResults = await new Promise((resolve, reject) => {
+              db.query(subjectOfferingsQuery, queryParams, (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
               });
+            });
 
             const results = subjectOfferingResults || [];
-            
+
+            // Check feedback status from database - subject feedback
+            const subjectFeedbackQuery = `
+              SELECT subject_id FROM subject_feedback
+              WHERE student_id = ? AND academic_year = ? AND semester = ?
+            `;
+            const subjectFeedbackResults = await new Promise((resolve, reject) => {
+              db.query(subjectFeedbackQuery, [userId, academicYear, semester], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+              });
+            });
+            const subjectFeedbackMap = {};
+            (subjectFeedbackResults || []).forEach(row => {
+              subjectFeedbackMap[row.subject_id] = true;
+            });
+
+            // Check feedback status from database - instructor feedback
+            const instructorFeedbackQuery = `
+              SELECT instructor_id, subject_id FROM instructor_feedback
+              WHERE student_id = ? AND academic_year = ? AND semester = ?
+            `;
+            const instructorFeedbackResults = await new Promise((resolve, reject) => {
+              db.query(instructorFeedbackQuery, [userId, academicYear, semester], (err, results) => {
+                if (err) reject(err);
+                else resolve(results);
+              });
+            });
+            const instructorFeedbackMap = {};
+            (instructorFeedbackResults || []).forEach(row => {
+              instructorFeedbackMap[row.subject_id] = true;
+            });
+
             const subjects = results.map(row => ({
               subject_id: row.subject_id,
               section_id: row.section_id,
@@ -770,25 +787,26 @@ const getStudentEnrolledSubjects = async (req, res) => {
               instructor_image: row.instructor_image,
               year_level: row.year_level || 1,
               section: row.section || '-',
-              has_subject_feedback: false,
-              has_instructor_feedback: false
+              has_subject_feedback: !!subjectFeedbackMap[row.subject_id],
+              has_instructor_feedback: !!instructorFeedbackMap[row.subject_id]
             }));
-            
-            return res.status(200).json({ 
-              success: true, 
+
+            return res.status(200).json({
+              success: true,
               subjects,
               academic_year: academicYear,
               semester: semester,
               evaluation_active: activePeriod !== null,
               evaluation_period: activePeriod
             });
-          };
-          
+          }
+
           executeQueries().catch(err => {
             console.error("Error in getStudentEnrolledSubjects query:", err);
             return res.status(500).json({ success: false, message: "Failed to fetch subjects" });
           });
-        });
+        }
+      });
       });
   } catch (error) {
     console.error("Get student enrolled subjects error:", error);
@@ -806,6 +824,11 @@ const submitSubjectFeedback = async (req, res) => {
 
     if (!subject_id || !responses) {
       return res.status(400).json({ success: false, message: "Subject ID and responses are required" });
+    }
+
+    // Validate that instructor is assigned (required for subject feedback)
+    if (!instructor_id) {
+      return res.status(400).json({ success: false, message: "Cannot submit subject feedback: No instructor is assigned to this subject yet" });
     }
 
     // Variables for academic year and semester (scoped to try block)
@@ -1024,6 +1047,11 @@ const submitFeedback = async (req, res) => {
     if (feedback_type === 'subject') {
       if (!subject_id) {
         return res.status(400).json({ success: false, message: "Subject ID is required for subject feedback" });
+      }
+
+      // Validate that instructor is assigned (required for subject feedback)
+      if (!instructor_id) {
+        return res.status(400).json({ success: false, message: "Cannot submit subject feedback: No instructor is assigned to this subject yet" });
       }
 
       // Validate that subject_id exists in evaluation_subjects table

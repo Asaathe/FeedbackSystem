@@ -159,6 +159,12 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   };
 
   const handleRateSubject = (subject: Subject) => {
+    // Check if instructor is assigned (required for subject feedback)
+    if (!subject.instructor_id) {
+      toast.error("Cannot rate subject: No instructor is assigned to this subject yet");
+      return;
+    }
+
     // Check if submission is already locked (student already tried and got "already submitted")
     if (isSubmissionLocked(subject.subject_id, 'subject')) {
       toast.error("You have already submitted feedback for this subject");
@@ -171,6 +177,12 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
   };
 
   const handleRateInstructor = (subject: Subject) => {
+    // Check if instructor is assigned
+    if (!subject.instructor_id) {
+      toast.error("No instructor is assigned to this subject yet");
+      return;
+    }
+
     // Check if submission is already locked (student already tried and got "already submitted")
     if (isSubmissionLocked(subject.subject_id, 'instructor')) {
       toast.error("You have already submitted feedback for this instructor");
@@ -260,7 +272,8 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
     }
   };
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'TBA';
     return name
       .split(' ')
       .map(n => n[0])
@@ -377,7 +390,9 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
                 )}
               </Avatar>
               <div>
-                <p className="text-xl font-bold text-gray-800">{selectedSubject.instructor_name}</p>
+                <p className="text-xl font-bold text-gray-800">
+                  {selectedSubject.instructor_name || 'No Instructor Assigned'}
+                </p>
                 <p className="text-sm text-green-700 font-medium">
                   {feedbackType === 'instructor' ? 'Your Instructor' : 'Instructor for this subject'}
                 </p>
@@ -642,24 +657,24 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium transition-colors" 
-                    size="sm"
-                    onClick={() => handleRateSubject(subject)}
-                    disabled={!isEvaluationActive}
-                  >
-                    <Star className="w-4 h-4 mr-1" />
-                    Rate Subject
-                  </Button>
-                  <Button 
-                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors" 
-                    size="sm"
-                    onClick={() => handleRateInstructor(subject)}
-                    disabled={!isEvaluationActive}
-                  >
-                    <User className="w-4 h-4 mr-1" />
-                    Rate Instructor
-                  </Button>
+                   <Button
+                     className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium transition-colors"
+                     size="sm"
+                     onClick={() => handleRateSubject(subject)}
+                     disabled={!isEvaluationActive || !subject.instructor_id}
+                   >
+                     <Star className="w-4 h-4 mr-1" />
+                     Rate Subject
+                   </Button>
+                   <Button
+                     className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors"
+                     size="sm"
+                     onClick={() => handleRateInstructor(subject)}
+                     disabled={!isEvaluationActive || !subject.instructor_id}
+                   >
+                     <User className="w-4 h-4 mr-1" />
+                     Rate Instructor
+                   </Button>
                 </div>
               </CardContent>
             </Card>
