@@ -271,16 +271,6 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
     loadSubmittedForms();
   }, []);
 
-  // Filter out submitted forms and sort by due date
-  const pendingForms = availableForms
-    .filter(form => {
-      if (submittedFormIds.has(form.id)) return false;
-      if (isFormEnded(form)) return false;
-      if (isOverdue(form.dueDate)) return false;
-      return true;
-    })
-    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
-
   // Mobile swipe gesture handling
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
@@ -724,6 +714,16 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
     // Return true if current time is after the end datetime
     return isNaN(end.getTime()) ? false : end < now;
   };
+
+  // Filter out submitted, ended and overdue forms
+  const pendingForms = availableForms
+    .filter(form => {
+      if (submittedFormIds.has(form.id)) return false;
+      if (isFormEnded(form)) return false;
+      if (isOverdue(form.dueDate)) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
 
   const handleSubmit = async () => {
     if (!selectedForm) {
