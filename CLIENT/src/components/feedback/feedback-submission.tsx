@@ -58,6 +58,7 @@ interface ContentRendererProps {
   onSelectForm: (form: FeedbackForm) => void;
   isNotStarted: (form: FeedbackForm) => boolean;
   isOverdue: (dueDate: string) => boolean;
+  externalFeedbackSubmitted?: boolean;
 }
 
 function ContentRenderer({
@@ -68,7 +69,8 @@ function ContentRenderer({
   onBackToLogin = () => {},
   onSelectForm,
   isNotStarted,
-  isOverdue
+  isOverdue,
+  externalFeedbackSubmitted = false
 }: ContentRendererProps) {
   if (loading) {
     return (
@@ -90,6 +92,20 @@ function ContentRenderer({
         </h3>
         <p className="text-gray-600">
           Please wait while we load your feedback form.
+        </p>
+      </div>
+    );
+  }
+
+  if (isExternalMode && externalFeedbackSubmitted && !selectedForm && !loading) {
+    return (
+      <div className="text-center py-8">
+        <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
+        <h3 className="text-lg font-medium text-gray-900 mb-2">
+          Thank You!
+        </h3>
+        <p className="text-gray-600">
+          Your feedback has been submitted successfully. We appreciate your valuable input.
         </p>
       </div>
     );
@@ -228,6 +244,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
   const [isExternalMode, setIsExternalMode] = useState(!!externalFormId || !!externalToken);
+  const [externalFeedbackSubmitted, setExternalFeedbackSubmitted] = useState(false);
   
   // External supervisor info (for public feedback)
   const [externalSupervisorName, setExternalSupervisorName] = useState("");
@@ -747,6 +764,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
         if (result.success) {
           setSubmittedFormIds(prev => new Set([...prev, selectedForm.id]));
+          setExternalFeedbackSubmitted(true);
           setShowSuccessModal(true);
           console.log("External feedback submitted successfully!");
         } else {
@@ -1010,6 +1028,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               onSelectForm={handleSelectForm}
               isNotStarted={isNotStarted}
               isOverdue={isOverdue}
+              externalFeedbackSubmitted={externalFeedbackSubmitted}
             />
           </div>
         </div>
@@ -1036,6 +1055,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             onSelectForm={handleSelectForm}
             isNotStarted={isNotStarted}
             isOverdue={isOverdue}
+            externalFeedbackSubmitted={externalFeedbackSubmitted}
           />
         </div>
       );
