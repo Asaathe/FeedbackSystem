@@ -42,21 +42,6 @@ import {
   getForm,
   FormData,
 } from "../../services/formManagementService";
-import {
-  analyzeFormResponses,
-  QuestionAIInsight,
-  QuickQuestionInsight,
-  ResponseAnalysisResponse,
-} from "../../services/aiQuestionService";
-import {
-  Brain,
-  Sparkles,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-  RefreshCw,
-} from "lucide-react";
 
 interface FormResponsesViewerProps {
   formId: string;
@@ -73,11 +58,6 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
-  
-  // AI Insights state (for PDF generation)
-  const [aiInsights, setAiInsights] = useState<QuickQuestionInsight[]>([]);
-  const [overallSummary, setOverallSummary] = useState<string>("");
-  const [analyzingWithAI, setAnalyzingWithAI] = useState(false);
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -300,187 +280,14 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     }
   };
 
-  const analyzeWithAI = async () => {
-    if (!form || responses.length === 0) {
-      toast.error("No form or responses to analyze");
-      return;
-    }
 
-    setAnalyzingWithAI(true);
-    try {
-      // Prepare questions with section information
-      const questionsWithSections = (form.questions || []).map(q => ({
-        ...q,
-        id: String(q.id),
-        sectionId: q.section_id || q.sectionId,
-        sectionTitle: q.section_title || q.sectionTitle
-      }));
-
-      // Prepare sections data
-      const sectionsData = (form.sections || []).map((s, index) => ({
-        id: String(s.id),
-        title: s.title,
-        order: s.order ?? index
-      }));
-
-      const result: ResponseAnalysisResponse = await analyzeFormResponses(
-        form.title,
-        questionsWithSections,
-        responses,
-        sectionsData
-      );
-
-      if (result.success && result.overallSummary) {
-        setAiInsights(result.insights || []);
-        setOverallSummary(result.overallSummary || "");
-        
-        // Generate AI Insights PDF instead of showing on screen
-        generateAIInsightsPDF(result.overallSummary, result.insights || []);
-        
-        toast.success("AI analysis complete! PDF downloaded.");
-      } else {
-        toast.error(result.error || "Failed to analyze responses");
-      }
-    } catch (error) {
-      console.error("Error analyzing with AI:", error);
-      toast.error("Failed to analyze responses with AI");
-    } finally {
-      setAnalyzingWithAI(false);
-    }
-  };
 
   const handleViewResponse = (response: FormResponse) => {
     setSelectedResponse(response);
     setViewDialogOpen(true);
   };
 
-  // Generate PDF with AI Insights (simplified - no detailed per-question analytics)
-  const generateAIInsightsPDF = async (summary: string, insights: QuickQuestionInsight[]) => {
-    if (!form) return;
 
-    const doc = new jsPDF();
-    let yPosition = 20;
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const margin = 20;
-    const maxWidth = pageWidth - 2 * margin;
-
-    // Add header image - full width across the page
-    try {
-      const headerImg = new window.Image();
-      headerImg.src = '/ACTSPDFHEADERTOBEUSED.png';
-      await new Promise((resolve) => { headerImg.onload = resolve; });
-      const canvas = document.createElement('canvas');
-      canvas.width = headerImg.width;
-      canvas.height = headerImg.height;
-      const ctx = canvas.getContext('2d');
-      ctx?.drawImage(headerImg, 0, 0);
-      const headerData = canvas.toDataURL('image/png');
-      // Scale image to full page width (210mm for A4)
-      const imgWidth = pageWidth;
-      const imgHeight = (headerImg.height / headerImg.width) * imgWidth;
-      doc.addImage(headerData, 'PNG', 0, 0, imgWidth, imgHeight);
-      yPosition = imgHeight + 10;
-    } catch (e) {
-      console.warn('Could not add header image:', e);
-      yPosition = 30;
-    }
-
-    // Title
-    doc.setFontSize(20);
-    doc.setTextColor(79, 70, 229); // Indigo color
-    doc.text(`${form.title} - AI Insights Report`, margin, yPosition);
-    yPosition += 15;
-
-    // Form details
-    doc.setFontSize(11);
-    doc.setTextColor(100, 100, 100);
-    doc.text(`Total Responses: ${responses.length}`, margin, yPosition);
-    yPosition += 7;
-    doc.text(`Generated on: ${new Date().toLocaleString()}`, margin, yPosition);
-    yPosition += 15;
-
-    // Divider line
-    doc.setDrawColor(200, 200, 200);
-    doc.line(margin, yPosition, pageWidth - margin, yPosition);
-    yPosition += 15;
-
-    // Overall Summary Section
-    doc.setFontSize(16);
-    doc.setTextColor(79, 70, 229); // Indigo
-    doc.text("AI Insights Summary", margin, yPosition);
-    yPosition += 10;
-
-    doc.setFontSize(11);
-    doc.setTextColor(50, 50, 50);
-    const summaryLines = doc.splitTextToSize(summary, maxWidth);
-    summaryLines.forEach((line: string) => {
-      if (yPosition > 270) {
-        doc.addPage();
-        yPosition = 20;
-      }
-      doc.text(line, margin, yPosition);
-      yPosition += 6;
-    });
-    yPosition += 10;
-
-    // Quick Insights Section (simplified - just main ideas)
-    if (insights.length > 0) {
-      if (yPosition > 230) {
-        doc.addPage();
-        yPosition = 20;
-      }
-
-      doc.setFontSize(16);
-      doc.setTextColor(79, 70, 229);
-      doc.text("Key Insights by Question", margin, yPosition);
-      yPosition += 12;
-
-      insights.forEach((insight, index) => {
-        if (yPosition > 250) {
-          doc.addPage();
-          yPosition = 20;
-        }
-
-        // Question header
-        doc.setFontSize(12);
-        doc.setTextColor(30, 30, 30);
-        doc.text(`Q${index + 1}:`, margin, yPosition);
-        
-        // Main idea
-        doc.setFontSize(11);
-        doc.setTextColor(60, 60, 60);
-        const ideaLines = doc.splitTextToSize(insight.mainIdea || "No data", maxWidth - 15);
-        doc.text(ideaLines, margin + 15, yPosition);
-        yPosition += ideaLines.length * 6 + 5;
-
-        // Sentiment badge
-        doc.setFontSize(10);
-        if (insight.shortSentiment === "positive") {
-          doc.setTextColor(22, 163, 74); // Green
-          doc.text("✓ Positive", margin + 15, yPosition);
-        } else if (insight.shortSentiment === "negative") {
-          doc.setTextColor(220, 38, 38); // Red
-          doc.text("✗ Negative", margin + 15, yPosition);
-        } else {
-          doc.setTextColor(107, 114, 128); // Gray
-          doc.text("● Neutral", margin + 15, yPosition);
-        }
-        yPosition += 12;
-      });
-    }
-
-    // Footer
-    const totalPages = doc.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i);
-      doc.setFontSize(9);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`Page ${i} of ${totalPages}`, pageWidth / 2, 290, { align: "center" });
-    }
-
-    // Download PDF
-    doc.save(`${form.title}Feedb-ACTS_AI_Insights.pdf`);
-  };
 
   // Get all questions including text questions for analytics
   const getAllQuestionsForAnalytics = () => {
@@ -745,166 +552,9 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     }
   };
 
-  // AI Insights rendering functions
-  const renderSentimentBadge = (sentiment: string) => {
-    switch (sentiment) {
-      case 'positive':
-        return (
-          <Badge className="bg-green-100 text-green-700 border-green-200">
-            <CheckCircle className="w-3 h-3 mr-1" />
-            Positive
-          </Badge>
-        );
-      case 'negative':
-        return (
-          <Badge className="bg-red-100 text-red-700 border-red-200">
-            <XCircle className="w-3 h-3 mr-1" />
-            Negative
-          </Badge>
-        );
-      case 'neutral':
-        return (
-          <Badge className="bg-gray-100 text-gray-700 border-gray-200">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Neutral
-          </Badge>
-        );
-      default:
-        return (
-          <Badge className="bg-yellow-100 text-yellow-700 border-yellow-200">
-            <AlertCircle className="w-3 h-3 mr-1" />
-            Mixed
-          </Badge>
-        );
-    }
-  };
 
-  const renderAIInsightCard = (insight: QuestionAIInsight, index: number) => {
-    return (
-      <Card key={insight.questionId} className="overflow-hidden border-l-4 border-l-blue-500">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50">
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg leading-relaxed" title={insight.question}>
-                <span className="inline-flex items-center gap-2">
-                  <Brain className="w-5 h-5 text-blue-600 shrink-0" />
-                  Q{index + 1}: {insight.question}
-                </span>
-              </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                {insight.type.replace('-', ' ').toUpperCase()} • {insight.totalResponses} responses
-              </p>
-            </div>
-            {insight.sentiment && renderSentimentBadge(insight.sentiment.overall)}
-          </div>
-        </CardHeader>
-        <CardContent className="p-6 space-y-4">
-          {/* AI Summary */}
-          <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-4 h-4 text-purple-600" />
-              <span className="font-semibold text-sm text-purple-900">AI Summary</span>
-            </div>
-            <p className="text-sm text-gray-700 leading-relaxed">{insight.summary}</p>
-          </div>
 
-          {/* Key Findings */}
-          {insight.keyFindings.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-blue-600" />
-                <span className="font-semibold text-sm text-gray-900">Key Findings</span>
-              </div>
-              <ul className="space-y-1">
-                {insight.keyFindings.map((finding, idx) => (
-                  <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{finding}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
 
-          {/* Themes (for text questions) */}
-          {insight.themes && insight.themes.length > 0 && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <FileText className="w-4 h-4 text-green-600" />
-                <span className="font-semibold text-sm text-gray-900">Main Themes</span>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {insight.themes.map((theme, idx) => (
-                  <Badge key={idx} variant="outline" className="text-xs">
-                    {theme.name} ({theme.count})
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Sentiment Breakdown */}
-          {insight.sentiment && (
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <BarChart3 className="w-4 h-4 text-indigo-600" />
-                <span className="font-semibold text-sm text-gray-900">Sentiment Breakdown</span>
-              </div>
-              <div className="flex gap-4 text-sm">
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="w-4 h-4 text-green-500" />
-                  <span className="text-gray-700">Positive: {insight.sentiment.positive}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-700">Neutral: {insight.sentiment.neutral}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <XCircle className="w-4 h-4 text-red-500" />
-                  <span className="text-gray-700">Negative: {insight.sentiment.negative}</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Recommendations */}
-          {insight.recommendations.length > 0 && (
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-4 border border-amber-100">
-              <div className="flex items-center gap-2 mb-2">
-                <Sparkles className="w-4 h-4 text-amber-600" />
-                <span className="font-semibold text-sm text-amber-900">Recommendations</span>
-              </div>
-              <ul className="space-y-1">
-                {insight.recommendations.map((rec, idx) => (
-                  <li key={idx} className="text-sm text-gray-700 flex items-start gap-2">
-                    <span className="text-amber-500 mt-1">→</span>
-                    <span>{rec}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Quick Stats */}
-          <div className="flex flex-wrap gap-4 pt-2 border-t">
-            {insight.average !== undefined && (
-              <div className="text-sm">
-                <span className="text-gray-500">Average:</span>{' '}
-                <span className="font-semibold text-blue-600">{insight.average.toFixed(1)}</span>
-                {insight.maxRating && <span className="text-gray-500">/{insight.maxRating}</span>}
-              </div>
-            )}
-            {insight.trend && (
-              <div className="text-sm">
-                <span className="text-gray-500">Trend:</span>{' '}
-                <span className="font-semibold text-green-600">{insight.trend}</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
 
   if (loading) {
     return (
@@ -934,24 +584,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
               {form?.title} - {responses.length} responses
             </p>
           </div>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <Button
-              onClick={analyzeWithAI}
-              disabled={responses.length === 0 || analyzingWithAI}
-              className="bg-green-600 hover:bg-green-700 text-white"
-            >
-              {analyzingWithAI ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Brain className="w-4 h-4 mr-2" />
-                  AI Insights
-                </>
-              )}
-            </Button>
+           <div className="flex gap-2 w-full sm:w-auto">
             <Button
               onClick={generateQuestionAnalyticsPDF}
               disabled={responses.length === 0}
