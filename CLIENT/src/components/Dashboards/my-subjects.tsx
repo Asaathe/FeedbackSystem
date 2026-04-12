@@ -187,9 +187,18 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
 
     // Check if submission is already locked (student already tried and got "already submitted")
     if (isSubmissionLocked(subject.subject_id, 'instructor')) {
-      toast.error("You have already submitted feedback for this instructor");
+      setSelectedSubject(subject);
+      setFeedbackType('instructor');
       return;
     }
+
+    // Check if feedback is already submitted
+    if (isFeedbackSubmitted(subject.subject_id, 'instructor')) {
+      setSelectedSubject(subject);
+      setFeedbackType('instructor');
+      return;
+    }
+
     setSelectedSubject(subject);
     setFeedbackType('instructor');
     setRatings({});
@@ -657,27 +666,27 @@ export function MySubjects({ onNavigate }: MySubjectsProps = {}) {
                   </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
-                   <Button
-                     className="flex-1 bg-green-500 hover:bg-green-600 text-white font-medium transition-colors"
-                     size="sm"
-                     onClick={() => handleRateSubject(subject)}
-                     disabled={!isEvaluationActive || !subject.instructor_id}
-                   >
-                     <Star className="w-4 h-4 mr-1" />
-                     Rate Subject
-                   </Button>
-                   <Button
-                     className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors"
-                     size="sm"
-                     onClick={() => handleRateInstructor(subject)}
-                     disabled={!isEvaluationActive || !subject.instructor_id}
-                   >
-                     <User className="w-4 h-4 mr-1" />
-                     Rate Instructor
-                   </Button>
-                </div>
+                 {/* Action Buttons */}
+                 <div className="grid grid-cols-2 gap-2 pt-2">
+                    <Button
+                      className="bg-green-500 hover:bg-green-600 text-white font-medium transition-colors"
+                      size="sm"
+                      onClick={() => handleRateSubject(subject)}
+                      disabled={!isEvaluationActive || !subject.instructor_id}
+                    >
+                      <Star className="w-4 h-4 mr-1" />
+                      Rate Subject
+                    </Button>
+                    <Button
+                      className="bg-blue-500 hover:bg-blue-600 text-white font-medium transition-colors"
+                      size="sm"
+                      onClick={() => handleRateInstructor(subject)}
+                      disabled={!isEvaluationActive || !subject.instructor_id}
+                    >
+                      <User className="w-4 h-4 mr-1" />
+                      Rate Instructor
+                    </Button>
+                 </div>
               </CardContent>
             </Card>
           ))}
