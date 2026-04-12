@@ -684,20 +684,20 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
 
       {/* Subjects Grid */}
       {subjects.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-fr">
           {subjects.map((subject) => (
             <Card
               key={subject.subject_id}
-              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer flex flex-col min-h-[320px]"
+              className="border-green-100 hover:border-green-300 hover:shadow-md transition-all cursor-pointer h-[320px] flex flex-col overflow-hidden"
               onClick={() => handleSubjectClick(subject)}
             >
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="text-lg leading-tight line-clamp-2 min-h-[4rem]" title={subject.subject_name}>
+              <CardHeader className="flex-shrink-0 pb-3">
+                <CardTitle className="text-lg leading-tight line-clamp-2 h-16 flex items-start overflow-hidden" title={subject.subject_name} style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                   {subject.subject_name}
                 </CardTitle>
                 <p className="text-sm text-gray-500">{subject.subject_code}</p>
               </CardHeader>
-              <CardContent className="flex flex-col flex-1">
+              <CardContent className="flex flex-col flex-1 p-4 pt-0">
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-1 text-gray-600">
@@ -732,7 +732,7 @@ export function StudentSubjectEvaluation({ onNavigate }: StudentSubjectEvaluatio
                   </div>
                 </div>
 
-                <div className="mt-auto pt-4">
+                <div className="pt-4 border-t border-gray-100 mt-auto">
                   <Button variant="outline" className="w-full border-green-200 hover:bg-green-50">
                     <span className="hidden sm:inline">View Evaluations</span>
                     <ChevronRight className="w-4 h-4 sm:ml-2" />
