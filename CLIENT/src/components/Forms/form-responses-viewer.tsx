@@ -58,6 +58,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+  const [imageError, setImageError] = useState<Record<string, boolean>>({});
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8'];
 
@@ -1225,11 +1226,19 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
           {selectedResponse && form && (
             <div className="flex flex-col h-full overflow-hidden">
               {/* User Info Card - Fixed/Sticky */}
-              <div className="py-6 bg-gradient-to-r from-blue-50 to-indigo-50 border-b shrink-0">
+              <div className="py-6 bg-lime-100 border-b shrink-0">
                 <div className="px-6">
                   <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-                    <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-3 rounded-full flex-shrink-0 shadow-lg">
-                      <User className="w-7 h-7 text-white" />
+                    <div className="bg-gray-200 w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+                      {selectedResponse.respondent_profile_picture ? (
+                        <img
+                          src={selectedResponse.respondent_profile_picture}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-8 h-8 text-gray-600" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 text-center sm:text-left">
                       <div className="flex flex-wrap items-center justify-start gap-2 mb-3">

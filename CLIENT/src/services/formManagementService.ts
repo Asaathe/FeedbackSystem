@@ -1618,6 +1618,7 @@ export interface FormResponse {
   respondent_name?: string;
   respondent_email?: string;
   respondent_role?: string;
+  respondent_profile_picture?: string | null;
 }
 
 // Get form responses for analysis
@@ -1681,6 +1682,7 @@ export const getFormResponses = async (formId: string): Promise<{ success: boole
           respondent_role: isExternalSubmission
             ? `Supervisor (${externalFeedback.companyName || 'Company'})`
             : (r.role || r.respondent_role || ''),
+          respondent_profile_picture: r.profile_picture || null,
         };
       });
       return {
