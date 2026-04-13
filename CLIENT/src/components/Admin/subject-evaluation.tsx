@@ -237,10 +237,11 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           feedback_count: subject.feedback_count || 0,
           instructor_feedback_count: subject.instructor_feedback_count || 0,
           subject_feedback_count: subject.subject_feedback_count || 0,
-          subject_avg: subject.subject_avg || 0,
+          // Backend returns avg_rating (subject feedback) and instructor_avg
+          subject_avg: subject.avg_rating || 0,
           instructor_avg: subject.instructor_avg || 0,
           // For "By Subjects" - show ONLY subject rating
-          avg_rating: subject.subject_avg || 0,
+          avg_rating: subject.avg_rating || 0,
           instructor_name: subject.instructor_name || 'Unknown Instructor'
         }));
         console.log('Mapped subjects:', mappedSubjects);
