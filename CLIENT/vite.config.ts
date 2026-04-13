@@ -32,10 +32,23 @@ export default defineConfig({
       '@': path.resolve(__dirname, './src'),
     },
   },
-  build: {
-    target: 'esnext',
-    outDir: 'build',
+ build: {
+  target: 'esnext',
+  outDir: 'build',
+  rollupOptions: {
+    output: {
+      manualChunks: {
+        'react-vendor': ['react', 'react-dom'],
+        'ui-components': [
+          '@radix-ui/react-dropdown-menu',
+          '@radix-ui/react-dialog',
+          '@radix-ui/react-select',
+        ],
+        'charts': ['recharts'],
+      },
+    },
   },
+},
   server: {
     port: 3000,
     open: true,

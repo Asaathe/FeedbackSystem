@@ -197,7 +197,14 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const bellButtonRef = useRef<HTMLButtonElement>(null);
-  const [panelPosition, setPanelPosition] = useState<{ top: number; right: number; width?: number; height?: string }>({ top: 0, right: 0 });
+  const [panelPosition, setPanelPosition] = useState<{ 
+  top?: number; 
+  right: number; 
+  bottom?: number; 
+  left?: number; 
+  width?: number; 
+  height?: string 
+}>({ top: 0, right: 0 });
   const [isMobile, setIsMobile] = useState(false);
 
   // Fetch notifications when panel opens
@@ -226,8 +233,8 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
 
     // Initial fetch
     fetchUnreadCount();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
+    // Refresh every 2 minutes
+    const interval = setInterval(fetchUnreadCount, 120000);
     return () => clearInterval(interval);
   }, []);
 
