@@ -12,160 +12,162 @@ const isDev = import.meta.env.DEV;
 const AdminDashboard = lazy(() =>
   import("./components/Admin/admin-dashboard").then((m) => ({
     default: m.AdminDashboard,
-  })),
+  }))
 );
 const FeedbackFormsManagement = lazy(() =>
   import("./components/Forms/feedback-forms-management").then((m) => ({
     default: m.FeedbackFormsManagement,
-  })),
+  }))
 );
 const FormBuilder = lazy(() =>
   import("./components/Forms/form-builder").then((m) => ({
     default: m.FormBuilder,
-  })),
+  }))
 );
 const FormResponsesViewer = lazy(() =>
   import("./components/Forms/form-responses-viewer").then((m) => ({
     default: m.FormResponsesViewer,
-  })),
+  }))
 );
 const UserManagement = lazy(() =>
   import("./components/Admin/user-management").then((m) => ({
     default: m.UserManagement,
-  })),
+  }))
 );
 const CourseManagement = lazy(() =>
   import("./components/Admin/course-management").then((m) => ({
     default: m.CourseManagement,
-  })),
+  }))
 );
 
 const StudentPromotion = lazy(() =>
   import("./components/Admin/student-promotion").then((m) => ({
     default: m.default,
-  })),
+  }))
 );
 
 const StudentDashboard = lazy(() =>
   import("./components/Dashboards/student-dashboard").then((m) => ({
     default: m.StudentDashboard,
-  })),
+  }))
 );
 const AlumniDashboard = lazy(() =>
   import("./components/Dashboards/alumni-dashboard").then((m) => ({
     default: m.AlumniDashboard,
-  })),
+  }))
 );
 const AlumniEmployment = lazy(() =>
   import("./components/Dashboards/alumni-employment").then((m) => ({
     default: m.AlumniEmployment,
-  })),
+  }))
 );
 const AlumniFeedback = lazy(() =>
   import("./components/feedback/alumni-feedback").then((m) => ({
     default: m.AlumniFeedback,
-  })),
+  }))
 );
 const InstructorDashboard = lazy(() =>
   import("./components/Dashboards/instructor-dashboard").then((m) => ({
     default: m.InstructorDashboard,
-  })),
+  }))
 );
 const InstructorFeedback = lazy(() =>
   import("./components/feedback/instructor-feedback").then((m) => ({
     default: m.InstructorFeedback,
-  })),
+  }))
 );
 
 const EmployerDashboard = lazy(() =>
   import("./components/Dashboards/employer-dashboard").then((m) => ({
     default: m.EmployerDashboard,
-  })),
+  }))
 );
 
 const FeedbackSubmission = lazy(() =>
   import("./components/feedback/feedback-submission").then((m) => ({
     default: m.FeedbackSubmission,
-  })),
+  }))
 );
 
 const UserProfile = lazy(() =>
   import("./components/users/user-profile").then((m) => ({
     default: m.UserProfile,
-  })),
+  }))
 );
 
 const MySubmissions = lazy(() =>
   import("./components/feedback/my-submissions").then((m) => ({
     default: m.MySubmissions,
-  })),
+  }))
 );
 
 const ChangePassword = lazy(() =>
   import("./components/auth/change-password").then((m) => ({
     default: m.ChangePassword,
-  })),
+  }))
 );
 
 const SubjectEvaluation = lazy(() =>
   import("./components/Admin/subject-evaluation").then((m) => ({
     default: m.SubjectEvaluation,
-  })),
+  }))
 );
 
 const SubjectAssignment = lazy(() =>
   import("./components/Admin/subject-assignment").then((m) => ({
     default: m.SubjectAssignment,
-  })),
+  }))
 );
 
 const SubjectOfferings = lazy(() =>
   import("./components/Admin/subject-offerings").then((m) => ({
     default: m.SubjectOfferings,
-  })),
+  }))
 );
 
 const SubjectManagement = lazy(() =>
   import("./components/Admin/subject-management").then((m) => ({
     default: m.SubjectManagement,
-  })),
+  }))
 );
+
 
 const SystemSettings = lazy(() =>
   import("./components/Admin/system-settings").then((m) => ({
     default: m.SystemSettings,
-  })),
+  }))
 );
 
 const StudentSubjectEvaluation = lazy(() =>
   import("./components/Dashboards/student-subject-evaluation").then((m) => ({
     default: m.StudentSubjectEvaluation,
-  })),
+  }))
 );
 
 const MySubjects = lazy(() =>
   import("./components/Dashboards/my-subjects").then((m) => ({
     default: m.MySubjects,
-  })),
+  }))
 );
 
 const StudentFeedback = lazy(() =>
   import("./components/Dashboards/student-feedback").then((m) => ({
     default: m.StudentFeedback,
-  })),
+  }))
 );
 
 const FeedbackTemplate = lazy(() =>
   import("./components/Admin/feedback-template").then((m) => ({
     default: m.FeedbackTemplate,
-  })),
+  }))
 );
 
 const AlumniEmploymentTracker = lazy(() =>
   import("./components/Admin/alumni-employment-tracker").then((m) => ({
     default: m.AlumniEmploymentTracker,
-  })),
+  }))
 );
+
 
 export default function App() {
   if (isDev) {
@@ -174,7 +176,7 @@ export default function App() {
 
   // Check for embedded token from server-side serving (for token URLs)
   const embeddedToken = (window as any).EXTERNAL_FEEDBACK_TOKEN;
-  const sessionToken = sessionStorage.getItem("external_feedback_token");
+  const sessionToken = sessionStorage.getItem('external_feedback_token');
 
   if (embeddedToken) {
     if (isDev) console.log("🎯 EMBEDDED TOKEN DETECTED:", embeddedToken);
@@ -188,50 +190,40 @@ export default function App() {
   const [userRole, setUserRole] = useState<string>("");
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [showSignup, setShowSignup] = useState(false);
-
+  
   // External feedback form ID (for public feedback links)
-  const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<
-    string | null
-  >(() => {
+  const [externalFeedbackFormId, setExternalFeedbackFormId] = useState<string | null>(() => {
     // Initialize from sessionStorage if available
-    const stored = sessionStorage.getItem("external_feedback_form_id");
+    const stored = sessionStorage.getItem('external_feedback_form_id');
     return stored || null;
   });
-  const [externalFeedbackToken, setExternalFeedbackToken] = useState<
-    string | null
-  >(() => {
+  const [externalFeedbackToken, setExternalFeedbackToken] = useState<string | null>(() => {
     // Initialize from multiple sources
-    return (
-      (window as any).EXTERNAL_FEEDBACK_TOKEN ||
-      sessionStorage.getItem("external_feedback_token") ||
-      null
-    );
+    return (window as any).EXTERNAL_FEEDBACK_TOKEN ||
+           sessionStorage.getItem('external_feedback_token') ||
+           null;
   });
   const [editingFormId, setEditingFormId] = useState<string | undefined>(
-    undefined,
+    undefined
   );
   const [isEditingTemplate, setIsEditingTemplate] = useState(false);
-  const [formType, setFormType] = useState<"custom" | "evaluation">("custom");
-  const [viewingResponsesFormId, setViewingResponsesFormId] = useState<
-    string | undefined
-  >(undefined);
+  const [formType, setFormType] = useState<'custom' | 'evaluation'>('custom');
+  const [viewingResponsesFormId, setViewingResponsesFormId] = useState<string | undefined>(
+    undefined
+  );
 
   useEffect(() => {
     // Check sessionStorage for token (standardized storage)
     const token = sessionStorage.getItem("authToken");
-    if (isDev)
-      console.log(
-        "Token from storage:",
-        token ? `${token.substring(0, 20)}...` : "null",
-      );
-
+    if (isDev) console.log("Token from storage:", token ? `${token.substring(0, 20)}...` : 'null');
+    
     if (token) {
       // Verify token with server using proper headers
       fetch("/api/auth/verify", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Authorization": `Bearer ${token}`,
         },
       })
         .then((res) => {
@@ -273,35 +265,28 @@ export default function App() {
     if (isDev) console.log("Full URL:", fullUrl);
     if (isDev) console.log("Path:", path);
     if (isDev) console.log("Hash:", hash);
-    if (isDev)
-      console.log(
-        "Current external states - FormId:",
-        externalFeedbackFormId,
-        "Token:",
-        externalFeedbackToken,
-      );
+    if (isDev) console.log("Current external states - FormId:", externalFeedbackFormId, "Token:", externalFeedbackToken);
     if (isDev) console.log("useEffect is running!");
 
     // Check for server-redirected token parameter (from /feedback/t/* routes)
     const searchParams = new URLSearchParams(window.location.search);
-    const externalTokenParam = searchParams.get("external_token");
+    const externalTokenParam = searchParams.get('external_token');
     if (externalTokenParam) {
-      if (isDev)
-        console.log("🎯 SERVER REDIRECT DETECTED - Token:", externalTokenParam);
+      if (isDev) console.log("🎯 SERVER REDIRECT DETECTED - Token:", externalTokenParam);
       setExternalFeedbackToken(externalTokenParam);
       setExternalFeedbackFormId(null);
       // Persist in sessionStorage
-      sessionStorage.setItem("external_feedback_token", externalTokenParam);
-      sessionStorage.removeItem("external_feedback_form_id");
+      sessionStorage.setItem('external_feedback_token', externalTokenParam);
+      sessionStorage.removeItem('external_feedback_form_id');
       // Clean up the URL parameter
-      const newUrl = window.location.pathname + (window.location.hash || "");
-      window.history.replaceState({}, "", newUrl);
+      const newUrl = window.location.pathname + (window.location.hash || '');
+      window.history.replaceState({}, '', newUrl);
       if (isDev) console.log("✅ External feedback token set from redirect");
       return;
     }
 
     // Check if this is a hash-based route that needs conversion
-    if (hash && hash.startsWith("#/feedback/")) {
+    if (hash && hash.startsWith('#/feedback/')) {
       if (isDev) console.log("⚠️ HASH-BASED ROUTE DETECTED:", hash);
       const hashPath = hash.substring(1); // Remove the '#'
       if (isDev) console.log("Converted path:", hashPath);
@@ -309,11 +294,7 @@ export default function App() {
       // Try to match feedback patterns in hash
       const feedbackMatch = hashPath.match(/^\/feedback\/(\d+)$/);
       if (feedbackMatch) {
-        if (isDev)
-          console.log(
-            "✅ DETECTED HASH LEGACY FEEDBACK URL with form ID:",
-            feedbackMatch[1],
-          );
+        if (isDev) console.log("✅ DETECTED HASH LEGACY FEEDBACK URL with form ID:", feedbackMatch[1]);
         setExternalFeedbackFormId(feedbackMatch[1]);
         setExternalFeedbackToken(null);
         return;
@@ -321,11 +302,7 @@ export default function App() {
 
       const tokenMatch = hashPath.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
       if (tokenMatch) {
-        if (isDev)
-          console.log(
-            "✅ DETECTED HASH TOKEN-BASED FEEDBACK URL with token:",
-            tokenMatch[1],
-          );
+        if (isDev) console.log("✅ DETECTED HASH TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
         setExternalFeedbackToken(tokenMatch[1]);
         setExternalFeedbackFormId(null);
         return;
@@ -334,64 +311,47 @@ export default function App() {
 
     // FIRST: Check for QUERY PARAMETER TOKEN FORMAT (most reliable for SPA hosting)
     const params = new URLSearchParams(window.location.search);
-    const tokenParam = params.get("token");
+    const tokenParam = params.get('token');
     if (tokenParam) {
-      if (isDev)
-        console.log(
-          "✅ DETECTED QUERY PARAM TOKEN FEEDBACK URL with token:",
-          tokenParam,
-        );
+      if (isDev) console.log("✅ DETECTED QUERY PARAM TOKEN FEEDBACK URL with token:", tokenParam);
       setExternalFeedbackToken(tokenParam);
       setExternalFeedbackFormId(null);
-      sessionStorage.setItem("external_feedback_token", tokenParam);
-      sessionStorage.removeItem("external_feedback_form_id");
+      sessionStorage.setItem('external_feedback_token', tokenParam);
+      sessionStorage.removeItem('external_feedback_form_id');
       return;
     }
 
     // Check if URL is like /feedback/123 (legacy format) - fallback support
     const feedbackMatch = path.match(/^\/feedback\/(\d+)$/);
     if (feedbackMatch && feedbackMatch[1]) {
-      if (isDev)
-        console.log(
-          "✅ DETECTED LEGACY FEEDBACK URL with form ID:",
-          feedbackMatch[1],
-        );
+      if (isDev) console.log("✅ DETECTED LEGACY FEEDBACK URL with form ID:", feedbackMatch[1]);
       setExternalFeedbackFormId(feedbackMatch[1]);
       setExternalFeedbackToken(null); // Clear token for legacy format
       // Persist in sessionStorage
-      sessionStorage.setItem("external_feedback_form_id", feedbackMatch[1]);
-      sessionStorage.removeItem("external_feedback_token");
+      sessionStorage.setItem('external_feedback_form_id', feedbackMatch[1]);
+      sessionStorage.removeItem('external_feedback_token');
     }
 
     // Check if URL is like /feedback/t/abc123 (path-based token format) - fallback support
     const tokenMatch = path.match(/^\/feedback\/t\/([a-f0-9]{32})$/);
     if (tokenMatch && tokenMatch[1]) {
-      if (isDev)
-        console.log(
-          "✅ DETECTED PATH TOKEN-BASED FEEDBACK URL with token:",
-          tokenMatch[1],
-        );
+      if (isDev) console.log("✅ DETECTED PATH TOKEN-BASED FEEDBACK URL with token:", tokenMatch[1]);
       setExternalFeedbackToken(tokenMatch[1]);
       setExternalFeedbackFormId(null); // Clear formId for token format
       // Persist in sessionStorage
-      sessionStorage.setItem("external_feedback_token", tokenMatch[1]);
-      sessionStorage.removeItem("external_feedback_form_id");
-    } else if (path.includes("/feedback/t/")) {
-      if (isDev)
-        console.log(
-          "⚠️ URL contains /feedback/t/ but doesn't match 32-char hex token format. Path:",
-          path,
-        );
+      sessionStorage.setItem('external_feedback_token', tokenMatch[1]);
+      sessionStorage.removeItem('external_feedback_form_id');
+    } else if (path.includes('/feedback/t/')) {
+      if (isDev) console.log("⚠️ URL contains /feedback/t/ but doesn't match 32-char hex token format. Path:", path);
       // Try fallback regex for any alphanumeric token
       const fallbackMatch = path.match(/^\/feedback\/t\/([a-zA-Z0-9]+)$/);
       if (fallbackMatch && fallbackMatch[1]) {
-        if (isDev)
-          console.log("🔄 USING FALLBACK TOKEN DETECTION:", fallbackMatch[1]);
+        if (isDev) console.log("🔄 USING FALLBACK TOKEN DETECTION:", fallbackMatch[1]);
         setExternalFeedbackToken(fallbackMatch[1]);
         setExternalFeedbackFormId(null);
         // Persist in sessionStorage
-        sessionStorage.setItem("external_feedback_token", fallbackMatch[1]);
-        sessionStorage.removeItem("external_feedback_form_id");
+        sessionStorage.setItem('external_feedback_token', fallbackMatch[1]);
+        sessionStorage.removeItem('external_feedback_form_id');
       } else {
         if (isDev) console.log("❌ NO TOKEN FOUND IN URL");
       }
@@ -402,16 +362,12 @@ export default function App() {
 
   // Clean up session storage after successful external feedback load
   useEffect(() => {
-    if (
-      (externalFeedbackFormId || externalFeedbackToken) &&
-      !window.location.search.includes("external_token")
-    ) {
+    if ((externalFeedbackFormId || externalFeedbackToken) && !window.location.search.includes('external_token')) {
       // External feedback is active and URL is clean, safe to clean up sessionStorage
       const timer = setTimeout(() => {
-        if (isDev)
-          console.log("🧹 Cleaning up external feedback session storage");
-        sessionStorage.removeItem("external_feedback_form_id");
-        sessionStorage.removeItem("external_feedback_token");
+        if (isDev) console.log("🧹 Cleaning up external feedback session storage");
+        sessionStorage.removeItem('external_feedback_form_id');
+        sessionStorage.removeItem('external_feedback_token');
       }, 5000); // Clean up after 5 seconds to allow for page refreshes
 
       return () => clearTimeout(timer);
@@ -463,7 +419,7 @@ export default function App() {
     sessionStorage.removeItem("tokenExpiration");
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-
+    
     setIsLoggedIn(false);
     setUserRole("");
     setCurrentPage("dashboard");
@@ -475,20 +431,11 @@ export default function App() {
   };
 
   // Navigate to form builder with form ID
-  const handleNavigateToFormBuilder = (
-    formId?: string,
-    isTemplate: boolean = false,
-    formTypeParam?: "custom" | "evaluation",
-  ) => {
-    if (isDev)
-      console.log("Navigating to form builder with:", {
-        formId,
-        isTemplate,
-        formType: formTypeParam,
-      });
+  const handleNavigateToFormBuilder = (formId?: string, isTemplate: boolean = false, formTypeParam?: 'custom' | 'evaluation') => {
+    if (isDev) console.log('Navigating to form builder with:', { formId, isTemplate, formType: formTypeParam });
     setEditingFormId(formId);
     setIsEditingTemplate(isTemplate);
-    setFormType(formTypeParam || "custom");
+    setFormType(formTypeParam || 'custom');
     setCurrentPage("form-builder");
   };
 
@@ -496,7 +443,7 @@ export default function App() {
   const handleBackFromFormBuilder = () => {
     setEditingFormId(undefined);
     setIsEditingTemplate(false);
-    setFormType("custom");
+    setFormType('custom');
     setCurrentPage("forms");
   };
 
@@ -513,13 +460,7 @@ export default function App() {
   };
 
   // EXTERNAL FEEDBACK - Check BEFORE authentication (public access)
-  if (isDev)
-    console.log(
-      "🔍 APP RENDER: externalFeedbackFormId =",
-      externalFeedbackFormId,
-      "externalFeedbackToken =",
-      externalFeedbackToken,
-    );
+  if (isDev) console.log("🔍 APP RENDER: externalFeedbackFormId =", externalFeedbackFormId, "externalFeedbackToken =", externalFeedbackToken);
   if (isDev) console.log("Current location:", window.location.href);
   if (isDev) console.log("Current pathname:", window.location.pathname);
 
@@ -537,8 +478,8 @@ export default function App() {
             setExternalFeedbackFormId(null);
             setExternalFeedbackToken(null);
             // Clear sessionStorage
-            sessionStorage.removeItem("external_feedback_form_id");
-            sessionStorage.removeItem("external_feedback_token");
+            sessionStorage.removeItem('external_feedback_form_id');
+            sessionStorage.removeItem('external_feedback_token');
           }}
         />
       </div>
@@ -619,7 +560,7 @@ export default function App() {
           return <FeedbackTemplate />;
         case "employment-tracker":
           return <AlumniEmploymentTracker onNavigate={setCurrentPage} />;
-
+       
         default:
           return <AdminDashboard onNavigate={setCurrentPage} />;
       }
@@ -652,19 +593,9 @@ export default function App() {
     if (userRole === "instructor") {
       switch (currentPage) {
         case "dashboard":
-          return (
-            <InstructorDashboard
-              onNavigate={setCurrentPage}
-              showSubjectsOnly={false}
-            />
-          );
+          return <InstructorDashboard onNavigate={setCurrentPage} showSubjectsOnly={false} />;
         case "my-subjects":
-          return (
-            <InstructorDashboard
-              onNavigate={setCurrentPage}
-              showSubjectsOnly={true}
-            />
-          );
+          return <InstructorDashboard onNavigate={setCurrentPage} showSubjectsOnly={true} />;
         case "my-feedback":
           return <InstructorFeedback />;
         case "submit-feedback":
@@ -721,25 +652,10 @@ export default function App() {
       >
         <Suspense
           fallback={
-            <div className="flex items-center justify-center min-h-screen bg-gray-50">
+            <div className="flex items-center justify-center min-h-screen">
               <div className="text-center">
-                {/* Logo with pulsing glow effect */}
-                <div className="relative inline-block">
-                  <div className="absolute inset-0 bg-green-500 rounded-full opacity-20 animate-ping"></div>
-                  <img
-                    src="/actslogo.png"
-                    alt="Loading"
-                    className="w-20 h-20 object-contain relative z-10 animate-pulse"
-                  />
-                </div>
-
-                {/* Loading text */}
-                <p className="text-green-600 font-medium mt-4">Loading...</p>
-
-                {/* Progress bar */}
-                <div className="w-48 h-1 bg-gray-200 rounded-full mt-4 overflow-hidden">
-                  <div className="h-full bg-green-500 animate-pulse w-full"></div>
-                </div>
+                <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                <p className="text-gray-600">Loading...</p>
               </div>
             </div>
           }

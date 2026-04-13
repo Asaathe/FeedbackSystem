@@ -19,9 +19,18 @@ const getAllSubjects = async (req, res) => {
         s.description,
         s.status,
         s.created_at,
-        (SELECT COUNT(*) FROM subject_offerings so WHERE so.subject_id = s.id AND so.status = 'active') as offering_count,
-        (SELECT COUNT(DISTINCT so.instructor_id) FROM subject_offerings so WHERE so.subject_id = s.id AND so.instructor_id IS NOT NULL) as instructor_count
+        COALESCE(offering_counts.offering_count, 0) as offering_count,
+        COALESCE(offering_counts.instructor_count, 0) as instructor_count
       FROM evaluation_subjects s
+      LEFT JOIN (
+        SELECT 
+          subject_id,
+          COUNT(*) as offering_count,
+          COUNT(DISTINCT instructor_id) as instructor_count
+        FROM subject_offerings
+        WHERE status = 'active' AND instructor_id IS NOT NULL
+        GROUP BY subject_id
+      ) offering_counts ON s.id = offering_counts.subject_id
       WHERE 1=1
     `;
     
