@@ -156,7 +156,7 @@ const getFormResponses = async (formId, userId) => {
       return { success: false, message: "Access denied", responses: [] };
     }
 
-    // Get responses
+    // Get responses with profile images for all user types
     const responses = await queryDatabase(
       db,
       `
@@ -164,9 +164,13 @@ const getFormResponses = async (formId, userId) => {
         fr.*,
         u.email,
         u.full_name,
-        u.role
+        u.role,
+        COALESCE(s.image, a.image, i.image) as profile_image
       FROM form_responses fr
       LEFT JOIN users u ON fr.user_id = u.id
+      LEFT JOIN students s ON u.id = s.user_id
+      LEFT JOIN alumni a ON u.id = a.user_id
+      LEFT JOIN instructors i ON u.id = i.user_id
       WHERE fr.form_id = ?
       ORDER BY fr.submitted_at DESC
     `,
@@ -175,7 +179,7 @@ const getFormResponses = async (formId, userId) => {
 
     console.log("Responses found:", responses.length);
     for (const r of responses) {
-      console.log("Response", r.id, "answers raw:", r.answers, "type:", typeof r.answers);
+      console.log("Response", r.id, "profile_image:", r.profile_image);
     }
 
     return {
@@ -187,6 +191,7 @@ const getFormResponses = async (formId, userId) => {
         email: r.email,
         full_name: r.full_name,
         role: r.role,
+        profile_picture: r.profile_image || null,
         answers: r.response_data ? JSON.parse(r.response_data) : {},
         submitted_at: r.submitted_at,
       })),
