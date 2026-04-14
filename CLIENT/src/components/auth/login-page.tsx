@@ -133,7 +133,7 @@ export function LoginPage({ onLogin, onNavigateToSignup }: LoginPageProps) {
         backgroundSize: "cover",
         backgroundRepeat: "no-repeat"
       }}>
-      <div className="absolute inset-0 bg-green-900/80"></div>
+      <div className="absolute inset-0 bg-green-900/20"></div>
       <div className="relative bg-white p-8 rounded-xl shadow-md w-full max-w-md flex flex-col items-center">
         <div className="w-20 h-20 mb-4 bg-gradient-to-br from-green-500 to-lime-500 rounded-full flex items-center justify-center">
           <img src="/actslogo.png" alt="ACTS Logo" className="w-19 h-19" />
