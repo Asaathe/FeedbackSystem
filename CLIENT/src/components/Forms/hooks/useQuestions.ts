@@ -21,7 +21,7 @@ export function useQuestions() {
   }, [questions, sections]);
 
   // Add a new section
-  const addSection = useCallback((title: string = "New Section", description?: string) => {
+  const addSection = useCallback((title: string = "New Section", description?: string, suppressToast: boolean = false) => {
     // Generate a unique ID using timestamp + random suffix to avoid collisions
     const uniqueId = `section_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
     const newSection: FormSection = {
@@ -32,7 +32,9 @@ export function useQuestions() {
     };
     setSections(prev => [...prev, newSection]);
     setActiveSection(newSection.id);
-    toast.success("Section added");
+    if (!suppressToast) {
+      toast.success("Section added");
+    }
     return newSection;
   }, [getNextOrder]);
 
@@ -109,7 +111,7 @@ export function useQuestions() {
   }, [sections, questions]);
 
   // Add a new question
-  const addQuestion = useCallback((type: QuestionType = "text", data?: Partial<FormQuestion>) => {
+  const addQuestion = useCallback((type: QuestionType = "text", data?: Partial<FormQuestion>, suppressToast: boolean = false) => {
     // Only set order for standalone questions (not in a section)
     const questionOrder = data?.sectionId ? undefined : (data?.order ?? getNextOrder());
     // Generate a unique ID using timestamp + random suffix to avoid collisions
@@ -133,7 +135,7 @@ export function useQuestions() {
     };
     setQuestions(prevQuestions => [...prevQuestions, newQuestion]);
     setActiveQuestion(newQuestion.id);
-    if (!data) {
+    if (!data && !suppressToast) {
       toast.success(`Added ${type} question`);
     }
   }, []);

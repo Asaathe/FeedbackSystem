@@ -948,7 +948,7 @@ export function FormBuilder({
         const sectionIdMap: Record<string, string> = {};
         if (response.sections && response.sections.length > 0) {
           response.sections.forEach((section) => {
-            const newSection = addSection(section.title, section.description);
+            const newSection = addSection(section.title, section.description, true);
             // Map the AI-generated section ID to the actual section ID
             if (section.id) {
               sectionIdMap[section.id] = newSection.id;
@@ -971,7 +971,7 @@ export function FormBuilder({
 
         // Add questions to the form
         newQuestions.forEach((q) => {
-          addQuestion(q.type, q);
+          addQuestion(q.type, q, true);
         });
 
         // Keep the AI description for reference
