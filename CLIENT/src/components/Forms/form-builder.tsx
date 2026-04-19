@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense, memo } from "react";
 import {
   Card,
   CardContent,
@@ -72,8 +72,8 @@ import { usePublishWizard } from "./hooks/usePublishWizard";
 // Components
 import { QuestionCard } from "./components/QuestionCard";
 import { SectionCard } from "./components/SectionCard";
-import { RecipientSelector } from "./components/RecipientSelector";
-import { CategoryManager } from "./components/CategoryManager";
+const RecipientSelector = lazy(() => import("./components/RecipientSelector").then(module => ({ default: module.RecipientSelector })));
+const CategoryManager = lazy(() => import("./components/CategoryManager").then(module => ({ default: module.CategoryManager })));
 import { EvaluationTargetSelector } from "./components/EvaluationTargetSelector";
 
 // Types
@@ -118,7 +118,7 @@ const ratingOnlyQuestionTypes: QuestionTypeConfig[] = [
   { value: "rating", label: "Star Rating", icon: Star },
 ];
 
-export function FormBuilder({
+export const FormBuilder = memo(function FormBuilder({
   onBack,
   formId,
   isCustomFormTab,
@@ -1763,22 +1763,24 @@ export function FormBuilder({
                                   selectedCourseYearSection) ||
                                 (selectedAudienceType === "Employers" &&
                                   selectedCourseYearSection)) && (
-                              <RecipientSelector
-                                recipients={peerToPeerEvaluation && selectedAudienceType === "Instructors" 
-                                  ? recipients.filter(r => !selectedInstructors.has(r.id))
-                                  : recipients}
-                                filteredRecipients={peerToPeerEvaluation && selectedAudienceType === "Instructors"
-                                  ? filteredRecipients.filter(r => !selectedInstructors.has(r.id))
-                                  : filteredRecipients}
-                                selectedRecipients={selectedRecipients}
-                                selectAllRecipients={selectAllRecipients}
-                                searchTerm={searchTerm}
-                                onToggleRecipient={handleToggleRecipient}
-                                onToggleAllRecipients={handleToggleAllRecipients}
-                                onSearchTermChange={setSearchTerm}
-                                formTarget={formTarget}
-                                excludedCount={peerToPeerEvaluation && selectedAudienceType === "Instructors" ? selectedInstructors.size : 0}
-                              />
+                              <Suspense fallback={<div className="flex items-center justify-center p-4"><Loader2 className="h-4 w-4 animate-spin" /></div>}>
+                                <RecipientSelector
+                                  recipients={peerToPeerEvaluation && selectedAudienceType === "Instructors"
+                                    ? recipients.filter(r => !selectedInstructors.has(r.id))
+                                    : recipients}
+                                  filteredRecipients={peerToPeerEvaluation && selectedAudienceType === "Instructors"
+                                    ? filteredRecipients.filter(r => !selectedInstructors.has(r.id))
+                                    : filteredRecipients}
+                                  selectedRecipients={selectedRecipients}
+                                  selectAllRecipients={selectAllRecipients}
+                                  searchTerm={searchTerm}
+                                  onToggleRecipient={handleToggleRecipient}
+                                  onToggleAllRecipients={handleToggleAllRecipients}
+                                  onSearchTermChange={setSearchTerm}
+                                  formTarget={formTarget}
+                                  excludedCount={peerToPeerEvaluation && selectedAudienceType === "Instructors" ? selectedInstructors.size : 0}
+                                />
+                              </Suspense>
                             )}
                           </CardContent>
                         </Card>
@@ -2272,13 +2274,15 @@ export function FormBuilder({
                               Add or remove form categories
                             </DialogDescription>
                           </DialogHeader>
-                          <CategoryManager
-                            categories={databaseCategories}
-                            customCategories={customCategories}
-                            loadingCategoryOperation={loadingCategoryOperation}
-                            onAddCategory={addCategory}
-                            onRemoveCategory={removeCategory}
-                          />
+                          <Suspense fallback={<div className="flex items-center justify-center p-4"><Loader2 className="h-4 w-4 animate-spin" /></div>}>
+                            <CategoryManager
+                              categories={databaseCategories}
+                              customCategories={customCategories}
+                              loadingCategoryOperation={loadingCategoryOperation}
+                              onAddCategory={addCategory}
+                              onRemoveCategory={removeCategory}
+                            />
+                          </Suspense>
                         </DialogContent>
                       </Dialog>
                     </div>
@@ -2491,5 +2495,5 @@ export function FormBuilder({
       </Dialog>
     </div>
   );
-}
+});
 

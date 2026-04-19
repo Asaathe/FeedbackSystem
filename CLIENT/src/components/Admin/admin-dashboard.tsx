@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { 
   Users, 
@@ -37,7 +37,7 @@ interface AdminDashboardProps {
   onNavigate?: (page: string) => void;
 }
 
-export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
+export const AdminDashboard = memo(function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
   const [systemStats, setSystemStats] = useState<SystemStats>({
     totalUsers: 0,
     activeForms: 0,
@@ -298,4 +298,4 @@ export function AdminDashboard({ onNavigate }: AdminDashboardProps = {}) {
       </Card>
     </div>
   );
-}
+});

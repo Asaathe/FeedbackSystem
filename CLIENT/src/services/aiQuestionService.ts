@@ -694,6 +694,20 @@ async function analyzeAllResponsesOverall(
   responses: Array<{ response_data: Record<string, any> }>,
   sections?: FormSectionData[]
 ): Promise<{ overallSummary: string; questionInsights: any[]; topFindings: string[]; sentimentOverview: any; overallRecommendations: string[]; responseRate: any }> {
+  // Generate cache key based on form title and response count
+  const cacheKey = `ai_analysis_${formTitle}_${responses.length}_${questions.length}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (parsed.timestamp && Date.now() - parsed.timestamp < 3600000) { // 1 hour cache
+        return parsed.data;
+      }
+    } catch (e) {
+      // Invalid cache, continue
+    }
+  }
+
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('No API key available');
@@ -721,7 +735,7 @@ async function analyzeAllResponsesOverall(
     
     // The response is now a formatted text summary, not JSON
     // Return it as the overallSummary
-    return {
+    const result = {
       overallSummary: cleanText,
       questionInsights: [],
       topFindings: [],
@@ -729,6 +743,15 @@ async function analyzeAllResponsesOverall(
       overallRecommendations: [],
       responseRate: { total: responses.length, completed: responses.length, completionRate: '100%' }
     };
+
+    // Cache the result
+    try {
+      localStorage.setItem(cacheKey, JSON.stringify({ data: result, timestamp: Date.now() }));
+    } catch (e) {
+      // Ignore cache errors
+    }
+
+    return result;
     
   } catch (error) {
     console.error('Error analyzing responses overall:', error);

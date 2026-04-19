@@ -58,13 +58,19 @@ const getAllforms = async (filters = {}) => {
 
     // Get forms with pagination
     const formsQuery = `
-      SELECT 
+      SELECT
         f.*,
         u.full_name as creator_name,
-        (SELECT COUNT(*) FROM questions WHERE form_id = f.id) as question_count,
-        (SELECT COUNT(*) FROM form_responses WHERE form_id = f.id) as submission_count
+        COALESCE(q_counts.question_count, 0) as question_count,
+        COALESCE(r_counts.submission_count, 0) as submission_count
       FROM forms f
       LEFT JOIN users u ON f.created_by = u.id
+      LEFT JOIN (
+        SELECT form_id, COUNT(*) as question_count FROM questions GROUP BY form_id
+      ) q_counts ON f.id = q_counts.form_id
+      LEFT JOIN (
+        SELECT form_id, COUNT(*) as submission_count FROM form_responses GROUP BY form_id
+      ) r_counts ON f.id = r_counts.form_id
       ${whereClause}
       ORDER BY f.created_at DESC
       LIMIT ? OFFSET ?
@@ -271,6 +277,8 @@ const getFormById = async (formId) => {
  * @param {number} userId - User ID creating the form
  * @returns {Promise<object>} Result with success status and form ID
  */
+
+//FORM CREATION LOGIC: This function handles the creation of a new form.
 const createForm = async (formData, userId) => {
   try {
     const {
@@ -291,10 +299,6 @@ const createForm = async (formData, userId) => {
       status = 'draft',
     } = formData;
     
-    console.log('🔍 SERVER formService createForm: sections received:', JSON.stringify(sections));
-    console.log('🔍 SERVER formService createForm: ai_description received:', ai_description);
-    console.log('🔍 SERVER formService createForm: formType received:', formType);
-    console.log('🔍 SERVER formService createForm: status received:', status);
 
     // Validate form data
     const validation = validateFormData(formData);
