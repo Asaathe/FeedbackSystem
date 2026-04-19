@@ -725,8 +725,8 @@ async function analyzeAllResponsesOverall(
       },
     });
     
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const aiResult = await model.generateContent(prompt);
+    const response = await aiResult.response;
     const text = response.text();
     
     // Clean up response - the new format returns plain text, not JSON
