@@ -519,6 +519,9 @@ export const getSubjectOfferings = async (params?: {
   semester?: string;
   program_id?: string;
   academic_period_id?: string;
+  page?: number;
+  limit?: number;
+  department?: string;
 }) => {
   try {
     const urlParams = new URLSearchParams();
@@ -527,6 +530,9 @@ export const getSubjectOfferings = async (params?: {
     if (params?.semester) urlParams.append('semester', params.semester);
     if (params?.program_id) urlParams.append('program_id', params.program_id);
     if (params?.academic_period_id) urlParams.append('academic_period_id', params.academic_period_id);
+    if (params?.page) urlParams.append('page', params.page.toString());
+    if (params?.limit) urlParams.append('limit', params.limit.toString());
+    if (params?.department) urlParams.append('department', params.department);
 
     const response = await fetch(`${API_BASE_URL}/subjects/offerings/all?${urlParams}`, {
       headers: getAuthHeaders(),
@@ -536,7 +542,12 @@ export const getSubjectOfferings = async (params?: {
     return result;
   } catch (error) {
     console.error('Error fetching subject offerings:', error);
-    return { success: false, message: 'Failed to fetch subject offerings', offerings: [] };
+    return {
+      success: false,
+      message: 'Failed to fetch subject offerings',
+      offerings: [],
+      pagination: null
+    };
   }
 };
 

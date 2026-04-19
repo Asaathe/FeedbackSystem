@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -156,6 +156,14 @@ export function SubjectOfferings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAcademicYear, setFilterAcademicYear] = useState("2025-2026");
   const [filterSemester, setFilterSemester] = useState("1st");
+  const [pagination, setPagination] = useState<{
+    current_page: number;
+    per_page: number;
+    total: number;
+    total_pages: number;
+    has_next: boolean;
+    has_prev: boolean;
+  } | null>(null);
     
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -266,29 +274,42 @@ export function SubjectOfferings() {
     fetchPeriodForDepartment();
   }, [selectedDepartment]);
 
-  const loadData = async (deptSettingsOverride?: typeof systemSettings.college) => {
+  const loadData = async (deptSettingsOverride?: typeof systemSettings.college, page = 1, limit = 50) => {
     setLoading(true);
     try {
       // Use override if provided (for race condition fix), otherwise use state
       const deptSettings = deptSettingsOverride || (
-        selectedDepartment === "College" 
-          ? systemSettings.college 
+        selectedDepartment === "College"
+          ? systemSettings.college
           : systemSettings.seniorHigh
       );
-      
+
+      // Build params for offerings query
+      const params: any = {
+        page,
+        limit,
+        department: selectedDepartment
+      };
+
       // If we have a current_period_id, use it; otherwise load all (for backward compatibility)
-      const params = deptSettings?.current_period_id 
-        ? { academic_period_id: deptSettings.current_period_id.toString() }
-        : {};
-      
+      if (deptSettings?.current_period_id) {
+        params.academic_period_id = deptSettings.current_period_id.toString();
+      }
+
+      // Add search if present
+      if (searchQuery.trim()) {
+        params.search = searchQuery.trim();
+      }
+
       const [offeringsResult, subjectsResult, programsResult] = await Promise.all([
         getSubjectOfferings(params),
         getSubjects(),
         getPrograms()
       ]);
-        
+
       if (offeringsResult.success) {
         setOfferings(offeringsResult.offerings || []);
+        setPagination(offeringsResult.pagination || null);
       }
       if (subjectsResult.success) {
         setSubjects(subjectsResult.subjects || []);
@@ -443,7 +464,11 @@ export function SubjectOfferings() {
   };
 
   const handleSearch = () => {
-    loadData();
+    loadData(); // Reset to page 1 when searching
+  };
+
+  const handlePageChange = (newPage: number) => {
+    loadData(undefined, newPage);
   };
 
   const handleCreateOffering = async () => {
@@ -1059,6 +1084,56 @@ export function SubjectOfferings() {
             </TabsContent>
           </div>
         </CardContent>
+
+        {/* Pagination Controls */}
+        {pagination && pagination.total_pages > 1 && (
+          <CardFooter className="flex items-center justify-between border-t bg-gray-50/50 px-6 py-4">
+            <div className="text-sm text-gray-600">
+              Showing {((pagination.current_page - 1) * pagination.per_page) + 1} to{' '}
+              {Math.min(pagination.current_page * pagination.per_page, pagination.total)} of{' '}
+              {pagination.total} offerings
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.current_page - 1)}
+                disabled={!pagination.has_prev}
+              >
+                Previous
+              </Button>
+
+              {/* Page numbers */}
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, i) => {
+                  const pageNum = Math.max(1, pagination.current_page - 2) + i;
+                  if (pageNum > pagination.total_pages) return null;
+
+                  return (
+                    <Button
+                      key={pageNum}
+                      variant={pageNum === pagination.current_page ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => handlePageChange(pageNum)}
+                      className="w-8 h-8 p-0"
+                    >
+                      {pageNum}
+                    </Button>
+                  );
+                })}
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(pagination.current_page + 1)}
+                disabled={!pagination.has_next}
+              >
+                Next
+              </Button>
+            </div>
+          </CardFooter>
+        )}
       </Card>
       </Tabs>
 

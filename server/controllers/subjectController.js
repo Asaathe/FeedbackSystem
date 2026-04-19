@@ -2,6 +2,29 @@
 // REWRITTEN - Now uses subject_offerings and evaluation_subjects instead of legacy tables
 const db = require("../config/database");
 
+// Simple in-memory cache for subject offerings (resets on server restart)
+const offeringsCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+const getCacheKey = (params) => {
+  return JSON.stringify(params);
+};
+
+const getCachedOfferings = (key) => {
+  const cached = offeringsCache.get(key);
+  if (cached && (Date.now() - cached.timestamp) < CACHE_TTL) {
+    return cached.data;
+  }
+  return null;
+};
+
+const setCachedOfferings = (key, data) => {
+  offeringsCache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
+};
+
 /**
  * Get all subjects
  */
@@ -598,16 +621,99 @@ const getAllInstructorsForAssignment = async (req, res) => {
 // Subject Offerings functions
 
 /**
- * Get all subject offerings
+ * Get all subject offerings with pagination and caching
  * ONLY uses academic_period_id - no fallback to academic_year/semester
  */
 const getAllSubjectOfferings = async (req, res) => {
   try {
-    const { academic_period_id, program_id, instructor_id } = req.query;
-    
+    const {
+      academic_period_id,
+      program_id,
+      instructor_id,
+      page = 1,
+      limit = 50,
+      search,
+      department
+    } = req.query;
+
+    // Create cache key from all query parameters
+    const cacheKey = getCacheKey({
+      academic_period_id,
+      program_id,
+      instructor_id,
+      page,
+      limit,
+      search,
+      department
+    });
+
+    // Check cache first (only for non-search queries to avoid stale data)
+    if (!search) {
+      const cachedResult = getCachedOfferings(cacheKey);
+      if (cachedResult) {
+        return res.status(200).json(cachedResult);
+      }
+    }
+
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const params = [];
+    let whereConditions = [];
+
+    // Build WHERE conditions - optimize for common case where academic_period_id is provided
+    whereConditions.push("so.status = 'active'"); // More specific than != 'archived'
+
+    // academic_period_id should always be provided in production
+    if (academic_period_id) {
+      whereConditions.push("so.academic_period_id = ?");
+      params.push(academic_period_id);
+    }
+
+    if (program_id) {
+      whereConditions.push("so.program_id = ?");
+      params.push(program_id);
+    }
+
+    if (instructor_id) {
+      whereConditions.push("so.instructor_id = ?");
+      params.push(instructor_id);
+    }
+
+    if (department) {
+      whereConditions.push("es.department = ?");
+      params.push(department);
+    }
+
+    if (search) {
+      whereConditions.push("(es.subject_code LIKE ? OR es.subject_name LIKE ? OR c.program_name LIKE ? OR c.program_code LIKE ?)");
+      const searchTerm = `%${search}%`;
+      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+
+    // Optimized count query - use subquery for better performance
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM subject_offerings so
+      INNER JOIN evaluation_subjects es ON so.subject_id = es.id
+      LEFT JOIN course_management c ON so.program_id = c.id
+      ${whereClause}
+    `;
+
+    // Optimized main query - use INNER JOIN for evaluation_subjects since it should always exist
+    // Select only needed columns for better performance
     let query = `
-      SELECT 
-        so.*,
+      SELECT
+        so.id,
+        so.subject_id,
+        so.program_id,
+        so.year_level,
+        so.section,
+        so.academic_year,
+        so.semester,
+        so.instructor_id,
+        so.status,
+        so.academic_period_id,
         es.subject_code,
         es.subject_name,
         es.department,
@@ -616,44 +722,58 @@ const getAllSubjectOfferings = async (req, res) => {
         COALESCE(c.course_section, CONCAT('Year ', so.year_level, ' - Section ', so.section)) as course_section,
         c.department as program_department,
         u.full_name as instructor_name,
-        ap.academic_year,
-        ap.period_number as semester
+        ap.academic_year as period_academic_year,
+        ap.period_number as semester_number
       FROM subject_offerings so
-      LEFT JOIN evaluation_subjects es ON so.subject_id = es.id
+      INNER JOIN evaluation_subjects es ON so.subject_id = es.id
       LEFT JOIN course_management c ON so.program_id = c.id
       LEFT JOIN users u ON so.instructor_id = u.id
       LEFT JOIN academic_periods ap ON so.academic_period_id = ap.id
-      WHERE so.status != 'archived'
+      ${whereClause}
+      ORDER BY es.subject_code ASC, c.program_code ASC, so.year_level ASC, so.section ASC
+      LIMIT ? OFFSET ?
     `;
-    
-    const params = [];
-    
-    // ONLY use academic_period_id - no fallback
-    if (academic_period_id) {
-      query += " AND so.academic_period_id = ?";
-      params.push(academic_period_id);
-    }
-    
-    if (program_id) {
-      query += " AND so.program_id = ?";
-      params.push(program_id);
-    }
-    
-    if (instructor_id) {
-      query += " AND so.instructor_id = ?";
-      params.push(instructor_id);
-    }
-    
-    query += " ORDER BY es.subject_code, c.course_section";
-    
-    db.query(query, params, (err, results) => {
-      if (err) {
-        console.error("Error fetching subject offerings:", err);
-        return res.status(500).json({ success: false, message: "Failed to fetch offerings" });
+
+    params.push(parseInt(limit), offset);
+
+    // Execute queries in parallel for better performance
+    const [countResults, results] = await Promise.all([
+      new Promise((resolve, reject) => {
+        db.query(countQuery, params.slice(0, -2), (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      }),
+      new Promise((resolve, reject) => {
+        db.query(query, params, (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      })
+    ]);
+
+    const total = countResults[0]?.total || 0;
+    const totalPages = Math.ceil(total / parseInt(limit));
+
+    const responseData = {
+      success: true,
+      offerings: results,
+      pagination: {
+        current_page: parseInt(page),
+        per_page: parseInt(limit),
+        total,
+        total_pages: totalPages,
+        has_next: parseInt(page) < totalPages,
+        has_prev: parseInt(page) > 1
       }
-      
-      return res.status(200).json({ success: true, offerings: results });
-    });
+    };
+
+    // Cache the result (only for non-search queries)
+    if (!search) {
+      setCachedOfferings(cacheKey, responseData);
+    }
+
+    return res.status(200).json(responseData);
   } catch (error) {
     console.error("Get all subject offerings error:", error);
     return res.status(500).json({ success: false, message: "Internal server error" });
