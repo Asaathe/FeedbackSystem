@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Users,
   FileText,
-  MessageSquare
+  MessageSquare,
+  AlertCircle
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { FadeContent, SlideContent } from "../ui/transition-container";
@@ -49,12 +50,14 @@ export const AdminDashboard = memo(function AdminDashboard({ onNavigate }: Admin
   const [activeForms, setActiveForms] = useState<ActiveForm[]>([]);
   const [loading, setLoading] = useState(true);
   const [dataLoaded, setDataLoaded] = useState(false);
+const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+
     try {
       const token = sessionStorage.getItem('authToken');
       if (!token) {
@@ -63,48 +66,49 @@ export const AdminDashboard = memo(function AdminDashboard({ onNavigate }: Admin
         return;
       }
 
-      // Fetch forms data
-      const formsResponse = await fetch('/api/forms?status=active&limit=100', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
+      // Single optimized endpoint for all dashboard data
+      const response = await fetch('/api/dashboard/stats', {
+        headers: { 'Authorization': `Bearer ${token}` },
       });
 
-      if (formsResponse.ok) {
-        const formsData = await formsResponse.json();
-        if (formsData.success && formsData.forms) {
-          const forms = formsData.forms;
-          
-          // Calculate system stats
-          const totalFeedback = forms.reduce((sum: number, form: any) => sum + (form.submission_count || 0), 0);
-          const activeFormsCount = forms.length;
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.stats) {
+          const { stats } = data;
           
           setSystemStats({
-            totalUsers: 0, // Will be updated from users API
-            activeForms: activeFormsCount,
-            totalFeedback: totalFeedback,
+            totalUsers: stats.total || 0,
+            activeForms: stats.activeForms || 0,
+            totalFeedback: stats.totalFeedback || 0,
           });
 
-          // Set active forms
-          setActiveForms(forms.map((form: any) => ({
-            title: form.title,
-            target: form.target_audience || 'All',
-            responses: form.submission_count || 0,
-            status: form.status,
-            period: form.start_date ? `${new Date(form.start_date).toLocaleDateString()} - ${new Date(form.end_date).toLocaleDateString()}` : 'Ongoing',
-          })));
+          // Transform users by role to pie chart format
+          const roleColors: { [key: string]: string } = {
+            student: '#22c55e',
+            instructor: '#3b82f6',
+            alumni: '#a855f7',
+            employer: '#ec4899',
+          };
 
-          // Calculate form activity by category
+          const userData = (stats.byRole || []).map((r: any) => ({
+            name: r.role.charAt(0).toUpperCase() + r.role.slice(1),
+            value: parseInt(r.count) || 0,
+            color: roleColors[r.role] || '#666666',
+          }));
+
+          setResponseRateByRole(userData);
+
+          // Transform forms by category to bar chart format
           const activityByType: { [key: string]: { active: number; completed: number } } = {};
-          forms.forEach((form: any) => {
+          (stats.formsByCategory || []).forEach((form: any) => {
             const type = form.category || 'General';
             if (!activityByType[type]) {
               activityByType[type] = { active: 0, completed: 0 };
             }
             if (form.status === 'active') {
-              activityByType[type].active++;
+              activityByType[type].active = parseInt(form.count) || 0;
             } else {
-              activityByType[type].completed++;
+              activityByType[type].completed = parseInt(form.count) || 0;
             }
           });
 
@@ -113,51 +117,33 @@ export const AdminDashboard = memo(function AdminDashboard({ onNavigate }: Admin
             active: counts.active,
             completed: counts.completed,
           })));
+
+          // Set recent forms
+          setActiveForms((stats.recentForms || []).slice(0, 3).map((form: any) => ({
+            title: form.title,
+            target: form.target_audience || 'All',
+            responses: form.submission_count || 0,
+            status: form.status,
+            period: form.start_date 
+              ? `${new Date(form.start_date).toLocaleDateString()} - ${new Date(form.end_date).toLocaleDateString()}` 
+              : 'Ongoing',
+          })));
         }
+      } else {
+        throw new Error('Failed to fetch dashboard stats');
       }
 
-      // Fetch users data by role
-      const roles = ['student', 'instructor', 'alumni', 'employer'];
-      const roleColors: { [key: string]: string } = {
-        student: '#22c55e',
-        instructor: '#3b82f6',
-        alumni: '#a855f7',
-        employer: '#ec4899',
-      };
-
-      const rolePromises = roles.map(async (role) => {
-        const response = await fetch(`/api/users?role=${role}&limit=1`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          return {
-            name: role.charAt(0).toUpperCase() + role.slice(1),
-            value: data.pagination?.total || 0,
-            color: roleColors[role],
-          };
-        }
-        return null;
-      });
-
-      const roleResults = await Promise.all(rolePromises);
-      const validRoleResults = roleResults.filter((r): r is ResponseRate => r !== null);
-      setResponseRateByRole(validRoleResults);
-
-      // Calculate total users
-      const totalUsers = validRoleResults.reduce((sum, role) => sum + role.value, 0);
-      setSystemStats(prev => ({ ...prev, totalUsers }));
+      console.log('Dashboard data loaded successfully');
 
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please try refreshing the page.');
     } finally {
       setLoading(false);
-      // Trigger animations after a brief delay for smoother experience
       setTimeout(() => setDataLoaded(true), 100);
     }
   };
+
   if (loading) {
     return (
       <FadeContent isVisible={true}>
@@ -180,6 +166,16 @@ export const AdminDashboard = memo(function AdminDashboard({ onNavigate }: Admin
           <p className="text-gray-600 mt-1">System-wide analytics and management overview</p>
         </div>
       </SlideContent>
+
+      {/* Error Message */}
+      {error && (
+        <FadeContent isVisible={!!error}>
+          <div className="flex items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        </FadeContent>
+      )}
 
       {/* Key Metrics */}
       <FadeContent isVisible={dataLoaded}>

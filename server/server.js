@@ -130,6 +130,10 @@ app.use("/api/settings", settingsRoutes);
 // Notifications routes
 app.use("/api/notifications", notificationRoutes);
 
+// Dashboard Stats routes
+const dashboardStatsRoutes = require("./routes/dashboardStats");
+app.use("/api/dashboard/stats", dashboardStatsRoutes);
+
 // Subject Evaluation routes (for subject-assignment)
 const subjectEvaluationRoutes = require("./routes/subjectEvaluation");
 app.use("/api/subject-evaluation", subjectEvaluationRoutes);
