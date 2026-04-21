@@ -146,11 +146,66 @@ const [error, setError] = useState<string | null>(null);
 
   if (loading) {
     return (
-      <FadeContent isVisible={true}>
-        <div className="flex items-center justify-center h-96">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
+      <div className="space-y-6">
+        {/* Welcome Section Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-3/4"></div>
         </div>
-      </FadeContent>
+
+        {/* Key Metrics Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2"></div>
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Charts Section Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {[1, 2].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardHeader>
+                <div className="h-6 bg-gray-200 rounded animate-pulse w-40"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-64 bg-gray-100 rounded animate-pulse"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Active Forms List Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-32"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 bg-gray-50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
+                  </div>
+                  <div className="sm:text-right mt-2 sm:mt-0">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse w-12 mb-1"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-16"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 

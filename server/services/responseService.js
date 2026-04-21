@@ -1,5 +1,13 @@
 // Response Service
 const db = require("../config/database");
+
+// Import dashboard cache invalidation
+let invalidateDashboardCache = null;
+try {
+  invalidateDashboardCache = require("../routes/dashboardStats").invalidateDashboardCache;
+} catch (e) {
+  // Cache invalidation not available, skip
+}
 const { queryDatabase } = require("../utils/helpers");
 
 /**
@@ -115,6 +123,9 @@ const submitFormResponse = async (formId, userId, answers) => {
       "UPDATE forms SET submission_count = submission_count + 1 WHERE id = ?",
       [formId]
     );
+
+    // Invalidate dashboard cache
+    if (invalidateDashboardCache) invalidateDashboardCache();
 
     // Update assignment status to completed
     await queryDatabase(
@@ -521,6 +532,9 @@ const deleteResponse = async (responseId, userId) => {
       "UPDATE forms SET submission_count = submission_count - 1 WHERE id = ?",
       [formId]
     );
+
+    // Invalidate dashboard cache
+    if (invalidateDashboardCache) invalidateDashboardCache();
 
     return { success: true, message: "Response deleted successfully" };
   } catch (error) {
