@@ -109,6 +109,13 @@ const submitFormResponse = async (formId, userId, answers) => {
       [formId, userId, JSON.stringify(answers)]
     );
 
+    // Update submission count in forms table
+    await queryDatabase(
+      db,
+      "UPDATE forms SET submission_count = submission_count + 1 WHERE id = ?",
+      [formId]
+    );
+
     // Update assignment status to completed
     await queryDatabase(
       db,
@@ -503,8 +510,17 @@ const deleteResponse = async (responseId, userId) => {
       return { success: false, message: "Access denied" };
     }
 
+    const formId = responses[0].form_id;
+
     // Delete response
     await queryDatabase(db, "DELETE FROM form_responses WHERE id = ?", [responseId]);
+
+    // Update submission count in forms table
+    await queryDatabase(
+      db,
+      "UPDATE forms SET submission_count = submission_count - 1 WHERE id = ?",
+      [formId]
+    );
 
     return { success: true, message: "Response deleted successfully" };
   } catch (error) {

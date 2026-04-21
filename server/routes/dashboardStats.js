@@ -26,7 +26,7 @@ router.get("/", verifyToken, async (req, res) => {
     // Get total feedback count
     const totalFeedback = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT SUM(submission_count) as total FROM forms`,
+        `SELECT COUNT(*) as total FROM form_responses`,
         [],
         (err, results) => err ? reject(err) : resolve(results)
       );
@@ -35,7 +35,7 @@ router.get("/", verifyToken, async (req, res) => {
     // Get forms by category
     const formsByCategory = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT COALESCE(category, 'General') as category, status, COUNT(*) as count, SUM(submission_count) as submissions FROM forms GROUP BY COALESCE(category, 'General'), status`,
+        `SELECT COALESCE(f.category, 'General') as category, f.status, COUNT(DISTINCT f.id) as count, COUNT(fr.id) as submissions FROM forms f LEFT JOIN form_responses fr ON f.id = fr.form_id GROUP BY COALESCE(f.category, 'General'), f.status`,
         [],
         (err, results) => err ? reject(err) : resolve(results)
       );
@@ -44,7 +44,7 @@ router.get("/", verifyToken, async (req, res) => {
     // Get recent forms
     const recentForms = await new Promise((resolve, reject) => {
       db.query(
-        `SELECT id, title, target_audience, status, submission_count, start_date, end_date FROM forms WHERE status = 'active' ORDER BY created_at DESC LIMIT 5`,
+        `SELECT f.id, f.title, f.target_audience, f.status, COUNT(fr.id) as submission_count, f.start_date, f.end_date FROM forms f LEFT JOIN form_responses fr ON f.id = fr.form_id WHERE f.status = 'active' GROUP BY f.id ORDER BY f.created_at DESC LIMIT 5`,
         [],
         (err, results) => err ? reject(err) : resolve(results)
       );
