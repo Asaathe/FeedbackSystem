@@ -62,6 +62,7 @@ interface Student {
   course_section: string;
   department: string;
   profile_image?: string;
+  promotion_date?: string;
 }
 
 interface Program {
@@ -108,6 +109,7 @@ export default function StudentPromotion() {
   const [activeTab, setActiveTab] = useState("promote");
   const [programs, setPrograms] = useState<Program[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [gradStudents, setGradStudents] = useState<Student[]>([]);
   const [history, setHistory] = useState<PromotionHistory[]>([]);
   const [loading, setLoading] = useState(false);
   const [systemSettings, setSystemSettings] = useState<SystemSettings | null>(null);
@@ -116,6 +118,7 @@ export default function StudentPromotion() {
 
   // Pagination state
   const [studentsPage, setStudentsPage] = useState(1);
+  const [gradStudentsPage, setGradStudentsPage] = useState(1);
   const [historyPage, setHistoryPage] = useState(1);
   const itemsPerPage = 15;
 
@@ -123,13 +126,17 @@ export default function StudentPromotion() {
   const [selectedCourseSection, setSelectedCourseSection] = useState<string>("all");
   const [selectedTargetProgram, setSelectedTargetProgram] = useState<string>("select");
 
+  // Graduation filter for graduates (year_level 4 or 12) - for Graduate tab
+  const [gradSelectedCourseSection, setGradSelectedCourseSection] = useState<string>("all");
+  const [gradSearchTerm, setGradSearchTerm] = useState("");
+  const [gradSelectedStudents, setGradSelectedStudents] = useState<number[]>([]);
+
   // History filter states
   const [historyFilterType, setHistoryFilterType] = useState<string>("all");
   const [historySearchTerm, setHistorySearchTerm] = useState<string>("");
   const [selectedHistoryItems, setSelectedHistoryItems] = useState<number[]>([]);
 
-  // Promotion notes
-  const [promotionNotes, setPromotionNotes] = useState<string>("");
+
 
   // Dialog states
   const [graduationDialogOpen, setGraduationDialogOpen] = useState(false);
@@ -147,6 +154,24 @@ export default function StudentPromotion() {
   });
 
   const token = sessionStorage.getItem('authToken');
+
+  const isUndoValid = (promotionDate: string) => {
+    // Allow undo within 24 hours of promotion date
+    const promoTime = new Date(promotionDate).getTime();
+    const now = new Date().getTime();
+    const oneDay = 24 * 60 * 60 * 1000;
+    return (now - promoTime) < oneDay;
+  };
+
+  // Helper to check if student is eligible for promotion
+  const isEligibleForPromotion = (yearLevel: number) => {
+    return [1, 2, 3, 11].includes(yearLevel);
+  };
+
+  // Helper to check if student is eligible for graduation
+  const isEligibleForGraduation = (yearLevel: number) => {
+    return [4, 12].includes(yearLevel);
+  };
 
   const fetchSystemSettings = useCallback(async () => {
     try {
@@ -205,6 +230,35 @@ export default function StudentPromotion() {
     }
   }, [token]);
 
+  // Fetch graduates for graduation tab
+  const fetchGraduates = useCallback(async (courseSection: string) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (courseSection && courseSection !== 'all') {
+        params.append("courseSection", courseSection);
+      }
+
+      const paramsWithType = new URLSearchParams(params);
+      paramsWithType.append("type", "graduate");
+
+      const response = await fetch(`${API_BASE}/students/eligible?${paramsWithType}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const data = await response.json();
+      if (data.success) {
+        setGradStudents(data.students);
+      }
+    } catch (error) {
+      console.error("Error fetching graduates:", error);
+      toast.error("Failed to load graduates");
+    } finally {
+      setLoading(false);
+    }
+  }, [token]);
+
   // Fetch promotion history
   const fetchHistory = useCallback(async () => {
     try {
@@ -226,11 +280,16 @@ export default function StudentPromotion() {
     fetchPrograms();
     fetchHistory();
     fetchSystemSettings();
-  }, [fetchPrograms, fetchHistory, fetchSystemSettings]);
+    fetchGraduates("all");
+  }, [fetchPrograms, fetchHistory, fetchSystemSettings, fetchGraduates]);
 
   useEffect(() => {
     fetchStudents(selectedCourseSection);
   }, [selectedCourseSection, fetchStudents]);
+
+  useEffect(() => {
+    fetchGraduates(gradSelectedCourseSection);
+  }, [gradSelectedCourseSection, fetchGraduates]);
 
   // Handle course section selection
   const handleCourseSectionChange = (value: string) => {
@@ -257,6 +316,24 @@ export default function StudentPromotion() {
     }
   };
 
+  // Handle grad student selection
+  const handleSelectGradStudent = (studentId: number) => {
+    setGradSelectedStudents(prev =>
+      prev.includes(studentId)
+        ? prev.filter(id => id !== studentId)
+        : [...prev, studentId]
+    );
+  };
+
+  // Handle select all grad students in current view
+  const handleSelectAllGrad = () => {
+    if (gradSelectedStudents.length === paginatedGradStudents.length) {
+      setGradSelectedStudents([]);
+    } else {
+      setGradSelectedStudents(paginatedGradStudents.map(s => s.student_id));
+    }
+  };
+
   // Handle promote
   const handlePromote = async () => {
     if (selectedStudents.length === 0) {
@@ -280,7 +357,6 @@ export default function StudentPromotion() {
         body: JSON.stringify({
           studentIds: selectedStudents,
           newProgramId: parseInt(selectedTargetProgram),
-          notes: promotionNotes,
         }),
       });
       const data = await response.json();
@@ -289,9 +365,9 @@ export default function StudentPromotion() {
         toast.success(`Successfully promoted ${data.promoted} students`);
         setSelectedStudents([]);
         setSelectedTargetProgram("select");
-        setPromotionNotes("");
-        fetchStudents(selectedCourseSection);
-        fetchHistory();
+        await fetchStudents(selectedCourseSection);
+        await fetchGraduates("all");
+        await fetchHistory();
       } else {
         toast.error(data.message || "Failed to promote students");
       }
@@ -306,10 +382,34 @@ export default function StudentPromotion() {
 
   // Handle graduate button click - prepare graduation data with program name
   const handleGraduateClick = () => {
-    // Get the program name from selected students
-    const selectedStudentData = students.filter(s => selectedStudents.includes(s.student_id));
+    if (gradSelectedStudents.length === 0) {
+      toast.error("Please select students to graduate");
+      return;
+    }
+
+    const selectedStudentData = gradStudents.filter(s => gradSelectedStudents.includes(s.student_id));
+    const hasIneligibleStudents = selectedStudentData.some(s => !isEligibleForGraduation(s.year_level));
+    if (hasIneligibleStudents) {
+      toast.error("Only students in Year 4 (College) or Year 12 (Senior High) can be graduated.");
+      return;
+    }
+
+    // Check if any selected students were recently promoted (within 7 days)
+    const recentlyPromotedStudents = selectedStudentData.filter(student => {
+      if (!student.promotion_date) return false;
+      const promotionDate = new Date(student.promotion_date);
+      const now = new Date();
+      const daysSincePromotion = Math.floor((now.getTime() - promotionDate.getTime()) / (1000 * 60 * 60 * 24));
+      return daysSincePromotion <= 7;
+    });
+
+    if (recentlyPromotedStudents.length > 0) {
+      const studentNames = recentlyPromotedStudents.map(s => s.full_name).join(', ');
+      toast.error(`Cannot graduate recently promoted students: ${studentNames}. Please wait at least 7 days after promotion before graduating.`);
+      return;
+    }
+
     if (selectedStudentData.length > 0) {
-      // Use the first student's program name as the default degree
       const programName = selectedStudentData[0].program_name || '';
       setGraduationData({
         ...graduationData,
@@ -321,7 +421,7 @@ export default function StudentPromotion() {
 
   // Handle graduate
   const handleGraduate = async () => {
-    if (selectedStudents.length === 0) {
+    if (gradSelectedStudents.length === 0) {
       toast.error("Please select students to graduate");
       return;
     }
@@ -335,7 +435,7 @@ export default function StudentPromotion() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          studentIds: selectedStudents,
+          studentIds: gradSelectedStudents,
           graduationYear: graduationData.graduationYear,
           graduationDate: graduationData.graduationDate,
           degree: graduationData.degree,
@@ -346,9 +446,9 @@ export default function StudentPromotion() {
 
       if (data.success) {
         toast.success(`Successfully graduated ${data.graduated} students`);
-        setSelectedStudents([]);
-        fetchStudents(selectedCourseSection);
-        fetchHistory();
+        setGradSelectedStudents([]);
+        await fetchGraduates("all");
+        await fetchHistory();
       } else {
         toast.error(data.message || "Failed to graduate students");
       }
@@ -407,27 +507,33 @@ export default function StudentPromotion() {
   const handleUndoPromotion = async () => {
     if (!selectedHistoryItem) return;
 
+    console.log('Frontend: Starting undo for history item:', selectedHistoryItem);
     setLoading(true);
     try {
+      const requestBody = {
+        historyId: selectedHistoryItem.id,
+        studentId: selectedHistoryItem.student_id,
+      };
+      console.log('Frontend: Sending undo request:', requestBody);
+
       const response = await fetch(`${API_BASE}/students/undo-promotion`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          historyId: selectedHistoryItem.id,
-          studentId: selectedHistoryItem.student_id,
-        }),
+        body: JSON.stringify(requestBody),
       });
       const data = await response.json();
+      console.log('Frontend: Undo response:', data);
 
       if (data.success) {
         toast.success("Successfully undone promotion");
         setUndoDialogOpen(false);
         setSelectedHistoryItem(null);
-        fetchStudents(selectedCourseSection);
-        fetchHistory();
+        await fetchStudents(selectedCourseSection);
+        await fetchGraduates("all");
+        await fetchHistory();
       } else {
         toast.error(data.message || "Failed to undo promotion");
       }
@@ -450,15 +556,12 @@ export default function StudentPromotion() {
 
   // Handle select all history items
   const handleSelectAllHistory = () => {
-    // Only select promotions (not graduations)
-    const promotionIds = filteredHistory
-      .filter(item => item.promotion_type !== 'graduation')
-      .map(item => item.id);
-    
-    if (selectedHistoryItems.length === promotionIds.length) {
+    const allIds = filteredHistory.map(item => item.id);
+
+    if (selectedHistoryItems.length === allIds.length) {
       setSelectedHistoryItems([]);
     } else {
-      setSelectedHistoryItems(promotionIds);
+      setSelectedHistoryItems(allIds);
     }
   };
 
@@ -483,8 +586,9 @@ export default function StudentPromotion() {
       if (data.success) {
         toast.success(`Successfully undone ${data.undone} promotion(s)`);
         setSelectedHistoryItems([]);
-        fetchStudents(selectedCourseSection);
-        fetchHistory();
+        await fetchStudents(selectedCourseSection);
+        await fetchGraduates("all");
+        await fetchHistory();
       } else {
         toast.error(data.message || "Failed to undo promotions");
       }
@@ -497,6 +601,12 @@ export default function StudentPromotion() {
   };
 
   const filteredStudents = students.filter(student => {
+    if (!isEligibleForPromotion(student.year_level)) {
+      return false;
+    }
+    if (selectedCourseSection !== "all" && student.course_section !== selectedCourseSection) {
+      return false;
+    }
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
       return (
@@ -519,10 +629,49 @@ export default function StudentPromotion() {
     return surnameA.localeCompare(surnameB);
   });
 
+  // Filter students for Graduate tab - only year_level 4, 12
+  const filteredGradStudents = gradStudents.filter(student => {
+    if (!isEligibleForGraduation(student.year_level)) {
+      return false;
+    }
+    if (gradSelectedCourseSection !== "all" && student.course_section !== gradSelectedCourseSection) {
+      return false;
+    }
+    if (gradSearchTerm) {
+      const term = gradSearchTerm.toLowerCase();
+      return (
+        student.full_name.toLowerCase().includes(term) ||
+        student.studentID?.toLowerCase().includes(term)
+      );
+    }
+    return true;
+  }).sort((a, b) => {
+    const getSurname = (name: string) => {
+      const cleanName = name.replace(/\s+(Jr\.|Sr\.|II|III|IV|V|VI)$/i, '');
+      const parts = cleanName.trim().split(' ');
+      return parts[parts.length - 1].toLowerCase();
+    };
+    const surnameA = getSurname(a.full_name);
+    const surnameB = getSurname(b.full_name);
+    return surnameA.localeCompare(surnameB);
+  });
+
+  // Paginated grad students
+  const totalGradStudentPages = Math.ceil(filteredGradStudents.length / itemsPerPage);
+  const paginatedGradStudents = filteredGradStudents.slice(
+    (gradStudentsPage - 1) * itemsPerPage,
+    gradStudentsPage * itemsPerPage
+  );
+
   // Reset page when search changes
   useEffect(() => {
     setStudentsPage(1);
   }, [searchTerm]);
+
+  // Reset grad page when filters change
+  useEffect(() => {
+    setGradStudentsPage(1);
+  }, [gradSelectedCourseSection, gradSearchTerm]);
 
   // Paginated students
   const totalStudentPages = Math.ceil(filteredStudents.length / itemsPerPage);
@@ -619,11 +768,6 @@ export default function StudentPromotion() {
             >
               <Award className={`h-4 w-4 ${activeTab === "graduate" ? "text-amber-600" : "text-slate-500"}`} />
               <span>Graduate Students</span>
-              {selectedStudents.length > 0 && (
-                <span className="ml-1 bg-amber-100 text-amber-700 text-xs px-2 py-0.5 rounded-full font-semibold">
-                  {selectedStudents.length}
-                </span>
-              )}
             </button>
             <button
               onClick={() => setActiveTab("history")}
@@ -638,11 +782,6 @@ export default function StudentPromotion() {
             >
               <History className={`h-4 w-4 ${activeTab === "history" ? "text-emerald-600" : "text-slate-500"}`} />
               <span>History</span>
-              {history.length > 0 && (
-                <span className="ml-1 bg-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded-full font-semibold">
-                  {history.length}
-                </span>
-              )}
             </button>
           </div>
         </div>
@@ -667,7 +806,7 @@ export default function StudentPromotion() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Course Sections</SelectItem>
-                      {programs.map((program) => (
+                      {programs.filter(p => [1, 2, 3, 11].includes(p.year_level)).map((program) => (
                         <SelectItem key={program.id} value={program.course_section}>
                           {program.course_section}
                         </SelectItem>
@@ -800,7 +939,7 @@ export default function StudentPromotion() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="select" disabled>Select target</SelectItem>
-                        {programs.map((program) => (
+                        {programs.filter(p => [2, 3, 4, 12].includes(p.year_level)).map((program) => (
                           <SelectItem key={program.id} value={program.id.toString()}>
                             {program.course_section}
                           </SelectItem>
@@ -813,17 +952,7 @@ export default function StudentPromotion() {
                   </div>
                 </div>
 
-                {/* Notes */}
-                <div>
-                  <label className="text-sm font-medium mb-1 block">Notes <span className="text-gray-400 font-normal">(Optional)</span></label>
-                  <textarea
-                    value={promotionNotes}
-                    onChange={(e) => setPromotionNotes(e.target.value)}
-                    placeholder="e.g. Back student repeating year, irregular enrollment, etc."
-                    rows={2}
-                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 resize-none"
-                  />
-                </div>
+
 
                 {/* Action Buttons */}
                 <div className="flex justify-end gap-4">
@@ -850,49 +979,148 @@ export default function StudentPromotion() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {selectedStudents.length > 0 ? (
-                <div className="mb-4">
-                  <h4 className="font-semibold mb-2">
-                    Selected Students ({selectedStudents.length})
-                  </h4>
-                  <div className="border rounded-lg overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-slate-100">
-                        <TableRow>
-                          <TableHead>Name</TableHead>
-                          <TableHead>Student ID</TableHead>
-                          <TableHead>Program</TableHead>
-                          <TableHead>Section</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredStudents
-                          .filter(s => selectedStudents.includes(s.student_id))
-                          .map(s => (
-                            <TableRow key={s.student_id}>
-                              <TableCell className="font-medium">{s.full_name}</TableCell>
-                              <TableCell>{s.studentID || 'N/A'}</TableCell>
-                              <TableCell>{s.program_code}</TableCell>
-                              <TableCell>{s.section}</TableCell>
-                            </TableRow>
-                          ))}
-                      </TableBody>
-                    </Table>
+              {/* Course Section Filter */}
+              <div className="flex flex-wrap gap-4 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="w-64">
+                  <label className="text-sm font-medium mb-2 block">Select Course & Section</label>
+                  <Select value={gradSelectedCourseSection} onValueChange={setGradSelectedCourseSection}>
+                    <SelectTrigger className="bg-green-50 border-green-200 focus:ring-green-400">
+                      <SelectValue placeholder="Select course section" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Course Sections</SelectItem>
+                      {programs.filter(p => [4, 12].includes(p.year_level)).map((program) => (
+                        <SelectItem key={program.id} value={program.course_section}>
+                          {program.course_section}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by name or student ID..."
+                      value={gradSearchTerm}
+                      onChange={(e) => setGradSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500 mb-4">
-                  Select students from the Promote tab to graduate them
+                <div className="text-sm text-gray-600">
+                  Showing {paginatedGradStudents.length} of {filteredGradStudents.length} student(s)
+                </div>
+              </div>
+
+              {/* Students Table */}
+              <div className="rounded-md border overflow-hidden mb-4">
+                <Table>
+                  <TableHeader className="bg-slate-50">
+                    <TableRow className="bg-slate-50 hover:bg-slate-50">
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={
+                            paginatedGradStudents.length > 0 &&
+                            paginatedGradStudents.every(s => gradSelectedStudents.includes(s.student_id))
+                          }
+                          onCheckedChange={handleSelectAllGrad}
+                          title="Select all on this page"
+                        />
+                      </TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Student ID</TableHead>
+                      <TableHead>Program</TableHead>
+                      <TableHead>Year</TableHead>
+                      <TableHead>Section</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                        </TableCell>
+                      </TableRow>
+                    ) : filteredGradStudents.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                          {gradSelectedCourseSection === "all"
+                            ? "No students found. Try selecting a specific course section."
+                            : "No students found in this section."}
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      paginatedGradStudents.map((student) => (
+                        <TableRow key={student.student_id} className="hover:bg-slate-50 transition-colors">
+                          <TableCell>
+                            <Checkbox
+                              checked={gradSelectedStudents.includes(student.student_id)}
+                              onCheckedChange={() => handleSelectGradStudent(student.student_id)}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-8 w-8">
+                                <AvatarImage src={student.profile_image} alt={student.full_name} />
+                                <AvatarFallback className="text-xs">
+                                  {student.full_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              {student.full_name}
+                            </div>
+                          </TableCell>
+                          <TableCell className="font-medium">{student.studentID || "N/A"}</TableCell>
+                          <TableCell>{student.program_code}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {student.year_level}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {student.section}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalGradStudentPages > 1 && (
+                <div className="flex items-center justify-between mt-4 px-2 mb-4">
+                  <div className="text-sm text-gray-600">
+                    Page {gradStudentsPage} of {totalGradStudentPages}
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setGradStudentsPage(p => Math.max(1, p - 1))}
+                      disabled={gradStudentsPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setGradStudentsPage(p => Math.min(totalGradStudentPages, p + 1))}
+                      disabled={gradStudentsPage === totalGradStudentPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
                 </div>
               )}
 
               <Button
                 onClick={handleGraduateClick}
-                disabled={selectedStudents.length === 0}
+                disabled={gradSelectedStudents.length === 0}
                 className="w-full bg-green-600 hover:bg-green-700"
               >
                 <Award className="h-4 w-4 mr-2" />
-                Graduate Selected Students
+                Graduate Selected Students ({gradSelectedStudents.length})
               </Button>
             </CardContent>
           </Card>
@@ -977,20 +1205,19 @@ export default function StudentPromotion() {
                     <Table>
                       <TableHeader className="bg-slate-50">
                         <TableRow>
-                          <TableHead className="w-12">
-                            <Checkbox
-                              checked={selectedHistoryItems.length > 0 && 
-                                filteredHistory.filter(i => i.promotion_type !== 'graduation').every(i => selectedHistoryItems.includes(i.id))}
-                              onCheckedChange={handleSelectAllHistory}
-                              title="Select all promotions"
-                            />
-                          </TableHead>
+                            <TableHead className="w-12">
+                              <Checkbox
+                                checked={selectedHistoryItems.length > 0 &&
+                                  filteredHistory.every(i => selectedHistoryItems.includes(i.id))}
+                                onCheckedChange={handleSelectAllHistory}
+                                title="Select all history items"
+                              />
+                            </TableHead>
                           <TableHead>Date</TableHead>
                           <TableHead>Student</TableHead>
                           <TableHead>From</TableHead>
                           <TableHead>To</TableHead>
                           <TableHead>Type</TableHead>
-                          <TableHead>Notes</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -998,12 +1225,10 @@ export default function StudentPromotion() {
                         {paginatedHistory.map((item) => (
                           <TableRow key={item.id} className="hover:bg-slate-50 transition-colors">
                             <TableCell>
-                              {item.promotion_type !== 'graduation' && (
-                                <Checkbox
-                                  checked={selectedHistoryItems.includes(item.id)}
-                                  onCheckedChange={() => handleSelectHistoryItem(item.id)}
-                                />
-                              )}
+                              <Checkbox
+                                checked={selectedHistoryItems.includes(item.id)}
+                                onCheckedChange={() => handleSelectHistoryItem(item.id)}
+                              />
                             </TableCell>
                             <TableCell>{new Date(item.promotion_date).toLocaleDateString()}</TableCell>
                             <TableCell>
@@ -1035,19 +1260,22 @@ export default function StudentPromotion() {
                                 {item.promotion_type === "graduation" ? "Graduated" : "Promoted"}
                               </Badge>
                             </TableCell>
-                            <TableCell className="text-sm text-gray-600">{item.notes}</TableCell>
                             <TableCell>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="bg-green-100 hover:bg-green-200 text-green-800 border-green-300"
-                                onClick={() => {
-                                  setSelectedHistoryItem(item);
-                                  setUndoDialogOpen(true);
-                                }}
-                              >
-                                <RotateCcw className="h-3 w-3 mr-1" />
-                                Undo
+                               <Button
+                                 variant="outline"
+                                 size="sm"
+                                 className={!isUndoValid(item.promotion_date) ? 'bg-gray-100 hover:bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed' : 'bg-green-100 hover:bg-green-200 text-green-800 border-green-300'}
+                                 disabled={!isUndoValid(item.promotion_date)}
+                                 onClick={() => {
+                                   if (!isUndoValid(item.promotion_date)) {
+                                     toast.error("Undo only valid within 24 hours of promotion");
+                                     return;
+                                   }
+                                   setSelectedHistoryItem(item);
+                                   setUndoDialogOpen(true);
+                                 }}
+                                >
+                                 Undo
                               </Button>
                             </TableCell>
                           </TableRow>
@@ -1095,7 +1323,7 @@ export default function StudentPromotion() {
           <DialogHeader>
             <DialogTitle>Graduate Students</DialogTitle>
             <DialogDescription>
-              Enter graduation details for {selectedStudents.length} student(s)
+              Enter graduation details for {gradSelectedStudents.length} student(s)
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -1263,14 +1491,13 @@ export default function StudentPromotion() {
             <DialogDescription>
               {activeTab === "graduate" ? (
                 <>
-                  You are about to graduate <strong>{selectedStudents.length}</strong> student(s).
+                  You are about to graduate <strong>{gradSelectedStudents.length}</strong> student(s).
                   They will be converted to alumni status and will lose access to student features.
                 </>
               ) : (
                 <>
                   You are about to promote <strong>{selectedStudents.length}</strong> student(s) to
                   <strong> {programs.find(p => p.id.toString() === selectedTargetProgram)?.course_section}</strong>.
-                  {promotionNotes && <span className="block mt-1 text-xs text-slate-500">Note: {promotionNotes}</span>}
                 </>
               )}
             </DialogDescription>

@@ -218,41 +218,44 @@ const previewPromotion = async (req, res) => {
 /**
  * Undo a promotion - revert student to previous program
  */
-const undoPromotion = async (req, res) => {
-  try {
-    const { historyId, studentId } = req.body;
-    const undoneBy = req.userId;
-    
-    // Validation
-    if (!historyId) {
-      return res.status(400).json({
+  const undoPromotion = async (req, res) => {
+    try {
+      const { historyId, studentId } = req.body;
+      const undoneBy = req.userId;
+
+      console.log('Undo promotion controller called with:', { historyId, studentId, undoneBy });
+
+      // Validation
+      if (!historyId) {
+        return res.status(400).json({
+          success: false,
+          message: "History ID is required"
+        });
+      }
+
+      if (!studentId) {
+        return res.status(400).json({
+          success: false,
+          message: "Student ID is required"
+        });
+      }
+
+      const result = await studentPromotionService.undoPromotion(
+        parseInt(historyId),
+        parseInt(studentId),
+        undoneBy
+      );
+
+      console.log('Undo promotion result:', result);
+      return res.status(200).json(result);
+    } catch (error) {
+      console.error("Undo promotion controller error:", error);
+      return res.status(500).json({
         success: false,
-        message: "History ID is required"
+        message: error.message || "Internal server error"
       });
     }
-    
-    if (!studentId) {
-      return res.status(400).json({
-        success: false,
-        message: "Student ID is required"
-      });
-    }
-    
-    const result = await studentPromotionService.undoPromotion(
-      parseInt(historyId),
-      parseInt(studentId),
-      undoneBy
-    );
-    
-    return res.status(200).json(result);
-  } catch (error) {
-    console.error("Undo promotion controller error:", error);
-    return res.status(500).json({
-      success: false,
-      message: error.message || "Internal server error"
-    });
-  }
-};
+  };
 
 /**
  * Bulk undo promotions - revert multiple students to previous programs

@@ -12,7 +12,7 @@ const getEligibleStudents = async (filters = {}) => {
     const { department, programCode, yearLevel, section, courseSection } = filters;
     
     let query = `
-      SELECT 
+      SELECT
         u.id as user_id,
         u.email,
         u.full_name,
@@ -22,6 +22,7 @@ const getEligibleStudents = async (filters = {}) => {
         s.image as profile_image,
         s.program_id,
         s.academic_year,
+        s.promotion_date,
         cm.program_name,
         cm.program_code,
         cm.year_level,
@@ -32,7 +33,7 @@ const getEligibleStudents = async (filters = {}) => {
       FROM users u
       INNER JOIN students s ON u.id = s.user_id
       INNER JOIN course_management cm ON s.program_id = cm.id
-      WHERE u.role = 'student' 
+      WHERE u.role = 'student'
         AND u.status = 'active'
         AND cm.status = 'active'
     `;
@@ -743,54 +744,79 @@ const undoPromotion = async (historyId, studentId, undoneBy) => {
     
     // Check if this is a graduation undo
     if (historyRecord.promotion_type === 'graduation') {
+      console.log('Starting graduation undo for studentId:', studentId, 'historyId:', historyId);
+
       // For graduation, we need to:
       // 1. Change user role back from 'alumni' to 'student'
       // 2. Delete the alumni record
       // 3. Restore the student's program
-      
+
       // Get the student info
       const studentQuery = `SELECT * FROM students WHERE id = ?`;
       const students = await queryDatabase(db, studentQuery, [studentId]);
-      
+      console.log('Found students:', students.length);
+
       if (students.length === 0) {
         return {
           success: false,
           message: "Student not found"
         };
       }
-      
+
       const student = students[0];
-      
+      console.log('Student found:', student.user_id);
+
       // Restore user role to student
+      console.log('Restoring user role to student');
       await queryDatabase(
         db,
         "UPDATE users SET role = 'student' WHERE id = ?",
         [student.user_id]
       );
-      
+
       // Delete alumni record
+      console.log('Deleting alumni record');
       await queryDatabase(
         db,
         "DELETE FROM alumni WHERE user_id = ?",
         [student.user_id]
       );
-      
-      // Restore student's program if they had one
-      if (student.previous_program_id) {
+
+      // Delete graduation record
+      console.log('Deleting graduation record');
+      await queryDatabase(
+        db,
+        "DELETE FROM graduation_records WHERE student_id = ?",
+        [studentId]
+      );
+
+      // Delete alumni employment tracking record
+      console.log('Deleting alumni employment record');
+      await queryDatabase(
+        db,
+        "DELETE FROM alumni_employment WHERE alumni_user_id = ?",
+        [student.user_id]
+      );
+
+      // Restore student's program from history record
+      if (historyRecord.previous_program_id) {
+        console.log('Restoring student program from history:', historyRecord.previous_program_id);
         await queryDatabase(
           db,
           "UPDATE students SET program_id = ?, academic_year = ? WHERE id = ?",
-          [student.previous_program_id, historyRecord.new_year_level, studentId]
+          [historyRecord.previous_program_id, historyRecord.old_year_level || 4, studentId]
         );
       }
-      
-      // Mark the history as undone
+
+      // Delete the history record since we're undoing the graduation
+      console.log('Deleting promotion history record');
       await queryDatabase(
         db,
-        "UPDATE student_promotion_history SET notes = CONCAT(IFNULL(notes, ''), ' [UNDO: Reverted by admin on ', CURDATE(), ']') WHERE id = ?",
+        "DELETE FROM student_promotion_history WHERE id = ?",
         [historyId]
       );
-      
+
+      console.log('Graduation undo completed successfully');
       return {
         success: true,
         message: "Successfully reverted graduation"
