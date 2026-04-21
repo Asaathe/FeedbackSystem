@@ -132,6 +132,12 @@ const SubjectManagement = lazy(() =>
 );
 
 
+const AcademicSettings = lazy(() =>
+  import("./components/Admin/academic-settings").then((m) => ({
+    default: m.AcademicSettings,
+  }))
+);
+
 const SystemSettings = lazy(() =>
   import("./components/Admin/system-settings").then((m) => ({
     default: m.SystemSettings,
@@ -187,6 +193,7 @@ export default function App() {
   }
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string>("");
   const [currentPage, setCurrentPage] = useState("dashboard");
   const [showSignup, setShowSignup] = useState(false);
@@ -216,7 +223,7 @@ export default function App() {
     // Check sessionStorage for token (standardized storage)
     const token = sessionStorage.getItem("authToken");
     if (isDev) console.log("Token from storage:", token ? `${token.substring(0, 20)}...` : 'null');
-    
+
     if (token) {
       // Verify token with server using proper headers
       fetch("/api/auth/verify", {
@@ -251,7 +258,12 @@ export default function App() {
           console.error("Verify error:", error);
           // Network error or server error, clear storage
           clearAuthData();
+        })
+        .finally(() => {
+          setIsLoading(false);
         });
+    } else {
+      setIsLoading(false);
     }
   }, []);
 
@@ -486,6 +498,18 @@ export default function App() {
     );
   }
 
+  // Show loading screen while verifying authentication
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
   // If not logged in AND not accessing external feedback, show login/signup pages
   if (!isLoggedIn) {
     if (showSignup) {
@@ -555,6 +579,8 @@ export default function App() {
         case "subjects":
           return <SubjectManagement />;
         case "settings":
+          return <AcademicSettings onNavigate={setCurrentPage} />;
+        case "system-settings":
           return <SystemSettings onNavigate={setCurrentPage} />;
         case "feedback-template":
           return <FeedbackTemplate />;
