@@ -13,6 +13,129 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Textarea } from "../ui/textarea";
+import { ExpandableContent, FadeContent } from "../ui/transition-container";
+
+// Privacy Policy Content
+const privacyPolicyContent = (
+  <div className="space-y-4">
+    <p>This Privacy Policy describes how the University collects, uses, and protects the personal information you provide through our Alumni Feedback System, in compliance with the Data Privacy Act of 2012 (Republic Act No. 10173) of the Philippines.</p>
+
+    <div>
+      <strong>Information Collected</strong>
+      <p>We collect the following information through the Alumni Employment Information form:</p>
+      <ul className="list-disc ml-5">
+        <li>Personal details: Company name, job title, employment status, industry type, employment type, start year, monthly salary, relevance to degree.</li>
+        <li>Contact information: Supervisor/employer name, supervisor/employer email.</li>
+        <li>Additional details: Company address.</li>
+      </ul>
+    </div>
+
+    <div>
+      <strong>Purpose of Data Use</strong>
+      <p>The collected information is used to:</p>
+      <ul className="list-disc ml-5">
+        <li>Track alumni career outcomes and employment statistics.</li>
+        <li>Provide insights to improve university programs and services.</li>
+        <li>Communicate with alumni regarding updates and opportunities.</li>
+        <li>Maintain accurate alumni records.</li>
+      </ul>
+    </div>
+
+    <div>
+      <strong>Data Protection</strong>
+      <p>We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. This includes encryption, access controls, and secure storage practices.</p>
+    </div>
+
+    <div>
+      <strong>Data Sharing</strong>
+      <p>Your information may be shared with:</p>
+      <ul className="list-disc ml-5">
+        <li>University administrators and staff for research and analysis purposes.</li>
+        <li>Third-party service providers who assist in maintaining the system, subject to confidentiality agreements.</li>
+        <li>Government agencies as required by law.</li>
+      </ul>
+      <p>We do not sell or rent your personal information to third parties.</p>
+    </div>
+
+    <div>
+      <strong>Data Retention</strong>
+      <p>Personal information is retained for as long as necessary to fulfill the purposes outlined above, typically for the duration of your alumni status and beyond as required for statistical analysis and historical records.</p>
+    </div>
+
+    <div>
+      <strong>User Rights</strong>
+      <p>Under the Data Privacy Act, you have the right to:</p>
+      <ul className="list-disc ml-5">
+        <li>Access your personal information.</li>
+        <li>Correct inaccurate or incomplete data.</li>
+        <li>Request erasure of your data, subject to legal requirements.</li>
+        <li>Object to processing in certain circumstances.</li>
+        <li>File a complaint with the National Privacy Commission.</li>
+      </ul>
+    </div>
+
+    <div>
+      <strong>Contact Information</strong>
+      <p>For questions or concerns regarding your privacy, please contact:</p>
+      <p>ACTS Computer College<br />EGK Building, P. Guevara Avenue, corner A. Bonifacio Street, Santa Cruz, Philippines, 4009<br />Email: feedbacts@gmail.com</p>
+    </div>
+
+    <div>
+      <strong>Consent Statement</strong>
+      <p>By submitting this form, I hereby give my consent to the University to collect, process, and use my personal information as described in this Privacy Policy.</p>
+    </div>
+  </div>
+);
+
+// Terms and Conditions Content
+const termsAndConditionsContent = (
+  <div className="space-y-4">
+    <p>These Terms and Conditions govern your use of the University Alumni Feedback System. By accessing and using this system, you agree to be bound by these terms.</p>
+
+    <div>
+      <strong>Acceptable Use of the System</strong>
+      <p>The system is intended for alumni to provide feedback on their employment status and career development. Use must be lawful and in accordance with university policies.</p>
+    </div>
+
+    <div>
+      <strong>User Responsibilities</strong>
+      <p>Users are responsible for:</p>
+      <ul className="list-disc ml-5">
+        <li>Providing honest, accurate, and up-to-date information.</li>
+        <li>Respecting the privacy and rights of others.</li>
+        <li>Using the system in a professional and respectful manner.</li>
+      </ul>
+    </div>
+
+    <div>
+      <strong>Prohibited Actions</strong>
+      <p>The following actions are strictly prohibited:</p>
+      <ul className="list-disc ml-5">
+        <li>Submitting false, misleading, or inaccurate information.</li>
+        <li>Engaging in spamming or excessive submissions.</li>
+        <li>Attempting to abuse, hack, or disrupt the system.</li>
+        <li>Sharing confidential or sensitive information inappropriately.</li>
+      </ul>
+    </div>
+
+    <div>
+      <strong>Limitation of Liability</strong>
+      <p>The university shall not be liable for any direct, indirect, incidental, or consequential damages arising from the use of this system. Information provided is for informational purposes only.</p>
+    </div>
+
+    <div>
+      <strong>System Availability Disclaimer</strong>
+      <p>The system is provided on an "as is" basis. The university does not guarantee uninterrupted or error-free operation. Maintenance and updates may result in temporary unavailability.</p>
+    </div>
+
+    <div>
+      <strong>Governing Law</strong>
+      <p>These terms are governed by the laws of the Republic of the Philippines.</p>
+    </div>
+
+    <p>By checking the agreement boxes, I acknowledge that I have read, understood, and agree to the Privacy Policy and Terms and Conditions.</p>
+  </div>
+);
 
 interface AlumniEmploymentProps {
   onNavigate?: (page: string) => void;
@@ -46,6 +169,8 @@ interface FormErrors {
   employmentType?: string;
   supervisorName?: string;
   supervisorEmail?: string;
+  agreedToPrivacy?: string;
+  agreedToTerms?: string;
 }
 
 export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
@@ -72,8 +197,12 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
   // New state for update workflow
   const [workflowState, setWorkflowState] = useState<UpdateWorkflowState>('idle');
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error' | 'info'; message: string } | null>(null);
-  const [formErrors, setFormErrors] = useState<FormErrors>({});
-  const [showUpdateForm, setShowUpdateForm] = useState(false);
+   const [formErrors, setFormErrors] = useState<FormErrors>({});
+   const [showUpdateForm, setShowUpdateForm] = useState(false);
+   const [agreedToPrivacy, setAgreedToPrivacy] = useState(false);
+   const [agreedToTerms, setAgreedToTerms] = useState(false);
+   const [showPrivacy, setShowPrivacy] = useState(false);
+    const [showTerms, setShowTerms] = useState(false);
   
   // Annual update requirement state
   const [isAnnualUpdateRequired, setIsAnnualUpdateRequired] = useState(false);
@@ -251,7 +380,15 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
         errors.supervisorEmail = 'Please enter a valid email address';
       }
     }
-    
+
+    if (!agreedToPrivacy) {
+      errors.agreedToPrivacy = 'You must agree to the Privacy Policy';
+    }
+
+    if (!agreedToTerms) {
+      errors.agreedToTerms = 'You must agree to the Terms and Conditions';
+    }
+
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -483,21 +620,21 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
       </div>
 
       {/* Feedback Message */}
-      {feedbackMessage && (
+      <FadeContent isVisible={!!feedbackMessage}>
         <div className={`flex items-center gap-3 p-4 rounded-lg ${
-          feedbackMessage.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
-          feedbackMessage.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
+          feedbackMessage?.type === 'success' ? 'bg-green-50 text-green-800 border border-green-200' :
+          feedbackMessage?.type === 'error' ? 'bg-red-50 text-red-800 border border-red-200' :
           'bg-blue-50 text-blue-800 border border-blue-200'
         }`}>
-          {feedbackMessage.type === 'success' && <CheckCircle className="w-5 h-5" />}
-          {feedbackMessage.type === 'error' && <AlertCircle className="w-5 h-5" />}
-          {feedbackMessage.type === 'info' && <AlertCircle className="w-5 h-5" />}
-          <span>{feedbackMessage.message}</span>
+          {feedbackMessage?.type === 'success' && <CheckCircle className="w-5 h-5" />}
+          {feedbackMessage?.type === 'error' && <AlertCircle className="w-5 h-5" />}
+          {feedbackMessage?.type === 'info' && <AlertCircle className="w-5 h-5" />}
+          <span>{feedbackMessage?.message}</span>
         </div>
-      )}
+      </FadeContent>
 
       {/* Annual Update Notification */}
-      {showAnnualNotification && (
+      <FadeContent isVisible={showAnnualNotification}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-lg bg-red-50 text-red-800 border border-red-200">
           <AlertCircle className="w-5 h-5 flex-shrink-0" />
           <div className="flex-1 min-w-0">
@@ -515,7 +652,7 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
             Update Now
           </Button>
         </div>
-      )}
+      </FadeContent>
 
       {/* Update Request Status Card - Only visible when annual update is required */}
       {isAnnualUpdateRequired && (
@@ -850,6 +987,80 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                 </div>
               </div>
 
+              {/* Privacy Policy and Terms and Conditions */}
+              <Card className="mt-6 border-gray-200">
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="flex items-start space-x-2">
+                      <input
+                        type="checkbox"
+                        id="privacy-agreement"
+                        checked={agreedToPrivacy}
+                        onChange={(e) => {
+                          setAgreedToPrivacy(e.target.checked);
+                          if (formErrors.agreedToPrivacy) {
+                            setFormErrors(prev => ({ ...prev, agreedToPrivacy: undefined }));
+                          }
+                        }}
+                        className="mt-1"
+                      />
+                      <label htmlFor="privacy-agreement" className="text-sm">
+                        I have read and agree to the{' '}
+                        <button
+                          type="button"
+                          onClick={() => setShowPrivacy(!showPrivacy)}
+                          className="text-blue-600 underline hover:text-blue-800"
+                        >
+                          Privacy Policy
+                        </button>{' '}
+                        *
+                      </label>
+                    </div>
+                    {formErrors.agreedToPrivacy && (
+                      <p className="text-xs text-red-500 ml-6">{formErrors.agreedToPrivacy}</p>
+                    )}
+                    <ExpandableContent isExpanded={showPrivacy}>
+                      <div className="ml-6 p-3 border border-gray-200 rounded bg-gray-50 text-sm max-h-96 overflow-y-auto">
+                        {privacyPolicyContent}
+                      </div>
+                    </ExpandableContent>
+                    <div className="flex items-start space-x-2">
+                      <input
+                        type="checkbox"
+                        id="terms-agreement"
+                        checked={agreedToTerms}
+                        onChange={(e) => {
+                          setAgreedToTerms(e.target.checked);
+                          if (formErrors.agreedToTerms) {
+                            setFormErrors(prev => ({ ...prev, agreedToTerms: undefined }));
+                          }
+                        }}
+                        className="mt-1"
+                      />
+                      <label htmlFor="terms-agreement" className="text-sm">
+                        I have read and agree to the{' '}
+                        <button
+                          type="button"
+                          onClick={() => setShowTerms(!showTerms)}
+                          className="text-blue-600 underline hover:text-blue-800"
+                        >
+                          Terms and Conditions
+                        </button>{' '}
+                        *
+                      </label>
+                    </div>
+                    {formErrors.agreedToTerms && (
+                      <p className="text-xs text-red-500 ml-6">{formErrors.agreedToTerms}</p>
+                    )}
+                    <ExpandableContent isExpanded={showTerms}>
+                      <div className="ml-6 p-3 border border-gray-200 rounded bg-gray-50 text-sm max-h-96 overflow-y-auto">
+                        {termsAndConditionsContent}
+                      </div>
+                    </ExpandableContent>
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="flex flex-col sm:flex-row justify-center sm:justify-end pt-4 gap-3">
                 {showUpdateForm && (
                   <Button
@@ -858,6 +1069,11 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
                     onClick={() => {
                       setShowUpdateForm(false);
                       setFeedbackMessage(null);
+                      setAgreedToPrivacy(false);
+                      setAgreedToTerms(false);
+                      setShowPrivacy(false);
+                      setShowTerms(false);
+                      setFormErrors({});
                     }}
                     className="w-full sm:w-auto"
                   >
