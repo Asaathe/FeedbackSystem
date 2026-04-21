@@ -16,7 +16,8 @@ import {
   HelpCircle,
   BookOpen,
   Book,
-  Briefcase
+  Briefcase,
+  Shield
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "../ui/avatar";
 import { formatImageUrl } from "../../utils/imageUtils";
@@ -110,7 +111,8 @@ export function DashboardLayout({
     { id: 'subjects', label: 'Subject Management', icon: Book },
     { id: 'subject-offerings', label: 'Subject Offerings', icon: BookOpen },
     { id: 'employment-tracker', label: 'Alumni E-Tracker', icon: Briefcase },
-    { id: 'settings', label: 'System Settings', icon: Settings },
+    { id: 'settings', label: 'Academic Settings', icon: Settings },
+    { id: 'system-settings', label: 'System Settings', icon: Shield },
   ] : role === 'instructor' ? [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'my-subjects', label: 'My Subjects', icon: GraduationCap },
