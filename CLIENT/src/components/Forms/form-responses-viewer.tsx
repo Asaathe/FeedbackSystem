@@ -915,24 +915,93 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
   if (loading) {
     return (
-      <div className="text-center py-12">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-        <div className="mt-2 space-y-1">
-          <p className="text-gray-600">
-            {formLoading && responsesLoading
-              ? "Loading form and responses..."
-              : formLoading
-                ? "Loading form details..."
-                : responsesLoading
-                  ? "Loading responses..."
-                  : "Preparing data..."
-            }
-          </p>
-          <div className="flex justify-center gap-4 text-xs text-gray-500">
-            {formLoading && <span>📄 Form</span>}
-            {responsesLoading && <span>📊 Responses</span>}
+      <div className="space-y-6 animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="h-9 w-20 bg-gray-200 rounded"></div>
+            </div>
+            <div className="flex-1 text-center min-w-0 space-y-2">
+              <div className="h-7 bg-gray-200 rounded w-48 mx-auto"></div>
+              <div className="h-4 bg-gray-100 rounded w-32 mx-auto"></div>
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="h-9 w-36 bg-gray-200 rounded"></div>
+            </div>
           </div>
         </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i}>
+              <CardContent className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="bg-gray-200 p-2 rounded-lg w-9 h-9"></div>
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                    <div className="h-6 bg-gray-200 rounded w-12"></div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Loading Status */}
+        <div className="text-center py-8">
+          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+          <div className="mt-2 space-y-1">
+            <p className="text-gray-600">
+              {formLoading && responsesLoading
+                ? "Loading form and responses..."
+                : formLoading
+                  ? "Loading form details..."
+                  : responsesLoading
+                    ? "Loading responses..."
+                    : "Preparing data..."
+              }
+            </p>
+            <div className="flex justify-center gap-4 text-xs text-gray-500">
+              {formLoading && <span>📄 Form</span>}
+              {responsesLoading && <span>📊 Responses</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* Table Skeleton */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="h-6 bg-gray-200 rounded w-32"></div>
+              <div className="h-9 bg-gray-200 rounded w-64"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {/* Table Header */}
+              <div className="grid grid-cols-4 gap-4 pb-2 border-b">
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded"></div>
+                <div className="h-4 bg-gray-200 rounded w-16"></div>
+              </div>
+              {/* Table Rows */}
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="grid grid-cols-4 gap-4 py-2">
+                  <div className="space-y-1">
+                    <div className="h-4 bg-gray-200 rounded w-24"></div>
+                    <div className="h-3 bg-gray-100 rounded w-32"></div>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-20"></div>
+                  <div className="h-4 bg-gray-200 rounded w-16"></div>
+                  <div className="h-8 bg-gray-200 rounded w-16"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
