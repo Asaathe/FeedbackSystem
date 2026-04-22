@@ -27,10 +27,6 @@ router.get("/:id/download", verifyToken, requireAdmin, backupController.download
  */
 router.delete("/:id", verifyToken, requireAdmin, backupController.deleteBackup);
 
-/**
- * Restore from backup
- * POST /api/backups/:id/restore
- */
-router.post("/:id/restore", verifyToken, requireAdmin, backupController.restoreBackup);
+
 
 module.exports = router;

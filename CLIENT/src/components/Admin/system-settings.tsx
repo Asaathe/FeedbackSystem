@@ -39,9 +39,10 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   const [loading, setLoading] = useState(true);
   const [backups, setBackups] = useState<Backup[]>([]);
   const [creatingBackup, setCreatingBackup] = useState(false);
-  const [restoringBackup, setRestoringBackup] = useState(false);
-  const [showRestoreDialog, setShowRestoreDialog] = useState(false);
-  const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
+  const [deletingBackup, setDeletingBackup] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [selectedDeleteId, setSelectedDeleteId] = useState<string | null>(null);
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [backupName, setBackupName] = useState("");
   const [selectedTables, setSelectedTables] = useState<string[]>([]);
@@ -196,11 +197,17 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   };
 
   const handleDeleteBackup = async (backupId: string) => {
-    if (!confirm("Are you sure you want to delete this backup? This action cannot be undone.")) return;
+    setSelectedDeleteId(backupId);
+    setShowDeleteDialog(true);
+  };
 
+  const confirmDeleteBackup = async () => {
+    if (!selectedDeleteId) return;
+
+    setDeletingBackup(true);
     try {
       const token = sessionStorage.getItem("authToken");
-      const response = await fetch(`/api/backups/${backupId}`, {
+      const response = await fetch(`/api/backups/${selectedDeleteId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -210,42 +217,20 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
       if (data.success) {
         toast.success("Backup deleted successfully");
         fetchBackups();
+        setShowDeleteDialog(false);
+        setSelectedDeleteId(null);
       } else {
         toast.error(data.message || "Failed to delete backup");
       }
     } catch (error) {
       console.error("Error deleting backup:", error);
       toast.error("Failed to delete backup");
-    }
-  };
-
-  const handleRestoreBackup = async () => {
-    if (!selectedBackupId) return;
-
-    setRestoringBackup(true);
-    try {
-      const token = sessionStorage.getItem("authToken");
-      const response = await fetch(`/api/backups/${selectedBackupId}/restore`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Backup restored successfully. The system may need to be restarted.");
-        setShowRestoreDialog(false);
-        setSelectedBackupId(null);
-      } else {
-        toast.error(data.message || "Failed to restore backup");
-      }
-    } catch (error) {
-      console.error("Error restoring backup:", error);
-      toast.error("Failed to restore backup");
     } finally {
-      setRestoringBackup(false);
+      setDeletingBackup(false);
     }
   };
+
+
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -492,41 +477,27 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                       <p><strong>Tables:</strong> {backup.tables.length} selected</p>
                     )}
                   </div>
-                  <div className="flex gap-2 mt-4">
-                    {backup.status === 'completed' && (
-                      <>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDownloadBackup(backup.id)}
-                          className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
-                        >
-                          <Download className="w-4 h-4 mr-1" />
-                          Download
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedBackupId(backup.id);
-                            setShowRestoreDialog(true);
-                          }}
-                          className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50"
-                        >
-                          <RefreshCw className="w-4 h-4 mr-1" />
-                          Restore
-                        </Button>
-                      </>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleDeleteBackup(backup.id)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+                   <div className="flex gap-2 mt-4">
+                     {backup.status === 'completed' && (
+                       <Button
+                         variant="outline"
+                         size="sm"
+                         onClick={() => handleDownloadBackup(backup.id)}
+                         className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
+                       >
+                         <Download className="w-4 h-4 mr-1" />
+                         Download
+                       </Button>
+                     )}
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       onClick={() => handleDeleteBackup(backup.id)}
+                       className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                     >
+                       <Trash2 className="w-4 h-4" />
+                     </Button>
+                   </div>
                 </CardContent>
               </Card>
             ))}
@@ -669,13 +640,13 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
         </DialogContent>
       </Dialog>
 
-      {/* Restore Confirmation Dialog */}
-      <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-red-600">Restore Backup</DialogTitle>
+            <DialogTitle className="text-red-600">Delete Backup</DialogTitle>
             <DialogDescription>
-              This will restore the system to the selected backup point. Current data may be overwritten.
+              This will permanently delete the selected backup. This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -683,32 +654,32 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-red-600 mt-0.5" />
                 <div>
-                  <p className="text-red-800 text-sm font-medium">Warning: Data Loss Risk</p>
+                  <p className="text-red-800 text-sm font-medium">Warning: Data Loss</p>
                   <p className="text-red-700 text-sm mt-1">
-                    Restoring from a backup will replace current system data. This action cannot be undone.
-                    Ensure you have a recent backup before proceeding.
+                    Deleting this backup will remove it permanently. Make sure you have downloaded it if needed.
                   </p>
                 </div>
               </div>
             </div>
             <p className="text-sm text-gray-600">
-              Are you sure you want to restore this backup? The system may become temporarily unavailable.
+              Are you sure you want to delete this backup?
             </p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setShowRestoreDialog(false)}>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancel
             </Button>
             <Button
-              onClick={handleRestoreBackup}
-              disabled={restoringBackup}
+              onClick={confirmDeleteBackup}
+              disabled={deletingBackup}
               className="bg-red-500 hover:bg-red-600"
             >
-              {restoringBackup ? "Restoring..." : "Confirm Restore"}
+              {deletingBackup ? "Deleting..." : "Delete Backup"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }

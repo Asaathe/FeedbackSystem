@@ -244,49 +244,7 @@ const deleteBackup = async (req, res) => {
   }
 };
 
-/**
- * Restore from backup
- */
-const restoreBackup = async (req, res) => {
-  try {
-    const { id } = req.params;
 
-    // Find backup in memory
-    const backup = backups.find(b => b.id === id);
-
-    if (!backup) {
-      return res.status(404).json({
-        success: false,
-        message: "Backup not found"
-      });
-    }
-
-    if (backup.status !== 'completed') {
-      return res.status(400).json({
-        success: false,
-        message: "Cannot restore from incomplete backup"
-      });
-    }
-
-    // For now, just return success - actual restoration would be complex
-    // In a real implementation, you'd need to:
-    // 1. Parse the backup content
-    // 2. Execute the SQL statements or import CSV data
-    // 3. Handle potential conflicts and errors
-
-    return res.json({
-      success: true,
-      message: "Backup restoration initiated. This feature is under development."
-    });
-
-  } catch (error) {
-    console.error("Restore backup error:", error);
-    return res.status(500).json({
-      success: false,
-      message: "Server error"
-    });
-  }
-};
 
 /**
  * Generate SQL backup content - automatically chooses method based on environment
@@ -557,7 +515,6 @@ module.exports = {
   createBackup,
   downloadBackup,
   deleteBackup,
-  restoreBackup,
   generateSQLBackupContent,
   generateCSVBackupContent
 };
