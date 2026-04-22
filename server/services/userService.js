@@ -32,7 +32,7 @@ const getFilteredUsers = async (filters) => {
 
     // Role-specific filters
     if (role === "student") {
-      if (course_year_section) {
+      if (course_year_section && course_year_section !== "All Students") {
         conditions.push("cm.course_section = ?");
         params.push(course_year_section);
       }

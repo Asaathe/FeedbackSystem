@@ -269,12 +269,19 @@ export const FormBuilder = memo(function FormBuilder({
 
   // Auto-fill start date and time with current date/time when publish dialog opens
   useEffect(() => {
-    if (publishDialogOpen && !submissionSchedule.startDate) {
-      setSubmissionSchedule((prev) => ({
-        ...prev,
-        startDate: new Date().toISOString().split('T')[0],
-        startTime: new Date().toTimeString().substring(0, 5),
-      }));
+    if (publishDialogOpen) {
+      const now = new Date();
+      const today = now.toLocaleDateString('en-CA'); // YYYY-MM-DD format in local timezone
+      const currentTime = now.toTimeString().substring(0, 5);
+
+      // Set today's date and current time if no startDate is set, or if the existing date is in the past
+      if (!submissionSchedule.startDate || submissionSchedule.startDate < today) {
+        setSubmissionSchedule((prev) => ({
+          ...prev,
+          startDate: today,
+          startTime: currentTime,
+        }));
+      }
     }
   }, [publishDialogOpen, submissionSchedule.startDate]);
 
@@ -550,13 +557,22 @@ export const FormBuilder = memo(function FormBuilder({
             
             console.log('📅 Final scheduleStartDate:', scheduleStartDate);
 
+            // Update past dates to today
+            const now = new Date();
+            const today = now.toLocaleDateString('en-CA'); // YYYY-MM-DD format in local timezone
+            if (scheduleStartDate && scheduleStartDate < today) {
+              console.log('📅 Updating past start date from', scheduleStartDate, 'to today', today);
+              scheduleStartDate = today;
+              scheduleStartTime = now.toTimeString().substring(0, 5);
+            }
+
             const scheduleData = {
               startDate: scheduleStartDate,
               endDate: scheduleEndDate,
               startTime: scheduleStartTime,
               endTime: scheduleEndTime,
             };
-            
+
             console.log('📅 Schedule data being sent:', scheduleData);
             console.log("📋 Setting schedule:", scheduleData);
             setSubmissionSchedule(scheduleData);

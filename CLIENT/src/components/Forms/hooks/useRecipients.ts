@@ -247,17 +247,8 @@ export function useRecipients() {
             details: formatUserDetails(user),
           }));
 
-          // Filter students by department if "All Students" is selected with a department
-          if (
-            audienceType === "Students" &&
-            courseYearSection === "All Students" &&
-            department
-          ) {
-            formattedUsers = filterStudentsByDepartment(
-              formattedUsers,
-              department
-            );
-          }
+          // Note: Backend already filters students by department when department is provided
+          // No additional client-side filtering needed for "All Students"
 
           setRecipients(formattedUsers);
           setSelectedRecipients(new Set(formattedUsers.map((u) => u.id)));

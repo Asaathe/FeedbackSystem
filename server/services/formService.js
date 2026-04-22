@@ -999,6 +999,18 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           LEFT JOIN course_management cm ON s.program_id = cm.id
           WHERE u.role = 'student' AND u.status = 'active'
         `;
+
+        // Apply department filter if provided
+        if (targetFilters?.department) {
+          userQuery += " AND cm.department = ?";
+          queryParams.push(targetFilters.department);
+        }
+
+        // Apply course_year_section filter if provided and not "All Students"
+        if (targetFilters?.course_year_section && targetFilters.course_year_section !== "All Students") {
+          userQuery += " AND cm.course_section = ?";
+          queryParams.push(targetFilters.course_year_section);
+        }
       } else if (targetAudience === "Instructors") {
         userQuery = `
           SELECT u.id
@@ -1006,40 +1018,64 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
           LEFT JOIN instructors i ON u.id = i.user_id
           WHERE u.role = 'instructor' AND u.status = 'active'
         `;
+
+        // Apply department filter if provided
+        if (targetFilters?.department) {
+          userQuery += " AND i.department = ?";
+          queryParams.push(targetFilters.department);
+        }
       } else if (targetAudience === "Alumni") {
         console.log("[DEBUG] Deploying to Alumni, targetAudience:", targetAudience);
-        
+
         // Debug: First check if there are any alumni users in the Users table
         const allAlumniUsers = await queryDatabase(
           db,
           "SELECT id, role, status FROM users WHERE role = 'alumni' AND status = 'active'"
         );
         console.log("[DEBUG] Total alumni users in Users table:", allAlumniUsers.length);
-        
+
         // Debug: Check alumni table
         const alumniRecords = await queryDatabase(
           db,
           "SELECT * FROM alumni"
         );
         console.log("[DEBUG] Total records in alumni table:", alumniRecords.length);
-        
+
         // Use a simpler query that doesn't require the alumni table
         userQuery = `
           SELECT u.id
           FROM users u
           WHERE u.role = 'alumni' AND u.status = 'active'
         `;
+
+        // Apply company filter if provided
+        if (targetFilters?.company) {
+          userQuery += " AND u.id IN (SELECT user_id FROM alumni WHERE company LIKE ?)";
+          queryParams.push(`%${targetFilters.company}%`);
+        }
       } else if (targetAudience.startsWith("Students - ")) {
         // Specific course/year/section
         const courseSection = targetAudience.replace("Students - ", "");
+
         userQuery = `
           SELECT u.id
           FROM users u
           LEFT JOIN students s ON u.id = s.user_id
           LEFT JOIN course_management cm ON s.program_id = cm.id
-          WHERE u.role = 'student' AND u.status = 'active' AND cm.course_section = ?
+          WHERE u.role = 'student' AND u.status = 'active'
         `;
-        queryParams.push(courseSection);
+
+        // Apply department filter if provided
+        if (targetFilters?.department) {
+          userQuery += " AND cm.department = ?";
+          queryParams.push(targetFilters.department);
+        }
+
+        // Apply course_year_section filter if it's not "All Students"
+        if (courseSection !== "All Students") {
+          userQuery += " AND cm.course_section = ?";
+          queryParams.push(courseSection);
+        }
       } else if (targetAudience.startsWith("Instructors - ")) {
         // Specific department
         const department = targetAudience.replace("Instructors - ", "");
@@ -1087,7 +1123,7 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
 
       if (userQuery) {
         const users = await queryDatabase(db, userQuery, queryParams);
-        console.log("[DEBUG] Users found for Alumni filter:", users.length, "users:", users);
+        console.log("[DEBUG] Users found for target audience:", targetAudience, "-", users.length, "users:", users);
 
         // If no users found with specific filter, try to get all alumni
         if (users.length === 0 && targetAudience.startsWith("Alumni - ")) {
@@ -1227,31 +1263,17 @@ const deployForm = async (formId, userId, deploymentData = {}) => {
     // =============================================
     // CREATE NOTIFICATIONS FOR ASSIGNED USERS
     // =============================================
-    // Get all assigned user IDs for notification
+    // Get all assigned user IDs for notification from form_assignments table
     let assignedUserIds = [];
-    if (deploymentData.userIds && Array.isArray(deploymentData.userIds)) {
-      assignedUserIds = deploymentData.userIds;
-    } else if (effectiveTargetAudience) {
-      // Get users based on target audience
-      let userQuery = "";
-      if (effectiveTargetAudience === "All Users") {
-        userQuery = "SELECT id FROM users WHERE status = 'active'";
-      } else if (effectiveTargetAudience.startsWith("Students")) {
-        userQuery = "SELECT u.id FROM users u WHERE u.role = 'student' AND u.status = 'active'";
-      } else if (effectiveTargetAudience.startsWith("Instructors")) {
-        userQuery = "SELECT u.id FROM users u WHERE u.role = 'instructor' AND u.status = 'active'";
-      } else if (effectiveTargetAudience.startsWith("Alumni")) {
-        userQuery = "SELECT u.id FROM users u WHERE u.role = 'alumni' AND u.status = 'active'";
-      }
-      
-      if (userQuery) {
-        try {
-          const users = await queryDatabase(db, userQuery);
-          assignedUserIds = users.map(u => u.id);
-        } catch (e) {
-          console.error("Failed to get users for notification:", e);
-        }
-      }
+    try {
+      const assignedUsers = await queryDatabase(
+        db,
+        "SELECT user_id FROM form_assignments WHERE form_id = ?",
+        [formId]
+      );
+      assignedUserIds = assignedUsers.map(u => u.user_id);
+    } catch (e) {
+      console.error("Failed to get assigned users for notification:", e);
     }
 
     // Get form details for notification
