@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback, memo } from "react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "../ui/card";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -84,11 +84,275 @@ const targetAudienceOptions = [
   "Instructors",
 ];
 
+// Memoized Form Card Component for performance
+const FormCard = memo(({
+  form,
+  onNavigateToResponses,
+  onNavigateToBuilder,
+  onDuplicateForm,
+  onSaveAsTemplate,
+  onDeleteForm,
+  onPreviewForm,
+  getQuestionCount,
+  savingAsTemplate,
+  deployingForm
+}: {
+  form: FormData;
+  onNavigateToResponses?: (formId: string) => void;
+  onNavigateToBuilder?: (formId?: string) => void;
+  onDuplicateForm: (formId: string) => void;
+  onSaveAsTemplate: (formId: string) => void;
+  onDeleteForm: (form: FormData) => void;
+  onPreviewForm: (form: FormData) => void;
+  getQuestionCount: (form: FormData) => number;
+  savingAsTemplate: string | null;
+  deployingForm: string | null;
+}) => (
+  <Card
+    key={form.id}
+    className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
+  >
+    {/* Image or Placeholder */}
+    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100 flex items-center justify-center">
+      {form.image_url ? (
+        <EnhancedImage
+          src={formatImageUrl(form.image_url)}
+          alt={form.title || "Form image"}
+          className="w-full h-full object-contain"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-green-600">
+          <FileText className="w-12 h-12 opacity-50" />
+        </div>
+      )}
+    </div>
+
+    <CardHeader className="pb-2">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-h-[60px]">
+          <CardTitle className="text-lg line-clamp-2">
+            {form.title.slice(0, 50)}
+          </CardTitle>
+          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
+            {(form.description || "No description").slice(0, 100)}
+          </p>
+        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => onPreviewForm(form)}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              View
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onDuplicateForm(form.id)}
+            >
+              <Copy className="w-4 h-4 mr-2" />
+              Duplicate
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onSaveAsTemplate(form.id)}
+              disabled={savingAsTemplate === form.id}
+            >
+              <Star className="w-4 h-4 mr-2" />
+              {savingAsTemplate === form.id
+                ? "Saving..."
+                : "Save as Template"}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="text-red-600"
+              onClick={() => onDeleteForm(form)}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-3 pt-2 flex-1">
+      {/* In feedback-forms-management.tsx - Custom Forms Section */}
+      <div className="flex flex-wrap gap-1.5 min-h-[32px] items-start">
+        <Badge
+          variant="secondary"
+          className={`
+    ${
+      form.status === "active"
+        ? "bg-green-100 text-green-700"
+        : form.status === "draft"
+          ? "bg-yellow-100 text-yellow-700"
+          : form.status === "template"
+            ? "bg-purple-100 text-purple-700"
+            : "bg-gray-100 text-gray-700"
+    }
+    shrink-0
+  `}
+        >
+          {form.status}
+        </Badge>
+        <Badge
+          variant="outline"
+          className="border-green-200 shrink-0 max-w-[120px] truncate"
+        >
+          {form.category}
+        </Badge>
+        <Badge
+          variant="outline"
+          className="border-blue-200 shrink-0 max-w-[100px] truncate"
+        >
+          {form.target_audience}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm border-t pt-3">
+        <div>
+          <p className="text-gray-500">Responses</p>
+          <p className="font-medium">{form.submission_count}</p>
+        </div>
+        <div>
+          <p className="text-gray-500">Questions</p>
+          <p className="font-medium">
+            {getQuestionCount(form) > 0
+              ? getQuestionCount(form)
+              : "N/A"}
+          </p>
+        </div>
+      </div>
+    </CardContent>
+    <CardFooter className="flex gap-2">
+      <Button
+        variant="outline"
+        className="flex-1 border-green-200 hover:bg-green-50"
+        onClick={() => onNavigateToResponses?.(form.id)}
+      >
+        Responses
+      </Button>
+      <Button
+        className="flex-1 bg-green-500 hover:bg-green-600"
+        onClick={() => onNavigateToBuilder?.(form.id)}
+      >
+        Edit
+      </Button>
+    </CardFooter>
+  </Card>
+));
+
+// Memoized Template Form Card Component for performance
+const TemplateFormCard = memo(({
+  template,
+  onNavigateToBuilder,
+  onDuplicateForm,
+  getQuestionCount
+}: {
+  template: FormData;
+  onNavigateToBuilder?: (formId?: string) => void;
+  onDuplicateForm: (formId: string) => void;
+  getQuestionCount: (form: FormData) => number;
+}) => (
+  <Card
+    key={template.id}
+    className="border-purple-100 hover:shadow-lg transition-shadow bg-gradient-to-br from-white to-purple-50/30 overflow-hidden flex flex-col"
+  >
+    {/* Add image display here */}
+    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
+      {template.image_url ? (
+        <EnhancedImage
+          src={formatImageUrl(template.image_url)}
+          alt={template.title || "Template image"}
+          className="w-full h-full object-contain"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center text-purple-600">
+          <FileText className="w-12 h-12 opacity-50" />
+        </div>
+      )}
+    </div>
+
+    <CardHeader className="pb-2">
+      <div className="flex items-start justify-between">
+        <div className="flex-1 min-h-[60px]">
+          <div className="flex items-center gap-2 mb-2">
+            <CardTitle className="text-lg line-clamp-2">
+              {template.title.slice(0, 50)}
+            </CardTitle>
+            <Star className="w-4 h-4 text-purple-500 fill-purple-500 shrink-0" />
+          </div>
+          <p className="text-sm text-gray-500 line-clamp-2">
+            {template.description?.slice(0, 100) || "Template form"}
+          </p>
+        </div>
+      </div>
+    </CardHeader>
+    <CardContent className="space-y-3 pt-2 flex-1">
+      <div className="flex flex-wrap gap-1.5 min-h-[32px] items-start">
+        <Badge
+          variant="secondary"
+          className="bg-purple-100 text-purple-700 shrink-0"
+        >
+          Template
+        </Badge>
+        <Badge
+          variant="outline"
+          className="border-purple-200 shrink-0 max-w-[120px] truncate"
+        >
+          {template.category}
+        </Badge>
+        <Badge
+          variant="outline"
+          className="border-blue-200 shrink-0 max-w-[100px] truncate"
+        >
+          {template.target_audience}
+        </Badge>
+      </div>
+      <div className="grid grid-cols-2 gap-2 text-sm border-t pt-3">
+        <div>
+          <p className="text-gray-500">Questions</p>
+          <p className="font-medium">
+            {getQuestionCount(template) > 0
+              ? getQuestionCount(template)
+              : "N/A"}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-500">Category</p>
+          <p className="font-medium">{template.category}</p>
+        </div>
+      </div>
+    </CardContent>
+    <CardFooter className="flex gap-2">
+      <Button
+        variant="outline"
+        className="flex-1 border-purple-200 hover:bg-purple-50"
+        onClick={() => onDuplicateForm(template.id)}
+      >
+        <Copy className="w-4 h-4 mr-2" />
+        Use Template
+      </Button>
+      <Button
+        className="flex-1 bg-purple-500 hover:bg-purple-600"
+        onClick={() => onNavigateToBuilder?.(template.id)}
+      >
+        Edit
+      </Button>
+    </CardFooter>
+  </Card>
+));
+
+TemplateFormCard.displayName = 'TemplateFormCard';
+
+FormCard.displayName = 'FormCard';
+
 export function FeedbackFormsManagement({
   onNavigateToBuilder,
   onNavigateToResponses,
 }: FeedbackFormsManagementProps = {}) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -138,6 +402,15 @@ export function FeedbackFormsManagement({
   const [editFormDescription, setEditFormDescription] = useState("");
   const [editFormCategory, setEditFormCategory] = useState("Academic");
   const [editFormTarget, setEditFormTarget] = useState("All Users");
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Load forms and categories on component mount
   useEffect(() => {
@@ -278,24 +551,28 @@ export function FeedbackFormsManagement({
     }
   };
 
-  // Filter forms based on search and filters
-  const filteredCustomForms = customForms.filter((form) => {
-    const matchesSearch =
-      form.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      form.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || form.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Memoized filtered forms for performance
+  const filteredCustomForms = useMemo(() => {
+    return customForms.filter((form) => {
+      const matchesSearch =
+        form.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        form.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "all" || form.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [customForms, debouncedSearchQuery, selectedCategory]);
 
-  const filteredTemplateForms = templateForms.filter((form) => {
-    const matchesSearch =
-      form.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      form.description.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      selectedCategory === "all" || form.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  const filteredTemplateForms = useMemo(() => {
+    return templateForms.filter((form) => {
+      const matchesSearch =
+        form.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        form.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase());
+      const matchesCategory =
+        selectedCategory === "all" || form.category === selectedCategory;
+      return matchesSearch && matchesCategory;
+    });
+  }, [templateForms, debouncedSearchQuery, selectedCategory]);
 
   const handlePreviewForm = async (form: FormData) => {
     try {
@@ -313,11 +590,11 @@ export function FeedbackFormsManagement({
   };
 
   // Handler for creating a new form (navigates directly to builder)
-  const handleCreateNewForm = () => {
+  const handleCreateNewForm = useCallback(() => {
     onNavigateToBuilder?.(undefined, 'custom');
-  };
+  }, [onNavigateToBuilder]);
 
-  const handleDuplicateForm = async (formId: string) => {
+  const handleDuplicateForm = useCallback(async (formId: string) => {
     try {
       const result = await duplicateForm(formId);
       if (result.success) {
@@ -331,7 +608,7 @@ export function FeedbackFormsManagement({
       console.error("Error duplicating form:", error);
       toast.error("An error occurred while duplicating the form");
     }
-  };
+  }, []);
 
   const handleDeleteForm = async (form: FormData) => {
     try {
@@ -532,8 +809,8 @@ export function FeedbackFormsManagement({
     setFormQuestionCache((prev) => ({ ...prev, ...newCache }));
   }, [customForms, templateForms]);
 
-  // Function to get question count with cache fallback
-  const getQuestionCount = (form: FormData): number => {
+  // Memoized function to get question count with cache fallback
+  const getQuestionCount = useCallback((form: FormData): number => {
     // First check if we have cached data for this form
     if (formQuestionCache[form.id] !== undefined) {
       return formQuestionCache[form.id];
@@ -549,15 +826,15 @@ export function FeedbackFormsManagement({
     }
 
     return 0;
-  };
+  }, [formQuestionCache]);
 
-  // Function to update question cache
-  const updateQuestionCache = (formId: string, questionCount: number) => {
+  // Memoized function to update question cache
+  const updateQuestionCache = useCallback((formId: string, questionCount: number) => {
     setFormQuestionCache((prev) => ({
       ...prev,
       [formId]: questionCount,
     }));
-  };
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -1021,9 +1298,73 @@ export function FeedbackFormsManagement({
 
       {/* Loading State */}
       {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-          <p className="mt-2 text-gray-600">Loading forms...</p>
+        <div className="space-y-6">
+          {/* Header Skeleton */}
+          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <div className="h-8 bg-green-200 rounded animate-pulse mb-2"></div>
+                <div className="h-5 bg-green-100 rounded animate-pulse w-64"></div>
+              </div>
+              <div className="h-10 bg-green-200 rounded animate-pulse w-40"></div>
+            </div>
+          </div>
+
+          {/* Search and Filters Skeleton */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+            <div className="h-10 bg-gray-200 rounded animate-pulse w-[180px]"></div>
+          </div>
+
+          {/* Tabs Skeleton */}
+          <div className="space-y-4">
+            <div className="h-10 bg-gray-200 rounded animate-pulse w-80 mx-auto"></div>
+
+            {/* Forms Grid Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <Card key={i} className="border-green-100 overflow-hidden flex flex-col">
+                  {/* Image Placeholder */}
+                  <div className="w-full h-40 bg-gradient-to-br from-green-100 to-lime-100 animate-pulse"></div>
+
+                  <CardHeader className="pb-2">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
+                        <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4"></div>
+                      </div>
+                      <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="space-y-3 pt-2 flex-1">
+                    <div className="flex flex-wrap gap-1.5">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-20"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-24"></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm border-t pt-3">
+                      <div>
+                        <div className="h-4 bg-gray-100 rounded animate-pulse mb-1"></div>
+                        <div className="h-5 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                      <div>
+                        <div className="h-4 bg-gray-100 rounded animate-pulse mb-1"></div>
+                        <div className="h-5 bg-gray-200 rounded animate-pulse"></div>
+                      </div>
+                    </div>
+                  </CardContent>
+
+                  <CardFooter className="flex gap-2">
+                    <div className="h-9 bg-gray-200 rounded animate-pulse flex-1"></div>
+                    <div className="h-9 bg-green-200 rounded animate-pulse flex-1"></div>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       ) : error ? (
         <div className="text-center py-12">
@@ -1075,138 +1416,19 @@ export function FeedbackFormsManagement({
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredCustomForms.map((form) => (
-                  <Card
+                  <FormCard
                     key={form.id}
-                    className="border-green-100 hover:shadow-lg transition-shadow overflow-hidden flex flex-col"
-                  >
-                    {/* Image or Placeholder */}
-                    <div className="w-full h-40 overflow-hidden bg-gradient-to-br from-green-100 to-lime-100 flex items-center justify-center">
-                      {form.image_url ? (
-                        <EnhancedImage
-                          src={formatImageUrl(form.image_url)}
-                          alt={form.title || "Form image"}
-                          className="w-full h-full object-contain"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-green-600">
-                          <FileText className="w-12 h-12 opacity-50" />
-                        </div>
-                      )}
-                    </div>
-
-                    <CardHeader className="pb-2">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-h-[60px]">
-                          <CardTitle className="text-lg line-clamp-2">
-                            {form.title.slice(0, 50)}
-                          </CardTitle>
-                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">
-                            {(form.description || "No description").slice(0, 100)}
-                          </p>
-                        </div>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreVertical className="w-4 h-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => handlePreviewForm(form)}
-                            >
-                              <FileText className="w-4 h-4 mr-2" />
-                              View
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleDuplicateForm(form.id)}
-                            >
-                              <Copy className="w-4 h-4 mr-2" />
-                              Duplicate
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => handleSaveAsTemplate(form.id)}
-                              disabled={savingAsTemplate === form.id}
-                            >
-                             <Star className="w-4 h-4 mr-2" />
-                              {savingAsTemplate === form.id
-                                ? "Saving..."
-                                : "Save as Template"}
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-red-600"
-                              onClick={() => openDeleteDialog(form)}
-                            >
-                              <Trash2 className="w-4 h-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-3 pt-2 flex-1">
-                      {/* In feedback-forms-management.tsx - Custom Forms Section */}
-                      <div className="flex flex-wrap gap-1.5 min-h-[32px] items-start">
-                        <Badge
-                          variant="secondary"
-                          className={`
-      ${
-        form.status === "active"
-          ? "bg-green-100 text-green-700"
-          : form.status === "draft"
-            ? "bg-yellow-100 text-yellow-700"
-            : form.status === "template"
-              ? "bg-purple-100 text-purple-700"
-              : "bg-gray-100 text-gray-700"
-      }
-      shrink-0
-    `}
-                        >
-                          {form.status}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="border-green-200 shrink-0 max-w-[120px] truncate"
-                        >
-                          {form.category}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="border-blue-200 shrink-0 max-w-[100px] truncate"
-                        >
-                          {form.target_audience}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 text-sm border-t pt-3">
-                        <div>
-                          <p className="text-gray-500">Responses</p>
-                          <p className="font-medium">{form.submission_count}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">Questions</p>
-                          <p className="font-medium">
-                            {getQuestionCount(form) > 0
-                              ? getQuestionCount(form)
-                              : "N/A"}
-                          </p>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        className="flex-1 border-green-200 hover:bg-green-50"
-                        onClick={() => onNavigateToResponses?.(form.id)}
-                      >
-                        Responses
-                      </Button>
-                      <Button
-                        className="flex-1 bg-green-500 hover:bg-green-600"
-                        onClick={() => onNavigateToBuilder?.(form.id)}
-                      >
-                        Edit
-                      </Button>
-                    </CardFooter>
-                  </Card>
+                    form={form}
+                    onNavigateToResponses={onNavigateToResponses}
+                    onNavigateToBuilder={onNavigateToBuilder}
+                    onDuplicateForm={handleDuplicateForm}
+                    onSaveAsTemplate={handleSaveAsTemplate}
+                    onDeleteForm={openDeleteDialog}
+                    onPreviewForm={handlePreviewForm}
+                    getQuestionCount={getQuestionCount}
+                    savingAsTemplate={savingAsTemplate}
+                    deployingForm={deployingForm}
+                  />
                 ))}
               </div>
             )}
