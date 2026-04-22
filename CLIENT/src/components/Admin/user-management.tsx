@@ -1011,6 +1011,90 @@ export function UserManagement() {
     }
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
+        </div>
+
+        {/* Search and Filters Skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-80"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className="flex gap-2 mb-6">
+          <div className="h-10 bg-green-200 rounded animate-pulse w-16"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-20"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-20"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-16"></div>
+        </div>
+
+        {/* Pending Section Skeleton */}
+        <Card className="border-yellow-200">
+          <CardHeader className="bg-yellow-50">
+            <div className="h-6 bg-yellow-200 rounded animate-pulse w-48"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-48"></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Users Table Skeleton */}
+        <Card className="border-gray-200">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-40"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 border rounded">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-40"></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                    <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}

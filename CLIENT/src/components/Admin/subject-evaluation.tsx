@@ -934,10 +934,54 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 /* Subjects Cards Grid - WITH EXPANDED INLINE DETAILS */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {loadingAllSubjects ? (
-                <div className="col-span-full text-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
-                  <p className="mt-2 text-gray-600">Loading subjects...</p>
-                </div>
+                // Skeleton loading for subjects
+                <>
+                  {[1, 2, 3, 4].map((i) => (
+                    <Card key={i} className="border-green-100">
+                      <CardContent className="p-4">
+                        {/* Subject Header Skeleton */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-green-100 animate-pulse"></div>
+                            <div>
+                              <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                              <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+                              <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
+                            </div>
+                          </div>
+                          <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                        </div>
+
+                        {/* Expanded Inline Details Skeleton */}
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                          <div className="bg-blue-50 rounded-lg p-2 text-center">
+                            <div className="w-4 h-4 bg-blue-200 rounded animate-pulse mx-auto mb-1"></div>
+                            <div className="h-4 bg-blue-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                            <div className="h-3 bg-blue-100 rounded animate-pulse w-12 mx-auto"></div>
+                          </div>
+
+                          <div className="bg-green-50 rounded-lg p-2 text-center">
+                            <div className="w-4 h-4 bg-green-200 rounded animate-pulse mx-auto mb-1"></div>
+                            <div className="h-4 bg-green-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                            <div className="h-3 bg-green-100 rounded animate-pulse w-12 mx-auto"></div>
+                          </div>
+
+                          <div className="bg-purple-50 rounded-lg p-2 text-center">
+                            <div className="w-4 h-4 bg-purple-200 rounded animate-pulse mx-auto mb-1"></div>
+                            <div className="h-4 bg-purple-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                            <div className="h-3 bg-purple-100 rounded animate-pulse w-12 mx-auto"></div>
+                          </div>
+
+                          <div className="bg-orange-50 rounded-lg p-2 text-center">
+                            <div className="w-4 h-4 bg-orange-200 rounded animate-pulse mx-auto mb-1"></div>
+                            <div className="h-4 bg-orange-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                            <div className="h-3 bg-orange-100 rounded animate-pulse w-12 mx-auto"></div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </>
               ) : filteredSubjects.length === 0 ? (
                 <div className="col-span-full text-center py-12">
                   <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
