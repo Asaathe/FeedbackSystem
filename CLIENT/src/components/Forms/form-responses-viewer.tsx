@@ -53,6 +53,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
   const [filteredResponses, setFilteredResponses] = useState<FormResponse[]>([]);
   const [form, setForm] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [formLoading, setFormLoading] = useState(false);
+  const [responsesLoading, setResponsesLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedResponse, setSelectedResponse] = useState<FormResponse | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
@@ -256,15 +258,25 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
 
   const loadFormAndResponses = async () => {
     setLoading(true);
+    setFormLoading(true);
+    setResponsesLoading(true);
+
     try {
-      // Load form details
-      const formResult = await getForm(formId);
+      // Load form details and responses in parallel for better performance
+      const [formResult, responsesResult] = await Promise.all([
+        getForm(formId).finally(() => setFormLoading(false)),
+        getFormResponses(formId, 1, 100).finally(() => setResponsesLoading(false)) // Load up to 100 responses at once
+      ]);
+
+      // Handle form loading
       if (formResult.success && formResult.form) {
         setForm(formResult.form);
+      } else {
+        console.error("Failed to load form:", formResult.message);
+        toast.error(formResult.message || "Failed to load form details");
       }
 
-      // Load responses
-      const responsesResult = await getFormResponses(formId);
+      // Handle responses loading
       if (responsesResult.success) {
         console.log("Responses loaded:", responsesResult.responses.length);
         setResponses(responsesResult.responses);
@@ -276,6 +288,8 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     } catch (error) {
       console.error("Error loading form responses:", error);
       toast.error("Failed to load form responses");
+      setFormLoading(false);
+      setResponsesLoading(false);
     } finally {
       setLoading(false);
     }
@@ -903,7 +917,22 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
     return (
       <div className="text-center py-12">
         <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-        <p className="mt-2 text-gray-600">Loading responses...</p>
+        <div className="mt-2 space-y-1">
+          <p className="text-gray-600">
+            {formLoading && responsesLoading
+              ? "Loading form and responses..."
+              : formLoading
+                ? "Loading form details..."
+                : responsesLoading
+                  ? "Loading responses..."
+                  : "Preparing data..."
+            }
+          </p>
+          <div className="flex justify-center gap-4 text-xs text-gray-500">
+            {formLoading && <span>📄 Form</span>}
+            {responsesLoading && <span>📊 Responses</span>}
+          </div>
+        </div>
       </div>
     );
   }

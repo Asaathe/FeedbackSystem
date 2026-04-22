@@ -1622,8 +1622,12 @@ export interface FormResponse {
 }
 
 // Get form responses for analysis
-export const getFormResponses = async (formId: string): Promise<{ success: boolean; responses: FormResponse[]; form?: any; pagination?: any; message: string }> => {
-  logDebug('getFormResponses called with formId:', formId);
+export const getFormResponses = async (
+  formId: string,
+  page: number = 1,
+  limit: number = 50
+): Promise<{ success: boolean; responses: FormResponse[]; form?: any; pagination?: any; message: string }> => {
+  logDebug('getFormResponses called with formId:', formId, 'page:', page, 'limit:', limit);
 
   try {
     const token = sessionStorage.getItem('authToken') || localStorage.getItem('auth_token') || localStorage.getItem('token');
@@ -1632,7 +1636,7 @@ export const getFormResponses = async (formId: string): Promise<{ success: boole
       return { success: false, responses: [], message: 'No authentication token found' };
     }
 
-    const apiUrl = `${API_BASE}/api/forms/${formId}/responses`;
+    const apiUrl = `${API_BASE}/api/forms/${formId}/responses?page=${page}&limit=${limit}`;
     logDebug(`Making GET request to: ${apiUrl}`);
 
     const response = await fetch(apiUrl, {
