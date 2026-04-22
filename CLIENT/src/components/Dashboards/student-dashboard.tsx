@@ -16,34 +16,39 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
   const [formStats, setFormStats] = useState({ pending: 0, completed: 0, total: 0, completionRate: 0 });
   const [completedForms, setCompletedForms] = useState<Array<{title: string, date: string, rating?: number}>>([]);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
-      const forms = await getFormsForUserRole('student');
-      setPublishedForms(forms);
-      const stats = await getFormStatsForUser('student');
-      setFormStats(stats);
-      const completed = await getCompletedFormsForUser('student');
-      setCompletedForms(completed || []);
-
-      // Fetch submitted form ids
       try {
-        const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
-        if (token) {
-          const response = await fetch('/api/forms/my-responses', {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          if (response.ok) {
-            const result = await response.json();
-            const submittedIds = new Set<string>(result.responses?.map((r: any) => String(r.form_id)) || []);
-            setSubmittedFormIds(submittedIds);
+        const forms = await getFormsForUserRole('student');
+        setPublishedForms(forms);
+        const stats = await getFormStatsForUser('student');
+        setFormStats(stats);
+        const completed = await getCompletedFormsForUser('student');
+        setCompletedForms(completed || []);
+
+        // Fetch submitted form ids
+        try {
+          const token = localStorage.getItem('token') || sessionStorage.getItem('authToken');
+          if (token) {
+            const response = await fetch('/api/forms/my-responses', {
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            if (response.ok) {
+              const result = await response.json();
+              const submittedIds = new Set<string>(result.responses?.map((r: any) => String(r.form_id)) || []);
+              setSubmittedFormIds(submittedIds);
+            }
           }
+        } catch (error) {
+          console.error('Error fetching submitted forms:', error);
         }
-      } catch (error) {
-        console.error('Error fetching submitted forms:', error);
+      } finally {
+        setLoading(false);
       }
     };
     loadData();
@@ -85,6 +90,88 @@ export function StudentDashboard({ onNavigate }: StudentDashboardProps = {}) {
 
   // Get completed forms count
   const completedFormsCount = publishedForms.filter(form => form.assignment_status === 'completed').length;
+
+  // Full-page skeleton loader for initial loading
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+              <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-2 w-12"></div>
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Pending Forms Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-48"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-start justify-between mb-2">
+                    <div className="flex-1">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-32"></div>
+                    </div>
+                    <div className="text-right ml-4">
+                      <div className="h-4 bg-gray-100 rounded animate-pulse mb-1 w-20"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-16"></div>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recently Completed Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-40"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="h-5 w-5 bg-gray-200 rounded animate-pulse"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

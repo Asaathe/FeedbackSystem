@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -74,11 +74,35 @@ function ContentRenderer({
 }: ContentRendererProps) {
   if (loading) {
     return (
-      <div className="text-center py-8">
-        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-        <p className="mt-2 text-gray-600">
-          {isExternalMode ? "Loading feedback form..." : "Loading your assigned forms..."}
-        </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i} className="border-green-100 hover:shadow-md transition-shadow overflow-hidden">
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
+                <div className="flex-1">
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-48"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mt-2 w-16"></div>
+                </div>
+                <div className="h-16 w-16 bg-gray-200 rounded-lg animate-pulse ml-4 flex-shrink-0"></div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                <div className="flex items-center text-sm text-gray-600">
+                  <div className="h-4 w-4 bg-gray-100 rounded animate-pulse mr-1"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-32"></div>
+                </div>
+                <div className="flex items-center text-sm text-gray-600">
+                  <div className="h-4 w-4 bg-gray-100 rounded animate-pulse mr-1"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-24"></div>
+                </div>
+                <div className="h-4 bg-orange-100 rounded animate-pulse w-28"></div>
+                <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }
@@ -288,10 +312,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
     loadSubmittedForms();
   }, []);
 
-  // Mobile swipe gesture handling
-  const touchStartX = useRef<number>(0);
-  const touchStartY = useRef<number>(0);
-  const minSwipeDistance = 50;
+  // Touch gesture handling removed to prevent accidental navigation
 
   // Build pages array from questions - each page is either a standalone question or a section with all its questions
   const buildPages = (questions: FormQuestion[], sections: FormSection[]) => {
@@ -342,39 +363,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   const totalPages = currentPages.length;
   console.log("Page calculation:", { selectedForm: !!selectedForm, questionsCount: selectedForm?.questions?.length, currentPagesLength: currentPages.length, totalPages });
 
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  };
 
-  const handleTouchEnd = (e: React.TouchEvent) => {
-    if (!touchStartX.current || !touchStartY.current) return;
-
-    const touchEndX = e.changedTouches[0].clientX;
-    const touchEndY = e.changedTouches[0].clientY;
-    const deltaX = touchStartX.current - touchEndX;
-    const deltaY = touchStartY.current - touchEndY;
-
-    // Only handle horizontal swipes (ignore vertical scrolls)
-    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
-      if (deltaX > 0) {
-        // Swipe left - next page
-        if (currentPageIndex < totalPages - 1) {
-          setCurrentPageIndex(currentPageIndex + 1);
-        }
-      } else {
-        // Swipe right - previous page
-        if (currentPageIndex > 0) {
-          setCurrentPageIndex(currentPageIndex - 1);
-        } else {
-          handleBack();
-        }
-      }
-    }
-
-    touchStartX.current = 0;
-    touchStartY.current = 0;
-  };
 
   // Load external form when externalFormId or externalToken is provided (for public feedback links)
   // ✅ THIS MUST RUN FIRST BEFORE THE OTHER USEEFFECT!
@@ -843,15 +832,15 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       case "rating":
         const maxStars = (question as any).max || 5;
         return (
-          <div className="flex gap-2 sm:gap-3 justify-center py-4">
+          <div className="flex gap-3 sm:gap-3 justify-center py-6 sm:py-4">
             {Array.from({ length: maxStars }, (_, i) => i + 1).map((star) => (
               <button
                 key={star}
                 onClick={() => setAnswers({ ...answers, [question.id]: star })}
-                className={`text-3xl sm:text-4xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center rounded ${
+                className={`text-4xl sm:text-4xl transition-colors min-h-[48px] min-w-[48px] flex items-center justify-center rounded touch-manipulation hover:scale-110 ${
                   answers[question.id] >= star
-                    ? "text-yellow-400"
-                    : "text-gray-300"
+                    ? "text-yellow-400 drop-shadow-sm"
+                    : "text-gray-300 hover:text-yellow-200"
                 }`}
               >
                 ★
@@ -868,21 +857,22 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               setAnswers({ ...answers, [question.id]: value })
             }
           >
-            <div className="space-y-3">
+            <div className="space-y-4 sm:space-y-3">
               {question.options?.map((option) => (
                 <div
                   key={option.id || option.option_text}
-                  className="flex items-center space-x-2"
+                  className="flex items-center space-x-3 py-1"
                 >
                   <RadioGroupItem
                     value={option.option_text}
                     id={`${question.id}-${option.id || option.option_text}`}
+                    className="min-h-[44px] min-w-[44px]"
                   />
                   <Label
                     htmlFor={`${question.id}-${
                       option.id || option.option_text
                     }`}
-                    className="cursor-pointer"
+                    className="cursor-pointer text-base sm:text-sm leading-relaxed py-2"
                   >
                     {option.option_text}
                   </Label>
@@ -894,11 +884,11 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
       case "checkbox":
         return (
-          <div className="space-y-3">
+          <div className="space-y-4 sm:space-y-3">
             {question.options?.map((option) => (
               <div
                 key={option.id || option.option_text}
-                className="flex items-center space-x-2"
+                className="flex items-center space-x-3 py-1"
               >
                 <Checkbox
                   id={`${question.id}-${option.id || option.option_text}`}
@@ -916,10 +906,11 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
                           ),
                     });
                   }}
+                  className="min-h-[44px] min-w-[44px]"
                 />
                 <Label
                   htmlFor={`${question.id}-${option.id || option.option_text}`}
-                  className="cursor-pointer"
+                  className="cursor-pointer text-base sm:text-sm leading-relaxed py-2"
                 >
                   {option.option_text}
                 </Label>
@@ -936,7 +927,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               setAnswers({ ...answers, [question.id]: value })
             }
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-14 sm:h-10 min-h-[44px] touch-manipulation">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
@@ -944,6 +935,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
                 <SelectItem
                   key={option.id || option.option_text}
                   value={option.option_text}
+                  className="py-3 px-4 text-base sm:text-sm"
                 >
                   {option.option_text}
                 </SelectItem>
@@ -958,19 +950,19 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
         const currentValue = answers[question.id] || minVal;
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-center gap-1 sm:gap-2">
-              <span className="text-xs sm:text-sm text-gray-500">{minVal}</span>
-              <div className="flex gap-1 sm:gap-2 overflow-x-auto pb-2">
+            <div className="flex items-center justify-center gap-2 sm:gap-2">
+              <span className="text-sm sm:text-sm text-gray-500 font-medium">{minVal}</span>
+              <div className="flex gap-2 sm:gap-2 overflow-x-auto pb-2 px-2">
                 {Array.from({ length: maxVal - minVal + 1 }, (_, i) => minVal + i).map((num) => (
                   <button
                     key={num}
                     onClick={() =>
                       setAnswers({ ...answers, [question.id]: num })
                     }
-                    className={`w-10 h-10 sm:w-12 sm:h-12 rounded border-2 transition-all flex-shrink-0 min-h-[44px] min-w-[44px] ${
+                    className={`w-12 h-12 sm:w-12 sm:h-12 rounded border-2 transition-all flex-shrink-0 min-h-[48px] min-w-[48px] touch-manipulation text-base font-medium ${
                       answers[question.id] === num
-                        ? "border-green-500 bg-green-500 text-white"
-                        : "border-gray-300 hover:border-green-300"
+                        ? "border-green-500 bg-green-500 text-white shadow-md"
+                        : "border-gray-300 hover:border-green-300 bg-white"
                     }`}
                   >
                     {num}
@@ -990,7 +982,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               setAnswers({ ...answers, [question.id]: e.target.value })
             }
             placeholder="Type your answer here..."
-            className="h-12 sm:h-10 text-base"
+            className="h-14 sm:h-10 text-base min-h-[44px] touch-manipulation"
           />
         );
 
@@ -1003,7 +995,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             }
             placeholder="Type your answer here..."
             rows={5}
-            className="text-base"
+            className="text-base resize-none min-h-[120px] touch-manipulation"
           />
         );
 
@@ -1070,19 +1062,19 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
   // Render a single question card
   const renderQuestionCard = (question: FormQuestion) => (
-    <div key={question.id} className="bg-white rounded-xl shadow-md border border-green-100 p-3 sm:p-4 mb-4">
-      <div className="space-y-3">
+    <div key={question.id} className="bg-white rounded-xl shadow-md border border-green-100 p-4 sm:p-4 mb-6 sm:mb-4">
+      <div className="space-y-4 sm:space-y-3">
         {/* Question Header */}
-        <div className="pb-3 border-b border-gray-100">
+        <div className="pb-4 sm:pb-3 border-b border-gray-100">
           <div className="flex-1 min-w-0">
-            <h3 className="text-base sm:text-lg text-gray-900 mb-1 leading-tight break-words">
+            <h3 className="text-lg sm:text-lg text-gray-900 mb-2 sm:mb-1 leading-tight break-words font-medium">
               {question.question}
               {question.required && (
                 <span className="text-red-500 ml-1.5">*</span>
               )}
             </h3>
             {question.description && (
-              <p className="text-sm text-gray-500 mt-1 leading-relaxed break-words">
+              <p className="text-sm text-gray-500 mt-2 sm:mt-1 leading-relaxed break-words">
                 {question.description}
               </p>
             )}
@@ -1090,7 +1082,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
         </div>
 
         {/* Answer Input Area */}
-        <div className="pt-1">{renderQuestionInput(question)}</div>
+        <div className="pt-2 sm:pt-1">{renderQuestionInput(question)}</div>
       </div>
     </div>
   );
@@ -1098,26 +1090,24 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   return (
     <div
       className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-50"
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
     >
-      <div className="max-w-4xl mx-auto px-4 py-4 sm:py-8 space-y-4 sm:space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-4 py-6 sm:py-8 space-y-6 sm:space-y-6">
         {/* University Header Banner */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-lime-600 px-8 py-6">
+          <div className="bg-gradient-to-r from-green-600 to-lime-600 px-6 sm:px-8 py-8 sm:py-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-white text-2xl mb-1">
+                <h1 className="text-white text-2xl sm:text-2xl mb-2 sm:mb-1">
                   FeedbACTS System
                 </h1>
-                <p className="text-green-50 text-sm">
+                <p className="text-green-50 text-base sm:text-sm">
                   Your feedback helps us improve educational excellence
                 </p>
               </div>
               <Button
                 variant="ghost"
                 onClick={handleBack}
-                className="text-white hover:bg-white/20 border border-white/30 h-10 px-4 sm:px-6 text-sm whitespace-nowrap"
+                className="text-white hover:bg-white/20 border border-white/30 h-12 sm:h-10 px-4 sm:px-6 text-sm whitespace-nowrap min-h-[44px] touch-manipulation"
               >
                 <ArrowLeft className="w-4 h-4 mr-2" />
                 Exit Form
@@ -1126,7 +1116,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
           </div>
 
           {/* Form Title Section */}
-          <div className="px-8 py-6 border-b border-gray-100">
+          <div className="px-6 sm:px-8 py-8 sm:py-6 border-b border-gray-100">
             {/* External Supervisor Info - shown only in external mode */}
             {isExternalMode && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -1198,7 +1188,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
           </div>
 
           {/* Progress Section */}
-          <div className="px-4 sm:px-8 py-4 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
+          <div className="px-4 sm:px-8 py-6 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 text-sm">
                 <span className="text-gray-700">
@@ -1271,7 +1261,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
         )}
 
         {/* Navigation Footer */}
-        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-4 sm:px-8 py-4 sm:py-5">
+        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-4 sm:px-8 py-6 sm:py-5">
           <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 sm:gap-0">
             <Button
               variant="outline"
@@ -1282,10 +1272,10 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
                   handleBack();
                 }
               }}
-              className="border-gray-300 hover:bg-gray-50 px-3 sm:px-4 h-10 text-sm whitespace-nowrap w-auto"
+              className="border-gray-300 hover:bg-gray-50 px-4 sm:px-4 h-12 sm:h-10 text-sm whitespace-nowrap w-auto min-h-[44px] touch-manipulation"
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
-              
+
               <span className="sm:hidden">
                 {currentPageIndex === 0 ? "Back" : "Prev"}
               </span>
@@ -1300,18 +1290,18 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             {isLastPage ? (
               <Button
                 onClick={handleSubmit}
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-3 sm:px-4 shadow-md h-10 text-sm whitespace-nowrap w-auto"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-4 sm:px-4 shadow-md h-12 sm:h-10 text-sm whitespace-nowrap w-auto min-h-[44px] touch-manipulation"
               >
                 <Send className="w-4 h-4 mr-2" />
                 <span className="hidden sm:inline">Submit Feedback</span>
-                
+
               </Button>
             ) : (
               <Button
                 onClick={() => setCurrentPageIndex(currentPageIndex + 1)}
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-3 sm:px-4 h-10 text-sm whitespace-nowrap w-auto"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-4 sm:px-4 h-12 sm:h-10 text-sm whitespace-nowrap w-auto min-h-[44px] touch-manipulation"
               >
-                
+
                 <span className="sm:hidden ml-2">Next</span>
                 <svg
                   className="w-4 h-4 ml-2"

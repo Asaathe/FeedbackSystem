@@ -224,13 +224,53 @@ export function MySubmissions({ userRole = 'student' }: MySubmissionsProps) {
   if (loading) {
     return (
       <div className="space-y-4">
+        {/* Header Skeleton */}
         <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-          <h2 className="text-2xl">My Submissions</h2>
-          <p className="text-gray-600 mt-1">View all your assigned feedback forms</p>
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-64"></div>
+
+          {/* Status Summary Skeleton */}
+          <div className="flex gap-4 mt-4">
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="h-4 bg-gray-100 rounded animate-pulse w-20"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="h-3 w-3 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="h-4 bg-gray-100 rounded animate-pulse w-16"></div>
+            </div>
+          </div>
         </div>
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-          <p className="mt-2 text-gray-600">Loading your forms...</p>
+
+        {/* Submissions List Skeleton */}
+        <div className="space-y-3">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-green-100 overflow-hidden">
+              <div className="p-4 bg-gradient-to-r from-green-50 to-lime-50">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse flex items-center justify-center">
+                      <div className="h-5 w-5 bg-gray-300 rounded animate-pulse"></div>
+                    </div>
+                    <div>
+                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-1 w-40"></div>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="h-4 bg-gray-100 rounded animate-pulse w-16"></div>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-12"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="h-3 bg-gray-100 rounded animate-pulse mb-1 w-16"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                    </div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
     );
