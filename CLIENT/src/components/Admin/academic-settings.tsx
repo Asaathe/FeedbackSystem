@@ -442,10 +442,71 @@ export function AcademicSettings({ onNavigate }: AcademicSettingsProps = {}) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading settings...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-green-200 rounded animate-pulse"></div>
+            <div>
+              <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+              <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className="space-y-6">
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-80 mx-auto"></div>
+
+          {/* Department Selector Card Skeleton */}
+          <Card className="border-blue-100">
+            <CardHeader>
+              <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-56"></div>
+              <div className="h-4 bg-gray-100 rounded animate-pulse w-72"></div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex justify-end">
+                <div className="h-10 bg-blue-200 rounded animate-pulse w-32"></div>
+              </div>
+              <div className="bg-blue-50 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-4 bg-blue-200 rounded animate-pulse w-24"></div>
+                  <div className="h-6 bg-green-200 rounded animate-pulse w-40"></div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 bg-blue-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-blue-100 rounded animate-pulse w-64"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Periods List Card Skeleton */}
+          <Card className="border-gray-100">
+            <CardHeader>
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-64"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-12 h-12 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 bg-gray-200 rounded animate-pulse w-20"></div>
+                      <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                      <div className="h-8 bg-gray-200 rounded animate-pulse w-12"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

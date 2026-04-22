@@ -192,11 +192,82 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading system settings...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 bg-green-200 rounded animate-pulse"></div>
+            <div>
+              <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+              <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
+            </div>
+          </div>
         </div>
+
+        {/* Emergency Notice Skeleton */}
+        <Card className="border-amber-200 bg-amber-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <div className="w-5 h-5 bg-amber-200 rounded animate-pulse mt-0.5"></div>
+              <div className="flex-1">
+                <div className="h-5 bg-amber-200 rounded animate-pulse mb-2 w-48"></div>
+                <div className="h-4 bg-amber-100 rounded animate-pulse w-full mb-1"></div>
+                <div className="h-4 bg-amber-100 rounded animate-pulse w-3/4"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Backup Actions Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+            <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-4">
+              <div className="h-10 bg-green-200 rounded animate-pulse w-40"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
+            </div>
+
+            {/* Backup Statistics Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="text-center">
+                  <div className="h-8 bg-gray-200 rounded animate-pulse mb-2 mx-auto w-12"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-20 mx-auto"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Backups List Skeleton */}
+        <Card className="border-gray-100">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+            <div className="h-4 bg-gray-100 rounded animate-pulse w-48"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-12"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

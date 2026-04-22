@@ -370,11 +370,67 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   // Loading state
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-green-500 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading subject evaluation data...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
         </div>
+
+        {/* View Toggle Skeleton */}
+        <div className="flex gap-2 mb-6">
+          <div className="h-10 bg-green-200 rounded animate-pulse w-32"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-36"></div>
+        </div>
+
+        {/* Statistics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-gray-200">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-24"></div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </div>
+                  <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Subjects List Skeleton */}
+        <Card className="border-gray-200">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-40"></div>
+            <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="p-4 rounded-lg border border-gray-200">
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="flex-1">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+                    </div>
+                    <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {[1, 2, 3, 4].map((j) => (
+                      <div key={j} className="bg-gray-50 rounded-lg p-3 text-center">
+                        <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -407,10 +463,24 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
         {/* Rubric Breakdown Table - Only show relevant breakdown based on view */}
         {loadingBreakdown ? (
           <Card className="border-gray-200">
-            <CardContent className="py-12 text-center">
-              <Loader2 className="w-10 h-10 animate-spin text-green-500 mx-auto" />
-              <p className="mt-4 text-gray-600 font-medium">Loading feedback breakdown...</p>
-              <p className="text-sm text-gray-400">Please wait while we fetch the evaluation results</p>
+            <CardHeader className="bg-gray-50 py-4">
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-48"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="flex items-center justify-between p-4 border rounded">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                    </div>
+                    <div className="flex gap-4">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </CardContent>
           </Card>
         ) : categoryBreakdown && categoryBreakdown.categories_template ? (
@@ -651,9 +721,27 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           </CardHeader>
           <CardContent>
             {loadingSubjects ? (
-              <div className="text-center py-8">
-                <Loader2 className="w-8 h-8 animate-spin text-green-500 mx-auto" />
-                <p className="mt-2 text-gray-600">Loading subjects...</p>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="p-4 rounded-lg border border-gray-200">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex-1">
+                        <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                        <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+                      </div>
+                      <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                    </div>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      {[1, 2, 3, 4].map((j) => (
+                        <div key={j} className="bg-gray-50 rounded-lg p-3 text-center">
+                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
+                          <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                          <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
               </div>
             ) : subjects.length > 0 ? (
               <div className="space-y-4">

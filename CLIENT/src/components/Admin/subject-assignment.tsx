@@ -713,10 +713,75 @@ export function SubjectAssignment({ onNavigate }: SubjectAssignmentProps = {}) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading data...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-64"></div>
+        </div>
+
+        {/* Create Subject Form Skeleton */}
+        <Card className="border-green-100 shadow-md">
+          <CardHeader className="bg-gradient-to-r from-green-50 to-lime-50 rounded-t-lg pb-4">
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-40"></div>
+            <div className="h-4 bg-gray-100 rounded animate-pulse w-72"></div>
+          </CardHeader>
+          <CardContent className="pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                  <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex justify-end">
+              <div className="h-10 bg-green-200 rounded animate-pulse w-32"></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Search Bar Skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1 max-w-md">
+            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+        </div>
+
+        {/* Subject Cards Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="border-0 shadow-md bg-gradient-to-br from-white to-green-50 overflow-hidden">
+              <div className="h-2 bg-gradient-to-r from-green-400 to-emerald-500 animate-pulse"></div>
+
+              <CardHeader className="pb-3 pt-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-16"></div>
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-32"></div>
+                  </div>
+                </div>
+              </CardHeader>
+
+              <CardContent className="pb-3">
+                <div className="space-y-2">
+                  <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-8 bg-gray-100 rounded animate-pulse"></div>
+                </div>
+              </CardContent>
+
+              <div className="px-4 pb-4 pt-2">
+                <div className="flex items-center justify-between border-t border-green-100 pt-3">
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-24"></div>
+                  <div className="flex gap-1">
+                    <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       </div>
     );

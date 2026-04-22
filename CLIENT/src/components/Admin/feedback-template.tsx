@@ -397,11 +397,69 @@ export function FeedbackTemplate() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-green-500 mx-auto" />
-          <p className="mt-4 text-gray-600">Loading feedback template...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
         </div>
+
+        {/* Tabs Skeleton */}
+        <div className="flex gap-2 border-b border-gray-200 pb-2">
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-36"></div>
+        </div>
+
+        {/* Categories Tab Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+              <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+            </div>
+            <div className="flex gap-2">
+              <div className="h-9 bg-gray-200 rounded animate-pulse w-20"></div>
+              <div className="h-9 bg-green-200 rounded animate-pulse w-24"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* Category Type Tabs Skeleton */}
+            <div className="flex gap-2 mb-6">
+              <div className="h-9 bg-green-200 rounded animate-pulse w-32"></div>
+              <div className="h-9 bg-gray-200 rounded animate-pulse w-36"></div>
+            </div>
+
+            {/* Categories List Skeleton */}
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="border rounded-lg overflow-hidden bg-gray-50">
+                  <div className="flex items-center p-4 bg-white">
+                    <div className="w-8 h-8 bg-gray-200 rounded animate-pulse mr-2"></div>
+                    <div className="text-sm text-gray-400 w-8 mr-2">{i}.</div>
+                    <div className="flex-1">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-48"></div>
+                    </div>
+                    <div className="flex gap-2">
+                      <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                      <div className="h-8 bg-gray-200 rounded animate-pulse w-12"></div>
+                    </div>
+                  </div>
+                  <div className="px-4 pb-3">
+                    <div className="space-y-2">
+                      {[1, 2].map((j) => (
+                        <div key={j} className="flex items-center p-3 bg-white rounded border">
+                          <div className="w-6 h-6 bg-gray-200 rounded animate-pulse mr-3"></div>
+                          <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

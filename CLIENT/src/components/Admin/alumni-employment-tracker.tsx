@@ -513,14 +513,39 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8">
-                    <div className="flex items-center justify-center">
-                      <RefreshCw className="w-6 h-6 animate-spin text-purple-500" />
-                      <span className="ml-2">Loading...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-24"></div>
+                            <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </>
               ) : records.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">
