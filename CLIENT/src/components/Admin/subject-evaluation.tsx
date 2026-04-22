@@ -84,6 +84,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const [loadingAllSubjects, setLoadingAllSubjects] = useState(false);
   const [categoryBreakdown, setCategoryBreakdown] = useState<any>(null);
   const [loadingBreakdown, setLoadingBreakdown] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Fetch subjects when view changes to subjects
   useEffect(() => {
@@ -99,6 +100,13 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
       fetchInstructors();
     }
   }, [currentView]);
+
+  // Set initial load to false after first data load
+  useEffect(() => {
+    if ((instructors.length > 0 || allSubjects.length > 0) && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [instructors.length, allSubjects.length, isInitialLoad]);
 
   const fetchInstructors = async () => {
     try {
@@ -349,26 +357,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
       .substring(0, 2);
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-    
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(<span key={i} className="text-yellow-400">★</span>);
-    }
-    if (hasHalfStar) {
-      stars.push(<span key="half" className="text-yellow-400">★</span>);
-    }
-    const emptyStars = 5 - Math.ceil(rating);
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
-    }
-    return stars;
-  };
-
-  // Loading state
-  if (loading) {
+  // Loading state - full page on initial load
+  if (loading && isInitialLoad) {
     return (
       <div className="space-y-6">
         {/* Header Skeleton */}
@@ -400,40 +390,69 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           ))}
         </div>
 
-        {/* Subjects List Skeleton */}
-        <Card className="border-gray-200">
-          <CardHeader>
-            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-40"></div>
-            <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3, 4].map((i) => (
-                <div key={i} className="p-4 rounded-lg border border-gray-200">
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1">
-                      <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
-                      <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
-                    </div>
-                    <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
-                  </div>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {[1, 2, 3, 4].map((j) => (
-                      <div key={j} className="bg-gray-50 rounded-lg p-3 text-center">
-                        <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
-                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                        <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
-                      </div>
-                    ))}
+        {/* Search and Filters Skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-80"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
+        </div>
+
+        {/* Cards Grid Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 bg-gray-200 rounded-full animate-pulse"></div>
+                  <div className="flex-1">
+                    <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                    </div>
+                    <div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                    </div>
+                    <div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    const fullStars = Math.floor(rating);
+    const hasHalfStar = rating % 1 >= 0.5;
+    
+    for (let i = 0; i < fullStars; i++) {
+      stars.push(<span key={i} className="text-yellow-400">★</span>);
+    }
+    if (hasHalfStar) {
+      stars.push(<span key="half" className="text-yellow-400">★</span>);
+    }
+    const emptyStars = 5 - Math.ceil(rating);
+    for (let i = 0; i < emptyStars; i++) {
+      stars.push(<span key={`empty-${i}`} className="text-gray-300">★</span>);
+    }
+    return stars;
+  };
+
+
 
   // View: Selected Subject - Simplified view showing key metrics
   // Shows either instructor rating or subject rating based on which view user came from

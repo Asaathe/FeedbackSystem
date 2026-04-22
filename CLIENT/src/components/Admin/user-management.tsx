@@ -100,6 +100,7 @@ export function UserManagement() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   
   // Programs list for dropdown
   const [programs, setPrograms] = useState<Array<{ value: string; label: string; department: string }>>([]);
@@ -279,6 +280,13 @@ export function UserManagement() {
   useEffect(() => {
     fetchUsers(searchQuery, roleFilter, statusFilter);
   }, [searchQuery, roleFilter, statusFilter]);
+
+  // Set initial load to false after first data load
+  useEffect(() => {
+    if (users.length > 0 && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [users.length, isInitialLoad]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -1011,20 +1019,14 @@ export function UserManagement() {
     }
   };
 
-  // Loading state
-  if (loading) {
+  // Loading state - full page on initial load
+  if (loading && isInitialLoad) {
     return (
       <div className="space-y-6">
         {/* Header Skeleton */}
-        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
           <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
           <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
-        </div>
-
-        {/* Search and Filters Skeleton */}
-        <div className="flex items-center gap-4">
-          <div className="h-10 bg-gray-200 rounded animate-pulse w-80"></div>
-          <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
         </div>
 
         {/* Tabs Skeleton */}
@@ -1033,6 +1035,12 @@ export function UserManagement() {
           <div className="h-10 bg-gray-200 rounded animate-pulse w-20"></div>
           <div className="h-10 bg-gray-200 rounded animate-pulse w-20"></div>
           <div className="h-10 bg-gray-200 rounded animate-pulse w-16"></div>
+        </div>
+
+        {/* Search and Filters Skeleton */}
+        <div className="flex items-center gap-4">
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-80"></div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
         </div>
 
         {/* Pending Section Skeleton */}
@@ -1601,82 +1609,110 @@ export function UserManagement() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar>
-                          {user.profilePicture ? (
-                            <img
-                              src={formatImageUrl(user.profilePicture)}
-                              alt={user.fullName || user.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <AvatarFallback className="bg-green-100 text-green-700">
-                              {(user.fullName || user.name)?.split(' ').map((n: string) => n[0]).join('') || ''}
-                            </AvatarFallback>
-                          )}
-                        </Avatar>
-                        <span>{user.fullName || user.name}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={getRoleBadgeColor(user.role)}>
-                        {user.role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant="secondary"
-                        className={getStatusBadgeColor(user.status)}
-                      >
-                        {user.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          {user.status === 'pending' && (
-                            <>
-                              <DropdownMenuItem
-                                className="text-green-600 focus:text-green-600 focus:bg-green-50"
-                                onClick={() => handleApproveClick(user)}
-                              >
-                                <CheckCircle className="w-4 h-4 mr-2" />
-                                Approve Account
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-red-600 focus:text-red-600 focus:bg-red-50"
-                                onClick={() => handleRejectClick(user)}
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Reject Account
-                              </DropdownMenuItem>
-                              <div className="h-px bg-border my-1" />
-                            </>
-                          )}
-                          
-                          <DropdownMenuItem className="focus:bg-gray-50" onClick={() => handleViewDetails(user)}>
-                            <Edit className="w-4 h-4 mr-2" />
-                            View/Edit Details
-                          </DropdownMenuItem>
+                {loading ? (
+                  // Skeleton loading rows
+                  <>
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <TableRow key={i}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gray-200 rounded-full animate-pulse"></div>
+                            <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="w-8 h-8 bg-gray-200 rounded animate-pulse ml-auto"></div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </>
+                ) : (
+                  paginatedUsers.map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar>
+                            {user.profilePicture ? (
+                              <img
+                                src={formatImageUrl(user.profilePicture)}
+                                alt={user.fullName || user.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <AvatarFallback className="bg-green-100 text-green-700">
+                                {(user.fullName || user.name)?.split(' ').map((n: string) => n[0]).join('') || ''}
+                              </AvatarFallback>
+                            )}
+                          </Avatar>
+                          <span>{user.fullName || user.name}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>{user.email}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className={getRoleBadgeColor(user.role)}>
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="secondary"
+                          className={getStatusBadgeColor(user.status)}
+                        >
+                          {user.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {user.status === 'pending' && (
+                              <>
+                                <DropdownMenuItem
+                                  className="text-green-600 focus:text-green-600 focus:bg-green-50"
+                                  onClick={() => handleApproveClick(user)}
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-2" />
+                                  Approve Account
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  className="text-red-600 focus:text-red-600 focus:bg-red-50"
+                                  onClick={() => handleRejectClick(user)}
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Reject Account
+                                </DropdownMenuItem>
+                                <div className="h-px bg-border my-1" />
+                              </>
+                            )}
 
-                          <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => handleRemoveUser(user.id)}>
-                            <Trash2 className="w-4 h-4 mr-2" />
-                            Remove User
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                            <DropdownMenuItem className="focus:bg-gray-50" onClick={() => handleViewDetails(user)}>
+                              <Edit className="w-4 h-4 mr-2" />
+                              View/Edit Details
+                            </DropdownMenuItem>
+
+                            <DropdownMenuItem className="text-red-600 focus:text-red-600 focus:bg-red-50" onClick={() => handleRemoveUser(user.id)}>
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Remove User
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
                 </Table>
               </div>
