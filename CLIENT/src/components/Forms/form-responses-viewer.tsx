@@ -949,26 +949,7 @@ export function FormResponsesViewer({ formId, onBack }: FormResponsesViewerProps
           ))}
         </div>
 
-        {/* Loading Status */}
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-          <div className="mt-2 space-y-1">
-            <p className="text-gray-600">
-              {formLoading && responsesLoading
-                ? "Loading form and responses..."
-                : formLoading
-                  ? "Loading form details..."
-                  : responsesLoading
-                    ? "Loading responses..."
-                    : "Preparing data..."
-              }
-            </p>
-            <div className="flex justify-center gap-4 text-xs text-gray-500">
-              {formLoading && <span>📄 Form</span>}
-              {responsesLoading && <span>📊 Responses</span>}
-            </div>
-          </div>
-        </div>
+
 
         {/* Table Skeleton */}
         <Card>
