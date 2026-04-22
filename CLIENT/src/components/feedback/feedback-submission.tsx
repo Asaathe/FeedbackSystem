@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "../ui/select";
 import { Progress } from "../ui/progress";
-import { ArrowLeft, Send, ClipboardList, Clock, Check, AlertCircle } from "lucide-react";
+import { ArrowLeft, Send, ClipboardList, Clock, Check, AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "../ui/badge";
 import {
   Dialog,
@@ -59,6 +59,7 @@ interface ContentRendererProps {
   isNotStarted: (form: FeedbackForm) => boolean;
   isOverdue: (dueDate: string) => boolean;
   externalFeedbackSubmitted?: boolean;
+  selectingForm?: boolean;
 }
 
 function ContentRenderer({
@@ -70,7 +71,8 @@ function ContentRenderer({
   onSelectForm,
   isNotStarted,
   isOverdue,
-  externalFeedbackSubmitted = false
+  externalFeedbackSubmitted = false,
+  selectingForm = false
 }: ContentRendererProps) {
   if (loading) {
     return (
@@ -221,9 +223,16 @@ function ContentRenderer({
               <Button
                 onClick={() => onSelectForm(form)}
                 className="w-full"
-                disabled={isNotStarted(form)}
+                disabled={isNotStarted(form) || selectingForm}
               >
-                Start Feedback
+                {selectingForm ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Opening Form...
+                  </>
+                ) : (
+                  "Start Feedback"
+                )}
               </Button>
             </div>
           </CardContent>
@@ -269,6 +278,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
   const [isExternalMode, setIsExternalMode] = useState(!!externalFormId || !!externalToken);
   const [externalFeedbackSubmitted, setExternalFeedbackSubmitted] = useState(false);
+  const [selectingForm, setSelectingForm] = useState(false);
   
   // External supervisor info (for public feedback)
   const [externalSupervisorName, setExternalSupervisorName] = useState("");
@@ -595,33 +605,34 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       return;
     }
 
+    setSelectingForm(true);
     try {
       // Fetch the full form data including questions
       const result = await getForm(form.id);
       if (result.success && result.form) {
         const formQuestions = result.form.questions || [];
         const formSections = result.form.sections || [];
-        
+
         // Sort questions based on interleaved order (sections + standalone questions)
         const standaloneQuestions = formQuestions.filter((q: any) => !(q.sectionId || q.section_id));
-        
+
         // Create items array with order information
         const items: Array<{ type: 'section'; data: any; order: number } | { type: 'question'; data: any; order: number }> = [
-          ...formSections.map((s: any) => ({ 
-            type: 'section' as const, 
-            data: s, 
-            order: s.order ?? s.order_index ?? 0 
+          ...formSections.map((s: any) => ({
+            type: 'section' as const,
+            data: s,
+            order: s.order ?? s.order_index ?? 0
           })),
-          ...standaloneQuestions.map((q: any) => ({ 
-            type: 'question' as const, 
-            data: q, 
-            order: q.order ?? q.order_index ?? 0 
+          ...standaloneQuestions.map((q: any) => ({
+            type: 'question' as const,
+            data: q,
+            order: q.order ?? q.order_index ?? 0
           }))
         ];
-        
+
         // Sort by order
         items.sort((a, b) => a.order - b.order);
-        
+
         // Build the sorted questions array
         const sortedQuestions: any[] = [];
         items.forEach(item => {
@@ -636,7 +647,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             sortedQuestions.push(item.data);
           }
         });
-        
+
         setSelectedForm({
           ...form,
           questions: sortedQuestions,
@@ -650,6 +661,8 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       console.error("Error loading form details:", error);
       // Fallback to basic form data
       setSelectedForm(form);
+    } finally {
+      setSelectingForm(false);
     }
     setAnswers({});
     setCurrentPageIndex(0);
@@ -1021,6 +1034,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               isNotStarted={isNotStarted}
               isOverdue={isOverdue}
               externalFeedbackSubmitted={externalFeedbackSubmitted}
+              selectingForm={selectingForm}
             />
           </div>
         </div>
@@ -1048,6 +1062,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             isNotStarted={isNotStarted}
             isOverdue={isOverdue}
             externalFeedbackSubmitted={externalFeedbackSubmitted}
+            selectingForm={selectingForm}
           />
         </div>
       );
