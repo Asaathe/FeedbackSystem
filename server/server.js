@@ -29,6 +29,7 @@ const instructorRoutes = require("./routes/instructor");
 const studentPromotionRoutes = require("./routes/studentPromotion");
 const settingsRoutes = require("./routes/settings");
 const notificationRoutes = require("./routes/notifications");
+const backupRoutes = require("./routes/backups");
 
 const app = express();
 
@@ -104,6 +105,8 @@ app.get("/api/test", (req, res) => {
   res.json({ message: "Server is working!" });
 });
 
+
+
 app.get("/api/db-status", (req, res) => {
   const db = require("./config/database");
   db.query("SELECT COUNT(*) as userCount FROM users", (err, results) => {
@@ -126,6 +129,7 @@ app.use("/api/students", studentPromotionRoutes);
 app.use("/api", recipientRoutes);
 app.use("/api/instructor", instructorRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/backups", backupRoutes);
 
 // Notifications routes
 app.use("/api/notifications", notificationRoutes);

@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../ui/card";
 import { Button } from "../ui/button";
+import { Checkbox } from "../ui/checkbox";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
 import { toast } from "sonner";
-import { Settings, Shield, Download, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Settings, Shield, Download, Trash2, RefreshCw, AlertTriangle, Database, FileText, Plus, Calendar } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -20,9 +23,16 @@ interface Backup {
   id: string;
   name: string;
   created_at: string;
-  size: number;
   status: 'completed' | 'failed' | 'in_progress';
-  type: 'full' | 'incremental';
+  type: 'full' | 'incremental' | 'custom';
+  tables?: string[];
+  format?: 'sql' | 'csv';
+}
+
+interface TableOption {
+  name: string;
+  label: string;
+  selected: boolean;
 }
 
 export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
@@ -32,6 +42,49 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   const [restoringBackup, setRestoringBackup] = useState(false);
   const [showRestoreDialog, setShowRestoreDialog] = useState(false);
   const [selectedBackupId, setSelectedBackupId] = useState<string | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [backupName, setBackupName] = useState("");
+  const [selectedTables, setSelectedTables] = useState<string[]>([]);
+  const [exportFormat, setExportFormat] = useState<'sql' | 'csv'>('sql');
+
+  const tableOptions: TableOption[] = [
+    { name: 'academic_periods', label: 'Academic Periods', selected: false },
+    { name: 'alumni', label: 'Alumni Records', selected: false },
+    { name: 'alumni_employment', label: 'Alumni Employment', selected: false },
+    { name: 'alumni_employment_history', label: 'Alumni Employment History', selected: false },
+    { name: 'course_management', label: 'Course Management', selected: false },
+    { name: 'employers', label: 'Employers', selected: false },
+    { name: 'employment_update_queue', label: 'Employment Update Queue', selected: false },
+    { name: 'evaluation_forms', label: 'Evaluation Forms', selected: false },
+    { name: 'evaluation_periods', label: 'Evaluation Periods', selected: false },
+    { name: 'evaluation_subjects', label: 'Evaluation Subjects', selected: false },
+    { name: 'feedback_invitations', label: 'Feedback Invitations', selected: false },
+    { name: 'feedback_template_categories', label: 'Feedback Template Categories', selected: false },
+    { name: 'forms', label: 'Forms', selected: false },
+    { name: 'form_assignments', label: 'Form Assignments', selected: false },
+    { name: 'form_categories', label: 'Form Categories', selected: false },
+    { name: 'form_deployments', label: 'Form Deployments', selected: false },
+    { name: 'form_responses', label: 'Form Responses', selected: false },
+    { name: 'graduation_records', label: 'Graduation Records', selected: false },
+    { name: 'instructors', label: 'Instructors', selected: false },
+    { name: 'instructor_courses', label: 'Instructor Courses', selected: false },
+    { name: 'instructor_feedback', label: 'Instructor Feedback', selected: false },
+    { name: 'notifications', label: 'Notifications', selected: false },
+    { name: 'questions', label: 'Questions', selected: false },
+    { name: 'question_details', label: 'Question Details', selected: false },
+    { name: 'question_options', label: 'Question Options', selected: false },
+    { name: 'sections', label: 'Sections', selected: false },
+    { name: 'students', label: 'Students', selected: false },
+    { name: 'student_promotion_history', label: 'Student Promotion History', selected: false },
+    { name: 'subject_evaluation_responses', label: 'Subject Evaluation Responses', selected: false },
+    { name: 'subject_feedback', label: 'Subject Feedback', selected: false },
+    { name: 'subject_instructors', label: 'Subject Instructors', selected: false },
+    { name: 'subject_offerings', label: 'Subject Offerings', selected: false },
+    { name: 'subject_sections', label: 'Subject Sections', selected: false },
+    { name: 'subject_students', label: 'Subject Students', selected: false },
+    { name: 'system_settings', label: 'System Settings', selected: false },
+    { name: 'users', label: 'Users', selected: false }
+  ];
 
   useEffect(() => {
     fetchBackups();
@@ -62,6 +115,16 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   };
 
   const handleCreateBackup = async () => {
+    if (!backupName.trim()) {
+      toast.error("Please enter a backup name");
+      return;
+    }
+
+    if (selectedTables.length === 0) {
+      toast.error("Please select at least one table to backup");
+      return;
+    }
+
     setCreatingBackup(true);
     try {
       const token = sessionStorage.getItem("authToken");
@@ -72,14 +135,19 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          type: "full",
-          name: `Backup ${new Date().toLocaleDateString()}`,
+          name: backupName.trim(),
+          tables: selectedTables,
+          format: exportFormat,
+          type: selectedTables.length === tableOptions.length ? 'full' : 'custom'
         }),
       });
       const data = await response.json();
       if (data.success) {
         toast.success("Backup created successfully");
         fetchBackups();
+        setShowCreateDialog(false);
+        setBackupName("");
+        setSelectedTables([]);
       } else {
         toast.error(data.message || "Failed to create backup");
       }
@@ -92,6 +160,12 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   };
 
   const handleDownloadBackup = async (backupId: string) => {
+    const backup = backups.find(b => b.id === backupId);
+    if (!backup) {
+      toast.error("Backup not found");
+      return;
+    }
+
     try {
       const token = sessionStorage.getItem("authToken");
       const response = await fetch(`/api/backups/${backupId}/download`, {
@@ -105,7 +179,8 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `backup-${backupId}.zip`;
+        const extension = backup.format === 'sql' ? '.sql' : '.csv';
+        a.download = `backup-${backupId}${extension}`;
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
@@ -190,84 +265,97 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
     return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const getLatestBackupDate = () => {
+    const completedBackups = backups.filter(b => b.status === 'completed');
+    if (completedBackups.length === 0) return 'No backups yet';
+    const latest = completedBackups.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    return formatDate(latest.created_at);
+  };
+
+  const toggleTableSelection = (tableName: string) => {
+    setSelectedTables(prev =>
+      prev.includes(tableName)
+        ? prev.filter(t => t !== tableName)
+        : [...prev, tableName]
+    );
+  };
+
+  const selectAllTables = () => {
+    setSelectedTables(tableOptions.map(t => t.name));
+  };
+
+  const deselectAllTables = () => {
+    setSelectedTables([]);
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
         {/* Header Skeleton */}
-        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-green-200 rounded animate-pulse"></div>
+            <div className="w-8 h-8 bg-blue-200 rounded animate-pulse"></div>
             <div>
-              <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
-              <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
+              <div className="h-8 bg-blue-200 rounded animate-pulse mb-2 w-64"></div>
+              <div className="h-4 bg-blue-100 rounded animate-pulse w-96"></div>
             </div>
           </div>
         </div>
 
-        {/* Emergency Notice Skeleton */}
-        <Card className="border-amber-200 bg-amber-50">
+        {/* Statistics Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-gray-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse mb-2 w-16"></div>
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-24"></div>
+                  </div>
+                  <div className="w-12 h-12 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Create Backup Button Skeleton */}
+        <Card className="border-blue-100">
           <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              <div className="w-5 h-5 bg-amber-200 rounded animate-pulse mt-0.5"></div>
-              <div className="flex-1">
-                <div className="h-5 bg-amber-200 rounded animate-pulse mb-2 w-48"></div>
-                <div className="h-4 bg-amber-100 rounded animate-pulse w-full mb-1"></div>
-                <div className="h-4 bg-amber-100 rounded animate-pulse w-3/4"></div>
+            <div className="flex justify-between items-center">
+              <div>
+                <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
               </div>
+              <div className="h-10 bg-blue-200 rounded animate-pulse w-40"></div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Backup Actions Skeleton */}
-        <Card className="border-green-100">
-          <CardHeader>
-            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
-            <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <div className="h-10 bg-green-200 rounded animate-pulse w-40"></div>
-              <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
-            </div>
-
-            {/* Backup Statistics Skeleton */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="text-center">
-                  <div className="h-8 bg-gray-200 rounded animate-pulse mb-2 mx-auto w-12"></div>
-                  <div className="h-4 bg-gray-100 rounded animate-pulse w-20 mx-auto"></div>
+        {/* Backup Cards Skeleton */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {[1, 2, 3, 4, 5, 6].map((i) => (
+            <Card key={i} className="border-gray-200">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="h-5 bg-gray-200 rounded animate-pulse w-32"></div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-20"></div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Backups List Skeleton */}
-        <Card className="border-gray-100">
-          <CardHeader>
-            <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
-            <div className="h-4 bg-gray-100 rounded animate-pulse w-48"></div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gray-200 rounded animate-pulse"></div>
-                    <div>
-                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
-                      <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-24 mt-2"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-full"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-3/4"></div>
+                  <div className="flex gap-2 mt-4">
                     <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
-                    <div className="h-8 bg-gray-200 rounded animate-pulse w-12"></div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -275,143 +363,146 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-100">
         <div className="flex items-center gap-3">
-          <Settings className="w-8 h-8 text-green-600" />
+          <Database className="w-8 h-8 text-blue-600" />
           <div>
-            <h2 className="text-2xl font-bold">System Settings</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Backup & Recovery System</h2>
             <p className="text-gray-600 mt-1">
-              Manage system backups and emergency recovery options
+              Professional admin dashboard for managing University Feedback System database backups
             </p>
           </div>
         </div>
       </div>
 
-      {/* Emergency Notice */}
-      <Card className="border-amber-200 bg-amber-50">
+      {/* Dashboard Overview - Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-blue-600">{backups.length}</div>
+                <p className="text-sm text-blue-700">Total Backups</p>
+              </div>
+              <Database className="w-12 h-12 text-blue-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-200 bg-gradient-to-br from-green-50 to-green-100">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-3xl font-bold text-green-600">
+                  {backups.filter(b => b.status === 'completed').length}
+                </div>
+                <p className="text-sm text-green-700">Completed Backups</p>
+              </div>
+              <Shield className="w-12 h-12 text-green-500" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-purple-200 bg-gradient-to-br from-purple-50 to-purple-100">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-lg font-bold text-purple-600">{getLatestBackupDate()}</div>
+                <p className="text-sm text-purple-700">Latest Backup</p>
+              </div>
+              <Calendar className="w-12 h-12 text-purple-500" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Create New Backup Section */}
+      <Card className="border-blue-100">
         <CardContent className="pt-6">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5" />
+          <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-medium text-amber-900">Emergency Backup Notice</h3>
-              <p className="text-sm text-amber-700 mt-1">
-                Regular backups are crucial for system recovery in case of data loss, corruption, or emergencies.
-                Create backups frequently and store them securely.
-              </p>
+              <h3 className="text-lg font-semibold text-gray-900">Create New Backup</h3>
+              <p className="text-sm text-gray-600">Configure and create a new system backup</p>
             </div>
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Backup
+            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Backup Actions */}
-      <Card className="border-green-100">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-green-600" />
-            Backup Management
-          </CardTitle>
-          <CardDescription>
-            Create, download, and restore system backups
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-4">
-            <Button
-              onClick={handleCreateBackup}
-              disabled={creatingBackup}
-              className="bg-green-500 hover:bg-green-600"
-            >
-              {creatingBackup ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Creating Backup...
-                </>
-              ) : (
-                <>
-                  <Shield className="w-4 h-4 mr-2" />
-                  Create New Backup
-                </>
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={fetchBackups}
-              className="border-green-200"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh List
-            </Button>
-          </div>
-
-          {/* Backup Statistics */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{backups.length}</div>
-              <div className="text-sm text-gray-600">Total Backups</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">
-                {backups.filter(b => b.status === 'completed').length}
+      {/* Backup Management - Cards Display */}
+      <div>
+        <h3 className="text-xl font-semibold text-gray-900 mb-4">Backup Management</h3>
+        {backups.length === 0 ? (
+          <Card className="border-dashed border-gray-300">
+            <CardContent className="pt-6">
+              <div className="text-center py-12">
+                <Database className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Backups Found</h4>
+                <p className="text-gray-600 mb-4">Get started by creating your first backup</p>
+                <Button
+                  onClick={() => setShowCreateDialog(true)}
+                  className="bg-blue-500 hover:bg-blue-600"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Create First Backup
+                </Button>
               </div>
-              <div className="text-sm text-gray-600">Completed</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">
-                {backups.filter(b => b.status === 'in_progress').length}
-              </div>
-              <div className="text-sm text-gray-600">In Progress</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Backups List */}
-      <Card className="border-gray-100">
-        <CardHeader>
-          <CardTitle className="text-lg">Backup History</CardTitle>
-          <CardDescription>
-            View and manage all system backups
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {backups.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <Shield className="w-12 h-12 mx-auto mb-2 opacity-50" />
-              <p>No backups found</p>
-              <p className="text-sm">Click "Create New Backup" to create your first backup</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {backups.map((backup) => (
-                <div key={backup.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-medium">{backup.name}</h4>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        backup.status === 'completed' ? 'bg-green-100 text-green-700' :
-                        backup.status === 'failed' ? 'bg-red-100 text-red-700' :
-                        'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {backup.status}
-                      </span>
-                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">
-                        {backup.type}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-600 mt-1">
-                      Created: {formatDate(backup.created_at)} • Size: {formatSize(backup.size)}
-                    </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {backups.map((backup) => (
+              <Card key={backup.id} className="border-gray-200 hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg truncate">{backup.name}</CardTitle>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      backup.status === 'completed' ? 'bg-green-100 text-green-700' :
+                      backup.status === 'failed' ? 'bg-red-100 text-red-700' :
+                      'bg-yellow-100 text-yellow-700'
+                    }`}>
+                      {backup.status === 'in_progress' ? 'In Progress' : backup.status}
+                    </span>
                   </div>
-                  <div className="flex gap-2">
+                  <CardDescription className="flex items-center gap-1">
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${
+                      backup.type === 'full' ? 'bg-blue-100 text-blue-700' :
+                      backup.type === 'incremental' ? 'bg-purple-100 text-purple-700' :
+                      'bg-orange-100 text-orange-700'
+                    }`}>
+                      {backup.type}
+                    </span>
+                    {backup.format && (
+                      <span className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs font-medium">
+                        {backup.format.toUpperCase()}
+                      </span>
+                    )}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm text-gray-600">
+                    <p><strong>Created:</strong> {formatDate(backup.created_at)}</p>
+                    {backup.tables && backup.tables.length > 0 && (
+                      <p><strong>Tables:</strong> {backup.tables.length} selected</p>
+                    )}
+                  </div>
+                  <div className="flex gap-2 mt-4">
                     {backup.status === 'completed' && (
                       <>
                         <Button
                           variant="outline"
                           size="sm"
                           onClick={() => handleDownloadBackup(backup.id)}
-                          className="text-green-600 border-green-200 hover:bg-green-50"
+                          className="flex-1 text-green-600 border-green-200 hover:bg-green-50"
                         >
-                          <Download className="w-4 h-4" />
+                          <Download className="w-4 h-4 mr-1" />
+                          Download
                         </Button>
                         <Button
                           variant="outline"
@@ -420,9 +511,10 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                             setSelectedBackupId(backup.id);
                             setShowRestoreDialog(true);
                           }}
-                          className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                          className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50"
                         >
-                          <RefreshCw className="w-4 h-4" />
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Restore
                         </Button>
                       </>
                     )}
@@ -430,17 +522,152 @@ export function SystemSettings({ onNavigate }: SystemSettingsProps = {}) {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleDeleteBackup(backup.id)}
-                      className="text-red-500 hover:text-red-700"
+                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
-              ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Create Backup Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="w-5 h-5" />
+              Create New Backup
+            </DialogTitle>
+            <DialogDescription>
+              Configure your backup settings and select the data tables to include
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Backup Name */}
+            <div className="space-y-2">
+              <Label htmlFor="backup-name">Backup Name</Label>
+              <Input
+                id="backup-name"
+                placeholder="Enter backup name..."
+                value={backupName}
+                onChange={(e) => setBackupName(e.target.value)}
+              />
             </div>
-          )}
-        </CardContent>
-      </Card>
+
+            {/* Export Format */}
+            <div className="space-y-2">
+              <Label>Export Format</Label>
+              <div className="space-y-2">
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="sql"
+                    name="format"
+                    value="sql"
+                    checked={exportFormat === 'sql'}
+                    onChange={(e) => setExportFormat(e.target.value as 'sql')}
+                    className="text-blue-600"
+                  />
+                  <Label htmlFor="sql" className="flex items-center gap-2 cursor-pointer">
+                    <FileText className="w-4 h-4" />
+                    SQL (.sql) - Complete database dump for restoration
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="radio"
+                    id="csv"
+                    name="format"
+                    value="csv"
+                    checked={exportFormat === 'csv'}
+                    onChange={(e) => setExportFormat(e.target.value as 'csv')}
+                    className="text-blue-600"
+                  />
+                  <Label htmlFor="csv" className="flex items-center gap-2 cursor-pointer">
+                    <FileText className="w-4 h-4" />
+                    CSV (.csv) - Tabular data format for spreadsheets
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            {/* Table Selection */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-medium">Select Data Tables</Label>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllTables}
+                    className="text-xs"
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAllTables}
+                    className="text-xs"
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-64 overflow-y-auto border rounded-lg p-4">
+                {tableOptions.map((table) => (
+                  <div key={table.name} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={table.name}
+                      checked={selectedTables.includes(table.name)}
+                      onCheckedChange={() => toggleTableSelection(table.name)}
+                    />
+                    <Label
+                      htmlFor={table.name}
+                      className="text-sm cursor-pointer flex-1"
+                    >
+                      {table.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-sm text-gray-600">
+                Selected: {selectedTables.length} of {tableOptions.length} tables
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateBackup}
+              disabled={creatingBackup || !backupName.trim() || selectedTables.length === 0}
+              className="bg-blue-500 hover:bg-blue-600"
+            >
+              {creatingBackup ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Creating Backup...
+                </>
+              ) : (
+                <>
+                  <Database className="w-4 h-4 mr-2" />
+                  Create Backup
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Restore Confirmation Dialog */}
       <Dialog open={showRestoreDialog} onOpenChange={setShowRestoreDialog}>
