@@ -838,24 +838,6 @@ export function FeedbackFormsManagement({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
-        <div className="flex items-center justify-between flex-wrap gap-4">
-          <div>
-            <h2 className="text-2xl">Feedback Forms</h2>
-            <p className="text-gray-600 mt-1">Create and manage feedback forms</p>
-          </div>
-          <Button
-            className="bg-green-500 hover:bg-green-600"
-            onClick={handleCreateNewForm}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Create New Form
-          </Button>
-        </div>
-      </div>
-
-
       {/* Preview Dialog */}
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
         <DialogContent className="max-w-[1000px]! w-[95vw] max-h-[90vh] overflow-y-auto scrollbar-ghost" style={{ maxWidth: '1000px', width: '95vw' }}>
@@ -1270,32 +1252,6 @@ export function FeedbackFormsManagement({
         </DialogContent>
       </Dialog>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <Input
-            placeholder="Search forms..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All Categories" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map((cat) => (
-              <SelectItem key={cat.id} value={cat.name}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
       {/* Loading State */}
       {loading ? (
         <div className="space-y-6">
@@ -1382,8 +1338,52 @@ export function FeedbackFormsManagement({
           </div>
         </div>
       ) : (
-        /* Tabs for Custom and Template Forms */
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <>
+          {/* Header */}
+          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div>
+                <h2 className="text-2xl">Feedback Forms</h2>
+                <p className="text-gray-600 mt-1">Create and manage feedback forms</p>
+              </div>
+              <Button
+                className="bg-green-500 hover:bg-green-600"
+                onClick={handleCreateNewForm}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create New Form
+              </Button>
+            </div>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              <Input
+                placeholder="Search forms..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All Categories" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    {cat.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Tabs for Custom and Template Forms */}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full max-w-md grid-cols-2">
             <TabsTrigger value="custom">
               Custom Forms ({filteredCustomForms.length})
@@ -1559,7 +1559,8 @@ export function FeedbackFormsManagement({
               </div>
             )}
           </TabsContent>
-        </Tabs>
+          </Tabs>
+        </>
       )}
 
       {/* Delete Confirmation Alert Dialog */}
