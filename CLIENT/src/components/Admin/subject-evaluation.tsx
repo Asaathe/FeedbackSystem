@@ -86,6 +86,175 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   const [loadingBreakdown, setLoadingBreakdown] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
+  // Reusable skeleton components
+  const FullPageSkeleton = () => (
+    <div className="space-y-6">
+      {/* Header Skeleton */}
+      <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+            <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
+          </div>
+          <div className="flex gap-2">
+            <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
+            <div className="h-10 bg-gray-200 rounded animate-pulse w-36"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* View Toggle Skeleton */}
+      <div className="flex gap-2 mb-6">
+        <div className="h-10 bg-green-200 rounded animate-pulse w-32"></div>
+        <div className="h-10 bg-gray-200 rounded animate-pulse w-36"></div>
+      </div>
+
+      {/* Statistics Cards Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {[1, 2, 3].map((i) => (
+          <Card key={i} className="border-gray-200">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-24"></div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
+                </div>
+                <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Search and Filters Skeleton */}
+      <div className="flex items-center gap-4">
+        <div className="h-10 bg-gray-200 rounded animate-pulse w-80"></div>
+        <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
+      </div>
+
+      {/* Cards Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Card key={i} className="border-green-100">
+            <CardContent className="p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 bg-gray-200 rounded-full animate-pulse"></div>
+                <div className="flex-1">
+                  <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                  </div>
+                  <div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                  </div>
+                  <div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+
+  const InstructorCardSkeleton = ({ count = 6 }: { count?: number }) => (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <Card key={i} className="border-green-100">
+          <CardContent className="p-6">
+            <div className="flex items-start gap-4">
+              <div className="w-14 h-14 bg-gray-200 rounded-full animate-pulse"></div>
+              <div className="flex-1">
+                <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
+              </div>
+            </div>
+
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="grid grid-cols-3 gap-4 text-center">
+                <div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                </div>
+                <div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                </div>
+                <div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                  <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </>
+  );
+
+  const SubjectCardSkeleton = ({ count = 4 }: { count?: number }) => (
+    <>
+      {Array.from({ length: count }, (_, i) => (
+        <Card key={i} className="border-green-100">
+          <CardContent className="p-4">
+            {/* Subject Header Skeleton */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start gap-4">
+                <div className="w-12 h-12 rounded-lg bg-green-100 animate-pulse"></div>
+                <div>
+                  <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
+                </div>
+              </div>
+              <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+
+            {/* Expanded Inline Details Skeleton */}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <div className="bg-blue-50 rounded-lg p-2 text-center">
+                <div className="w-4 h-4 bg-blue-200 rounded animate-pulse mx-auto mb-1"></div>
+                <div className="h-4 bg-blue-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                <div className="h-3 bg-blue-100 rounded animate-pulse w-12 mx-auto"></div>
+              </div>
+
+              <div className="bg-green-50 rounded-lg p-2 text-center">
+                <div className="w-4 h-4 bg-green-200 rounded animate-pulse mx-auto mb-1"></div>
+                <div className="h-4 bg-green-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                <div className="h-3 bg-green-100 rounded animate-pulse w-12 mx-auto"></div>
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-2 text-center">
+                <div className="w-4 h-4 bg-purple-200 rounded animate-pulse mx-auto mb-1"></div>
+                <div className="h-4 bg-purple-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                <div className="h-3 bg-purple-100 rounded animate-pulse w-12 mx-auto"></div>
+              </div>
+
+              <div className="bg-orange-50 rounded-lg p-2 text-center">
+                <div className="w-4 h-4 bg-orange-200 rounded animate-pulse mx-auto mb-1"></div>
+                <div className="h-4 bg-orange-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
+                <div className="h-3 bg-orange-100 rounded animate-pulse w-12 mx-auto"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </>
+  );
+
   // Fetch subjects when view changes to subjects
   useEffect(() => {
     if (currentView === 'subjects') {
@@ -359,86 +528,14 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
   // Loading state - full page on initial load
   if (loading && isInitialLoad) {
-    return (
-      <div className="space-y-6">
-        {/* Header Skeleton */}
-        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
-          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
-          <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
-        </div>
-
-        {/* View Toggle Skeleton */}
-        <div className="flex gap-2 mb-6">
-          <div className="h-10 bg-green-200 rounded animate-pulse w-32"></div>
-          <div className="h-10 bg-gray-200 rounded animate-pulse w-36"></div>
-        </div>
-
-        {/* Statistics Cards Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="border-gray-200">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-24"></div>
-                    <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
-                  </div>
-                  <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Search and Filters Skeleton */}
-        <div className="flex items-center gap-4">
-          <div className="h-10 bg-gray-200 rounded animate-pulse w-80"></div>
-          <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
-        </div>
-
-        {/* Cards Grid Skeleton */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <Card key={i} className="border-green-100">
-              <CardContent className="p-6">
-                <div className="flex items-start gap-4">
-                  <div className="w-14 h-14 bg-gray-200 rounded-full animate-pulse"></div>
-                  <div className="flex-1">
-                    <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
-                    <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
-                    <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
-                  </div>
-                </div>
-
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
-                    </div>
-                    <div>
-                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
-                    </div>
-                    <div>
-                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
+    return <FullPageSkeleton />;
   }
 
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
-    
+
     for (let i = 0; i < fullStars; i++) {
       stars.push(<span key={i} className="text-yellow-400">★</span>);
     }
@@ -739,97 +836,9 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             </p>
           </CardHeader>
           <CardContent>
-            {loadingSubjects ? (
-              <div className="space-y-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="p-4 rounded-lg border border-gray-200">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1">
-                        <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
-                        <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
-                      </div>
-                      <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      {[1, 2, 3, 4].map((j) => (
-                        <div key={j} className="bg-gray-50 rounded-lg p-3 text-center">
-                          <div className="w-4 h-4 bg-gray-200 rounded animate-pulse mx-auto mb-2"></div>
-                          <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                          <div className="h-3 bg-gray-100 rounded animate-pulse w-12 mx-auto"></div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : subjects.length > 0 ? (
-              <div className="space-y-4">
-                {subjects.map((subject) => {
-                  // Calculate response rate using instructor_feedback_count for By Instructor view
-                  const responseRate = subject.student_count > 0 
-                    ? ((subject.instructor_feedback_count / subject.student_count) * 100).toFixed(1)
-                    : '0';
-                  const responseFraction = subject.student_count > 0 
-                    ? `${subject.instructor_feedback_count}/${subject.student_count}`
-                    : '0/0';
-                  
-                  return (
-                    <div 
-                      key={subject.section_id}
-                      className="p-4 rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50/30 transition-all cursor-pointer"
-                      onClick={() => handleSubjectClick(subject)}
-                    >
-                      {/* Subject Header */}
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{subject.subject_name}</h3>
-                          <p className="text-sm text-gray-600">
-                            {subject.subject_code} • Section {subject.section} • Year Level {subject.year_level}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
-                      </div>
-                      
-                      {/* Expanded Details - Shown Inline (Instructor Feedback Only) */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
-                        {/* Total Enrolled Students */}
-                        <div className="bg-blue-50 rounded-lg p-2 text-center">
-                          <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
-                          <div className="text-base font-semibold text-blue-700">{subject.student_count}</div>
-                          <div className="text-xs text-blue-600">Enrolled</div>
-                        </div>
-                        
-                        {/* Instructor Feedbacks Submitted - For By Instructor view */}
-                        <div className="bg-green-50 rounded-lg p-2 text-center">
-                          <MessageSquare className="w-4 h-4 text-green-600 mx-auto mb-1" />
-                          <div className="text-base font-semibold text-green-700">{subject.instructor_feedback_count}</div>
-                          <div className="text-xs text-green-600">Instructor Feedbacks</div>
-                        </div>
-                        
-                        {/* Response Rate */}
-                        <div className="bg-purple-50 rounded-lg p-2 text-center">
-                          <BarChart3 className="w-4 h-4 text-purple-600 mx-auto mb-1" />
-                          <div className="text-base font-semibold text-purple-700">{responseRate}%</div>
-                          <div className="text-xs text-purple-600">Rate</div>
-                          <div className="text-xs text-gray-500">({responseFraction})</div>
-                        </div>
-                        
-                        {/* INSTRUCTOR RATING ONLY - for By Instructor view */}
-                        <div className="bg-teal-50 rounded-lg p-2 text-center">
-                          <GraduationCap className="w-4 h-4 text-teal-600 mx-auto mb-1" />
-                          <div className="text-lg font-semibold text-teal-700">
-                            {parseFloat((subject.avg_rating || 0).toString()).toFixed(1)}
-                          </div>
-                          <div className="text-xs text-teal-600">Instructor Rating</div>
-                        </div>
-                      </div>
-                      
-                     
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
+             {loadingSubjects ? (
+               <SubjectCardSkeleton count={3} />
+             ) : (
               <div className="text-center py-8">
                 <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500">No subjects found for this instructor</p>
@@ -895,7 +904,9 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           {/* Instructor Cards Grid */}
           {currentView === 'instructors' ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredInstructors.length === 0 ? (
+            {loading ? (
+              <InstructorCardSkeleton count={6} />
+            ) : filteredInstructors.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500">No instructors found</p>
@@ -953,59 +964,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 /* Subjects Cards Grid - WITH EXPANDED INLINE DETAILS */
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {loadingAllSubjects ? (
-                // Skeleton loading for subjects
-                <>
-                  {[1, 2, 3, 4].map((i) => (
-                    <Card key={i} className="border-green-100">
-                      <CardContent className="p-4">
-                        {/* Subject Header Skeleton */}
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex items-start gap-4">
-                            <div className="w-12 h-12 rounded-lg bg-green-100 animate-pulse"></div>
-                            <div>
-                              <div className="h-5 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
-                              <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
-                              <div className="h-4 bg-gray-100 rounded animate-pulse w-40"></div>
-                            </div>
-                          </div>
-                          <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
-                        </div>
-
-                        {/* Expanded Inline Details Skeleton */}
-                        <div className="grid grid-cols-2 gap-3 mt-4">
-                          <div className="bg-blue-50 rounded-lg p-2 text-center">
-                            <div className="w-4 h-4 bg-blue-200 rounded animate-pulse mx-auto mb-1"></div>
-                            <div className="h-4 bg-blue-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                            <div className="h-3 bg-blue-100 rounded animate-pulse w-12 mx-auto"></div>
-                          </div>
-
-                          <div className="bg-green-50 rounded-lg p-2 text-center">
-                            <div className="w-4 h-4 bg-green-200 rounded animate-pulse mx-auto mb-1"></div>
-                            <div className="h-4 bg-green-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                            <div className="h-3 bg-green-100 rounded animate-pulse w-12 mx-auto"></div>
-                          </div>
-
-                          <div className="bg-purple-50 rounded-lg p-2 text-center">
-                            <div className="w-4 h-4 bg-purple-200 rounded animate-pulse mx-auto mb-1"></div>
-                            <div className="h-4 bg-purple-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                            <div className="h-3 bg-purple-100 rounded animate-pulse w-12 mx-auto"></div>
-                          </div>
-
-                          <div className="bg-orange-50 rounded-lg p-2 text-center">
-                            <div className="w-4 h-4 bg-orange-200 rounded animate-pulse mx-auto mb-1"></div>
-                            <div className="h-4 bg-orange-200 rounded animate-pulse mb-1 w-8 mx-auto"></div>
-                            <div className="h-3 bg-orange-100 rounded animate-pulse w-12 mx-auto"></div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </>
-              ) : filteredSubjects.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No subjects found</p>
-                </div>
+                <SubjectCardSkeleton count={4} />
               ) : (
                 filteredSubjects.map((subject) => {
                   // Calculate response rate using subject_feedback_count for By Subject view
