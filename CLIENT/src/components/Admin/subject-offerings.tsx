@@ -165,6 +165,9 @@ export function SubjectOfferings() {
     has_next: boolean;
     has_prev: boolean;
   } | null>(null);
+  const [offeringsCache, setOfferingsCache] = useState<{[department: string]: SubjectOffering[]}>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const perPage = 50;
     
   // Dialog states
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -199,6 +202,7 @@ export function SubjectOfferings() {
 
   // Handle tab change - directly update department to trigger data reload
   const handleTabChange = (tab: string) => {
+    setOfferings([]); // Clear offerings immediately to prevent showing stale data
     setActiveTab(tab);
     setSelectedDepartment(tab === "seniorHigh" ? "Senior High" : "College");
   };
@@ -224,6 +228,13 @@ export function SubjectOfferings() {
       fetchStudents();
     }
   }, [viewStudentsDialogOpen, selectedOffering?.id]);
+
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+
 
   useEffect(() => {
     // Load system settings on mount
@@ -272,7 +283,15 @@ export function SubjectOfferings() {
     fetchPeriodForDepartment();
   }, [selectedDepartment]);
 
-  const loadData = async (deptSettingsOverride?: typeof systemSettings.college, page = 1, limit = 50) => {
+  const loadData = async (deptSettingsOverride?: typeof systemSettings.college) => {
+    // Check cache first
+    if (offeringsCache[selectedDepartment]) {
+      setOfferings(offeringsCache[selectedDepartment]);
+      setLoading(false);
+      setInitialLoading(false);
+      return;
+    }
+
     setLoading(true);
     setOfferings([]); // Clear offerings to prevent showing stale data
     try {
@@ -283,21 +302,15 @@ export function SubjectOfferings() {
           : systemSettings.seniorHigh
       );
 
-      // Build params for offerings query
+      // Build params for offerings query - fetch all without pagination
       const params: any = {
-        page,
-        limit,
+        limit: 10000, // Large limit to fetch all
         department: selectedDepartment
       };
 
       // If we have a current_period_id, use it; otherwise load all (for backward compatibility)
       if (deptSettings?.current_period_id) {
         params.academic_period_id = deptSettings.current_period_id.toString();
-      }
-
-      // Add search if present
-      if (searchQuery.trim()) {
-        params.search = searchQuery.trim();
       }
 
       const [offeringsResult, subjectsResult, programsResult] = await Promise.all([
@@ -307,8 +320,21 @@ export function SubjectOfferings() {
       ]);
 
       if (offeringsResult.success) {
-        setOfferings(offeringsResult.offerings || []);
-        setPagination(offeringsResult.pagination || null);
+        const allOfferings = offeringsResult.offerings || [];
+        setOfferings(allOfferings);
+        setOfferingsCache(prev => ({ ...prev, [selectedDepartment]: allOfferings }));
+        // Calculate pagination for display
+        const total = allOfferings.length;
+        const totalPages = Math.ceil(total / perPage);
+        setPagination({
+          current_page: 1,
+          per_page: perPage,
+          total,
+          total_pages: totalPages,
+          has_next: totalPages > 1,
+          has_prev: false
+        });
+        setCurrentPage(1);
       }
       if (subjectsResult.success) {
         setSubjects(subjectsResult.subjects || []);
@@ -463,12 +489,16 @@ export function SubjectOfferings() {
     }
   };
 
-  const handleSearch = () => {
-    loadData(); // Reset to page 1 when searching
-  };
+
 
   const handlePageChange = (newPage: number) => {
-    loadData(undefined, newPage);
+    setCurrentPage(newPage);
+    setPagination(prev => prev ? {
+      ...prev,
+      current_page: newPage,
+      has_next: newPage < prev.total_pages,
+      has_prev: newPage > 1
+    } : null);
   };
 
   const handleCreateOffering = async () => {
@@ -507,6 +537,12 @@ export function SubjectOfferings() {
       if (result.success) {
         toast.success("Subject offering created successfully");
         setCreateDialogOpen(false);
+        // Invalidate cache and reload
+        setOfferingsCache(prev => {
+          const newCache = { ...prev };
+          delete newCache[selectedDepartment];
+          return newCache;
+        });
         loadData();
       } else {
         toast.error(result.message);
@@ -532,6 +568,12 @@ export function SubjectOfferings() {
       if (result.success) {
         toast.success("Subject offering updated successfully");
         setEditDialogOpen(false);
+        // Invalidate cache and reload
+        setOfferingsCache(prev => {
+          const newCache = { ...prev };
+          delete newCache[selectedDepartment];
+          return newCache;
+        });
         loadData();
       } else {
         toast.error(result.message);
@@ -558,7 +600,12 @@ export function SubjectOfferings() {
         toast.success("Subject offering deleted successfully");
         // AlertDialog handles closing automatically, just clear selection
         setSelectedOffering(null);
-        // Reload data immediately
+        // Invalidate cache and reload
+        setOfferingsCache(prev => {
+          const newCache = { ...prev };
+          delete newCache[selectedDepartment];
+          return newCache;
+        });
         loadData();
       } else {
         toast.error(result.message || "Failed to delete subject offering");
@@ -610,10 +657,31 @@ export function SubjectOfferings() {
     (offering.program_name || '').toLowerCase().includes(searchQuery.toLowerCase())
   ), [offerings, searchQuery]);
 
-  // Since backend filters by department, use all filtered offerings for the active tab
-  const collegeOfferings = useMemo(() => activeTab === "college" ? filteredOfferings : [], [filteredOfferings, activeTab]);
+  // Update pagination when filtered offerings change
+  useEffect(() => {
+    const total = filteredOfferings.length;
+    const totalPages = Math.ceil(total / perPage);
+    setPagination({
+      current_page: currentPage,
+      per_page: perPage,
+      total,
+      total_pages: totalPages,
+      has_next: currentPage < totalPages,
+      has_prev: currentPage > 1
+    });
+  }, [filteredOfferings, currentPage, perPage]);
 
-  const seniorHighOfferings = useMemo(() => activeTab === "seniorHigh" ? filteredOfferings : [], [filteredOfferings, activeTab]);
+  // Paginate the filtered offerings client-side
+  const paginatedOfferings = useMemo(() => {
+    const start = (currentPage - 1) * perPage;
+    const end = start + perPage;
+    return filteredOfferings.slice(start, end);
+  }, [filteredOfferings, currentPage, perPage]);
+
+  // Use paginated filtered offerings for the active tab
+  const collegeOfferings = useMemo(() => activeTab === "college" ? paginatedOfferings : [], [paginatedOfferings, activeTab]);
+
+  const seniorHighOfferings = useMemo(() => activeTab === "seniorHigh" ? paginatedOfferings : [], [paginatedOfferings, activeTab]);
 
   // Filter programs by selected department first, then group unique by program_code
   const uniquePrograms = useMemo(() => {
@@ -854,10 +922,6 @@ export function SubjectOfferings() {
             className="pl-10"
           />
         </div>
-        <Button variant="outline" onClick={handleSearch}>
-          <Search className="w-4 h-4 mr-2" />
-          Search
-        </Button>
       </div>
 
       {/* Offerings Table with Tabs */}
