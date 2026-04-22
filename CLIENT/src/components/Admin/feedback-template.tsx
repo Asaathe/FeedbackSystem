@@ -142,7 +142,46 @@ export function FeedbackTemplate() {
       });
       const data = await response.json();
       if (data.success) {
-        setPeriods(data.periods || []);
+        let periodsData = data.periods || [];
+
+        // Auto-deactivate expired periods
+        const now = new Date();
+        const expiredPeriods = periodsData.filter(period =>
+          period.is_active && new Date(period.end_date) < now
+        );
+
+        // Deactivate expired periods
+        if (expiredPeriods.length > 0) {
+          for (const period of expiredPeriods) {
+            try {
+              const deactivateResponse = await fetch(`/api/feedback-templates/periods/${period.id}/toggle`, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${token}`,
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ is_active: false }),
+              });
+              if (deactivateResponse.ok) {
+                console.log(`Auto-deactivated expired period: ${period.name}`);
+              }
+            } catch (deactivateError) {
+              console.error(`Failed to auto-deactivate period ${period.id}:`, deactivateError);
+            }
+          }
+          // Re-fetch periods to get updated status
+          const updatedResponse = await fetch('/api/feedback-templates/periods', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          });
+          const updatedData = await updatedResponse.json();
+          if (updatedData.success) {
+            periodsData = updatedData.periods || [];
+          }
+        }
+
+        setPeriods(periodsData);
       }
     } catch (error) {
       console.error("Error fetching periods:", error);
@@ -272,7 +311,7 @@ export function FeedbackTemplate() {
   const handleAddPeriod = () => {
     setEditingPeriod(null);
     setPeriodName("");
-    setPeriodStartDate("");
+    setPeriodStartDate(new Date().toISOString().split('T')[0]);
     setPeriodEndDate("");
     setPeriodActive(false);
     setPeriodDialogOpen(true);
@@ -357,6 +396,19 @@ export function FeedbackTemplate() {
   };
 
   const handleTogglePeriod = async (id: number, isActive: boolean) => {
+    // Prevent activation of periods with past end dates
+    if (!isActive) {
+      const period = periods.find(p => p.id === id);
+      if (period) {
+        const endDate = new Date(period.end_date);
+        const now = new Date();
+        if (endDate < now) {
+          toast.error("Cannot activate a period that has already ended");
+          return;
+        }
+      }
+    }
+
     try {
       const token = sessionStorage.getItem('authToken');
       const response = await fetch(`/api/feedback-templates/periods/${id}/toggle`, {
@@ -1085,6 +1137,7 @@ export function FeedbackTemplate() {
                   id="periodStartDate"
                   type="date"
                   value={periodStartDate}
+                  min={new Date().toISOString().split('T')[0]}
                   onChange={(e) => setPeriodStartDate(e.target.value)}
                   className="border border-gray-200"
                 />
@@ -1095,6 +1148,7 @@ export function FeedbackTemplate() {
                   id="periodEndDate"
                   type="date"
                   value={periodEndDate}
+                  min={periodStartDate || new Date().toISOString().split('T')[0]}
                   onChange={(e) => setPeriodEndDate(e.target.value)}
                   className="border border-gray-200"
                 />

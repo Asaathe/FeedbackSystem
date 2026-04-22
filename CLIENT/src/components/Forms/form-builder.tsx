@@ -267,6 +267,17 @@ export const FormBuilder = memo(function FormBuilder({
   const [fileToCrop, setFileToCrop] = useState<File | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
 
+  // Auto-fill start date and time with current date/time when publish dialog opens
+  useEffect(() => {
+    if (publishDialogOpen && !submissionSchedule.startDate) {
+      setSubmissionSchedule((prev) => ({
+        ...prev,
+        startDate: new Date().toISOString().split('T')[0],
+        startTime: new Date().toTimeString().substring(0, 5),
+      }));
+    }
+  }, [publishDialogOpen, submissionSchedule.startDate]);
+
   // AI Question Generation States
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
 
@@ -1811,6 +1822,7 @@ export const FormBuilder = memo(function FormBuilder({
                                 <Input
                                   type="date"
                                   value={submissionSchedule.startDate}
+                                  min={new Date().toISOString().split('T')[0]}
                                   onChange={(e) =>
                                     setSubmissionSchedule((prev) => ({
                                       ...prev,
@@ -1845,6 +1857,7 @@ export const FormBuilder = memo(function FormBuilder({
                                 <Input
                                   type="date"
                                   value={submissionSchedule.endDate}
+                                  min={submissionSchedule.startDate || new Date().toISOString().split('T')[0]}
                                   onChange={(e) =>
                                     setSubmissionSchedule((prev) => ({
                                       ...prev,
