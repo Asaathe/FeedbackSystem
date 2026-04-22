@@ -153,6 +153,7 @@ export function SubjectOfferings() {
     },
   });
   const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterAcademicYear, setFilterAcademicYear] = useState("2025-2026");
   const [filterSemester, setFilterSemester] = useState("1st");
@@ -273,6 +274,7 @@ export function SubjectOfferings() {
 
   const loadData = async (deptSettingsOverride?: typeof systemSettings.college, page = 1, limit = 50) => {
     setLoading(true);
+    setOfferings([]); // Clear offerings to prevent showing stale data
     try {
       // Use override if provided (for race condition fix), otherwise use state
       const deptSettings = deptSettingsOverride || (
@@ -319,6 +321,7 @@ export function SubjectOfferings() {
       toast.error("Failed to load data");
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
@@ -607,18 +610,10 @@ export function SubjectOfferings() {
     (offering.program_name || '').toLowerCase().includes(searchQuery.toLowerCase())
   ), [offerings, searchQuery]);
 
-  // Filter offerings by selected department (College or Senior High)
-  // Handle various department value variations: "College", "Senior High", "SHS", "SH", null (fallback to year_level)
-  const collegeOfferings = useMemo(() => filteredOfferings.filter(offering => {
-    const dept = offering.program_department?.toLowerCase();
-    const yearLevel = offering.year_level;
-    return dept === "college" || dept === "college department" || (!dept && yearLevel && yearLevel >= 1 && yearLevel <= 4);
-  }), [filteredOfferings]);
+  // Since backend filters by department, use all filtered offerings for the active tab
+  const collegeOfferings = useMemo(() => activeTab === "college" ? filteredOfferings : [], [filteredOfferings, activeTab]);
 
-  const seniorHighOfferings = useMemo(() => filteredOfferings.filter(offering => {
-    const dept = offering.program_department?.toLowerCase();
-    return dept === "senior high" || dept === "shs" || dept === "sh" || dept === "senior high school";
-  }), [filteredOfferings]);
+  const seniorHighOfferings = useMemo(() => activeTab === "seniorHigh" ? filteredOfferings : [], [filteredOfferings, activeTab]);
 
   // Filter programs by selected department first, then group unique by program_code
   const uniquePrograms = useMemo(() => {
@@ -632,7 +627,58 @@ export function SubjectOfferings() {
     }, []);
   }, [programs, selectedDepartment]);
 
+  // Full-page skeleton loader for initial loading
+  if (initialLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div>
+              <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+              <div className="h-4 bg-green-100 rounded animate-pulse w-96"></div>
+            </div>
+            <div className="h-10 bg-gray-200 rounded animate-pulse w-32"></div>
+          </div>
+        </div>
 
+        {/* Filters Skeleton */}
+        <div className="flex items-center gap-4 flex-wrap">
+          <div className="relative flex-1 max-w-md">
+            <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+          </div>
+          <div className="h-10 bg-gray-200 rounded animate-pulse w-24"></div>
+        </div>
+
+        {/* Tabs Skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between w-full">
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-48"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse w-64"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {/* College Tab Skeleton */}
+            <div className="space-y-3">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-4 p-4 border rounded">
+                  <div className="flex-1">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-40"></div>
+                    <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
+                  </div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-20"></div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-24"></div>
+                  <div className="h-10 bg-gray-200 rounded animate-pulse w-10"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
