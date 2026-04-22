@@ -1094,7 +1094,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       <div className="max-w-4xl mx-auto px-5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-6">
         {/* University Header Banner */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-lime-600 px-5 sm:px-6 py-8 sm:py-6">
+          <div className="bg-gradient-to-r from-green-600 to-lime-600 px-6 sm:px-6 py-8 sm:py-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-white text-2xl sm:text-2xl mb-2 sm:mb-1">
@@ -1116,7 +1116,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
           </div>
 
           {/* Form Title Section */}
-          <div className="px-5 sm:px-6 py-8 sm:py-6 border-b border-gray-100">
+          <div className="px-6 sm:px-6 py-8 sm:py-6 border-b border-gray-100">
             {/* External Supervisor Info - shown only in external mode */}
             {isExternalMode && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -1188,7 +1188,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
           </div>
 
           {/* Progress Section */}
-          <div className="px-5 sm:px-6 py-6 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
+          <div className="px-6 sm:px-6 py-6 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 text-sm">
                 <span className="text-gray-700">
@@ -1234,7 +1234,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
         {/* Section Header (for section pages) */}
         {currentPage?.type === 'section' && (
-          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl border border-green-200 p-5 sm:p-4 mb-4">
+          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl border border-green-200 p-6 sm:p-4 mb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1261,8 +1261,8 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
         )}
 
         {/* Navigation Footer */}
-        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-5 sm:px-6 py-6 sm:py-5">
-          <div className="flex justify-between items-center gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-6 sm:px-6 py-6 sm:py-5">
+          <div className="flex justify-between items-center gap-6">
             <Button
               variant="outline"
               onClick={() => {
