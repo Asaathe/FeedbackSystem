@@ -927,7 +927,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               setAnswers({ ...answers, [question.id]: value })
             }
           >
-            <SelectTrigger className="h-14 sm:h-10 min-h-[44px] touch-manipulation">
+            <SelectTrigger className="h-14 sm:h-10 sm:min-h-[44px] touch-manipulation">
               <SelectValue placeholder="Select an option" />
             </SelectTrigger>
             <SelectContent>
@@ -982,7 +982,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               setAnswers({ ...answers, [question.id]: e.target.value })
             }
             placeholder="Type your answer here..."
-            className="h-14 sm:h-10 text-base min-h-[44px] touch-manipulation"
+            className="h-14 sm:h-10 text-base sm:min-h-[44px] touch-manipulation"
           />
         );
 
@@ -1062,7 +1062,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
   // Render a single question card
   const renderQuestionCard = (question: FormQuestion) => (
-    <div key={question.id} className="bg-white rounded-xl shadow-md border border-green-100 p-4 sm:p-4 mb-6 sm:mb-4">
+    <div key={question.id} className="bg-white rounded-xl shadow-md border border-green-100 p-4 sm:p-3 mb-6 sm:mb-4">
       <div className="space-y-4 sm:space-y-3">
         {/* Question Header */}
         <div className="pb-4 sm:pb-3 border-b border-gray-100">
@@ -1091,10 +1091,10 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
     <div
       className="min-h-screen bg-gradient-to-br from-green-50 via-white to-lime-50"
     >
-      <div className="max-w-4xl mx-auto px-4 sm:px-4 py-6 sm:py-8 space-y-6 sm:space-y-6">
+      <div className="max-w-4xl mx-auto px-5 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-6">
         {/* University Header Banner */}
         <div className="bg-white rounded-xl shadow-sm border border-green-100 overflow-hidden">
-          <div className="bg-gradient-to-r from-green-600 to-lime-600 px-6 sm:px-8 py-8 sm:py-6">
+          <div className="bg-gradient-to-r from-green-600 to-lime-600 px-5 sm:px-6 py-8 sm:py-6">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-white text-2xl sm:text-2xl mb-2 sm:mb-1">
@@ -1107,16 +1107,16 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               <Button
                 variant="ghost"
                 onClick={handleBack}
-                className="text-white hover:bg-white/20 border border-white/30 h-12 sm:h-10 px-4 sm:px-6 text-sm whitespace-nowrap min-h-[44px] touch-manipulation"
+                className="text-white hover:bg-white/20 border border-white/30 h-12 sm:h-10 px-3 sm:px-4 text-sm whitespace-nowrap sm:min-h-[44px] touch-manipulation"
               >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Exit Form
+                <ArrowLeft className="w-4 h-4 sm:mr-2" />
+                <span className="hidden sm:inline">Exit Form</span>
               </Button>
             </div>
           </div>
 
           {/* Form Title Section */}
-          <div className="px-6 sm:px-8 py-8 sm:py-6 border-b border-gray-100">
+          <div className="px-5 sm:px-6 py-8 sm:py-6 border-b border-gray-100">
             {/* External Supervisor Info - shown only in external mode */}
             {isExternalMode && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
@@ -1188,7 +1188,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
           </div>
 
           {/* Progress Section */}
-          <div className="px-4 sm:px-8 py-6 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
+          <div className="px-5 sm:px-6 py-6 sm:py-5 bg-gradient-to-r from-green-50 to-lime-50">
             <div className="space-y-3">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 sm:gap-0 text-sm">
                 <span className="text-gray-700">
@@ -1234,7 +1234,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
 
         {/* Section Header (for section pages) */}
         {currentPage?.type === 'section' && (
-          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl border border-green-200 p-4 mb-4">
+          <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl border border-green-200 p-5 sm:p-4 mb-4">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
                 <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1261,8 +1261,8 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
         )}
 
         {/* Navigation Footer */}
-        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-4 sm:px-8 py-6 sm:py-5">
-          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4 sm:gap-0">
+        <div className="bg-white rounded-xl shadow-sm border border-green-100 px-5 sm:px-6 py-6 sm:py-5">
+          <div className="flex justify-between items-center gap-4">
             <Button
               variant="outline"
               onClick={() => {
@@ -1272,16 +1272,15 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
                   handleBack();
                 }
               }}
-              className="border-gray-300 hover:bg-gray-50 px-4 sm:px-4 h-12 sm:h-10 text-sm whitespace-nowrap w-auto min-h-[44px] touch-manipulation"
+              className="border-gray-300 hover:bg-gray-50 px-4 h-12 sm:h-10 text-sm whitespace-nowrap sm:min-h-[44px] touch-manipulation flex-shrink-0"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-
-              <span className="sm:hidden">
-                {currentPageIndex === 0 ? "Back" : "Prev"}
+              <ArrowLeft className="w-5 h-5 sm:mr-2" />
+              <span className="hidden sm:inline">
+                {currentPageIndex === 0 ? "Back" : "Previous"}
               </span>
             </Button>
 
-            <div className="text-center text-sm text-gray-500 order-first sm:order-none">
+            <div className="text-center text-sm text-gray-500 flex-1 px-2">
               {isLastPage
                 ? "Ready to submit"
                 : `${totalPages - currentPageIndex - 1} pages remaining`}
@@ -1290,21 +1289,19 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             {isLastPage ? (
               <Button
                 onClick={handleSubmit}
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-4 sm:px-4 shadow-md h-12 sm:h-10 text-sm whitespace-nowrap w-auto min-h-[44px] touch-manipulation"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-4 shadow-md h-12 sm:h-10 text-sm whitespace-nowrap sm:min-h-[44px] touch-manipulation flex-shrink-0"
               >
-                <Send className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Submit Feedback</span>
-
+                <span className="hidden sm:inline mr-2">Submit</span>
+                <Send className="w-5 h-5" />
               </Button>
             ) : (
               <Button
                 onClick={() => setCurrentPageIndex(currentPageIndex + 1)}
-                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-4 sm:px-4 h-12 sm:h-10 text-sm whitespace-nowrap w-auto min-h-[44px] touch-manipulation"
+                className="bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 px-4 h-12 sm:h-10 text-sm whitespace-nowrap sm:min-h-[44px] touch-manipulation flex-shrink-0"
               >
-
-                <span className="sm:hidden ml-2">Next</span>
+                <span className="hidden sm:inline mr-2">Next</span>
                 <svg
-                  className="w-4 h-4 ml-2"
+                  className="w-5 h-5"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
