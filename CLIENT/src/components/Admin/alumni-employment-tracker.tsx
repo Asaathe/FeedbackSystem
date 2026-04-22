@@ -388,7 +388,90 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
         <span className="ml-1">{config.label}</span>
       </Badge>
     );
-  };
+   };
+
+  // Full-page skeleton loader
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-96"></div>
+        </div>
+
+        {/* Stepper Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-64"></div>
+          </CardHeader>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between w-full">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="flex flex-col items-center flex-1 relative">
+                  <div className="w-10 h-10 rounded-full bg-gray-200 animate-pulse"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-16 mt-2"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Filters Skeleton */}
+        <Card className="border-gray-200">
+          <CardContent className="pt-4">
+            <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+              <div className="relative flex-1 max-w-md">
+                <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse w-48"></div>
+              <div className="h-10 bg-gray-200 rounded animate-pulse w-44"></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table Skeleton */}
+        <Card className="border-gray-200">
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10"><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableHead>
+                  <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div></TableHead>
+                  <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div></TableHead>
+                  <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div></TableHead>
+                  <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div></TableHead>
+                  <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div></TableHead>
+                  <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <TableRow key={i}>
+                    <TableCell><div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div></TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-gray-200 rounded-full animate-pulse"></div>
+                        <div>
+                          <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-24"></div>
+                          <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div></TableCell>
+                    <TableCell><div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div></TableCell>
+                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div></TableCell>
+                    <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div></TableCell>
+                    <TableCell><div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -512,41 +595,7 @@ export function AlumniEmploymentTracker({ onNavigate }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {loading ? (
-                <>
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <TableRow key={i}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
-                          <div>
-                            <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-24"></div>
-                            <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="h-8 bg-gray-200 rounded animate-pulse w-16"></div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </>
-              ) : records.length === 0 ? (
+              {records.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-2 text-gray-300" />

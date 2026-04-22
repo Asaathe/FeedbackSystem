@@ -291,6 +291,77 @@ export function CourseManagement() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedPrograms = filteredPrograms.slice(startIndex, endIndex);
 
+  // Full-page skeleton loader
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-96"></div>
+        </div>
+
+        {/* System Settings Skeleton */}
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardContent className="p-4">
+                <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-24"></div>
+                <div className="h-8 bg-gray-200 rounded animate-pulse w-12"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Add/Edit Form Skeleton */}
+        <Card className="border-green-100">
+          <CardContent className="p-6">
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-40"></div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i}>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-20"></div>
+                  <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Table Skeleton */}
+        <Card className="border-green-100 overflow-hidden">
+          <CardContent className="p-0">
+            <div className="p-8 space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-20"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
@@ -500,37 +571,9 @@ export function CourseManagement() {
         </CardContent>
       </Card>
 
-      {/* Programs Table */}
-      <Card className="border-green-100 overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
-            </div>
-          </div>
-        ) : filteredPrograms.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No programs found. Add your first program above.
-          </div>
-        ) : (
-          <>
+        {/* Programs Table */}
+        <Card className="border-green-100 overflow-hidden">
+          <CardContent className="p-0">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-50">
@@ -627,8 +670,7 @@ export function CourseManagement() {
                 </Button>
               </div>
             )}
-          </>
-        )}
+           </CardContent>
       </Card>
     </div>
   );

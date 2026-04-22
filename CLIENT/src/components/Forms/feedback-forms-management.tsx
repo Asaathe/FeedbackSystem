@@ -474,7 +474,7 @@ export function FeedbackFormsManagement({
     }
   };
 
-  const loadForms = async () => {
+  const loadForms = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -549,7 +549,7 @@ export function FeedbackFormsManagement({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   // Memoized filtered forms for performance
   const filteredCustomForms = useMemo(() => {
@@ -574,7 +574,7 @@ export function FeedbackFormsManagement({
     });
   }, [templateForms, debouncedSearchQuery, selectedCategory]);
 
-  const handlePreviewForm = async (form: FormData) => {
+  const handlePreviewForm = useCallback(async (form: FormData) => {
     try {
       const result = await getForm(form.id);
       if (result.success && result.form) {
@@ -587,7 +587,7 @@ export function FeedbackFormsManagement({
       console.error("Error loading form for preview:", error);
       toast.error("Failed to load form for preview");
     }
-  };
+  }, []);
 
   // Handler for creating a new form (navigates directly to builder)
   const handleCreateNewForm = useCallback(() => {
@@ -610,7 +610,7 @@ export function FeedbackFormsManagement({
     }
   }, []);
 
-  const handleDeleteForm = async (form: FormData) => {
+  const handleDeleteForm = useCallback(async (form: FormData) => {
     try {
       const result = await deleteForm(form.id);
       if (result.success) {
@@ -623,14 +623,14 @@ export function FeedbackFormsManagement({
       console.error("Error deleting form:", error);
       toast.error("An error occurred while deleting the form");
     }
-  };
+  }, []);
 
-  const openDeleteDialog = (form: FormData) => {
+  const openDeleteDialog = useCallback((form: FormData) => {
     setFormToDelete(form);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
-  const handleSaveAsTemplate = async (formId: string) => {
+  const handleSaveAsTemplate = useCallback(async (formId: string) => {
     console.log(`[DEBUG] handleSaveAsTemplate called for formId: ${formId}`);
     try {
       setSavingAsTemplate(formId);
@@ -720,7 +720,7 @@ export function FeedbackFormsManagement({
     } finally {
       setSavingAsTemplate(null);
     }
-  };
+  }, []);
 
   const handleDeployForm = async (formId: string) => {
     try {

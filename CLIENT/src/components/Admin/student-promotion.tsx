@@ -712,7 +712,106 @@ export default function StudentPromotion() {
     historyPage * itemsPerPage
   );
 
+  // Full-page skeleton loader
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-64"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-96"></div>
+        </div>
 
+        {/* System Settings Skeleton */}
+        <div className="mb-6 bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Tabs Skeleton */}
+        <div className="mb-6">
+          <div className="bg-slate-100 p-1 rounded-xl flex gap-1">
+            <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+            </div>
+            <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+            </div>
+            <div className="flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+            </div>
+          </div>
+        </div>
+
+        {/* Promote Tab Content Skeleton */}
+        <Card className="border-slate-200 shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-56"></div>
+          </CardHeader>
+          <CardContent>
+            {/* Filter Skeleton */}
+            <div className="flex flex-wrap gap-4 mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="w-64">
+                <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-32"></div>
+                <div className="h-10 bg-gray-200 rounded animate-pulse"></div>
+              </div>
+              <div className="flex-1">
+                <div className="h-10 bg-gray-200 rounded animate-pulse w-64"></div>
+              </div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+
+            {/* Table Skeleton */}
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader className="bg-slate-50">
+                  <TableRow className="bg-slate-50 hover:bg-slate-50">
+                    <TableHead className="w-12"><div className="h-4 bg-gray-200 rounded animate-pulse"></div></TableHead>
+                    <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div></TableHead>
+                    <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div></TableHead>
+                    <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div></TableHead>
+                    <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div></TableHead>
+                    <TableHead><div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <TableRow key={i}>
+                      <TableCell><Checkbox disabled /></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
+                          <div>
+                            <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                            <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div></TableCell>
+                      <TableCell><div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div></TableCell>
+                      <TableCell><div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -853,38 +952,7 @@ export default function StudentPromotion() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? (
-                      <>
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <TableRow key={i}>
-                            <TableCell>
-                              <Checkbox disabled />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
-                                <div>
-                                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
-                                  <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </>
-                    ) : filteredStudents.length === 0 ? (
+                    {filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                           {selectedCourseSection === "all"
@@ -1061,38 +1129,7 @@ export default function StudentPromotion() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {loading ? (
-                      <>
-                        {[1, 2, 3, 4, 5].map((i) => (
-                          <TableRow key={i}>
-                            <TableCell>
-                              <Checkbox disabled />
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-3">
-                                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
-                                <div>
-                                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
-                                  <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </>
-                    ) : filteredGradStudents.length === 0 ? (
+                    {filteredGradStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                           {gradSelectedCourseSection === "all"
