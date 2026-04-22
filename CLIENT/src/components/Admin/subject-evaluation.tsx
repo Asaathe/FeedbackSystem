@@ -278,6 +278,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
   }, [instructors.length, allSubjects.length, isInitialLoad]);
 
   const fetchInstructors = async () => {
+    setLoading(true);
     try {
       const token = sessionStorage.getItem('authToken');
       if (!token) {
@@ -298,7 +299,7 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
 
       const data = await response.json();
       console.log('Instructors API response:', data);
-      
+
       if (data.success) {
         const mappedInstructors = (data.instructors || []).map((instructor: any) => ({
           user_id: instructor.user_id,
@@ -320,6 +321,8 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
     } catch (error) {
       console.error('Error fetching instructors:', error);
       toast.error('Failed to fetch instructors');
+    } finally {
+      setLoading(false);
     }
   };
 
