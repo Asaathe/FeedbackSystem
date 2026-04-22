@@ -871,8 +871,19 @@ export function SubjectOfferings() {
           <div className="w-full">
             <TabsContent value="college">
                 {loading ? (
-                  <div className="flex justify-center items-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  <div className="space-y-3">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <div key={i} className="flex items-center gap-4 p-4 border rounded">
+                        <div className="flex-1">
+                          <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-40"></div>
+                          <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
+                        </div>
+                        <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                        <div className="h-6 bg-gray-200 rounded animate-pulse w-20"></div>
+                        <div className="h-6 bg-gray-200 rounded animate-pulse w-24"></div>
+                        <div className="h-10 bg-gray-200 rounded animate-pulse w-10"></div>
+                      </div>
+                    ))}
                   </div>
                 ) : collegeOfferings.length === 0 ? (
                   <div className="text-center py-12">
@@ -978,8 +989,19 @@ export function SubjectOfferings() {
             
             <TabsContent value="seniorHigh">
               {loading ? (
-                <div className="flex justify-center items-center h-64">
-                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                <div className="space-y-3">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="flex items-center gap-4 p-4 border rounded">
+                      <div className="flex-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-40"></div>
+                        <div className="h-3 bg-gray-100 rounded animate-pulse w-32"></div>
+                      </div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-20"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-24"></div>
+                      <div className="h-10 bg-gray-200 rounded animate-pulse w-10"></div>
+                    </div>
+                  ))}
                 </div>
               ) : seniorHighOfferings.length === 0 ? (
                 <div className="text-center py-12">

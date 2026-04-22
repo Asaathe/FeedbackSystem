@@ -854,11 +854,36 @@ export default function StudentPromotion() {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                        </TableCell>
-                      </TableRow>
+                      <>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <Checkbox disabled />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
+                                <div>
+                                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                                  <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
                     ) : filteredStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">
@@ -1037,11 +1062,36 @@ export default function StudentPromotion() {
                   </TableHeader>
                   <TableBody>
                     {loading ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8">
-                          <Loader2 className="h-6 w-6 animate-spin mx-auto" />
-                        </TableCell>
-                      </TableRow>
+                      <>
+                        {[1, 2, 3, 4, 5].map((i) => (
+                          <TableRow key={i}>
+                            <TableCell>
+                              <Checkbox disabled />
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
+                                <div>
+                                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                                  <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-6 bg-gray-200 rounded animate-pulse w-12"></div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </>
                     ) : filteredGradStudents.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">

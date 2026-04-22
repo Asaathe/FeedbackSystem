@@ -5,13 +5,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { InputField } from "../ui/input-field";
 import { SelectField } from "../ui/select-field";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
+
 import { 
   Table, 
   TableBody, 
@@ -216,6 +210,82 @@ const departments = ["College", "Senior High"];
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  // Full page skeleton loading
+  if (loading && subjects.length === 0) {
+    return (
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100 mb-6">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-64"></div>
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardContent className="p-4">
+                <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                </div>
+                <div className="h-8 bg-gray-200 rounded animate-pulse w-12"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Add/Edit Form Skeleton */}
+        <Card className="border-green-100 mb-6">
+          <CardContent className="p-6">
+            <div className="h-6 bg-gray-200 rounded animate-pulse mb-4 w-40"></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-20"></div>
+                  <div className="h-10 bg-gray-100 rounded animate-pulse w-full"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Search Skeleton */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <div className="h-10 bg-gray-100 rounded animate-pulse w-full"></div>
+          </div>
+          <div className="h-10 bg-gray-100 rounded animate-pulse w-24"></div>
+        </div>
+
+        {/* Table Skeleton */}
+        <Card className="border-green-100">
+          <CardContent className="p-0">
+            <div className="space-y-0">
+              {/* Table Header */}
+              <div className="grid grid-cols-6 gap-4 p-4 bg-gray-50 border-b">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="h-4 bg-gray-200 rounded animate-pulse"></div>
+                ))}
+              </div>
+              {/* Table Rows */}
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="grid grid-cols-6 gap-4 p-4 border-b">
+                  <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

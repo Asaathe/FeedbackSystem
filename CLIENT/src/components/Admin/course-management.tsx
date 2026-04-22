@@ -503,7 +503,28 @@ export function CourseManagement() {
       {/* Programs Table */}
       <Card className="border-green-100 overflow-hidden">
         {isLoading ? (
-          <div className="p-8 text-center text-gray-500">Loading programs...</div>
+          <div className="p-8 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+            </div>
+          </div>
         ) : filteredPrograms.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
             No programs found. Add your first program above.
