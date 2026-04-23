@@ -321,20 +321,23 @@ export function SubjectOfferings() {
 
       if (offeringsResult.success) {
         const allOfferings = offeringsResult.offerings || [];
-        setOfferings(allOfferings);
-        setOfferingsCache(prev => ({ ...prev, [selectedDepartment]: allOfferings }));
+        // Sort by ID descending to show newest first
+        const sortedOfferings = allOfferings.sort((a: SubjectOffering, b: SubjectOffering) => parseInt(b.id) - parseInt(a.id));
+        setOfferings(sortedOfferings);
+        setOfferingsCache(prev => ({ ...prev, [selectedDepartment]: sortedOfferings }));
         // Calculate pagination for display
         const total = allOfferings.length;
         const totalPages = Math.ceil(total / perPage);
+        const adjustedCurrentPage = Math.min(currentPage, totalPages) || 1;
         setPagination({
-          current_page: 1,
+          current_page: adjustedCurrentPage,
           per_page: perPage,
           total,
           total_pages: totalPages,
-          has_next: totalPages > 1,
-          has_prev: false
+          has_next: adjustedCurrentPage < totalPages,
+          has_prev: adjustedCurrentPage > 1
         });
-        setCurrentPage(1);
+        setCurrentPage(adjustedCurrentPage);
       }
       if (subjectsResult.success) {
         setSubjects(subjectsResult.subjects || []);
@@ -535,9 +538,21 @@ export function SubjectOfferings() {
       });
         
       if (result.success) {
+        // Optimistically add the new offering to state for immediate UI update
+        if (result.offering) {
+          setOfferings(prev => {
+            const newOfferings = [result.offering, ...prev];
+            return newOfferings.sort((a: SubjectOffering, b: SubjectOffering) => parseInt(b.id) - parseInt(a.id));
+          });
+          // Update cache as well
+          setOfferingsCache(prev => ({
+            ...prev,
+            [selectedDepartment]: [result.offering, ...(prev[selectedDepartment] || [])].sort((a: SubjectOffering, b: SubjectOffering) => parseInt(b.id) - parseInt(a.id))
+          }));
+        }
         toast.success("Subject offering created successfully");
         setCreateDialogOpen(false);
-        // Invalidate cache and reload
+        // Invalidate cache and reload in background to ensure consistency
         setOfferingsCache(prev => {
           const newCache = { ...prev };
           delete newCache[selectedDepartment];
@@ -597,16 +612,16 @@ export function SubjectOfferings() {
     try {
       const result = await deleteSubjectOffering(offeringId.toString());
       if (result.success) {
+        // Optimistically remove from state
+        setOfferings(prev => prev.filter(o => o.id !== offeringId));
+        // Update cache
+        setOfferingsCache(prev => ({
+          ...prev,
+          [selectedDepartment]: (prev[selectedDepartment] || []).filter(o => o.id !== offeringId)
+        }));
         toast.success("Subject offering deleted successfully");
         // AlertDialog handles closing automatically, just clear selection
         setSelectedOffering(null);
-        // Invalidate cache and reload
-        setOfferingsCache(prev => {
-          const newCache = { ...prev };
-          delete newCache[selectedDepartment];
-          return newCache;
-        });
-        loadData();
       } else {
         toast.error(result.message || "Failed to delete subject offering");
         // On error, we need to manually close
@@ -661,13 +676,14 @@ export function SubjectOfferings() {
   useEffect(() => {
     const total = filteredOfferings.length;
     const totalPages = Math.ceil(total / perPage);
+    const adjustedCurrentPage = Math.min(currentPage, totalPages) || 1;
     setPagination({
-      current_page: currentPage,
+      current_page: adjustedCurrentPage,
       per_page: perPage,
       total,
       total_pages: totalPages,
-      has_next: currentPage < totalPages,
-      has_prev: currentPage > 1
+      has_next: adjustedCurrentPage < totalPages,
+      has_prev: adjustedCurrentPage > 1
     });
   }, [filteredOfferings, currentPage, perPage]);
 
@@ -771,33 +787,13 @@ export function SubjectOfferings() {
                   Fill in the details to create a new subject offering for the selected department and semester.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>Department *</Label>
-                  <Select 
-                    value={selectedDepartment} 
-                    onValueChange={(value) => {
-                      setSelectedDepartment(value);
-                      // Update semester/AY based on department
-                      const deptSettings = value === "College" 
-                        ? systemSettings.college 
-                        : systemSettings.seniorHigh;
-                      setFormData(prev => ({
-                        ...prev,
-                        academic_year: deptSettings.current_academic_year,
-                        semester: deptSettings.current_semester,
-                      }));
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select department" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="College">College</SelectItem>
-                      <SelectItem value="Senior High">Senior High</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+               <div className="space-y-4 py-4">
+                 <div className="space-y-2">
+                   <Label>Department</Label>
+                   <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                     {selectedDepartment}
+                   </div>
+                 </div>
                   
                 <div className="space-y-2">
                   <Label>Subject *</Label>
@@ -856,22 +852,20 @@ export function SubjectOfferings() {
                   </Select>
                 </div>
                   
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Academic Year</Label>
-                    <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                      {selectedDepartment === "College" ? systemSettings.college.current_academic_year : systemSettings.seniorHigh.current_academic_year}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>{selectedDepartment === "College" ? "Semester" : "Quarter"}</Label>
-                    <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
-                      {selectedDepartment === "College" 
-                        ? systemSettings.college.current_semester 
-                        : (systemSettings.seniorHigh.current_semester || "").replace(" Quarter", "")}
-                    </div>
-                  </div>
-                </div>
+                  <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-2">
+                     <Label>Academic Year</Label>
+                     <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                       {formData.academic_year}
+                     </div>
+                   </div>
+                   <div className="space-y-2">
+                     <Label>{selectedDepartment === "College" ? "Semester" : "Quarter"}</Label>
+                     <div className="p-2 border rounded-md bg-gray-50 text-gray-700">
+                       {formData.semester}
+                     </div>
+                   </div>
+                 </div>
                   
                  <div className="space-y-2">
                    <Label>Instructor</Label>
@@ -1168,7 +1162,11 @@ export function SubjectOfferings() {
                           </Badge>
                         </TableCell>
                         <TableCell>{offering.academic_year}</TableCell>
-                        <TableCell>{offering.semester}</TableCell>
+                        <TableCell>
+                         {activeTab === "seniorHigh"
+                           ? (offering.semester.includes("Quarter") ? offering.semester : offering.semester + " Quarter")
+                           : offering.semester}
+                       </TableCell>
                         <TableCell>
                           {offering.instructor_name ? (
                             <div className="flex items-center gap-2">

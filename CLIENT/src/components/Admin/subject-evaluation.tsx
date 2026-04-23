@@ -313,8 +313,14 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
           total_feedbacks: instructor.total_feedbacks || 0,
           avg_rating: instructor.avg_rating || 0
         }));
-        console.log('Mapped instructors:', mappedInstructors);
-        setInstructors(mappedInstructors);
+
+        // Remove duplicates based on user_id
+        const uniqueInstructors = mappedInstructors.filter((instructor: Instructor, index: number, self: Instructor[]) =>
+          index === self.findIndex((i: Instructor) => i.user_id === instructor.user_id)
+        );
+
+        console.log('Unique instructors:', uniqueInstructors);
+        setInstructors(uniqueInstructors);
       } else {
         toast.error(data.message || 'Failed to fetch instructors');
       }
@@ -839,9 +845,82 @@ export function SubjectEvaluation({ onNavigate }: SubjectEvaluationProps = {}) {
             </p>
           </CardHeader>
           <CardContent>
-             {loadingSubjects ? (
-               <SubjectCardSkeleton count={3} />
-             ) : (
+            {loadingSubjects ? (
+              <SubjectCardSkeleton count={3} />
+            ) : subjects.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {subjects.map((subject) => {
+                  // Calculate response rate using instructor_feedback_count for By Instructor view
+                  const responseRate = subject.student_count > 0
+                    ? ((subject.instructor_feedback_count / subject.student_count) * 100).toFixed(1)
+                    : '0';
+                  const responseFraction = subject.student_count > 0
+                    ? `${subject.instructor_feedback_count}/${subject.student_count}`
+                    : '0/0';
+
+                  return (
+                    <Card
+                      key={subject.section_id}
+                      className="border-green-100 hover:border-green-300 cursor-pointer transition-all"
+                      onClick={() => handleSubjectClick(subject)}
+                    >
+                      <CardContent className="p-4">
+                        {/* Subject Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex items-start gap-4">
+                            <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
+                              <GraduationCap className="w-6 h-6 text-green-600" />
+                            </div>
+                            <div>
+                              <h3 className="font-semibold text-lg">{subject.subject_name}</h3>
+                              <p className="text-sm text-gray-600">{subject.subject_code} • Section {subject.section} • Year {subject.year_level}</p>
+                              <p className="text-sm text-gray-500 mt-1">
+                                <span className="font-medium">Department:</span> {subject.department}
+                              </p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-5 h-5 text-gray-400" />
+                        </div>
+
+                        {/* Expanded Inline Details (Instructor Feedback Only) */}
+                        <div className="grid grid-cols-2 gap-3 mt-4">
+                          {/* Total Enrolled Students */}
+                          <div className="bg-blue-50 rounded-lg p-2 text-center">
+                            <Users className="w-4 h-4 text-blue-600 mx-auto mb-1" />
+                            <div className="text-base font-semibold text-blue-700">{subject.student_count}</div>
+                            <div className="text-xs text-blue-600">Enrolled</div>
+                          </div>
+
+                          {/* Instructor Feedbacks Submitted - For By Instructor view */}
+                          <div className="bg-green-50 rounded-lg p-2 text-center">
+                            <MessageSquare className="w-4 h-4 text-green-600 mx-auto mb-1" />
+                            <div className="text-base font-semibold text-green-700">{subject.instructor_feedback_count}</div>
+                            <div className="text-xs text-green-600">Instructor Feedbacks</div>
+                          </div>
+
+                          {/* Response Rate */}
+                          <div className="bg-purple-50 rounded-lg p-2 text-center">
+                            <BarChart3 className="w-4 h-4 text-purple-600 mx-auto mb-1" />
+                            <div className="text-base font-semibold text-purple-700">{responseRate}%</div>
+                            <div className="text-xs text-purple-600">Rate</div>
+                            <div className="text-xs text-gray-500">({responseFraction})</div>
+                          </div>
+
+                          {/* INSTRUCTOR RATING ONLY - for By Instructor view */}
+                          <div className="bg-orange-50 rounded-lg p-2 text-center">
+                            <GraduationCap className="w-4 h-4 text-orange-600 mx-auto mb-1" />
+                            <div className="text-lg font-semibold text-orange-700">
+                              {subject.avg_rating !== undefined && subject.avg_rating !== null ? parseFloat(subject.avg_rating.toString()).toFixed(1) : 'N/A'}
+                            </div>
+                            <div className="text-xs text-orange-600">Instructor Rating</div>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
               <div className="text-center py-8">
                 <BookOpen className="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500">No subjects found for this instructor</p>
