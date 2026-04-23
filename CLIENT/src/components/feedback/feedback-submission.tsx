@@ -59,7 +59,7 @@ interface ContentRendererProps {
   isNotStarted: (form: FeedbackForm) => boolean;
   isOverdue: (dueDate: string) => boolean;
   externalFeedbackSubmitted?: boolean;
-  selectingForm?: boolean;
+  selectingFormId?: string | null;
 }
 
 function ContentRenderer({
@@ -72,7 +72,7 @@ function ContentRenderer({
   isNotStarted,
   isOverdue,
   externalFeedbackSubmitted = false,
-  selectingForm = false
+  selectingFormId = null
 }: ContentRendererProps) {
   if (loading) {
     return (
@@ -223,9 +223,9 @@ function ContentRenderer({
               <Button
                 onClick={() => onSelectForm(form)}
                 className="w-full"
-                disabled={isNotStarted(form) || selectingForm}
+                disabled={isNotStarted(form) || selectingFormId === form.id}
               >
-                {selectingForm ? (
+                {selectingFormId === form.id ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                     Opening Form...
@@ -278,7 +278,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
   const [isExternalMode, setIsExternalMode] = useState(!!externalFormId || !!externalToken);
   const [externalFeedbackSubmitted, setExternalFeedbackSubmitted] = useState(false);
-  const [selectingForm, setSelectingForm] = useState(false);
+  const [selectingFormId, setSelectingFormId] = useState<string | null>(null);
   
   // External supervisor info (for public feedback)
   const [externalSupervisorName, setExternalSupervisorName] = useState("");
@@ -605,7 +605,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       return;
     }
 
-    setSelectingForm(true);
+    setSelectingFormId(form.id);
     try {
       // Fetch the full form data including questions
       const result = await getForm(form.id);
@@ -662,7 +662,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
       // Fallback to basic form data
       setSelectedForm(form);
     } finally {
-      setSelectingForm(false);
+      setSelectingFormId(null);
     }
     setAnswers({});
     setCurrentPageIndex(0);
@@ -1034,7 +1034,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
               isNotStarted={isNotStarted}
               isOverdue={isOverdue}
               externalFeedbackSubmitted={externalFeedbackSubmitted}
-              selectingForm={selectingForm}
+              selectingFormId={selectingFormId}
             />
           </div>
         </div>
@@ -1062,7 +1062,7 @@ export function FeedbackSubmission({ userRole, externalFormId, externalToken, on
             isNotStarted={isNotStarted}
             isOverdue={isOverdue}
             externalFeedbackSubmitted={externalFeedbackSubmitted}
-            selectingForm={selectingForm}
+            selectingFormId={selectingFormId}
           />
         </div>
       );
