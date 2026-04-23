@@ -69,10 +69,31 @@ export function useRecipients() {
 
   // Filtered instructors (memoized)
   const filteredInstructors = useMemo(() => {
-    return instructors.filter((instructor) =>
+    let filtered = instructors.filter((instructor) =>
       (instructor.fullName || '').toLowerCase().includes((instructorSearchTerm || '').toLowerCase())
     );
-  }, [instructors, instructorSearchTerm]);
+
+    // If audience is Instructors and department is selected, filter by department
+    // For instructors, use selectedCourseYearSection as department filter
+    const departmentToFilter = selectedAudienceType === "Instructors" ? selectedCourseYearSection : selectedDepartment;
+    if (selectedAudienceType === "Instructors" && departmentToFilter) {
+      const deptLower = departmentToFilter.toLowerCase().trim();
+      filtered = filtered.filter(instructor => {
+        const instDept = (instructor.department || '').toLowerCase().trim();
+        if (deptLower === "both") {
+          return instDept === "both";
+        } else if (deptLower === "college") {
+          return instDept === "college" || instDept === "both";
+        } else if (deptLower.includes("senior high")) {
+          return instDept.includes("senior high") || instDept === "both";
+        } else {
+          return instDept === deptLower || instDept === "both";
+        }
+      });
+    }
+
+    return filtered;
+  }, [instructors, instructorSearchTerm, selectedAudienceType, selectedDepartment, selectedCourseYearSection]);
 
   // Load degrees and graduation years for alumni, and companies from alumni employment for employers
   useEffect(() => {
@@ -161,13 +182,13 @@ export function useRecipients() {
       try {
         const result = await getFilteredUsers({ role: "instructor" });
         if (result.success && result.users) {
-          setInstructors(
-            result.users.map((user) => ({
-              id: user.id,
-              fullName: user.fullName || user.name,
-              department: user.department || "No department",
-            }))
-          );
+        const mappedInstructors = result.users.map((user) => ({
+          id: user.id,
+          fullName: user.fullName || user.name,
+          department: user.department || "No department",
+        }));
+        console.log("Loaded instructors:", mappedInstructors.map(i => ({ name: i.fullName, dept: i.department })));
+        setInstructors(mappedInstructors);
         }
       } catch (error) {
         toast.error("Failed to load instructors");
@@ -205,9 +226,8 @@ export function useRecipients() {
             filters.course_year_section = courseYearSection;
           }
         } else if (audienceType === "Instructors") {
-          if (courseYearSection) {
-            filters.department = courseYearSection;
-          }
+          // For instructors, load all and filter client-side to include "Both" department
+          filters.role = "instructor";
         } else if (audienceType === "Alumni") {
           // Pass degree and graduation year for filtering alumni
           if (department) {
@@ -241,7 +261,26 @@ export function useRecipients() {
 
         const result = await getFilteredUsers(filters);
         if (result.success && result.users && result.users.length > 0) {
-          let formattedUsers = result.users.map((user) => ({
+          let filteredUsers = result.users;
+
+          // For instructors, filter client-side to include "Both" department
+          if (audienceType === "Instructors" && courseYearSection) {
+            const deptLower = courseYearSection.toLowerCase().trim();
+            filteredUsers = filteredUsers.filter(user => {
+              const instDept = (user.department || '').toLowerCase().trim();
+              if (deptLower === "both") {
+                return instDept === "both";
+              } else if (deptLower === "college") {
+                return instDept === "college" || instDept === "both";
+              } else if (deptLower.includes("senior high")) {
+                return instDept.includes("senior high") || instDept === "both";
+              } else {
+                return instDept === deptLower || instDept === "both";
+              }
+            });
+          }
+
+          let formattedUsers = filteredUsers.map((user) => ({
             id: user.id,
             fullName: user.fullName || user.name,
             details: formatUserDetails(user),

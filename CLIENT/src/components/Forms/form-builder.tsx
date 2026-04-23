@@ -1719,7 +1719,7 @@ export const FormBuilder = memo(function FormBuilder({
                                   />
                                   {/* Autocomplete Suggestions */}
                                   {instructorSearchTerm.trim() !== "" && filteredInstructors.length > 0 && (
-                                    <div className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    <div key={selectedCourseYearSection} className="absolute z-10 w-full mt-1 bg-white border rounded-md shadow-lg max-h-48 overflow-y-auto">
                                       {filteredInstructors.slice(0, 5).map((instructor) => (
                                         <div
                                           key={instructor.id}
