@@ -56,6 +56,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
   const [alumniPendingForms, setAlumniPendingForms] = useState<PendingForm[]>([]);
   const [submittedFormIds, setSubmittedFormIds] = useState<Set<string>>(new Set());
   const [formStats, setFormStats] = useState({ pending: 0, completed: 0, total: 0, completionRate: 0 });
+  const [isLoading, setIsLoading] = useState(true);
   
   // State for dynamic data (replacing mock data)
   const [alumniStats, setAlumniStats] = useState<AlumniStats>({
@@ -101,6 +102,7 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
 
   useEffect(() => {
     const loadData = async () => {
+      setIsLoading(true);
       const publishedForms = await getFormsForUserRole('alumni');
       
       // Fetch submitted form IDs from API
@@ -140,10 +142,142 @@ export function AlumniDashboard({ onNavigate }: AlumniDashboardProps = {}) {
       
       // Load alumni-specific data from API
       await loadAlumniData();
+      setIsLoading(false);
     };
     loadData();
   }, []);
-  
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {/* Welcome Section Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
+            <div className="flex-1">
+              <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+              <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+              <div className="flex items-center gap-2 mt-2">
+                <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
+              </div>
+            </div>
+            <div className="h-6 bg-gray-200 rounded animate-pulse w-16 self-start"></div>
+          </div>
+        </div>
+
+        {/* Stats Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="h-8 bg-gray-200 rounded animate-pulse mb-1 w-12"></div>
+                <div className="h-3 bg-gray-100 rounded animate-pulse w-20"></div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Analytics Row Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+          {/* Skills Chart Skeleton */}
+          <Card className="border-green-100">
+            <CardHeader>
+              <div className="h-5 bg-gray-200 rounded animate-pulse w-48"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-64 bg-gray-100 rounded animate-pulse"></div>
+            </CardContent>
+          </Card>
+
+          {/* Engagement Chart Skeleton */}
+          <Card className="border-green-100">
+            <CardHeader>
+              <div className="h-5 bg-gray-200 rounded animate-pulse w-48"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-64 bg-gray-100 rounded animate-pulse"></div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Career Impact Assessment Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-5 bg-gray-200 rounded animate-pulse w-64"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="h-5 bg-gray-200 rounded animate-pulse w-16"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-8"></div>
+                    </div>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded animate-pulse w-full"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Pending Alumni Feedback Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-5 bg-gray-200 rounded animate-pulse w-48"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2].map((i) => (
+                <div key={i} className="p-3 sm:p-4 rounded-lg border border-gray-200">
+                  <div className="flex flex-col sm:flex-row items-start justify-between gap-2 mb-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-1">
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                        <div className="h-4 bg-gray-200 rounded animate-pulse w-12"></div>
+                      </div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-48"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse mt-1 w-24"></div>
+                    </div>
+                  </div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse mt-3 w-32"></div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Recent Activity Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="h-5 bg-gray-200 rounded animate-pulse w-32"></div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-40"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-20"></div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Welcome Section */}

@@ -593,11 +593,103 @@ export function AlumniEmployment({ onNavigate }: AlumniEmploymentProps = {}) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+      <div className="space-y-4">
+        {/* Page Header Skeleton */}
+        <div className="bg-white rounded-lg p-6 border">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gray-200 rounded-xl animate-pulse"></div>
+            <div className="flex-1">
+              <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-64"></div>
+              <div className="h-4 bg-gray-100 rounded animate-pulse w-96"></div>
+            </div>
+          </div>
         </div>
+
+        {/* Feedback Message Skeleton */}
+        <div className="flex items-center gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200">
+          <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded animate-pulse flex-1"></div>
+        </div>
+
+        {/* Annual Update Notification Skeleton */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 p-4 rounded-lg bg-gray-50 border border-gray-200">
+          <div className="w-5 h-5 bg-gray-200 rounded animate-pulse flex-shrink-0"></div>
+          <div className="flex-1 min-w-0">
+            <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+            <div className="h-3 bg-gray-100 rounded animate-pulse w-64"></div>
+          </div>
+          <div className="h-8 bg-gray-200 rounded animate-pulse w-24 mt-2 sm:mt-0"></div>
+        </div>
+
+        {/* Update Request Status Card Skeleton */}
+        <Card className="border-gray-200">
+          <CardHeader className="p-4 sm:p-6">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-5 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-32"></div>
+                </div>
+                <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-4 h-4 bg-gray-200 rounded animate-pulse"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-28"></div>
+                </div>
+                <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+              </div>
+            </div>
+            <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-200">
+              <div className="h-4 bg-gray-200 rounded animate-pulse mb-3 w-64"></div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="h-8 bg-gray-200 rounded animate-pulse flex-1"></div>
+                <div className="h-8 bg-gray-200 rounded animate-pulse flex-1"></div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Employment Information Card Skeleton */}
+        <Card className="border">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-5 bg-gray-200 rounded animate-pulse w-48"></div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-4 sm:p-6">
+            <div className="space-y-4 sm:space-y-6">
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-gray-100 rounded-full mx-auto mb-4 animate-pulse"></div>
+                <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48 mx-auto"></div>
+                <div className="h-4 bg-gray-100 rounded animate-pulse w-64 mx-auto"></div>
+              </div>
+
+              <div className="bg-white rounded-lg p-4 sm:p-6 max-w-2xl mx-auto">
+                <div className="h-5 bg-gray-200 rounded animate-pulse mb-4 w-40"></div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse w-full"></div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="mt-4 sm:mt-6 pt-4 border-t border-gray-200 flex justify-center">
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-48"></div>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
