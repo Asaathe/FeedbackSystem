@@ -492,7 +492,7 @@ export const bulkEnrollStudents = async (data: {
 // ==================== Subject Offerings ====================
 
 export interface SubjectOffering {
-  id: string;
+  id: number;
   subject_id: number;
   program_id: number;
   year_level: number;

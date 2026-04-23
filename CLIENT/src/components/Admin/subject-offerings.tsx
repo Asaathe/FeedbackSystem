@@ -322,7 +322,7 @@ export function SubjectOfferings() {
       if (offeringsResult.success) {
         const allOfferings = offeringsResult.offerings || [];
         // Sort by ID descending to show newest first
-        const sortedOfferings = allOfferings.sort((a: SubjectOffering, b: SubjectOffering) => parseInt(b.id) - parseInt(a.id));
+        const sortedOfferings = allOfferings.sort((a: SubjectOffering, b: SubjectOffering) => b.id - a.id);
         setOfferings(sortedOfferings);
         setOfferingsCache(prev => ({ ...prev, [selectedDepartment]: sortedOfferings }));
         // Calculate pagination for display
@@ -520,12 +520,16 @@ export function SubjectOfferings() {
     try {
       // Find the selected course section to get year_level and section
       const selectedCourse = courseSections.find(c => c.value === formData.course_section);
-      
+      if (!selectedCourse) {
+        toast.error("Selected course section not found. Please try again.");
+        return;
+      }
+
       // Get current period ID
-      const deptSettings = selectedDepartment === "College" 
-        ? systemSettings.college 
+      const deptSettings = selectedDepartment === "College"
+        ? systemSettings.college
         : systemSettings.seniorHigh;
-      
+
       const result = await createSubjectOffering({
         subject_id: parseInt(formData.subject_id),
         program_id: selectedCourse?.program_id,
@@ -538,27 +542,42 @@ export function SubjectOfferings() {
       });
         
       if (result.success) {
-        // Optimistically add the new offering to state for immediate UI update
-        if (result.offering) {
-          setOfferings(prev => {
-            const newOfferings = [result.offering, ...prev];
-            return newOfferings.sort((a: SubjectOffering, b: SubjectOffering) => parseInt(b.id) - parseInt(a.id));
-          });
-          // Update cache as well
-          setOfferingsCache(prev => ({
-            ...prev,
-            [selectedDepartment]: [result.offering, ...(prev[selectedDepartment] || [])].sort((a: SubjectOffering, b: SubjectOffering) => parseInt(b.id) - parseInt(a.id))
-          }));
-        }
+        // Create the offering object for optimistic update
+        const subject = subjects.find(s => s.id.toString() === formData.subject_id);
+        const program = programs.find(p => p.id === selectedCourse.program_id);
+        const instructor = availableInstructors.find(i => i.id.toString() === formData.instructor_id);
+        const newOffering: SubjectOffering = {
+          id: result.offering?.id || 999999999, // use real id if available, else high number
+          subject_id: parseInt(formData.subject_id),
+          program_id: selectedCourse.program_id,
+          year_level: selectedCourse.year_level,
+          section: selectedCourse.section,
+          academic_year: formData.academic_year,
+          semester: formData.semester,
+          instructor_id: formData.instructor_id ? parseInt(formData.instructor_id) : null,
+          status: 'active',
+          created_at: result.offering?.created_at || new Date().toISOString(),
+          subject_code: subject?.subject_code || '',
+          subject_name: subject?.subject_name || '',
+          units: subject?.units || 0,
+          program_code: program?.program_code || '',
+          program_name: program?.program_name || '',
+          instructor_name: instructor?.full_name || null,
+          instructor_email: instructor?.email || null,
+          enrolled_count: 0,
+          program_department: selectedDepartment,
+        };
+        setOfferings(prev => {
+          const newOfferings = [newOffering, ...prev];
+          return newOfferings.sort((a: SubjectOffering, b: SubjectOffering) => b.id - a.id);
+        });
+        // Update cache as well
+        setOfferingsCache(prev => ({
+          ...prev,
+          [selectedDepartment]: [newOffering, ...(prev[selectedDepartment] || [])].sort((a: SubjectOffering, b: SubjectOffering) => b.id - a.id)
+        }));
         toast.success("Subject offering created successfully");
         setCreateDialogOpen(false);
-        // Invalidate cache and reload in background to ensure consistency
-        setOfferingsCache(prev => {
-          const newCache = { ...prev };
-          delete newCache[selectedDepartment];
-          return newCache;
-        });
-        loadData();
       } else {
         toast.error(result.message);
       }
