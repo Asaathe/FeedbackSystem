@@ -276,8 +276,61 @@ export function UserProfile({ onNavigate }: UserProfileProps = {}) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="w-8 h-8 animate-spin text-green-500" />
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-32"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-64"></div>
+        </div>
+
+        {/* Profile Card Skeleton */}
+        <Card className="border-green-100">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-40"></div>
+              <div className="h-8 bg-gray-200 rounded animate-pulse w-24"></div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-6">
+              {/* Profile Picture Section */}
+              <div className="flex items-center gap-6 pb-6 border-b border-gray-200">
+                <div className="w-24 h-24 bg-gray-200 rounded-full animate-pulse"></div>
+                <div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                  <div className="h-5 bg-gray-100 rounded animate-pulse mb-2 w-16"></div>
+                  <div className="h-4 bg-gray-100 rounded animate-pulse w-32"></div>
+                </div>
+              </div>
+
+              {/* Form Fields Skeleton */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <div key={i} className="space-y-2">
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-24"></div>
+                    <div className="h-10 bg-gray-100 rounded animate-pulse"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Cards Skeleton */}
+        {[1, 2].map((i) => (
+          <Card key={i} className="border-green-100">
+            <CardHeader>
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-32"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3].map((j) => (
+                  <div key={j} className="h-4 bg-gray-100 rounded animate-pulse"></div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
     );
   }

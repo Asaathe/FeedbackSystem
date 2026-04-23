@@ -1130,13 +1130,36 @@ const getInstructorDetails = async (req, res) => {
 const getInstructorSubjects = async (req, res) => {
   try {
     const { instructorId } = req.params;
-    
+
     // Handle both numeric user_id and string instructor_id formats
     let instructorUserId;
-    
-    // Check if the ID is a string employee code (like '90872')
-    if (isNaN(parseInt(instructorId)) || instructorId.length > 5) {
-      // Look up user_id by instructor_id string
+
+    console.log('getInstructorSubjects called with instructorId:', instructorId, 'type:', typeof instructorId);
+
+    // First, try to parse as number - if successful, it's likely a user_id
+    const parsedId = parseInt(instructorId);
+    if (!isNaN(parsedId)) {
+      // Check if this numeric ID exists as a user_id in instructors table
+      const userCheckQuery = "SELECT user_id FROM instructors WHERE user_id = ?";
+      const userCheckResult = await new Promise((resolve, reject) => {
+        db.query(userCheckQuery, [parsedId], (err, results) => {
+          if (err) reject(err);
+          else resolve(results);
+        });
+      });
+
+      if (userCheckResult.length > 0) {
+        // Found as user_id
+        instructorUserId = parsedId;
+        console.log('Resolved as user_id:', instructorUserId);
+      } else {
+        // Not found as user_id, might be instructor_id string that happens to be numeric
+        console.log('Not found as user_id, checking as instructor_id');
+      }
+    }
+
+    // If not resolved as user_id, try as instructor_id string
+    if (instructorUserId === undefined) {
       const lookupQuery = "SELECT user_id FROM instructors WHERE instructor_id = ?";
       const lookupResult = await new Promise((resolve, reject) => {
         db.query(lookupQuery, [instructorId], (err, results) => {
@@ -1144,16 +1167,14 @@ const getInstructorSubjects = async (req, res) => {
           else resolve(results);
         });
       });
-      
+
       if (lookupResult.length > 0) {
         instructorUserId = lookupResult[0].user_id;
+        console.log('Resolved as instructor_id string:', instructorId, '-> user_id:', instructorUserId);
       } else {
-        // Fallback: try as numeric user_id directly
-        instructorUserId = parseInt(instructorId);
+        console.error('Could not resolve instructor ID:', instructorId);
+        return res.status(404).json({ success: false, message: "Instructor not found" });
       }
-    } else {
-      // Already numeric user_id
-      instructorUserId = parseInt(instructorId);
     }
 
     const query = `

@@ -422,13 +422,30 @@ export function InstructorFeedback() {
 
       {/* Shared Responses */}
       {loading ? (
-        <Card className="border-green-100">
-          <CardContent className="pt-6">
-            <div className="text-center py-12">
-              <p className="text-gray-500">Loading shared responses...</p>
-            </div>
-          </CardContent>
-        </Card>
+        <div className="space-y-4">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <Card key={i} className="border-green-100">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-48"></div>
+                    <div className="h-4 bg-gray-100 rounded animate-pulse w-64"></div>
+                  </div>
+                  <div className="text-right ml-4">
+                    <div className="h-3 bg-gray-100 rounded animate-pulse mb-1 w-12"></div>
+                    <div className="h-4 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="flex items-center justify-between">
+                  <div className="h-6 bg-gray-200 rounded animate-pulse w-20"></div>
+                  <div className="h-8 bg-gray-200 rounded animate-pulse w-24"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : sharedResponses.length === 0 ? (
         <Card className="border-green-100">
           <CardContent className="pt-6">

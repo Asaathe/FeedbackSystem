@@ -124,6 +124,7 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
   // For subject evaluation view (like admin)
   const [evaluationSubjects, setEvaluationSubjects] = useState<InstructorSubject[]>([]);
   const [loadingEvaluation, setLoadingEvaluation] = useState(false);
+  const [evaluationSubjectsFetched, setEvaluationSubjectsFetched] = useState(false);
   const [selectedEvalSubject, setSelectedEvalSubject] = useState<InstructorSubject | null>(null);
   const [evalView, setEvalView] = useState<'list' | 'details'>('list');
 
@@ -137,32 +138,52 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
     try {
       const token = sessionStorage.getItem('authToken');
       const targetInstructor = instructorData || instructor;
-      
+
       if (!token || !targetInstructor) {
         toast.error('No auth token or instructor data found');
+        setLoadingEvaluation(false);
         return;
       }
 
       // Use user_id (number) instead of instructor_id (string) for proper foreign key matching
       // Fall back to instructor_id if user_id not available for backward compatibility
       const instructorId = targetInstructor.user_id || targetInstructor.instructor_id;
+
+      console.log('Fetching evaluation subjects for instructor:', {
+        user_id: targetInstructor.user_id,
+        instructor_id: targetInstructor.instructor_id,
+        resolved_id: instructorId,
+        id_type: typeof instructorId
+      });
+
       const response = await fetch(`/api/subject-evaluation/instructors/${instructorId}/subjects`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
+      if (!response.ok) {
+        console.error('API request failed:', response.status, response.statusText);
+        toast.error(`Failed to load subjects: ${response.status} ${response.statusText}`);
+        setLoadingEvaluation(false);
+        return;
+      }
+
       const data = await response.json();
+      console.log('API response:', data);
+
       if (data.success) {
         setEvaluationSubjects(data.subjects || []);
       } else {
         console.error('API returned error for evaluation subjects:', data);
+        toast.error(data.message || 'Failed to load subjects with evaluation data');
       }
     } catch (error) {
       console.error('Error fetching evaluation subjects:', error);
       toast.error('Failed to load subjects with evaluation data');
     } finally {
       setLoadingEvaluation(false);
+      setEvaluationSubjectsFetched(true);
     }
   };
 
@@ -309,6 +330,9 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
   // Load evaluation subjects when component mounts if showEvaluationView or showSubjectsOnly is true
   useEffect(() => {
     if (showEvaluationView || showSubjectsOnly) {
+      // Reset fetch flag when conditions change
+      setEvaluationSubjectsFetched(false);
+      setEvaluationSubjects([]); // Reset data too
       // If instructor data is not loaded yet, fetch it first
       const loadData = async () => {
         const fetchedInstructor = await fetchInstructorData();
@@ -321,12 +345,12 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
     }
   }, [showEvaluationView, showSubjectsOnly]);
 
-  // Also trigger fetch when instructor data becomes available (for edge cases)
+  // Trigger fetch when instructor data becomes available and we haven't fetched yet
   useEffect(() => {
-    if ((showEvaluationView || showSubjectsOnly) && instructor && evaluationSubjects.length === 0 && !loadingEvaluation) {
+    if ((showEvaluationView || showSubjectsOnly) && instructor && !evaluationSubjectsFetched && !loadingEvaluation) {
       fetchEvaluationSubjects();
     }
-  }, [instructor, showEvaluationView, showSubjectsOnly, evaluationSubjects.length, loadingEvaluation]);
+  }, [instructor, showEvaluationView, showSubjectsOnly, evaluationSubjectsFetched, loadingEvaluation]);
 
   const renderStars = (rating: number) => {
     const stars = [];
@@ -356,11 +380,104 @@ export function InstructorDashboard({ onNavigate, showSubjectsOnly = false, show
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin text-green-500 mx-auto mb-4" />
-          <p className="text-gray-600">Loading your dashboard...</p>
+      <div className="space-y-6">
+        {/* Header Skeleton */}
+        <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-xl p-6 border border-green-100">
+          <div className="h-8 bg-green-200 rounded animate-pulse mb-2 w-48"></div>
+          <div className="h-4 bg-green-100 rounded animate-pulse w-80"></div>
         </div>
+
+        {/* Stats Cards Skeleton */}
+        {!showSubjectsOnly && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="border-green-100">
+                <CardContent className="p-6">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-2 w-16"></div>
+                      <div className="h-4 bg-gray-100 rounded animate-pulse w-24"></div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Subject Cards Skeleton */}
+        {(showSubjectsOnly || showEvaluationView) && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <Card key={i} className="border-green-100">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-2 w-20"></div>
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-32"></div>
+                    </div>
+                    <div className="ml-2">
+                      <div className="h-6 bg-gray-200 rounded animate-pulse w-24"></div>
+                    </div>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="space-y-4">
+                  {/* Instructor */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div>
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-28"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-16"></div>
+                    </div>
+                  </div>
+
+                  {/* Details */}
+                  <div className="flex items-center gap-4 text-sm text-gray-500">
+                    <div className="flex items-center gap-1">
+                      <div className="h-4 w-4 bg-gray-100 rounded animate-pulse"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-12"></div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <div className="h-4 w-4 bg-gray-100 rounded animate-pulse"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-20"></div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="grid grid-cols-2 gap-2 pt-2">
+                    <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+                    <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+
+        {/* Recent Feedback Skeleton */}
+        {!showSubjectsOnly && !showEvaluationView && (
+          <Card className="border-green-100">
+            <CardHeader>
+              <div className="h-6 bg-gray-200 rounded animate-pulse w-40"></div>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 border border-gray-100 rounded-lg">
+                    <div className="h-10 w-10 bg-gray-200 rounded-full animate-pulse"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-1 w-32"></div>
+                      <div className="h-3 bg-gray-100 rounded animate-pulse w-24"></div>
+                    </div>
+                    <div className="h-6 bg-gray-200 rounded animate-pulse w-16"></div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     );
   }
