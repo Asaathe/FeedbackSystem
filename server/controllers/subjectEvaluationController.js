@@ -259,7 +259,7 @@ const getSubjectEvaluationResults = async (req, res) => {
     const { subjectId } = req.params;
     const { academic_year, semester } = req.query;
     
-    console.log('getSubjectEvaluationResults called with subjectId:', subjectId);
+
     
     // Get current settings if not provided (uses academic_periods table first, falls back to system_settings)
     let acadYear = academic_year;
@@ -295,7 +295,7 @@ const getSubjectEvaluationResults = async (req, res) => {
           console.error('Error fetching subject feedback:', err);
           reject(err);
         } else {
-          console.log('Subject feedback results:', results.length);
+
           resolve(results);
         }
       });
@@ -324,7 +324,7 @@ const getSubjectEvaluationResults = async (req, res) => {
           console.error('Error fetching instructor feedback:', err);
           reject(err);
         } else {
-          console.log('Instructor feedback results:', results.length);
+
           resolve(results);
         }
       });
@@ -332,7 +332,7 @@ const getSubjectEvaluationResults = async (req, res) => {
     
     // Combine both results
     const combinedResults = [...subjectFeedbackResults, ...instructorFeedbackResults];
-    console.log('Combined results:', combinedResults.length);
+
     
     // If no results from section_id, try fallback to subject_id
     if (combinedResults.length === 0) {
@@ -540,7 +540,7 @@ const getEvaluationResultsBySection = async (req, res) => {
       const subjectSampleQuery = "SELECT responses FROM subject_feedback WHERE section_id = ? LIMIT 1";
       const subjectSample = await new Promise((resolve, reject) => {
         db.query(subjectSampleQuery, [subjectId], (err, results) => {
-          if (err) console.log('subject sample error:', err);
+          if (err) console.error('subject sample error:', err);
           else resolve(results || []);
         });
       });
@@ -558,14 +558,14 @@ const getEvaluationResultsBySection = async (req, res) => {
           questionAverages['Q3'] = 'N/A';
         }
       }
-    } catch (e) { console.log('subject sample error:', e.message); }
+    } catch (e) { console.error('subject sample error:', e.message); }
     
     if (Object.keys(questionAverages).length === 0) {
       try {
         const instructorSampleQuery = "SELECT responses FROM instructor_feedback WHERE section_id = ? LIMIT 1";
         const instructorSample = await new Promise((resolve, reject) => {
           db.query(instructorSampleQuery, [subjectId], (err, results) => {
-            if (err) console.log('instructor sample error:', err);
+            if (err) console.error('instructor sample error:', err);
             else resolve(results || []);
           });
         });
@@ -583,7 +583,7 @@ const getEvaluationResultsBySection = async (req, res) => {
             questionAverages['Q3'] = 'N/A';
           }
         }
-      } catch (e) { console.log('instructor sample error:', e.message); }
+      } catch (e) { console.error('instructor sample error:', e.message); }
     }
     
     if (Object.keys(questionAverages).length === 0) {
@@ -1134,7 +1134,7 @@ const getInstructorSubjects = async (req, res) => {
     // Handle both numeric user_id and string instructor_id formats
     let instructorUserId;
 
-    console.log('getInstructorSubjects called with instructorId:', instructorId, 'type:', typeof instructorId);
+
 
     // First, try to parse as number - if successful, it's likely a user_id
     const parsedId = parseInt(instructorId);
@@ -1151,10 +1151,10 @@ const getInstructorSubjects = async (req, res) => {
       if (userCheckResult.length > 0) {
         // Found as user_id
         instructorUserId = parsedId;
-        console.log('Resolved as user_id:', instructorUserId);
+
       } else {
         // Not found as user_id, might be instructor_id string that happens to be numeric
-        console.log('Not found as user_id, checking as instructor_id');
+
       }
     }
 
@@ -1170,7 +1170,7 @@ const getInstructorSubjects = async (req, res) => {
 
       if (lookupResult.length > 0) {
         instructorUserId = lookupResult[0].user_id;
-        console.log('Resolved as instructor_id string:', instructorId, '-> user_id:', instructorUserId);
+
       } else {
         console.error('Could not resolve instructor ID:', instructorId);
         return res.status(404).json({ success: false, message: "Instructor not found" });

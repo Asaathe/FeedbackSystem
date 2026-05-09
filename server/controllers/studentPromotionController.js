@@ -223,7 +223,7 @@ const previewPromotion = async (req, res) => {
       const { historyId, studentId } = req.body;
       const undoneBy = req.userId;
 
-      console.log('Undo promotion controller called with:', { historyId, studentId, undoneBy });
+
 
       // Validation
       if (!historyId) {
@@ -246,7 +246,7 @@ const previewPromotion = async (req, res) => {
         undoneBy
       );
 
-      console.log('Undo promotion result:', result);
+
       return res.status(200).json(result);
     } catch (error) {
       console.error("Undo promotion controller error:", error);

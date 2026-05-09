@@ -108,10 +108,8 @@ function getEnvVar(key: string): string | undefined {
     return import.meta.env[key];
   }
   
-  // For Create React App (process.env)
-  if (typeof process !== 'undefined' && process.env) {
-    return process.env[key];
-  }
+  
+
   
   // Try window._env for custom setup
   if (typeof window !== 'undefined' && (window as any)._env?.[key]) {

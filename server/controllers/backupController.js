@@ -146,15 +146,14 @@ const downloadBackup = async (req, res) => {
       // Generate backup content on-the-fly
       let fileContent = '';
 
-      console.log(`Generating ${backup.format} backup for tables:`, backup.tables);
+
 
       if (backup.format === 'sql') {
         fileContent = await generateSQLBackupContent(backup.tables);
-        console.log(`Generated ${backup.format} backup with ${fileContent.length} characters`);
-      console.log(`First 200 characters:`, fileContent.substring(0, 200).replace(/\n/g, '\\n'));
+
       } else if (backup.format === 'csv') {
         fileContent = await generateCSVBackupContent(backup.tables);
-        console.log(`Generated CSV backup with ${fileContent.length} characters`);
+
       }
 
       // Set headers for file download
@@ -166,7 +165,7 @@ const downloadBackup = async (req, res) => {
         fileName += (backup.tables.length > 1 ? '_backup.csv' : '.csv');
       }
 
-      console.log(`Sending ${backup.format} file: ${fileName} (${fileContent.length} bytes)`);
+
 
       // Set explicit headers to prevent compression and force download
       res.setHeader('Content-Type', 'application/octet-stream');
@@ -203,7 +202,7 @@ const downloadBackup = async (req, res) => {
 const deleteBackup = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`Attempting to delete backup with id: ${id}`);
+
 
     if (!id) {
       console.error("No backup ID provided");
@@ -215,10 +214,10 @@ const deleteBackup = async (req, res) => {
 
     // Find backup in memory
     const backupIndex = backups.findIndex(b => b.id === id);
-    console.log(`Backup index found: ${backupIndex}, total backups: ${backups.length}`);
+
 
     if (backupIndex === -1) {
-      console.log(`Backup with id ${id} not found`);
+
       return res.status(404).json({
         success: false,
         message: "Backup not found"
@@ -227,7 +226,7 @@ const deleteBackup = async (req, res) => {
 
     // Remove from in-memory storage
     const deletedBackup = backups.splice(backupIndex, 1);
-    console.log(`Deleted backup: ${deletedBackup[0]?.name}`);
+
 
     return res.json({
       success: true,
@@ -255,16 +254,16 @@ async function generateSQLBackupContent(tables) {
 
   // Use manual generation for production/cloud environments
   if (isProduction || isRailway) {
-    console.log('Production environment detected - using manual SQL generation');
+
     return await generateManualSQLBackupContent(tables);
   }
 
   // Try mysqldump for local development
   try {
-    console.log('Development environment - attempting mysqldump...');
+
     return await generateMysqldumpBackupContent(tables);
   } catch (error) {
-    console.log('mysqldump failed, falling back to manual generation:', error.message);
+
     return await generateManualSQLBackupContent(tables);
   }
 }
@@ -279,13 +278,13 @@ async function generateMysqldumpBackupContent(tables) {
   const dbPassword = process.env.DB_PASSWORD || '';
   const dbName = process.env.DB_NAME || 'feedback_system';
 
-  console.log(`Generating mysqldump for tables: ${tables.join(', ')}`);
+
 
   // Construct mysqldump command
   const tableArgs = tables.map(table => `\`${table}\``).join(' ');
   const dumpCommand = `mysqldump -h ${dbHost} -u ${dbUser} ${dbPassword ? `-p${dbPassword}` : ''} --single-transaction --quick --no-create-db --skip-comments ${dbName} ${tableArgs}`;
 
-  console.log(`Executing mysqldump command (development mode)`);
+
 
   // Execute mysqldump
   const { stdout, stderr } = await execPromise(dumpCommand);
@@ -308,7 +307,7 @@ async function generateMysqldumpBackupContent(tables) {
   // Add the mysqldump output
   sqlContent += stdout;
 
-  console.log(`mysqldump completed successfully, generated ${sqlContent.length} characters`);
+
 
   return sqlContent;
 }
@@ -332,7 +331,7 @@ async function generateManualSQLBackupContent(tables) {
 
     for (const tableName of tables) {
       try {
-        console.log(`Processing table: ${tableName}`);
+
 
         // Get table structure first
         const structureQuery = `SHOW CREATE TABLE \`${tableName}\``;
@@ -363,7 +362,7 @@ async function generateManualSQLBackupContent(tables) {
         });
 
         const totalRows = countResult[0].total;
-        console.log(`Table ${tableName} has ${totalRows} rows`);
+
 
         if (totalRows > 0) {
           sqlContent += `--\n`;
@@ -429,7 +428,7 @@ async function generateManualSQLBackupContent(tables) {
     sqlContent += `--\n\n`;
     sqlContent += `COMMIT;\n`;
 
-    console.log(`Manual SQL generation completed, generated ${sqlContent.length} characters`);
+
 
     return sqlContent;
 

@@ -165,7 +165,7 @@ const testRunScheduler = async (req, res) => {
   try {
     const employmentUpdateScheduler = require('../services/employmentUpdateScheduler');
     
-    console.log('[TEST] Manually triggering employment update scheduler...');
+
     const result = await employmentUpdateScheduler.checkAndScheduleEmploymentUpdates();
     
     return res.status(200).json({

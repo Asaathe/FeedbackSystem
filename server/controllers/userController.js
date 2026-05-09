@@ -211,11 +211,7 @@ const updateUser = async (req, res) => {
       schoolRole,
     } = req.body;
 
-    console.log('=== UPDATE USER DEBUG ===');
-    console.log('User ID:', id);
-    console.log('Received role:', role);
-    console.log('Received profilePicture:', profilePicture);
-    console.log('=========================');
+
 
     // First check if user exists
     const existingUsers = await queryDatabase(
@@ -273,8 +269,7 @@ const updateUser = async (req, res) => {
         [id]
       );
 
-      console.log('Student update - profilePicture:', profilePicture);
-      console.log('Student update - studentRecords:', studentRecords);
+
 
       if (studentRecords.length > 0) {
         // Update existing student record

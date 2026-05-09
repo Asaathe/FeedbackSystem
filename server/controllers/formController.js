@@ -35,12 +35,12 @@ const getFormById = async (req, res) => {
   try {
     const { id } = req.params;
     
-    console.log("🔍 [getFormById] Fetching form with ID:", id);
+
 
     const result = await formService.getFormById(id);
     
     if (result.success) {
-      console.log("🔍 [getFormById] Form found, question count:", result.form?.questions?.length);
+
       return res.status(200).json(result);
     } else {
       return res.status(404).json(result);
@@ -62,8 +62,8 @@ const createForm = async (req, res) => {
     const userId = req.userId;
     const formData = req.body;
 
-    console.log("🔍 [createForm] Request body:", JSON.stringify(formData));
-    console.log("🔍 [createForm] Status received:", formData.status);
+
+
 
     const result = await formService.createForm(formData, userId);
 

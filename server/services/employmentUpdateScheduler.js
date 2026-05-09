@@ -1,5 +1,5 @@
 // Employment Update Scheduler - Automated 11-month follow-up system
-// This scheduler runs daily to check and send employment update request emails
+// This scheduler runs weekly on Mondays to check and send employment update request emails
 
 const db = require('../config/database');
 const { queryDatabase } = require('../utils/helpers');
@@ -7,7 +7,7 @@ const emailService = require('../utils/emailService');
 
 /**
  * Check and send employment update emails for alumni due for follow-up
- * This should be run daily via cron job
+ * This should be run weekly on Mondays via cron job
  * 
  * WORKFLOW:
  * 1. First Employment Email: graduation_date + 1 year (365 days) AND never updated employment
@@ -21,7 +21,7 @@ const emailService = require('../utils/emailService');
  * - scheduled → sent (after follow-up email sent, then back to updated after alumni responds)
  */
 const checkAndScheduleEmploymentUpdates = async () => {
-  console.log('[Employment Update Scheduler] Running daily check...');
+  console.log('[Employment Update Scheduler] Running weekly check...');
   
   try {
     // ============================================
@@ -189,7 +189,7 @@ const checkAndScheduleEmploymentUpdates = async () => {
         const subject = 'Employment Information Update Request - ACTS Computer College';
         const html = `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">${emailType}</h2>
+            <h2 style="color: #25eb3f;">${emailType}</h2>
             <p>Dear ${alumnus.full_name},</p>
             <p>Good day!</p>
             <p>We hope this message finds you well.</p>

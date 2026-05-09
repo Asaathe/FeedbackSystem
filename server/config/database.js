@@ -27,7 +27,7 @@ const testConnection = () => {
       console.error("Database connection failed:", err.message);
       console.error("Make sure XAMPP MySQL is running and database exists!");
     } else {
-      console.log("Connected to MySQL database");
+
       connection.release();
     }
   });
@@ -40,7 +40,7 @@ testConnection();
 pool.on("error", (err) => {
   console.error("Database pool error:", err.code);
   if (err.code === "PROTOCOL_CONNECTION_LOST" || err.code === "ECONNRESET" || err.code === "ECONNREFUSED") {
-    console.log("Database connection lost. Attempting to reconnect...");
+
     setTimeout(testConnection, 1000);
   }
 });
@@ -70,7 +70,7 @@ const queryWithRetry = (sql, params, retries = 3) => {
       pool.query(sql, params, (err, results) => {
         if (err) {
           if (attemptNumber < retries && (err.code === "ECONNRESET" || err.code === "PROTOCOL_CONNECTION_LOST" || err.code === "ECONNREFUSED")) {
-            console.log(`Query failed, retrying (${attemptNumber + 1}/${retries})...`);
+
             setTimeout(() => attempt(attemptNumber + 1), 500);
           } else {
             reject(err);
