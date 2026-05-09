@@ -449,16 +449,18 @@ export default function StudentPromotion() {
         setGradSelectedStudents([]);
         await fetchGraduates("all");
         await fetchHistory();
+        setGraduationDialogOpen(false);
+        setConfirmDialogOpen(false);
       } else {
         toast.error(data.message || "Failed to graduate students");
+        setGraduationDialogOpen(true); // reopen to allow retry
       }
     } catch (error) {
       console.error("Error graduating students:", error);
       toast.error("Failed to graduate students");
+      setGraduationDialogOpen(true); // reopen to allow retry
     } finally {
       setLoading(false);
-      setGraduationDialogOpen(false);
-      setConfirmDialogOpen(false);
     }
   };
 
@@ -1449,7 +1451,14 @@ export default function StudentPromotion() {
             <Button variant="outline" onClick={() => setGraduationDialogOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => setConfirmDialogOpen(true)} className="bg-green-600 hover:bg-green-700">
+            <Button
+              onClick={() => {
+                setGraduationDialogOpen(false);
+                setConfirmDialogOpen(true);
+              }}
+              disabled={loading}
+              className="bg-green-600 hover:bg-green-700"
+            >
               Continue
             </Button>
           </DialogFooter>
@@ -1590,7 +1599,12 @@ export default function StudentPromotion() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setConfirmDialogOpen(false)}>
+            <Button variant="outline" onClick={() => {
+              setConfirmDialogOpen(false);
+              if (activeTab === "graduate") {
+                setGraduationDialogOpen(true);
+              }
+            }}>
               Cancel
             </Button>
             <Button
