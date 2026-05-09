@@ -254,8 +254,10 @@ const generateDueDate = (category: string): string => {
 
 // Get form statistics for dashboard
 export const getFormStatsForUser = async (userRole: string) => {
-  const pendingForms = await getPendingFormsForUser(userRole);
-  const completedForms = await getCompletedFormsForUser(userRole);
+  const [pendingForms, completedForms] = await Promise.all([
+    getPendingFormsForUser(userRole),
+    getCompletedFormsForUser(userRole)
+  ]);
 
   return {
     pending: pendingForms.length,
