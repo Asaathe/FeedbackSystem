@@ -189,12 +189,12 @@ app.listen(port, () => {
 // ============================================
 // SCHEDULED TASKS - Employment Update Scheduler
 // ============================================
-// Run daily at midnight to check for alumni due for employment update
+// Run every Monday at midnight to check for alumni due for employment update
 const employmentUpdateScheduler = require('./services/employmentUpdateScheduler');
 
-// Schedule the job to run every day at midnight
-cron.schedule('0 0 * * *', async () => {
-  console.log('[CRON] Running daily employment update check...');
+// Schedule the job to run every Monday at midnight
+cron.schedule('0 0 * * 1', async () => {
+  console.log('[CRON] Running weekly employment update check...');
   try {
     const result = await employmentUpdateScheduler.checkAndScheduleEmploymentUpdates();
     console.log(`[CRON] Employment update check completed: ${result.sent} sent, ${result.failed} failed`);
@@ -203,7 +203,7 @@ cron.schedule('0 0 * * *', async () => {
   }
 });
 
-console.log('[CRON] Employment update scheduler initialized - runs daily at midnight');
+console.log('[CRON] Employment update scheduler initialized - runs every Monday at midnight');
 
 // ============================================
 // SCHEDULED TASKS - Academic Period Auto-Transition
