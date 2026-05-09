@@ -6,9 +6,9 @@ const db = require("../config/database");
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
 
 // JWT Verification Middleware
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
-  
+
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
     return res.status(401).json({
       success: false,
@@ -17,26 +17,29 @@ const verifyToken = (req, res, next) => {
   }
 
   const token = authHeader.substring(7);
-  
+
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.userId = decoded.userId;
-    
+
     // Also set req.user with role for admin checks
-    const userQuery = "SELECT role FROM users WHERE id = ?";
-    db.query(userQuery, [decoded.userId], (err, results) => {
-      if (err) {
-        console.error("Error fetching user role:", err);
-        // Still set req.user with basic info from token even if DB fails
-        req.user = { id: decoded.userId, role: null };
-      } else if (results.length > 0) {
+    try {
+      const userQuery = "SELECT role FROM users WHERE id = ?";
+      const results = await db.queryWithRetry(userQuery, [decoded.userId]);
+
+      if (results.length > 0) {
         req.user = { id: decoded.userId, role: results[0].role };
       } else {
         // User not found in database, but token is valid
         req.user = { id: decoded.userId, role: null };
       }
-      next();
-    });
+    } catch (dbError) {
+      console.error("Error fetching user role:", dbError);
+      // Still set req.user with basic info from token even if DB fails
+      req.user = { id: decoded.userId, role: null };
+    }
+
+    next();
   } catch (error) {
     return res.status(401).json({
       success: false,
