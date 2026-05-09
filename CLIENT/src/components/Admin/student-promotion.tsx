@@ -447,10 +447,10 @@ export default function StudentPromotion() {
       if (data.success) {
         toast.success(`Successfully graduated ${data.graduated} students`);
         setGradSelectedStudents([]);
-        await fetchGraduates("all");
-        await fetchHistory();
         setGraduationDialogOpen(false);
         setConfirmDialogOpen(false);
+        await fetchGraduates("all");
+        await fetchHistory();
       } else {
         toast.error(data.message || "Failed to graduate students");
         setGraduationDialogOpen(true); // reopen to allow retry
